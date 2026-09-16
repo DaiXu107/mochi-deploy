@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mochi 提问记录诊断</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; background: #0f1115; color: #e8eaf0;
+         padding: max(14px, env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom)); line-height: 1.55; }
+  h1 { font-size: 18px; margin-bottom: 4px; }
+  .sub { color: #9aa3b2; font-size: 12px; margin-bottom: 14px; }
+  .card { background: #171a21; border: 1px solid #262c38; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; }
+  .card h2 { font-size: 14px; color: #7fb2ff; margin-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  td { padding: 3px 4px; border-bottom: 1px solid #20242e; word-break: break-all; }
+  td.k { color: #9aa3b2; max-width: 62%; }
+  td.v { text-align: right; white-space: nowrap; color: #dfe4ee; font-variant-numeric: tabular-nums; }
+  tr.ok td.v { color: #7fd18b; font-weight: 600; }
+  tr.miss td.v { color: #ff7f7f; font-weight: 600; }
+  .note { font-size: 11px; color: #8a93a5; margin-top: 6px; }
+  button { appearance: none; border: 0; border-radius: 10px; padding: 11px 16px; font-size: 14px; font-weight: 600;
+           background: #2f6fed; color: #fff; width: 100%; margin-top: 4px; }
+  button.gray { background: #2a3040; color: #cfd6e4; margin-top: 8px; }
+  textarea { width: 100%; height: 180px; background: #12151c; color: #cfe3ff; border: 1px solid #262c38; border-radius: 10px;
+             padding: 10px; font-size: 11px; font-family: Consolas, Menlo, monospace; margin-top: 10px; white-space: pre; }
+  .prog { font-size: 12px; color: #7fd18b; min-height: 18px; }
+</style>
+</head>
+<body>
+<h1>💬 提问记录 / 经期数据诊断</h1>
+<div class="sub">只读检测，不修改任何数据 · 结果可一键复制发给开发者</div>
+
+<div class="card">
+  <h2>当前联系人桌面</h2>
+  <table id="t-cid"></table>
+  <div class="note">提问记录的五类历史（TA的询问/小问题/好奇/吐槽/邀请问问）按联系人桌面分开存。若下方「其他桌面」里有数据而当前桌面没有，说明是切换过桌面、不是丢失。</div>
+</div>
+
+<div class="card">
+  <h2>提问记录五类：localStorage vs IndexedDB</h2>
+  <div class="prog" id="prog">扫描中…</div>
+  <table id="t-ask"></table>
+  <div class="note">「LS」= localStorage 快照，「IDB」= IndexedDB 权威层。正常应两边都有；IDB 有而 LS 没有 = 启动回填未完成或曾被系统清理（应用内此时看会“暂时为空”）；两边都没有 = 数据已不存在。</div>
+</div>
+
+<div class="card">
+  <h2>其他联系人桌面的同键数据</h2>
+  <table id="t-other"></table>
+</div>
+
+<div class="card">
+  <h2>经期全局数据（xy-home-v2:period-*）</h2>
+  <table id="t-period"></table>
+  <div class="note">经期记录是全局共享的。这里只要 IDB 或 LS 任一有值，恢复经期模块代码后记录就会回来。</div>
+</div>
+
+<button id="btn-copy">📋 复制完整报告</button>
+<button class="gray" id="btn-rescan">🔄 重新扫描</button>
+<textarea id="report" readonly spellcheck="false" style="display:none"></textarea>
+
+<script>
+(function () {
+  'use strict';
+  var G = 'xy-home-v2:';
+  var ASK_KEYS = ['ta-ask', 'ta-choose', 'ta-curious', 'ta-roast', 'invite-ask-history'];
+  var PERIOD_KEYS = ['period-records', 'period-cfg', 'period-daily', 'period-notify', 'period-migrated'];
+  var LABELS = { 'ta-ask': 'TA的询问', 'ta-choose': 'TA的小问题', 'ta-curious': 'TA的好奇', 'ta-roast': 'TA的吐槽', 'invite-ask-history': '邀请/问问' };
+  var idbVals = {};   // key -> value(string) 或 undefined
+  var reportLines = [];
+
+  function fmtSize(n) {
+    if (n == null) return '—';
+    if (n < 1024) return n + ' B';
+    if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+    return (n / 1048576).toFixed(2) + ' MB';
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+
+  function lsGet(k) { try { return localStorage.getItem(G + k); } catch (e) { return null; } }
+  function lsKeys() { var out = []; try { for (var i = 0; i < localStorage.length; i++) out.push(localStorage.key(i)); } catch (e) {} return out; }
+
+  function openIdb() {
+    return new Promise(function (res) {
+      try {
+        var rq = indexedDB.open('mochi-db', 1);
+        rq.onsuccess = function () { res(rq.result); };
+        rq.onerror = function () { res(null); };
+        rq.onblocked = function () { res(null); };
+      } catch (e) { res(null); }
+    });
+  }
+  // 只保留与诊断相关的键值，避免把几十 MB 图片类大键读进内存
+  function wanted(k) {
+    if (typeof k !== 'string' || k.indexOf(G) !== 0) return false;
+    var tail = k.slice(G.length);
+    for (var i = 0; i < ASK_KEYS.length; i++) {
+      var ak = ASK_KEYS[i];
+      if (tail === ak || new RegExp('^[^:]+:' + ak + '$').test(tail)) return true;
+    }
+    if (PERIOD_KEYS.indexOf(tail) >= 0) return true;
+    if (tail === 'active-contact' || tail === 'contacts') return true;
+    return false;
+  }
+  function idbAll(db) {
+    return new Promise(function (res) {
+      if (!db) { res({}); return; }
+      try {
+        var out = {};
+        var tx = db.transaction('kv', 'readonly');
+        var cur = tx.objectStore('kv').openCursor();
+        cur.onsuccess = function (ev) {
+          var c = ev.target.result;
+          if (!c) { res(out); return; }
+          if (wanted(c.key)) out[c.key] = c.value;
+          c.continue();
+        };
+        cur.onerror = function () { res(out); };
+      } catch (e) { res({}); }
+    });
+  }
+  // 解析 ta-* 对象，取 history/questions 条数
+  function parseAsk(str) {
+    if (str == null) return null;
+    try {
+      var d = JSON.parse(str);
+      if (!d || typeof d !== 'object') return { bad: true };
+      return {
+        hist: Array.isArray(d.history) ? d.history.length : -1,
+        qs: Array.isArray(d.questions) ? d.questions.length : -1
+      };
+    } catch (e) { return { bad: true }; }
+  }
+  function parseArr(str) {
+    if (str == null) return null;
+    try { var a = JSON.parse(str); return Array.isArray(a) ? a.length : -1; } catch (e) { return { bad: true }; }
+  }
+  function cellRow(cls, k, v) { return '<tr class="' + cls + '"><td class="k">' + k + '</td><td class="v">' + v + '</td></tr>'; }
+
+  function render() {
+    reportLines = [];
+    reportLines.push('== Mochi 提问记录诊断 ' + new Date().toLocaleString() + ' ==');
+    var ua = navigator.userAgent;
+    reportLines.push('UA: ' + ua);
+
+    // ---- 当前联系人 ----
+    var cidLS = lsGet('active-contact');
+    var cidIDB = idbVals[G + 'active-contact'];
+    var cid = cidLS || cidIDB || '(未设置=default)';
+    var htmlCid = cellRow('', 'active-contact (LS)', esc(cidLS || '无'));
+    htmlCid += cellRow('', 'active-contact (IDB)', esc(cidIDB || '无'));
+    document.getElementById('t-cid').innerHTML = htmlCid;
+    reportLines.push('active-contact LS=' + (cidLS || '无') + ' IDB=' + (cidIDB || '无'));
+
+    // 联系人列表（找其他桌面）
+    var contacts = [];
+    var rawContacts = lsGet('contacts') != null ? lsGet('contacts') : idbVals[G + 'contacts'];
+    try { var ca = JSON.parse(rawContacts || '[]'); if (Array.isArray(ca)) contacts = ca; } catch (e) {}
+    var otherPrefixes = ['default'].concat(contacts.map(function (c) { return c && c.id; }).filter(Boolean));
+    otherPrefixes = otherPrefixes.filter(function (p, i) { return otherPrefixes.indexOf(p) === i && p !== String(cidLS || cidIDB || 'default'); });
+
+    // ---- 五类主表（当前桌面键 xy-home-v2:<cid>:<k> 优先，回退根键）----
+    function lsGetCur(k) {
+      var v = null;
+      try { v = localStorage.getItem(G + cid + ':' + k); } catch (e) {}
+      if (v == null) { try { v = localStorage.getItem(G + k); } catch (e) {} }
+      return v;
+    }
+    function idbGetCur(k) {
+      var nsV = idbVals[G + cid + ':' + k];
+      if (nsV !== undefined) return nsV;
+      return idbVals[G + k];
+    }
+    var rows = '';
+    ASK_KEYS.forEach(function (k) {
+      var lsV = lsGetCur(k);
+      var idbRaw = idbGetCur(k);
+      var idbV = typeof idbRaw === 'string' ? idbRaw : (idbRaw != null ? JSON.stringify(idbRaw) : null);
+      var isArr = k === 'invite-ask-history';
+      var cntLS = isArr ? parseArr(lsV) : parseAsk(lsV);
+      var cntIDB = isArr ? parseArr(idbV) : parseAsk(idbV);
+      function desc(cnt, raw, size) {
+        if (raw == null) return '✗ 无';
+        if (!cnt) return '⚠ 空';
+        if (cnt.bad) return '⚠ 损坏';
+        if (isArr) return '✓ 记录 ' + cnt + ' 条 · ' + fmtSize(size);
+        return '✓ 历史' + cnt.hist + '条/题库' + cnt.qs + '条 · ' + fmtSize(size);
+      }
+      var lsTxt = desc(cntLS, lsV, lsV == null ? 0 : lsV.length);
+      var idbTxt = desc(cntIDB, idbRaw, idbV == null ? 0 : idbV.length);
+      var cls = (lsV == null && idbRaw === undefined) ? 'miss' : 'ok';
+      rows += '<tr><td class="k" rowspan="2">' + (LABELS[k] || k) + '</td><td class="k">LS</td><td class="v ' + (lsV == null ? 'miss' : 'ok') + '">' + lsTxt + '</td></tr>';
+      rows += '<tr><td class="k">IDB</td><td class="v ' + (idbRaw === undefined ? 'miss' : 'ok') + '">' + idbTxt + '</td></tr>';
+      reportLines.push(LABELS[k] + ' | LS=' + (lsV == null ? 'MISSING' : lsTxt) + ' | IDB=' + (idbRaw === undefined ? 'MISSING' : idbTxt));
+    });
+    document.getElementById('t-ask').innerHTML = rows;
+
+    // ---- 其他桌面（含 default；排除当前桌面）----
+    var rowsO = '';
+    var foundElsewhere = false;
+    otherPrefixes.forEach(function (pf) {
+      ASK_KEYS.forEach(function (k) {
+        var fullKey = G + pf + ':' + k;
+        var lsV = null; try { lsV = localStorage.getItem(fullKey); } catch (e) {}
+        lsV = lsV != null ? lsV : (lsGet(k) != null && pf === 'default' ? lsGet(k) : null);
+        var idbRaw = idbVals[fullKey];
+        var idbV = typeof idbRaw === 'string' ? idbRaw : (idbRaw != null ? JSON.stringify(idbRaw) : null);
+        var p = parseAsk(lsV != null ? lsV : idbV);
+        var has = (lsV != null || idbRaw !== undefined);
+        if (has && p && !p.bad && (p.hist > 0 || k === 'invite-ask-history')) {
+          foundElsewhere = true;
+          rowsO += cellRow('ok', esc(pf) + ' · ' + (LABELS[k] || k), '✓ 记录 ' + p.hist + ' 条');
+          reportLines.push('[其他桌面 ' + pf + '] ' + k + ' 记录 ' + p.hist + ' 条');
+        }
+      });
+    });
+    if (!rowsO) rowsO = cellRow('', '（其他桌面）', '无提问记录数据');
+    document.getElementById('t-other').innerHTML = rowsO;
+
+    // ---- 经期 ----
+    var rowsP = '';
+    PERIOD_KEYS.forEach(function (k) {
+      var lsV = lsGet(k);
+      var idbRaw = idbVals[G + k];
+      var idbV = typeof idbRaw === 'string' ? idbRaw : (idbRaw != null ? JSON.stringify(idbRaw) : null);
+      var desc = '';
+      if (k === 'period-records') {
+        var p = parseArr(lsV != null ? lsV : idbV);
+        desc = (p == null) ? '' : (typeof p === 'number' ? ('记录区间 ' + p + ' 段') : '⚠ 损坏');
+      }
+      var hasLS = lsV != null, hasIDB = idbRaw !== undefined && idbV != null;
+      rowsP += '<tr class="' + ((hasLS || hasIDB) ? 'ok' : 'miss') + '"><td class="k">' + k + '</td><td class="v">' +
+        (hasLS ? 'LS ✓ ' + fmtSize(lsV.length) : 'LS ✗') + ' / ' +
+        (hasIDB ? 'IDB ✓ ' + fmtSize((idbV || '').length) : 'IDB ✗') + (desc ? ' · ' + desc : '') + '</td></tr>';
+      reportLines.push('period ' + k + ': LS=' + (hasLS ? fmtSize(lsV.length) : 'NO') + ' IDB=' + (hasIDB ? fmtSize((idbV || '').length) : 'NO') + (desc ? ' ' + desc : ''));
+    });
+    document.getElementById('t-period').innerHTML = rowsP;
+
+    reportLines.push('localStorage 键总数: ' + lsKeys().length);
+    document.getElementById('prog').textContent = '扫描完成';
+  }
+
+  function run() {
+    document.getElementById('prog').textContent = '扫描中…';
+    openIdb().then(function (db) { return idbAll(db); }).then(function (vals) {
+      idbVals = vals || {};
+      render();
+    });
+  }
+
+  document.getElementById('btn-rescan').addEventListener('click', run);
+  document.getElementById('btn-copy').addEventListener('click', function () {
+    var ta = document.getElementById('report');
+    ta.style.display = 'block';
+    ta.value = reportLines.join('\n');
+    ta.select();
+    try { document.execCommand('copy'); this.textContent = '✅ 已复制，去粘贴给开发者'; } catch (e) {}
+    setTimeout(function () { btn.textContent = '📋 复制完整报告'; }, 2500);
+    var btn = this;
+  });
+
+  run();
+})();
+</script>
+</body>
+</html>

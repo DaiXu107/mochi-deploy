@@ -1,0 +1,783 @@
+/* ===== 手机桌面（情侣空间） ===== */
+/* 小组件背景色 / 边框色 / 按钮色 / 按钮文字色 / 爱心外框色 / 透明度：CSS 变量控制，由「手机桌面美化」设置 */
+:root {
+  --widget-bg:#ffffff;
+  --widget-border:rgba(0,0,0,.1);
+  /* FIX 2026-09-16 #562：桌面小组件按钮默认跟随「主题色」(--btn-bg/--btn-ink) 而非写死纯黑——
+     原来默认写死 #111111，用户在「边看边调」里点主题色时桌面（按钮是桌面上唯一用强调色的
+     可见部件）纹丝不动＝用户报「点击主题色没有任何变化」。用户单独设「按钮颜色/按钮文字颜色」
+     时仍是内联变量覆盖本默认；恢复默认＝移除内联变量即重新跟随主题色。 */
+  --widget-btn:var(--btn-bg,#111111);
+  --widget-btn-text:var(--btn-ink,#ffffff);
+  --widget-heart:#111111;
+  --widget-opacity:1;
+  --app-ico-radius:18px;
+  --desk-bg-blur:0px;
+  --desk-bg-mask-op:0;
+  --desk-card-radius:20px;
+}
+/* v3.7.x：背景模糊/遮罩——白色遮罩层调透明度，模糊画在壁纸常驻图层自身。
+   ⚠️ iOS 卡顿红线（AGENTS.md）：blur(0px) 也会保持 filter 激活、全屏每帧
+   栅格化；因此 blur 值为 0（默认）时不启用 filter（.desk-blur-on 才开），避免常驻全屏 blur */
+.phone-bg-mask {
+  /* FIX 2026-09-06 #219：z-index 0→2——v3.26.x #147 壁纸改画到常驻图层
+     #phone-bg-layer（personalize.js 注入，z-index:1，插在 .phone 最前）后，
+     本层（z:0）被压到壁纸下面：白色遮罩被盖住调不淡，backdrop-filter 采样
+     不含壁纸=背景模糊也失效（小米15Pro/Chrome 报障，用户明说其他机型也有）。
+     提到 z:2（与 .page/.statusbar/.tabbar 同层、仍在它们下面绘制的兄弟序）
+     重新盖住壁纸层；.page z-index:2 同值后到者胜（DOM 序在 .phone 里更靠后），
+     页面内容不受影响。 */
+  position:absolute; inset:0; z-index:2; pointer-events:none;
+  background:rgba(255,255,255,var(--desk-bg-mask-op,0));
+  border-radius:inherit;
+}
+/* FIX 2026-09-07 #240：模糊载体从 mask 的 backdrop-filter 改为壁纸层自滤 filter。
+   #219 提层后诊断样式全对（mask z2 + blur-on + backdrop computed 正确），但
+   小米15Pro/Chrome 151 真机仍「模糊/遮罩调整无感」＝backdrop-filter 对 z1 兄弟
+   图层的采样/合成在该内核下不生效（无头环境无法复现）。自滤直接糊壁纸纹理，
+   不依赖 backdrop 采样路径，任何内核行为一致；壁纸层是 #147 常驻合成层，
+   静态 blur 纹理可缓存，成本不高于原 backdrop 每帧采样。blur>0 时四边外扩
+   24px（≥最大 blur 半径 20px）防边缘发虚，!important 覆盖内联 inset:0。 */
+.phone.desk-blur-on #phone-bg-layer {
+  filter:blur(var(--desk-bg-blur,0px));
+  -webkit-filter:blur(var(--desk-bg-blur,0px));
+  top:-24px !important; left:-24px !important; right:-24px !important; bottom:-24px !important;
+}
+/* v3.6.x：桌面字号/卡片大小可调。
+   ⚠️ iOS 卡顿红线（AGENTS.md / WORKLOG）：zoom 是 WebKit 已知卡顿源，会把元素踢出
+   GPU 合成路径、滚动时每帧 CPU 重排重绘——只在桌面（>900px 模拟器/浏览器）生效，
+   手机端强制 zoom:1 禁用缩放（设置仍可保存，手机端不应用）。手机端如需缩放请用
+   字号/间距方案重做，勿恢复 zoom。
+   v3.16.x：三页统一应用缩放——原规则只作用于 .page-slide.desk-page（仅第三页）和
+   部分卡片类（不含经期卡/图标组），桌面端调「桌面字号」时第三页整体放大/缩小而
+   1/2 页不动、调「卡片大小」时经期卡和图标组不缩放，三页底部图标位置必然错位。
+   现改为：字号缩放作用于三页全部 .page-slide，卡片缩放作用于三页全部卡片类
+   （含 .desk-period 经期卡、.mini-row 容器、.app-grid 图标组）——缩放时三页同步变化。
+   ⚠️ .mini-card/.memo-card/.mood-card 不单独 zoom：它们嵌套在 .mini-row 内，
+   若与容器都 zoom 会双重缩放（77→88.55→101.8），与单层缩放的 .week-card（89.1）
+   不一致；由 .mini-row 容器统一缩放一次。 */
+.page-slide { zoom:var(--desk-font-scale, 1); }
+.deco-widget, .mini-row, .checkin, .weekend-box, .music-widget,
+.week-card, .desk-period, .app-grid { zoom:var(--desk-card-scale, 1); }
+@media (max-width: 900px) {
+  .page-slide,
+  .deco-widget, .mini-row, .checkin, .weekend-box, .music-widget,
+  .week-card, .desk-period, .app-grid { zoom:1; }
+}
+
+/* 纪念日卡片（纯装饰：头像 + 爱心 + 纪念日；已禁止上传背景图）
+   纯白纸底 + 虚线描边 + 上下装饰点，细节更精致 */
+.deco-widget {
+  position:relative; height:190px; border-radius:26px;
+  margin-top:14px; margin-bottom:14px; flex-shrink:0;
+  background:var(--widget-bg);
+  border:1px solid var(--widget-border);
+  box-shadow:0 4px 14px rgba(0,0,0,.05);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:14px 16px 12px;
+  opacity:var(--widget-opacity);
+}
+.deco-avatars {
+  display:flex; align-items:center; justify-content:center; gap:22px;
+}
+.deco-avatar { display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer; }
+/* 头像：无外框，头像直接显示，仅按压微缩放（形状跟随聊天设置的圆形/方形） */
+.deco-avatar .ring {
+  width:80px; height:80px; border-radius:var(--msg-av-radius, 50%);
+  background:#f5f5f5; border:1px solid rgba(0,0,0,.08);
+  display:flex; align-items:center; justify-content:center; overflow:hidden;
+  transition:transform .18s ease;
+}
+.deco-avatar:active .ring { transform:scale(.95); }
+.deco-avatar .ring svg { width:34px; height:34px; }
+.deco-avatar .ring img { width:100%; height:100%; object-fit:cover; display:block; border-radius:var(--msg-av-radius, 50%); }
+/* 昵称：白底虚线描边胶囊，印章标签感 */
+.deco-avatar .lbl {
+  font-size:11px; color:#666; font-weight:600; letter-spacing:.5px;
+  background:#fff; border:1px solid rgba(0,0,0,.1);
+  padding:3px 13px; border-radius:99px; cursor:pointer;
+}
+.deco-avatar .lbl:hover { background:rgba(0,0,0,.04); }
+/* 中间爱心：直接显示爱心图标，无圆框 */
+.deco-heart {
+  flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  color:#111;
+}
+.deco-heart svg { width:20px; height:20px; }
+/* 底部纪念日：虚线与头像区隔，天数大字加粗、日期小字灰，单行不换行 */
+.deco-love {
+  margin-top:12px; text-align:center; color:var(--ink);
+  width:84%;
+  border-top:1px solid rgba(0,0,0,.1);
+  padding-top:10px;
+  line-height:1.6;
+  display:flex; align-items:baseline; justify-content:center; gap:10px;
+}
+.deco-love #love-days { font-size:20px; font-weight:800; letter-spacing:1px; white-space:nowrap; }
+.deco-love #love-date {
+  font-size:11px; color:var(--muted); letter-spacing:.5px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;
+}
+
+/* 小卡片行：今日情话 / 纪念日倒计时
+   v3.15.x：min-height 77px——三页第二档（情话/本周日常/备忘心情）统一 band 高。
+   v3.16.x：height:77px 固定（非 min-height）——超长情话在 nowrap+overflow 下 line box
+   溢出会把卡片撑到 81+px（flex 布局按溢出 line box 计算高度），三页第二档错位。
+   固定高 + overflow:hidden 让卡片高度恒定，内容 flex 居中、超长文字裁剪。
+   v3.25.x：第二档 77→92px——用户反馈长情话两行仍省略显示不全，放开 3 行
+   （mc-top 16 + margin 2 + 3×15=45 + padding 28 = 91）。三页 band 同步加高
+   （week-card / memo+mood 同改），页内容整体下移 15px 但页可竖滚、跨页对齐不变；
+   固定 height 的缩放一致性约束（v3.16.x）保持。 */
+.mini-row { display:flex; gap:12px; margin-bottom:14px; flex-shrink:0; }
+.mini-card { flex:1; height:92px; overflow:hidden; box-sizing:border-box; border-radius:20px; padding:14px; box-shadow:0 6px 16px rgba(0,0,0,.06); background:var(--widget-bg); opacity:var(--widget-opacity); border:1px solid var(--widget-border); display:flex; flex-direction:column; justify-content:center; }
+.mc-top { font-size:11px; color:var(--muted); letter-spacing:1px; }
+.mc-b { font-size:13px; font-weight:600; color:var(--ink); margin-top:6px; line-height:1.45; }
+.mc-b b { font-size:16px; }
+/* v3.16.x：迷你卡正文强制单行省略——「今日情话」是动态文本，长度不定，换行会把
+   页0 第二档卡撑高（77→87+），页0 图标组随之下沉，三页底部图标位置错位。
+   white-space:nowrap + overflow:hidden 只裁剪视觉，超长内容的 line box 仍按完整
+   两行高参与 flex 布局（卡片被撑到 86.5）；必须用固定 line-height + height 锁死
+   单行盒高，卡片高度恒定 77px，与第二页「本周日常」/第三页「备忘+心情」同档对齐。
+   长情话末尾显示省略号，完整内容点卡片弹窗可看（迷你卡点击有查看逻辑）。 */
+.mini-card .mc-b { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; height:18.85px; line-height:18.85px; }
+/* v3.23.x：今日情话放开单行省略——定高内两行截断（line-clamp）。
+   v3.25.x：两行仍不够（用户反馈自添加长句省略号显示不全）——卡片 band 77→92px
+   后放开 3 行 line-clamp（3×15=45px）；再配合 personalize.js renderQuoteOfDay
+   的自动缩字号兜底（10px 下限），绝大多数长句可卡内显示全文。 */
+.mini-card #love-quote {
+  white-space:normal; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3;
+  overflow:hidden; text-overflow:clip; height:45px; line-height:15px; margin-top:2px;
+}
+/* v3.26.x：「已摸鱼」卡与「今日情话」卡内容对齐——两卡都是 justify-content:center
+   垂直居中，但情话正文高 45px、已摸鱼正文仅单行，内容总高不一致导致各自居中后
+   两卡的「标题行 / 正文行」水平错位。给已摸鱼正文区同 45px 固定高 + 顶对齐，
+   与情话卡结构一致，标题与正文首行即完全对齐。 */
+.mini-card[data-card-bg="fish"] .mc-b {
+  height:45px; line-height:15px; margin-top:2px; overflow:hidden;
+}
+.mini-card[data-card-bg="fish"] .mc-b b { line-height:inherit; }
+
+/* 打卡横幅
+   v3.15.x：去掉 0 2px 左右内缩——与 deco/mini-row 等卡片同宽（左右边缘跨页对齐）；
+   下边距 16→14 与全站卡片间距节奏统一；min-height 66px 与摸鱼横幅/备忘录横幅
+   统一第三档 band 高（内容不足时 flex 居中）。
+   v3.16.x：min-height 改 height 固定——与 weekend-box 在「卡片大小」缩放（zoom）下
+   计算方式一致，避免缩放后第三档差 0.5px（图标组顶部错位累积）。 */
+.checkin {
+  display:flex; align-items:center; gap:10px;
+  border-radius:18px; padding:12px 14px; margin:0 0 14px; flex-shrink:0;
+  height:66px; box-sizing:border-box; overflow:hidden;
+  background:var(--widget-bg);
+  box-shadow:0 4px 14px rgba(0,0,0,.05);
+  opacity:var(--widget-opacity);
+  border:1px solid var(--widget-border);
+}
+.ck-heart {
+  width:30px; height:30px; border-radius:50%; flex-shrink:0;
+  background:var(--widget-heart); color:#fff;
+  display:flex; align-items:center; justify-content:center; font-size:13px;
+}
+.ck-txt {
+  flex:1; font-size:11px; color:#555; font-weight:500; letter-spacing:.5px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.ck-btn {
+  font-size:12px; font-weight:700; color:var(--widget-btn-text); cursor:pointer;
+  background:var(--widget-btn); padding:9px 16px; border-radius:99px;
+  box-shadow:0 3px 8px rgba(0,0,0,.12);
+  display:inline-flex; align-items:center; min-height:38px; border:none;
+  font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.ck-btn.done { background:#e2e2e2; color:#777; box-shadow:none; }
+
+/* 离周末还有几天（摸鱼小组件）
+   v3.15.x：与首页打卡横幅同档（min-height 66、padding 9px 12px）——去掉 2px 内缩全宽，
+   标题与副题合并同一行（.we-top），摸鱼值/工作值两行收紧，整体 ~86px→~66px。
+   v3.16.x：min-height 改 height 固定——与 checkin 在缩放（zoom）下计算方式一致，
+   避免缩放后第三档差 0.5px（图标组顶部错位累积）。 */
+.weekend-box {
+  position:relative; /* v3.13.x：连击角标 .we-combo 绝对定位锚点 */
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  border-radius:16px; padding:9px 12px; margin:0 0 14px; flex-shrink:0;
+  height:66px; box-sizing:border-box; overflow:hidden;
+  background:var(--widget-bg);
+  box-shadow:0 4px 14px rgba(0,0,0,.05);
+  opacity:var(--widget-opacity);
+  border:1px solid var(--widget-border);
+}
+/* v3.13.x：摸鱼连击角标（周末组件「摸鱼+1」短时连击时浮出） */
+.we-combo {
+  position:absolute; top:-9px; right:10px;
+  font-size:10px; font-weight:700; color:#fff; letter-spacing:.5px;
+  background:#e8533d; padding:2px 8px; border-radius:99px;
+  box-shadow:0 2px 8px rgba(232,83,61,.4);
+  opacity:0; transform:translateY(3px) scale(.9); pointer-events:none;
+  transition:opacity .18s ease, transform .18s ease;
+}
+.we-combo.on { opacity:1; transform:translateY(0) scale(1); }
+.we-left { display:flex; flex-direction:column; gap:0; min-width:0; }
+/* v3.15.x：标题行——「离周末还有 N 天」+ 副题同一行基线对齐（副题超长省略） */
+.we-top {
+  display:flex; align-items:baseline; gap:8px; min-width:0;
+  line-height:1.2;
+}
+.we-days { font-size:13px; font-weight:700; color:var(--ink); letter-spacing:.5px; white-space:nowrap; flex-shrink:0; }
+.we-sub { font-size:9px; color:var(--muted); letter-spacing:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+/* v3.5.75 两行 grid 两列：摸鱼值列/工作值列 列宽一致完美对齐，间距清晰
+   v3.15.x：行距收紧（mt 4→1、行高 1.2）配合整卡压缩到与首页打卡横幅同档 */
+.we-ta {
+  display:grid; grid-template-columns:1fr 1fr; gap:2px 16px;
+  margin-top:1px; font-size:10px; line-height:1.2; color:#555; font-weight:600;
+}
+.we-ta .pair { display:flex; align-items:baseline; gap:5px; white-space:nowrap; }
+.we-ta .pair i { font-style:normal; }
+.we-ta .pair b { color:var(--ink); font-size:12px; font-weight:700; }
+/* v3.5.71 摸鱼值/工作值 间隔：清晰分隔、不再拤在一起 */
+.we-ta i { font-style:normal; }
+.we-sep {
+  font-style:normal; color:#c9c9c9; font-weight:400;
+  margin:0 10px; font-size:10px;
+}
+.we-btn {
+  flex-shrink:0;
+  border:none; cursor:pointer; font-family:inherit;
+  background:var(--widget-btn); color:var(--widget-btn-text); font-size:12px; font-weight:700;
+  padding:6px 11px; border-radius:99px; box-shadow:0 3px 8px rgba(0,0,0,.25);
+  display:flex; align-items:center; gap:3px;
+}
+.we-btn:active { transform:scale(.95); }
+.we-btn b { font-size:13px; }
+
+/* 应用图标 */
+.app-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px 8px; padding:2px 8px 6px; }
+/* v3.16.x：三页功能图标完全一致（大小/行高/间距）——第三页默认 12 个图标 3 行，
+   与 1/2 页 8 个图标 2 行同用默认行高 96px、图标 58px、行距 14px；
+   第三页多一行的空间由经期卡让出（见 .desk-period min-height 190→160），
+   三页图标区底部对齐 636.3、图标下沿一致 622.3。此处不设任何 p3 专属行高/图标
+   覆盖，避免重蹈 v3.16.x 早期「压行高到 86 + 图标缩到 52」导致的间隙不一致。 */
+.app { display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer; }
+.app .app-ico {
+  /* v3.5.133：min(58px, 21vw)——极窄屏（<305px）固定 58px 会撑爆 4 列网格被裁 */
+  width:min(58px, 21vw); height:min(58px, 21vw); border-radius:var(--app-ico-radius);
+  background: rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.1);
+  box-shadow:0 2px 8px rgba(0,0,0,.04);
+  display:flex; align-items:center; justify-content:center;
+  transition:transform .18s ease, box-shadow .18s ease;
+}
+.app:hover .app-ico {
+  transform:translateY(-2px) scale(1.05);
+  box-shadow:0 4px 12px rgba(0,0,0,.08);
+}
+.app .app-ico svg { width:28px; height:28px; stroke:var(--ink); }
+.app .app-ico img { width:100%; height:100%; object-fit:cover; border-radius:18px; display:block; }
+/* v3.5.99：桌面图标未读角标（信箱新来信）。
+   角标放在 app-ico 外层的 .app-badge-box 里，自定义图标替换 app-ico 内容时不会被冲掉 */
+.app-badge-box { position:relative; }
+/* v3.5.100：灰白简约——白底深灰字、细边框、轻阴影，去掉红底 */
+.app-badge {
+  position:absolute; top:-5px; right:-6px; min-width:18px; height:18px; padding:0 5px;
+  background:#fff; color:#333; font-size:10px; font-weight:700; line-height:16px;
+  text-align:center; border-radius:10px; border:1px solid rgba(0,0,0,.15);
+  box-shadow:0 1px 4px rgba(0,0,0,.08); box-sizing:border-box;
+}
+.app-badge[hidden] { display:none; }
+.app-grid.editing .app-ico { outline:2px solid var(--ink); outline-offset:3px; }
+.app .app-name { font-size:11px; color:var(--ink); letter-spacing:.5px; }
+/* v3.26.x：图标名强制单行省略——系统大字体/无障碍缩放下 4 字图标名（经期记录/梦角
+   档案/聊天统计/提问记录等）会换行成两行，图标块被撑高；三页换行数量不同 → 底部
+   图标/文字错位（实测 app-name 14px 时三页 Δ=4px、20px 时 Δ=66px）。单行 + 固定
+   行高 + 省略号后图标块高度恒定（58 图标+8 gap+14 文字=80 ≤ 96 行高），字号多大
+   三页都对齐。 */
+.app .app-name { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; height:14px; line-height:14px; display:block; }
+
+/* v3.7.x：单个功能图标移出 app-grid 作为独立组件时居中显示 */
+.page-slide .app[data-desk-widget^="app-"] { align-self:center; margin:8px 0; }
+
+/* 桌面功能区（直接显示）
+   v3.15.x：网格上边距归零——图标组与上方卡片的间距统一由卡片 14px 下边距提供
+   （第三页 .desk-page 是 flex 容器边距不折叠，此前 14+8=22px 与其他页不一致）；
+   .app-grid.p2-grid 提特异性压过 chat-pages.css 的 .p2-grid{margin-top:14px} */
+.app-grid { margin-top:0; }
+.app-grid.p2-grid { margin-top:0; }
+/* v3.15.x：任意组件排到页首时统一距顶 14px（与 deco/music 首卡同节奏；
+   第三页无经期卡时 mini-row 首位不再贴顶）。装修页 hint/add 在首位时不匹配，
+   保持原状（用户自建页边缘场景） */
+.page-slide > [data-desk-widget]:first-child { margin-top:14px; }
+
+/* 桌面分页（横向滚动翻页，scroll-snap 原生吸附，不用 transform 避免毛玻璃渲染 bug） */
+.desktop-pages {
+  flex:1; min-height:0; display:flex;
+  overflow-x:auto; overflow-y:hidden;
+  scroll-snap-type:x mandatory;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none; -ms-overflow-style:none;
+  /* v3.5.129：明确手势归属——外层横滑翻页、内层纵滑列表，
+     避免安卓轴锁定下斜滑"滑不动" */
+  touch-action:pan-x pan-y;
+  /* v3.6.x：页间缝隙——flex gap 在页与页之间留空隙，透出 .phone 背景形成
+     分隔线，滑动时能看到下一页从缝隙后滑入，更接近真手机桌面的翻页感。
+     gap 只在子元素之间（首页左/末页右无 gap），不影响 width:100%。
+     desktop-slider.js 的 scrollLeft 计算需同步包含此 gap */
+  gap:var(--desk-page-gap, 8px);
+}
+.desktop-pages::-webkit-scrollbar { display:none; }
+.page-slide {
+  width:100%; flex-shrink:0; height:100%;
+  scroll-snap-align:start;
+  overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none;
+  touch-action:pan-x pan-y;
+}
+.page-slide::-webkit-scrollbar { display:none; }
+
+/* 分页指示器（v3.6.x：不再占一整行——悬浮在桌面底部中央，不挤占/遮挡功能图标） */
+#page-phone { position:relative; }
+/* v3.14.x：桌面整体禁文字选择/长按系统菜单——移动端长按图标/组件进装修/移动模式的
+   按住阶段，系统会对按住点的文字/图片弹「复制/保存」原生菜单（Android 文字选中气泡、
+   图片上下文菜单；iOS 是 callout），菜单一弹就抢占触摸序列，pointermove 被系统接管
+   → 进入移动模式后拖不动图标/组件。user-select 禁文字选中、-webkit-touch-callout 拦
+   iOS callout、Android 图片菜单由 personalize.js 的 contextmenu preventDefault 兜底。
+   桌面内无输入框/右键功能，禁用选择不影响任何功能；#desk-image-viewer 全屏查看器在
+   #page-phone 之外，长按保存图片不受影响。 */
+#page-phone { user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+.dots {
+  position:absolute; left:0; right:0; bottom:6px;
+  display:flex; justify-content:center; gap:8px; padding:0;
+  /* v3.27.x（#580）：圆点跟随手指改成每帧切换（desktop-slider.js），而 active 是
+     「宽度 7px→20px」的变形——width 动画每帧都会触发一次布局。圆点是 #page-phone
+     的绝对定位子元素，不加隔离时这段布局脏标会波及整个桌面壳（几十个图标/组件）。
+     尺寸由 left/right 内定，隔离后子元素变化不会外泄，滚动的每一帧都省下这笔重排。
+     不支持 contain 的旧内核直接忽略该行，无副作用。 */
+  contain:layout;
+}
+.dot {
+  width:7px; height:7px; border-radius:99px; background:rgba(0,0,0,.18); cursor:pointer;
+  /* v3.27.x（#580）：.25s → .16s。圆点现在贴着手指走，变形尾巴就是「不同步感」的
+     后半段（用户反馈「反应慢」）；缩短后仍在松手前收完，观感是跟手而非迟到。 */
+  transition:width .16s ease, background .16s ease;
+}
+.dot.active { width:20px; background:var(--ink); }
+/* 桌面内容底部留白：滚动到底时最后一项不被悬浮圆点盖住 */
+.page-slide { padding-bottom:18px; }
+
+/* v3.6.x：新增空白主页——透明底（可上传整页背景图），装修模式下显示「+ 添加卡片」 */
+.page-slide.desk-page {
+  display:flex; flex-direction:column;
+}
+/* v3.6.x：提示与「添加卡片」默认隐藏，仅装修模式显示——退出装修后空白页保持干净
+   （JS 对有内容的页会内联 display:none 盖掉装饰态，见 personalize.js syncPageHint） */
+.desk-page-hint {
+  display:none; margin:auto; text-align:center; color:var(--muted);
+  font-size:12px; letter-spacing:1px; padding:40px 20px;
+}
+.desk-page-add {
+  margin:16px auto; padding:10px 22px; border-radius:99px;
+  border:1px dashed rgba(0,0,0,.2); background:rgba(255,255,255,.6);
+  color:var(--ink); font-size:13px; font-weight:600; cursor:pointer;
+  display:none; align-items:center; gap:6px;
+}
+.decor-on .page-slide.desk-page .desk-page-hint { display:block; }
+.decor-on .page-slide.desk-page .desk-page-add { display:inline-flex; }
+
+/* v3.6.x：卡片摆放操作已收进点卡片设置菜单（上移/下移/移出），不再使用悬浮操作条 */
+.desk-widget, [data-desk-widget] {
+  position:relative;
+}
+/* v3.7.x：组件卡片圆角全局统一调节
+   v3.7.x 修复：补上 .desk-text-widget/.desk-countdown-widget（此前漏写、恒为直角）；
+   图片组件 .desk-image-widget 改用 --desk-card-radius（此前跟图标圆角，圆角滑块调不到） */
+.deco-widget, .mini-card, .checkin, .weekend-box, .music-widget,
+.memo-card, .mood-card, .week-card,
+.desk-clock, .desk-cal, .desk-timer, .desk-anniv, .desk-period,
+.desk-text-widget, .desk-countdown-widget {
+  border-radius:var(--desk-card-radius, 20px);
+}
+
+/* v3.6.x：组件库面板（新增页点「添加卡片」弹出） */
+.desk-lib {
+  position:fixed; inset:0; z-index:99;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(0,0,0,.4);
+}
+.desk-lib-box {
+  width:min(88vw,380px); max-height:78vh; overflow:auto;
+  background:#fff; border-radius:16px; padding:16px;
+  box-shadow:0 8px 30px rgba(0,0,0,.2);
+  scrollbar-width:none;
+}
+.desk-lib-box::-webkit-scrollbar { display:none; }
+.desk-lib-title { font-size:15px; font-weight:700; margin-bottom:4px; }
+.desk-lib-sub { font-size:11px; color:#888; margin-bottom:12px; }
+/* v3.26.x：组件库顶部「小组件 / 图标」分类 Tab */
+.desk-lib-tabs { display:flex; gap:8px; margin-bottom:12px; }
+.desk-lib-tab {
+  flex:1; padding:8px 0; font-size:13px; font-weight:600; border-radius:99px;
+  border:1px solid #eee; background:#f7f7f7; color:#999; cursor:pointer; font-family:inherit;
+}
+.desk-lib-tab.on { background:#111; color:#fff; border-color:#111; }
+.desk-lib-panel { display:flex; flex-direction:column; }
+/* v3.26.x：图标分类——搜索框 + 紧凑网格块 */
+.desk-lib-search {
+  width:100%; box-sizing:border-box; margin-bottom:10px; padding:8px 14px;
+  border:1px solid #eee; border-radius:99px; background:#fafafa;
+  font-size:13px; color:var(--ink,#111); font-family:inherit; outline:none;
+}
+.desk-lib-search:focus { border-color:#111; }
+.desk-lib-search::placeholder { color:#bbb; }
+.desk-lib-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(76px,1fr)); gap:8px; }
+.desk-lib-icon {
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  padding:10px 4px; border:1px solid #eee; border-radius:10px; cursor:pointer;
+}
+.desk-lib-icon .dli-prev {
+  width:40px; height:40px; border-radius:12px; background:#f4f4f4;
+  display:flex; align-items:center; justify-content:center;
+}
+.desk-lib-icon .dli-letter { font-size:17px; font-weight:600; color:#666; }
+.desk-lib-icon .dli-name { font-size:11px; color:var(--ink,#111); text-align:center; line-height:1.2; }
+.desk-lib-icon.on { border-color:#111; background:#f7f7f7; }
+.desk-lib-icon.on .dli-letter { color:#111; }
+.desk-lib-item {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; border:1px solid #eee; border-radius:10px; margin-bottom:8px;
+  font-size:13px;
+}
+.desk-lib-item .dl-meta { flex:1; min-width:0; }
+.desk-lib-item .dl-name { font-size:13px; font-weight:600; color:var(--ink,#111); }
+.desk-lib-item .dl-where { font-size:11px; color:#999; margin-top:2px; }
+.desk-lib-item .dl-btn {
+  font-size:12px; padding:4px 12px; border:none; border-radius:99px;
+  background:#111; color:#fff; cursor:pointer; font-family:inherit; flex-shrink:0;
+}
+.desk-lib-item .dl-btn:disabled { background:#ddd; color:#999; }
+
+/* v3.7.x：新增桌面小组件（时钟 / 月历 / 计时器 / 纪念日倒计时）
+   v3.15.x：补 14px 下边距——被用户添加到页面时与相邻卡片保持全站统一间距 */
+.desk-clock { padding:14px 16px; margin:0 0 14px; text-align:center; }
+.desk-clock .dc-time { font-size:32px; font-weight:700; letter-spacing:2px; color:var(--ink,#111); line-height:1.1; }
+.desk-clock .dc-date { font-size:12px; color:var(--muted,#888); margin-top:4px; }
+.desk-cal { padding:12px 14px; margin:0 0 14px; }
+.desk-cal .dcal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.desk-cal .dcal-title { font-size:13px; font-weight:600; color:var(--ink,#111); }
+.desk-cal .dcal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+.desk-cal .dcal-cell { text-align:center; font-size:11px; line-height:24px; height:24px; border-radius:6px; color:var(--ink,#333); }
+.desk-cal .dcal-cell.empty { visibility:hidden; }
+.desk-cal .dcal-cell.today { background:#111; color:#fff; font-weight:700; }
+.desk-cal .dcal-cell.has-msg { position:relative; color:var(--ink,#111); font-weight:600; }
+.desk-cal .dcal-cell.has-msg::after { content:''; position:absolute; bottom:2px; left:50%; transform:translateX(-50%); width:4px; height:4px; border-radius:50%; background:#e88; }
+.desk-cal .dcal-cell.today.has-msg::after { background:#fff; }
+.desk-cal .dcal-cell:not(.empty):active { background:rgba(0,0,0,.08); }
+.desk-timer { padding:14px 16px; margin:0 0 14px; text-align:center; }
+.desk-timer .dt-disp { font-size:28px; font-weight:700; letter-spacing:1px; color:var(--ink,#111); line-height:1.1; font-variant-numeric:tabular-nums; }
+.desk-timer .dt-mode-label { font-size:11px; color:var(--muted,#888); margin-top:4px; }
+.desk-timer .dt-controls { display:flex; gap:6px; margin-top:10px; }
+.desk-timer .dt-btn { flex:1; font-size:12px; padding:6px 0; border:1px solid rgba(0,0,0,.12); border-radius:8px; background:rgba(0,0,0,.03); color:var(--ink,#111); cursor:pointer; font-family:inherit; }
+.desk-timer .dt-btn:active { background:rgba(0,0,0,.08); }
+.desk-anniv { padding:14px 16px; margin:0 0 14px; text-align:center; }
+.desk-anniv .da-label { font-size:11px; color:var(--muted,#888); }
+.desk-anniv .da-days { font-size:26px; font-weight:700; color:var(--ink,#111); margin:2px 0; }
+.desk-anniv .da-name { font-size:12px; color:var(--muted,#666); }
+/* v3.15.x：经期卡去 2px 内缩全宽 + 下边距 16→14 与全站统一；
+   距顶 14px 由上方 [data-desk-widget]:first-child 规则提供（置于页首时），
+   被移到页中时不再叠加出 28px 大缝。
+   同轮升级为 190px hero 档（与首页纪念日卡/第二页音乐卡同高）——flex 垂直居中，
+   天数数字放大，横滑 1→2→3 页首卡上下边缘对齐。
+   v3.16.x：min-height 190→160 且改固定 height——第三页 12 个图标 3 行（与 1/2 页
+   2 行图标完全一致的 96px 行高/58px 图标）需要 110px 空间，经期卡让出 30px 后三页
+   图标区底部精确对齐 636.3（内容 标签+天数+副题 ≈136px，160 高度居中仍富余）。
+   ⚠️ 必须有 flex-shrink:0——经期卡是 .page-slide（flex column）的子项，缺它时默认
+   flex-shrink:1，「卡片大小」缩放（zoom）放大时被 flex 容器压缩（160→147 布局高、
+   渲染 169.3 而非 184），与 deco/music 的 190→218.5 不一致 → 图标组顶部 0.6px 错位。
+   其它卡片（deco/checkin/weekend）均已带 flex-shrink:0。 */
+.desk-period { position:relative; padding:18px; text-align:center; cursor:pointer; white-space:nowrap;
+  height:160px; box-sizing:border-box; overflow:hidden; flex-shrink:0;
+  margin:0 0 14px; }
+.desk-period .dpd-inner {
+  position:absolute; left:0; right:0; top:0; bottom:0;
+  padding-bottom:26px; /* v3.26.x #291 经期卡文字重叠：Gecko 系（雨见/Firefox）默认行高更高，居中列无底部预留时 dpd-sub 尾边越过绝对定位的进度条说明 dpd-bar-cap 顶边＝叠字（Chrome 默认行高恰好擦边幸免，故只在部分浏览器现形）；下方 label/sub 显式行高把布局跨浏览器确定化 */
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+}
+.desk-period .dpd-label { font-size:13px; line-height:1.25; color:var(--ink,#1a1a1a); }
+.desk-period .dpd-days { font-size:50px; font-weight:700; color:var(--ink,#111); margin:10px 0; line-height:1.1; }
+.desk-period .dpd-sub { font-size:13px; line-height:1.25; color:var(--muted,#666); }
+/* v3.26.x：经期卡内容补充——左上角阶段标签 + 底部周期进度条。
+   已在 160px 高度内（居中三行 + 顶部标签 + 底部进度条均不重叠），
+   进度条轨道用 var(--card-border) 适配明暗主题。 */
+.desk-period .dpd-phase {
+  position:absolute; top:10px; left:12px; z-index:2;
+  font-size:10px; line-height:1; font-weight:700; color:#fff;
+  padding:4px 8px; border-radius:99px;
+}
+.desk-period .dpd-phase[hidden] { display:none; }
+.desk-period .phase-period  { background:var(--ink,#111); }
+.desk-period .phase-fertile { background:#8b8b8b; }
+.desk-period .dpd-bar-wrap {
+  position:absolute; left:16px; right:16px; bottom:10px;
+  text-align:center;
+}
+.desk-period .dpd-bar-wrap[hidden] { display:none; }
+.desk-period .dpd-bar-cap { font-size:10px; color:var(--muted,#888); margin-bottom:3px; line-height:1; }
+.desk-period .dpd-bar {
+  height:4px; background:var(--card-border, rgba(0,0,0,.12)); border-radius:99px; overflow:hidden;
+}
+.desk-period .dpd-bar-fill { height:100%; width:0; background:var(--ink,#111); border-radius:99px; transition:width .4s ease; }
+
+/* v3.6.x：桌面图片组件——用户可上传多张图片到任意页，点击全屏查看
+   v3.15.x：上下边距 10→14 与卡片节奏统一 */
+.desk-image-widget {
+  position:relative; margin:14px 0; border-radius:var(--desk-card-radius,20px);
+  overflow:hidden; cursor:pointer; background:rgba(0,0,0,.04);
+  box-shadow:0 4px 14px rgba(0,0,0,.06);
+}
+/* v3.7.x：自定义文字组件 */
+.desk-text-widget {
+  margin:14px 0; padding:14px 16px; text-align:center;
+  background:var(--widget-bg,#fff); opacity:var(--widget-opacity,1);
+  box-shadow:0 4px 14px rgba(0,0,0,.06); cursor:pointer;
+}
+.desk-text-widget p { margin:0; line-height:1.5; word-break:break-word; }
+/* v3.7.x：通用倒计时组件 */
+.desk-countdown-widget {
+  margin:14px 0; padding:14px 16px; text-align:center;
+  background:var(--widget-bg,#fff); opacity:var(--widget-opacity,1);
+  box-shadow:0 4px 14px rgba(0,0,0,.06); cursor:pointer;
+}
+.desk-countdown-widget .dcd-label { font-size:11px; color:var(--muted,#888); }
+.desk-countdown-widget .dcd-days { font-size:26px; font-weight:700; color:var(--ink,#111); margin:2px 0; }
+.desk-countdown-widget .dcd-date { font-size:12px; color:var(--muted,#666); }
+.desk-image-widget img { width:100%; display:block; border-radius:inherit; }
+/* 装修模式下图片组件可操作：点组件弹菜单（换图/删除），加视觉提示 */
+.decor-on .desk-image-widget::after {
+  content:'点我换图 · 删除'; position:absolute; left:0; right:0; bottom:0;
+  padding:6px; text-align:center; font-size:11px; color:#fff;
+  background:linear-gradient(transparent, rgba(0,0,0,.6));
+  pointer-events:none;
+}
+/* v3.6.x：图片组件全屏查看器 */
+.desk-image-viewer {
+  position:fixed; inset:0; z-index:10000;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(0,0,0,.92);
+}
+.desk-image-viewer[hidden] { display:none; }
+.desk-image-viewer img {
+  max-width:96vw; max-height:96vh; object-fit:contain;
+  border-radius:4px;
+}
+.desk-image-viewer-close {
+  position:absolute; top:env(safe-area-inset-top,12px); right:14px;
+  width:40px; height:40px; line-height:38px; text-align:center;
+  font-size:28px; color:#fff; cursor:pointer;
+  background:rgba(255,255,255,.15); border-radius:50%;
+}
+
+/* ---- 音乐播放器小组件（第二页） ----
+   v3.15.x：min-height 190px 与首页纪念日卡（.deco-widget）同档——横滑翻页时
+   两页首卡上下边缘对齐；内容不足时 flex 垂直居中，不顶死。
+   v3.16.x：min-height 改 height 固定——与 deco-widget 固定 190 在「卡片大小」缩放
+   （zoom）下计算方式一致，避免缩放后两页首卡差 0.55px（图标组顶部错位）。 */
+.music-widget {
+  display:flex; flex-direction:column; justify-content:center;
+  height:190px; overflow:hidden; box-sizing:border-box;
+  border-radius:22px; padding:13px; margin-top:14px; margin-bottom:14px;
+  box-shadow:0 8px 20px rgba(0,0,0,.07);
+  background:var(--widget-bg);
+  opacity:var(--widget-opacity);
+  border:1px solid var(--widget-border);
+}
+.mw-head {
+  display:flex; align-items:center; justify-content:space-between; margin-bottom:9px;
+}
+.mw-tag { font-size:10px; color:var(--muted); letter-spacing:2px; font-weight:600; }
+.mw-bars { width:15px; height:15px; opacity:.35; transition:opacity .2s ease; }
+/* 播放时：波形条跳动动画 */
+.mw-bars.playing { opacity:1; }
+.mw-bars.playing rect { animation:bar-bounce 1s infinite ease-in-out; transform-origin:center; }
+.mw-bars.playing .b1 { animation-duration:1s; }
+.mw-bars.playing .b2 { animation-duration:1.1s; }
+.mw-bars.playing .b3 { animation-duration:.9s; }
+.mw-bars.playing .b4 { animation-duration:1.3s; }
+@keyframes bar-bounce {
+  0%, 100% { transform:scaleY(.5); }
+  50% { transform:scaleY(1); }
+}
+
+.mw-main { display:flex; align-items:center; gap:12px; }
+.mw-cover { flex-shrink:0; }
+.mw-vinyl {
+  width:70px; height:70px; border-radius:50%;
+  background:radial-gradient(circle at 50% 50%, #2a2a2a 0%, #1a1a1a 55%, #3a3a3a 56%, #2e2e2e 100%);
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 6px 14px rgba(0,0,0,.30), inset 0 0 0 1px rgba(255,255,255,.08);
+}
+.mw-vinyl svg { width:26px; height:26px; stroke:#fff; }
+/* FIX 2026-09-16 发热收口：删除死样式 spin（含 @keyframes）——.mw-vinyl 仅存在于
+   #mw-cover 内，一直被其 animation:none 覆盖从未转过；留着会诱使后来者「恢复」成常驻旋转 */
+
+.mw-info { flex:1; min-width:0; }
+.mw-song { font-size:16px; font-weight:700; letter-spacing:.5px; }
+.mw-artist { font-size:11px; color:var(--muted); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mw-progress { margin-top:10px; }
+.mw-bar {
+  position:relative; height:4px; border-radius:99px; background:#e3e3e3;
+}
+.mw-fill {
+  position:absolute; left:0; top:0; bottom:0; width:38%; border-radius:99px;
+  background:linear-gradient(90deg,#555,#111);
+}
+.mw-knob {
+  position:absolute; left:38%; top:50%; transform:translate(-50%,-50%);
+  width:11px; height:11px; border-radius:50%; background:#111;
+  box-shadow:0 1px 4px rgba(0,0,0,.35);
+}
+.mw-times {
+  display:flex; justify-content:space-between; margin-top:5px;
+  font-size:10px; color:var(--muted);
+}
+
+.mw-controls {
+  display:flex; align-items:center; justify-content:space-between; margin-top:9px;
+  padding:0 4px;
+}
+.mw-btn { width:26px; height:26px; color:var(--ink); cursor:pointer; transition:transform .15s ease; }
+.mw-btn:hover { transform:scale(1.15); }
+.mw-play {
+  width:46px; height:46px; border-radius:50%;
+  background:#ffffff; color:#111111;
+  display:flex; align-items:center; justify-content:center;
+  border:1px solid rgba(0,0,0,.08);
+  box-shadow:0 6px 14px rgba(0,0,0,.14); cursor:pointer;
+  transition:transform .15s ease;
+}
+.mw-play:hover { transform:scale(1.08); }
+.mw-play svg { width:24px; height:24px; fill:#111111; }
+.mw-heart { width:24px; height:24px; cursor:pointer; transition:transform .15s ease; }
+.mw-heart:hover { transform:scale(1.15); }
+/* 收藏的歌曲：桌面部件爱心点亮（红心，无黑描边——描边跟随 currentColor 自动变红） */
+
+/* 手机端：音乐控制按钮扩大点击热区（图标保持原大小） */
+.mw-controls .mw-btn, .mw-controls .mw-heart {
+  width:38px; height:38px; min-width:38px; min-height:38px;
+  display:flex; align-items:center; justify-content:center;
+}
+
+/* 音乐播放器封面（圆形：有封面显示专辑图，无封面显示音符占位） */
+#mw-cover {
+  position:relative;
+  width:70px; height:70px; border-radius:50%;
+  background:#f1f1f1; overflow:hidden;
+  box-shadow:0 4px 12px rgba(0,0,0,.1);
+  border:1px solid rgba(0,0,0,.06);
+  display:flex; align-items:center; justify-content:center;
+}
+#mw-cover .mw-cover-ico {
+  width:24px; height:24px; color:#b9b9b9;
+  transition:opacity .2s ease;
+}
+#mw-cover .mw-vinyl {
+  position:absolute; inset:0; border-radius:50%;
+  background:transparent; animation:none; box-shadow:none; display:block;
+}
+#mw-cover.has-cover .mw-cover-ico { opacity:0; }
+.mw-play { cursor:pointer; }
+.mw-btn {
+  background:transparent; border:none; padding:0; cursor:pointer;
+  color:var(--ink); display:flex; align-items:center; justify-content:center;
+}
+.mw-btn svg { width:26px; height:26px; }
+.mw-heart { background:transparent; border:none; padding:0; cursor:pointer; color:var(--ink); }
+.mw-heart svg { width:26px; height:26px; }
+.mw-heart.liked { color:#e05555; }
+.mw-heart.liked svg { fill:#e05555; }
+#mw-bar { cursor:pointer; }
+
+/* ===== 第二页补充：今日备忘 / 今天的心情 / 本周日常 ===== */
+.memo-card, .mood-card { cursor:pointer; }
+.memo-card .mc-b, .mood-card .mc-b { font-size:12px; }
+/* v3.16.x：第三页「今日备忘 / 今天的心情」改回左右两张半卡同行（原为上下整宽卡）——
+   第三页内容总长 747 超出桌面容器 714，且 1/2 页功能图标底部在 636；上下整宽布局
+   让第三页比 1/2 页长出 111px（用户反馈「第三页没有和前两页对齐」）。
+   改回两半卡同行（宽度 171/张、与首页小卡行同档），高度继承 .mini-card 固定 77px */
+/* v3.25.x：显式高度随第二档 band 77→92 同步（与 .mini-card 继承值一致，缩放口径不变） */
+.page-slide.third .mini-row { flex-direction:row; gap:12px; }
+.page-slide.third .mini-row .memo-card,
+.page-slide.third .mini-row .mood-card { height:92px; }
+/* v3.15.x：本周日常定高 77px（与首页小卡行/第三页备忘心情行统一第二档 band），
+   日期格 7→4 压缩内容——横滑三页第二档上下边缘对齐。
+   v3.16.x：min-height 改 height 固定——内容实际 75.3px，min-height 与 mini-card 的
+   固定 height 在「卡片大小」缩放（zoom）下计算方式不同（77×1.15=88.55 vs 77.48×1.15=89.1），
+   造成三页第二档缩放后差 0.55px，图标组顶部的 0.55px 差异直接体现在图标下方文字行错位。
+   固定 height + overflow:hidden 与 mini-card 一致，缩放后三页完全同步。
+   v3.25.x：随第二档 band 77→92px 同步加高（今日情话放开 3 行），三页对齐保持。 */
+.week-card { border-radius:20px; padding:8px 14px; margin-bottom:14px; height:92px; overflow:hidden; box-sizing:border-box; display:flex; flex-direction:column; justify-content:center; }
+.week-days { display:flex; gap:6px; margin-top:5px; }
+.week-day {
+  flex:1; text-align:center; padding:4px 0; border-radius:10px;
+  background:rgba(0,0,0,.04); color:var(--muted); font-size:11px;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+}
+.week-day b { display:block; font-size:13px; color:var(--ink); margin-bottom:1px; }
+.week-day.today { background:var(--ink); color:#fff; cursor:default; }
+.week-day.today b { color:#fff; }
+.week-day:not(.today):active { background:rgba(0,0,0,.10); }
+
+/* v3.5.102：桌面新消息横幅（TA 主动发消息时顶部弹出，点击进聊天） */
+/* v3.6.x：top 加 env(safe-area-inset-top)——iPhone 主屏幕 PWA（standalone）里顶部
+   47~59px 是系统状态栏区域，硬编码 12px 会被状态栏盖住/顶进灵动岛（同类元素
+   .ver-update-bar/.sm-float 均已避让，仅此处遗漏）；浏览器内 env() 返回 0，行为不变 */
+.desk-msg {
+  position:fixed; top:calc(12px + env(safe-area-inset-top, 0px)); left:50%; transform:translateX(-50%);
+  /* v3.5.127：z 从 300 降到 89——不再盖过弹层（modal 90/tc 85/qa 88/call 95），
+     否则 TA 来消息时横幅压在弹窗/来电面板上面 */
+  z-index:89; width:min(320px, calc(100% - 24px));
+  display:flex; align-items:center; gap:10px; padding:10px 12px;
+  background:rgba(255,255,255,.96); border:1px solid rgba(0,0,0,.1);
+  border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.12);
+  cursor:pointer; animation:deskMsgIn .25s ease;
+  box-sizing:border-box;
+  /* v3.5.134：水平手势交给 JS（右滑关闭），垂直滚动仍由浏览器处理——
+     Chrome Android 上无此声明时浏览器会接管横滑判定滚动方向，pointermove
+     被抢占/pointercancel，表现为「右滑关闭非常不灵敏」 */
+  touch-action:pan-y;
+}
+@keyframes deskMsgIn { from{opacity:0; transform:translateX(-50%) translateY(-8px);} to{opacity:1; transform:translateX(-50%) translateY(0);} }
+.desk-msg-av { width:38px; height:38px; border-radius:50%; overflow:hidden; flex-shrink:0; background:#f1f1f1; display:flex; align-items:center; justify-content:center; }
+.desk-msg-av img { width:100%; height:100%; object-fit:cover; display:block; }
+.desk-msg-av svg { width:22px; height:22px; stroke:#999; }
+.desk-msg-body { flex:1; min-width:0; }
+.desk-msg-name { font-size:12px; font-weight:700; color:var(--ink); }
+.desk-msg-text { font-size:12px; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.desk-msg[hidden] { display:none; }
+
+/* ===== v3.x：桌面移动模式（长按拖拽重排，复用装修模式 decor-on） ===== */
+/* v3.x：抖动已移除（用户反馈不需要）。如需恢复，加回 @keyframes desk-jiggle + .desk-move-mode.decor-on 应用规则 */
+/* 移动模式：容器允许 pan-x pan-y（空白处/组件间隙原生横滑翻页），可拖拽组件 touch-action:none
+   （手势归 JS 拖拽；移动模式下快速横滑翻页由 personalize.js 的滑动/长按判定实现，见该文件） */
+.desk-move-mode #desktop-pages,
+.desk-move-mode .page-slide { touch-action: pan-x pan-y; -webkit-touch-callout: none; }
+.desk-move-mode .app,
+.desk-move-mode [data-desk-widget]:not(.app-grid) { touch-action: none; cursor: grab; }
+/* 拖拽中源项半透明占位 */
+.desk-dragging { opacity: .22 !important; animation: none !important; }
+/* 拖拽跟手 clone */
+.desk-drag-clone {
+  position: fixed; z-index: 9999; pointer-events: none;
+  box-shadow: 0 18px 44px rgba(0,0,0,.3); opacity: .97;
+  transform: scale(1.06); border-radius: inherit;
+}
+/* 落点指示线（纵向排列→水平线 / grid 内→竖线） */
+.desk-drop-line {
+  position: fixed; z-index: 9998; pointer-events: none;
+  background: #2b7fff; border-radius: 2px;
+  box-shadow: 0 0 10px rgba(43,127,255,.6);
+}
+.desk-drop-line.horiz { height: 3px; }
+.desk-drop-line.vert { width: 3px; }
+/* 跨页拖到边缘提示 */
+.desk-edge-hint {
+  position: fixed; top: 0; bottom: 0; width: 44px; z-index: 50;
+  pointer-events: none; opacity: 0; transition: opacity .2s;
+}
+.desk-edge-hint.show { opacity: 1; }
+.desk-edge-hint.left { left: 0; background: linear-gradient(90deg, rgba(43,127,255,.28), transparent); }
+.desk-edge-hint.right { right: 0; background: linear-gradient(270deg, rgba(43,127,255,.28), transparent); }

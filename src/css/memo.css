@@ -1,0 +1,72 @@
+/* ===== 备忘录页（桌面第三页动态注入，src/js/memo-app.js） ===== */
+.memo-body { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; box-sizing:border-box; padding:14px 14px 40px; display:flex; flex-direction:column; }
+.memo-input-row { display:flex; gap:10px; margin-bottom:12px; }
+.memo-inp { flex:1; min-width:0; height:44px; border:none; border-radius:12px; background:rgba(255,255,255,.75); box-shadow:inset 0 0 0 1px rgba(0,0,0,.07); padding:0 14px; font-size:15px; color:var(--ink,#222); box-sizing:border-box; }
+.memo-inp:focus { outline:none; box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.2); }
+.memo-add { flex-shrink:0; border:none; border-radius:12px; background:#111; color:#fff; font-size:14px; font-weight:600; padding:0 20px; }
+.memo-msg { padding:12px 14px; border-radius:14px; text-align:center; font-size:14px; color:var(--ink,#555); margin-bottom:12px; transition:opacity .2s; }
+.memo-msg:empty { display:none; }
+.memo-msg.fade { opacity:0; }
+.memo-toolbar { display:flex; align-items:center; justify-content:space-between; margin:0 2px 10px; min-height:26px; }
+.memo-count { font-size:12px; color:var(--ink-soft,#999); }
+.memo-cleardone { font-size:12px; color:var(--ink-soft,#888); background:none; border:1px solid rgba(0,0,0,.12); border-radius:16px; padding:4px 12px; }
+.memo-list { display:flex; flex-direction:column; gap:10px; }
+.memo-item { display:flex; align-items:flex-start; gap:10px; padding:12px 10px 10px 12px; border-radius:14px; }
+.mm-check { flex-shrink:0; width:22px; height:22px; border-radius:50%; border:1.5px solid rgba(0,0,0,.3); margin-top:2px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background .15s, border-color .15s; -webkit-tap-highlight-color:transparent; }
+.mm-check svg { width:12px; height:12px; opacity:0; transition:opacity .15s; stroke:#fff; stroke-width:3; fill:none; stroke-linecap:round; stroke-linejoin:round; }
+.memo-item.done .mm-check { background:#111; border-color:#111; }
+.memo-item.done .mm-check svg { opacity:1; }
+.mm-main { flex:1; min-width:0; }
+.mm-text { font-size:15px; color:var(--ink,#222); line-height:1.45; white-space:pre-wrap; word-break:break-word; transition:opacity .2s; cursor:pointer; }
+.memo-item.done .mm-text { opacity:.45; text-decoration:line-through; }
+.memo-item.pinned .mm-text { font-weight:700; }
+.mm-time { font-size:11px; color:var(--ink-soft,#aaa); margin-top:4px; }
+.mm-time.due-overdue { color:#e05a5a; font-weight:600; }
+.mm-time.due-today { color:#e8a23c; font-weight:600; }
+.memo-item.urgent .mm-text { color:#c0392b; }
+.memo-item.urgent.done .mm-text { color:var(--ink,#222); }
+.mm-act, .mm-pin, .mm-del { flex-shrink:0; width:28px; height:28px; border:none; background:none; padding:0; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.mm-act { color:var(--ink-soft,#b5b5b5); }
+.mm-act svg { width:15px; height:15px; }
+.mm-act:active { background:rgba(0,0,0,.06); }
+.mm-due.on { color:#4a9fd4; }
+.mm-share:active { color:#4a9fd4; }
+.mm-pin { font-size:13px; opacity:.4; filter:grayscale(1); transition:opacity .15s, filter .15s; }
+.mm-pin.on { opacity:1; filter:none; }
+.mm-del { color:var(--ink-soft,#c0c0c0); }
+.mm-del svg { width:13px; height:13px; }
+.memo-empty { text-align:center; font-size:13px; color:var(--ink-soft,#aaa); padding:36px 0 8px; line-height:1.9; }
+/* #238 备忘提醒开关/概率两钮加入后改 flex 换行排列（窄屏挤不下三个时自动折行居中） */
+.memo-manage { margin-top:14px; display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:center; }
+/* ---- 「完成发到聊天」开关（v3.13.x：此前无任何样式、渲染成系统默认按钮） ---- */
+.memo-send-btn { font-size:12px; color:var(--ink-soft,#888); background:rgba(255,255,255,.7); border:1px solid rgba(0,0,0,.12); border-radius:16px; padding:6px 16px; cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent; }
+.memo-send-btn:active { background:rgba(0,0,0,.06); }
+/* ---- 首页「今日备忘」卡片内的备忘录联动状态行 ---- */
+/* v3.15.x：桌面第三页「备忘录」状态横幅已按用户要求删除（.memo-app-badge 规则移除，
+   备忘录入口保留第三页图标 + 聊天更多功能） */
+
+/* ---- 新增备忘提醒勾选 chip（输入框下方常驻三个：聊天概率/到点弹窗/联系人弹窗） ---- */
+.memo-remind-chips { display:flex; gap:8px; margin:-4px 0 12px; flex-wrap:wrap; }
+.memo-rc { font-size:12px; color:var(--ink-soft,#888); background:rgba(255,255,255,.6); border:1px solid rgba(0,0,0,.12); border-radius:14px; padding:4px 12px; cursor:pointer; user-select:none; -webkit-tap-highlight-color:transparent; transition:background .15s,color .15s,border-color .15s; }
+.memo-rc.on { color:#fff; background:#4a9fd4; border-color:#4a9fd4; }
+/* ---- 行内提醒方式标志（备忘项内，点击进设置改提醒） ---- */
+.mm-remind-marks { display:flex; gap:6px; margin-top:5px; align-items:center; }
+.mm-rm { width:18px; height:18px; display:flex; align-items:center; justify-content:center; cursor:pointer; border-radius:5px; -webkit-tap-highlight-color:transparent; }
+.mm-rm svg { width:14px; height:14px; }
+.mm-rm:active { background:rgba(0,0,0,.06); }
+.mm-rm.chat { color:#4a9fd4; }
+.mm-rm.sysDue { color:#e8a23c; }
+.mm-rm.contact { color:#7c5cd4; }
+/* ---- 联系人弹窗（居中 + 头像 + 昵称 + 聊天气泡，区别于 openModal 系统通知样式） ---- */
+.memo-contact-mask { position:fixed; inset:0; z-index:95; background:rgba(0,0,0,.42); display:flex; align-items:center; justify-content:center; padding:24px; box-sizing:border-box; animation:mc-fade .18s ease; }
+.memo-contact-card { position:relative; width:100%; max-width:340px; background:var(--card-bg,#fff); border-radius:18px; padding:16px 16px 18px; box-shadow:0 12px 40px rgba(0,0,0,.22); animation:mc-pop .22s cubic-bezier(.2,.8,.3,1); }
+.mc-head { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.mc-av { width:40px; height:40px; border-radius:50%; background:#e8e8e8 center/cover no-repeat; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:17px; font-weight:600; color:#fff; }
+.mc-av.ph { background:linear-gradient(135deg,#7c8ea8,#5c7090); }
+.mc-name { font-size:15px; font-weight:600; color:var(--ink,#222); }
+.mc-bubble { background:rgba(74,159,212,.12); border-radius:14px; padding:12px 14px; font-size:15px; line-height:1.5; color:var(--ink,#222); word-break:break-word; white-space:pre-wrap; border-top-left-radius:4px; }
+.mc-close { position:absolute; top:10px; right:10px; width:26px; height:26px; border:none; background:rgba(0,0,0,.05); border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--ink-soft,#999); -webkit-tap-highlight-color:transparent; }
+.mc-close svg { width:13px; height:13px; }
+.mc-close:active { background:rgba(0,0,0,.1); }
+@keyframes mc-fade { from { opacity:0; } to { opacity:1; } }
+@keyframes mc-pop { from { transform:scale(.92); opacity:0; } to { transform:scale(1); opacity:1; } }

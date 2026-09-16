@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mochi 存储诊断</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; background: #0f1115; color: #e8eaf0;
+         padding: max(14px, env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom)); line-height: 1.55; }
+  h1 { font-size: 18px; margin-bottom: 4px; }
+  .sub { color: #9aa3b2; font-size: 12px; margin-bottom: 14px; }
+  .card { background: #171a21; border: 1px solid #262c38; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; }
+  .card h2 { font-size: 14px; color: #7fb2ff; margin-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  td { padding: 3px 4px; border-bottom: 1px solid #20242e; word-break: break-all; }
+  td.k { color: #9aa3b2; max-width: 60%; }
+  td.v { text-align: right; white-space: nowrap; color: #dfe4ee; font-variant-numeric: tabular-nums; }
+  tr.hot td.v { color: #ffb35c; font-weight: 600; }
+  .big { font-size: 22px; font-weight: 700; color: #ffd27f; }
+  .note { font-size: 11px; color: #8a93a5; margin-top: 6px; }
+  button { appearance: none; border: 0; border-radius: 10px; padding: 11px 16px; font-size: 14px; font-weight: 600;
+           background: #2f6fed; color: #fff; width: 100%; margin-top: 4px; }
+  button.gray { background: #2a3040; color: #cfd6e4; margin-top: 8px; }
+  button:disabled { opacity: .5; }
+  textarea { width: 100%; height: 180px; background: #12151c; color: #cfe3ff; border: 1px solid #262c38; border-radius: 10px;
+             padding: 10px; font-size: 11px; font-family: Consolas, Menlo, monospace; margin-top: 10px; white-space: pre; }
+  .prog { font-size: 12px; color: #7fd18b; min-height: 18px; }
+  .warn { background: #2a2113; border-color: #57451f; }
+  .warn h2 { color: #ffc46b; }
+</style>
+</head>
+<body>
+<h1>📦 Mochi 存储与内存诊断</h1>
+<div class="sub">只读检测，不修改任何数据 · 结果可一键复制发给开发者</div>
+
+<div class="card">
+  <h2>设备 / 浏览器</h2>
+  <table id="t-dev"></table>
+</div>
+
+<div class="card">
+  <h2>网页 JS 内存（performance.memory）</h2>
+  <table id="t-mem"></table>
+  <div class="note">used 接近 jsHeapSizeLimit 或长期 &gt; 300MB 时，安卓 Chrome 渲染进程极易被杀（表现为「他崩溃了」）。需在 Chrome 标志页开启精确内存时数值才准确，仅供参考。</div>
+</div>
+
+<div class="card warn">
+  <h2>站点总存储占用（storage.estimate）</h2>
+  <div class="big" id="est-big">…</div>
+  <table id="t-est"></table>
+  <div class="note">这是本网站全部数据（IndexedDB + 缓存 + localStorage）的总和，即「备份导出会包含的数据量」。</div>
+</div>
+
+<div class="card">
+  <h2>localStorage 明细</h2>
+  <table id="t-ls"></table>
+  <div class="note">Top15 大键。小键正常存这里；&gt;200KB 的图片类大键只存 IndexedDB。</div>
+</div>
+
+<div class="card">
+  <h2>IndexedDB（mochi-db）明细</h2>
+  <div class="prog" id="idb-prog"></div>
+  <table id="t-idb"></table>
+  <div class="note">Top15 大键 + 总量。这里是大头：聊天记录 / 字卡表情包库 / 头像池 / 壁纸 / 信件图片都在这。</div>
+</div>
+
+<div class="card">
+  <h2>Service Worker / 缓存</h2>
+  <table id="t-sw"></table>
+</div>
+
+<button id="btn-copy">📋 复制完整报告</button>
+<button class="gray" id="btn-rescan">🔄 重新扫描</button>
+<textarea id="report" readonly spellcheck="false" style="display:none"></textarea>
+
+<script>
+(function () {
+  'use strict';
+  var fmt = function (n) {
+    if (n == null || isNaN(n)) return '?';
+    if (n >= 1048576) return (n / 1048576).toFixed(1) + ' MB';
+    if (n >= 1024) return (n / 1024).toFixed(1) + ' KB';
+    return n + ' B';
+  };
+  var REPORT = [];
+  function log(s) { REPORT.push(s); }
+  function fill(id, rows) {
+    var t = document.getElementById(id);
+    t.innerHTML = rows.map(function (r) {
+      return '<tr' + (r.hot ? ' class="hot"' : '') + '><td class="k">' + r[0] + '</td><td class="v">' + r[1] + '</td></tr>';
+    }).join('');
+  }
+
+  function devInfo() {
+    var rows = [
+      ['UA', (navigator.userAgent || '').slice(0, 90)],
+      ['屏幕', screen.width + '×' + screen.height + ' @' + (window.devicePixelRatio || 1) + 'x'],
+      ['deviceMemory', (navigator.deviceMemory || '?') + ' GB（约值）'],
+      ['CPU 核数', navigator.hardwareConcurrency || '?']
+    ];
+    fill('t-dev', rows);
+    log('== 设备 ==\nUA: ' + navigator.userAgent + '\n屏幕: ' + screen.width + '×' + screen.height + ' @' + (window.devicePixelRatio || 1) + 'x');
+  }
+
+  function memInfo() {
+    var m = performance.memory;
+    var rows;
+    if (!m) {
+      rows = [['performance.memory', '不可用']];
+      log('\n== JS内存 ==\nperformance.memory 不可用');
+    } else {
+      rows = [
+        ['已用堆 used', fmt(m.usedJSHeapSize), m.usedJSHeapSize > 300 * 1048576],
+        ['分配堆 total', fmt(m.totalJSHeapSize)],
+        ['堆上限 limit', fmt(m.jsHeapSizeLimit)],
+        ['占用率', m.jsHeapSizeLimit ? Math.round(m.usedJSHeapSize / m.jsHeapSizeLimit * 100) + '%' : '?',
+          m.jsHeapSizeLimit && m.usedJSHeapSize / m.jsHeapSizeLimit > 0.5]
+      ];
+      log('\n== JS内存 ==\nused=' + fmt(m.usedJSHeapSize) + ' total=' + fmt(m.totalJSHeapSize) + ' limit=' + fmt(m.jsHeapSizeLimit));
+    }
+    fill('t-mem', rows);
+  }
+
+  function lsInfo() {
+    var total = 0, cnt = 0, items = [];
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        var v = '';
+        try { v = localStorage.getItem(k) || ''; } catch (e) {}
+        total += v.length + k.length; cnt++;
+        items.push([k, v.length]);
+      }
+    } catch (e) {}
+    items.sort(function (a, b) { return b[1] - a[1]; });
+    var rows = [['键数量', cnt], ['总大小(约)', fmt(total), total > 3 * 1048576]];
+    items.slice(0, 15).forEach(function (it) { rows.push([it[0].replace('xy-home-v2:', ''), fmt(it[1]), it[1] > 200 * 1024]); });
+    fill('t-ls', rows);
+    log('\n== localStorage ==\n共 ' + cnt + ' 键 约 ' + fmt(total) + '\n' + items.slice(0, 15).map(function (it) { return it[0] + ' = ' + fmt(it[1]); }).join('\n'));
+  }
+
+  function sizeOf(v) {
+    if (v == null) return 0;
+    if (typeof v === 'string') return v.length;
+    try { return JSON.stringify(v).length; } catch (e) { return 0; }
+  }
+
+  function idbScan() {
+    return new Promise(function (resolve) {
+      var prog = document.getElementById('idb-prog');
+      var done = false;
+      setTimeout(function () { if (!done) prog.textContent = '扫描中…（数据大时需要几秒到几十秒）'; }, 300);
+      var finish = function (r) { done = true; resolve(r); };
+      try {
+        var req = indexedDB.open('mochi-db', 1);
+        req.onerror = function () { finish(null); };
+        req.onsuccess = function () {
+          var db = req.result;
+          try {
+            var tx = db.transaction('kv', 'readonly');
+            var cur = tx.objectStore('kv').openCursor();
+            var total = 0, cnt = 0, items = [];
+            cur.onsuccess = function () {
+              var c = cur.result;
+              if (!c) { finish({ total: total, cnt: cnt, items: items }); return; }
+              var sz = sizeOf(c.value) + String(c.key || '').length;
+              total += sz; cnt++;
+              items.push([String(c.key), sz]);
+              c.continue();
+            };
+            cur.onerror = function () { finish({ total: total, cnt: cnt, items: items }); };
+          } catch (e) { finish(null); }
+        };
+      } catch (e) { finish(null); }
+    });
+  }
+
+  async function idbInfo() {
+    var r = await idbScan();
+    var rows, txt;
+    if (!r) {
+      rows = [['mochi-db', '无法读取或不存在']];
+      txt = 'mochi-db 无法读取';
+    } else {
+      r.items.sort(function (a, b) { return b[1] - a[1]; });
+      rows = [['条目数', r.cnt], ['总大小(约)', fmt(r.total), r.total > 50 * 1048576]];
+      r.items.slice(0, 15).forEach(function (it) { rows.push([String(it[0]).replace('xy-home-v2:', ''), fmt(it[1]), it[1] > 1024 * 1024]); });
+      txt = '共 ' + r.cnt + ' 条 约 ' + fmt(r.total) + '\n' + r.items.slice(0, 15).map(function (it) { return it[0] + ' = ' + fmt(it[1]); }).join('\n');
+      document.getElementById('idb-prog').textContent = '';
+    }
+    fill('t-idb', rows);
+    log('\n== IndexedDB mochi-db ==\n' + txt);
+  }
+
+  async function estInfo() {
+    var rows;
+    try {
+      var e = await navigator.storage.estimate();
+      var pct = e.quota ? Math.round(e.usage / e.quota * 100) : null;
+      document.getElementById('est-big').textContent = fmt(e.usage);
+      rows = [
+        ['站点已用', fmt(e.usage)],
+        ['浏览器配额', fmt(e.quota)],
+        ['占用率', pct != null ? pct + '%' : '?', pct != null && pct > 80]
+      ];
+      if (navigator.storage && navigator.storage.persisted) {
+        try { rows.push(['持久化授权 persisted', await navigator.storage.persisted() ? '是（防自动清数据的保护已生效）' : '否']); } catch (err) {}
+      }
+      log('\n== 站点总存储 ==\nusage=' + fmt(e.usage) + ' quota=' + fmt(e.quota) + (pct != null ? ' (' + pct + '%)' : ''));
+    } catch (err) {
+      document.getElementById('est-big').textContent = '不可用';
+      rows = [['storage.estimate', '不可用']];
+      log('\n== 站点总存储 ==\n不可用');
+    }
+    fill('t-est', rows);
+  }
+
+  async function swInfo() {
+    var rows = [];
+    try {
+      var regs = await navigator.serviceWorker.getRegistrations();
+      rows.push(['SW 注册数', regs.length]);
+      var names = await caches.keys();
+      rows.push(['缓存个数', names.length]);
+      for (var i = 0; i < names.length; i++) rows.push(['· ' + names[i], '']);
+      var total = 0;
+      for (var j = 0; j < names.length; j++) {
+        try {
+          var c = await caches.open(names[j]);
+          var reqs = await c.keys();
+          rows.push(['  ' + names[j] + ' 条目', reqs.length]);
+          for (var q = 0; q < reqs.length; q++) {
+            try { var res = await c.match(reqs[q]); if (res) total += sizeOf(await res.clone().text()); } catch (e2) {}
+          }
+        } catch (e3) {}
+      }
+      rows.push(['缓存总大小(约)', fmt(total)]);
+      log('\n== SW/缓存 ==\n注册数=' + regs.length + ' 缓存=' + names.join(', ') + ' 缓存总量≈' + fmt(total));
+    } catch (e) {
+      rows.push(['ServiceWorker', '不可用']);
+      log('\n== SW/缓存 ==\n不可用');
+    }
+    fill('t-sw', rows);
+  }
+
+  async function run() {
+    REPORT = [];
+    log('Mochi 存储诊断报告 ' + new Date().toLocaleString());
+    devInfo(); memInfo(); lsInfo();
+    await estInfo();
+    await idbInfo();
+    await swInfo();
+    log('\n（以上大小均为近似值：字符串长度≈字节数）');
+  }
+
+  document.getElementById('btn-copy').addEventListener('click', function () {
+    var ta = document.getElementById('report');
+    ta.value = REPORT.join('\n');
+    ta.style.display = 'block';
+    ta.select();
+    try { document.execCommand('copy'); this.textContent = '✓ 已复制，粘贴给开发者即可'; } catch (e) {}
+    setTimeout(function () {}, 0);
+  });
+  document.getElementById('btn-rescan').addEventListener('click', function () { location.reload(); });
+
+  run();
+})();
+</script>
+</body>
+</html>

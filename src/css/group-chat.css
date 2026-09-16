@@ -1,0 +1,273 @@
+/* ===== 群聊页样式 =====
+   复用 chat-main.css 的 .chat-head/.chat-body/.chat-input-row/.msg/.msg-in/.msg-out/
+   .msg-bubble/.msg-av/.msg-side/.msg-time/.chat-typing/.chat-send/.ch-input-btn/.ch-back/.ch-name
+   本文件仅补充群聊特有样式（成员昵称、成员面板、@提及面板、三点菜单、群聊设置面板、placeholder）。 */
+
+/* 成员消息昵称（头像下方小字） */
+.gc-from-name {
+  font-size: 10px; color: #888; margin-bottom: 2px;
+  display: block; max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* v3.16.x：昵称显示开启时，任何时间轴样式下都保持「昵称在头像上方」——
+   cs-time-bubble 把 .msg-side 改成行向布局，需换行让昵称独占一行 */
+#page-group-chat.cs-time-bubble .msg-side { flex-wrap: wrap; }
+#page-group-chat.cs-time-bubble .msg-side .gc-from-name { width: 100%; text-align: center; }
+
+/* contenteditable placeholder（复用 .chat-input 的，此处兜底） */
+.gc-input:empty:before {
+  content: attr(data-ph); color: #aaa; pointer-events: none;
+}
+
+/* ---- 右上角三点下拉菜单（v3.9.x） ---- */
+.gc-head { position: relative; }
+
+/* ---- 共享更多面板分类行最右的 @群成员（v3.16.x：仅群聊打开时显示，聊天页隐藏） ---- */
+.more-tabs { align-items: center; }
+.gc-more-at-top {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin-left: auto; /* 推到分类 tabs 最右 */
+  padding: 6px 12px; font-size: 12px; font-weight: 600; color: #444;
+  background: rgba(0,0,0,.04); border: none; border-radius: 99px;
+  cursor: pointer; font-family: inherit; -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+.gc-more-at-top[hidden] { display: none; }
+.gc-more-at-top svg { width: 15px; height: 15px; flex-shrink: 0; }
+.gc-more-at-top:active { background: rgba(0,0,0,.09); }
+
+.gc-more-menu {
+  position: absolute; top: 42px; right: 2px; z-index: 60;
+  min-width: 148px; padding: 4px;
+  background: #fff; border: 1px solid rgba(0,0,0,.07); border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(0,0,0,.14);
+}
+.gc-more-menu[hidden] { display: none; }
+.gc-more-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 10px 14px; font-size: 14px; border-radius: 8px; cursor: pointer;
+  color: #222;
+}
+.gc-more-item:active { background: #f4f4f4; }
+.gc-more-item svg { width: 17px; height: 17px; color: #555; flex-shrink: 0; }
+
+/* ---- 群聊设置面板（整页全屏，v3.9.x；v3.42.x 主视图由底部弹层改为全屏，与聊天设置一致） ---- */
+.gc-settings-panel {
+  position: fixed; left: 0; right: 0; top: 0;
+  height: min(var(--mochi-ios-h, 100dvh), 100dvh);
+  background: #fff; z-index: 210; overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.gc-settings-panel[hidden] { display: none; }
+.gc-set-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-bottom: 1px solid rgba(0,0,0,.06); font-weight: 600;
+}
+.gc-set-body { overflow-y: auto; padding: 4px 0 16px; }
+.gc-set-title { padding: 12px 16px 4px; font-size: 13px; color: #888; }
+.gc-set-item {
+  display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+}
+.gc-set-av {
+  width: 40px; height: 40px; border-radius: 50%; background: #f0f0f0;
+  display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;
+}
+.gc-set-av img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.gc-set-av svg { width: 60%; height: 60%; }
+.gc-set-info { flex: 1; min-width: 0; }
+.gc-set-name {
+  font-size: 14px; font-weight: 500; color: #222;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: flex; align-items: center; gap: 6px;
+}
+.gc-set-tag {
+  font-size: 11px; color: #999; background: #f4f4f4;
+  padding: 1px 7px; border-radius: 8px; flex-shrink: 0;
+}
+.gc-set-desk {
+  font-size: 11px; color: #999; margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.gc-set-ops { display: flex; gap: 6px; flex-shrink: 0; }
+.gc-set-btn {
+  font-size: 12px; padding: 5px 11px; border: 1px solid #ddd; border-radius: 8px;
+  background: #fafafa; color: #333; cursor: pointer; white-space: nowrap;
+}
+.gc-set-btn:active { background: #eee; }
+.gc-set-btn.ghost { color: #a32; border-color: #f3c0c0; background: #fff5f5; }
+.gc-set-note { padding: 12px 16px 0; font-size: 11px; color: #aaa; line-height: 1.6; }
+/* v3.34.x：群聊设置「输入与消息/数据」组——开关行 / 副标题 / 危险项（复用全站 .toggle） */
+.gc-set-toggle .toggle { flex-shrink: 0; }
+.gc-set-sub {
+  display: block; font-size: 11px; font-weight: 400; color: #999; margin-top: 2px;
+  white-space: normal; line-height: 1.5;
+}
+.gc-set-danger .gc-set-name { color: #c0392b; }
+.gc-set-danger .gc-set-av { color: #c0392b; }
+
+/* ---- 美化聊天视图（v3.9.x，群聊设置内嵌，与聊天设置同款行） ---- */
+.gc-set-back {
+  display: flex; align-items: center; gap: 4px; cursor: pointer;
+  padding: 12px 16px 2px; font-size: 14px; font-weight: 500; color: #555;
+}
+.gc-set-back .arr { font-size: 18px; line-height: 1; }
+.gc-set-back:active { color: #111; }
+.gc-set-link { cursor: pointer; }
+.gc-set-link:active { background: #f6f6f6; }
+.gc-set-link .gc-set-av {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: linear-gradient(135deg, #fff1e6, #ffe6f0);
+}
+.gc-set-link .gc-set-av svg { width: 18px; height: 18px; color: #e8833a; }
+.gc-set-chev { color: #c8c8c8; font-size: 18px; flex-shrink: 0; }
+.gc-set-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px; cursor: pointer;
+}
+.gc-set-row:active { background: #f6f6f6; }
+.gc-set-row .txt { flex: 1; min-width: 0; font-size: 14px; color: #222; }
+.gc-set-row .val {
+  font-size: 12px; color: #999; max-width: 46%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.gc-set-row .chev { color: #d0d0d0; font-size: 16px; flex-shrink: 0; }
+/* v3.28.x：群聊设置内的回复概率/时间 stepper 行（标签左、stepper 右） */
+.gc-set-stepper {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 16px;
+}
+.gc-set-stepper .txt { flex: 1; min-width: 0; font-size: 14px; color: #222; }
+.gc-set-stepper .stepper { flex-shrink: 0; }
+
+/* ---- #288 美化视图重设计：对齐聊天设置页观感——gs-title 分组标题 + set-group.glass
+   玻璃卡片 + set-row 图标行（复用全站 setting.css 类，暗色随 --glass-bg 等变量适配；
+   行类保留 gc-set-row 供验证脚本按文本点行） ---- */
+.gc-set-body .gs-title { padding: 12px 18px 6px; }
+.gc-set-body .set-group { margin: 0 12px 12px; }
+.gc-set-body .set-row .val { max-width: 46%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 0; }
+.gc-set-body .set-row:active { background: rgba(0,0,0,.04); }
+[data-theme="dark"] .gc-set-body .set-row:active { background: rgba(255,255,255,.06); }
+
+/* ---- 群聊时间轴样式（gc-beauty 独立；page 级类，始终挂类含默认还原，
+   隔离聊天页 body 级 cs-time-* 对群聊的泄漏，规则与聊天页一致） ---- */
+#page-group-chat.cs-time-under-av .msg-side { flex-direction: column; align-items: center; gap: 3px; }
+#page-group-chat.cs-time-under-av .msg-side .msg-time {
+  position: static; display: inline-block; top: auto; right: auto; left: auto;
+  transform: none; padding: 0; background: none; opacity: .5; z-index: auto;
+}
+#page-group-chat.cs-time-under-bubble .msg { position: relative; }
+#page-group-chat.cs-time-under-bubble .msg-side .msg-time {
+  position: absolute; top: calc(100% + 3px); padding: 2px 8px; border-radius: 10px;
+  background: rgba(0,0,0,.05); opacity: .6; letter-spacing: .3px; z-index: 2;
+}
+#page-group-chat.cs-time-under-bubble .msg-in .msg-side .msg-time { right: 0; }
+#page-group-chat.cs-time-under-bubble .msg-out .msg-side .msg-time { left: 0; }
+#page-group-chat.cs-time-bubble .msg-side { display: flex; flex-direction: row; align-items: center; gap: 8px; }
+#page-group-chat.cs-time-bubble .msg-side .msg-time {
+  padding: 3px 8px; border-radius: 10px; background: rgba(0,0,0,.05);
+  opacity: .6; letter-spacing: .3px;
+}
+#page-group-chat.cs-time-float .msg { position: relative; }
+#page-group-chat.cs-time-float .msg-side .msg-time {
+  position: absolute; top: -4px; padding: 2px 8px; border-radius: 10px;
+  background: rgba(0,0,0,.06); opacity: .65; letter-spacing: .3px; z-index: 2;
+}
+#page-group-chat.cs-time-float .msg-in .msg-side .msg-time { right: -4px; }
+#page-group-chat.cs-time-float .msg-out .msg-side .msg-time { left: -4px; }
+#page-group-chat.cs-time-center .msg { position: relative; padding-top: 18px; width: 100%; max-width: 100%; }
+#page-group-chat.cs-time-center .msg-in { justify-content: flex-start; }
+#page-group-chat.cs-time-center .msg-out { justify-content: flex-end; }
+#page-group-chat.cs-time-center .msg-side .msg-time {
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  padding: 2px 10px; border-radius: 10px; background: rgba(0,0,0,.05);
+  opacity: .6; letter-spacing: .3px;
+}
+#page-group-chat.cs-time-hidden .msg-time { display: none; }
+
+/* ---- 成员列表面板（居中弹层） ---- */
+.gc-members-panel {
+  position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%);
+  width: 86%; max-width: 340px; max-height: 70vh;
+  background: #fff; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,.18);
+  z-index: 200; overflow: hidden; display: flex; flex-direction: column;
+}
+.gc-members-panel[hidden] { display: none; }
+.gc-mp-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-bottom: 1px solid rgba(0,0,0,.06); font-weight: 600;
+}
+.gc-mp-close {
+  border: none; background: none; font-size: 18px; color: #999; cursor: pointer; padding: 4px 8px;
+}
+.gc-mp-body { overflow-y: auto; padding: 8px 0; }
+.gc-mp-item {
+  display: flex; align-items: center; gap: 10px; padding: 8px 16px;
+}
+.gc-mp-av {
+  width: 36px; height: 36px; border-radius: 50%; background: #f0f0f0;
+  display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;
+}
+.gc-mp-av img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.gc-mp-av svg { width: 60%; height: 60%; }
+.gc-mp-name { flex: 1; font-size: 14px; }
+/* v3.9.x：成员面板副行——桌面原昵称（区分同名/群聊昵称来源） */
+.gc-mp-sub { display: block; font-size: 11px; color: #999; margin-top: 2px; }
+.gc-mp-tag { font-size: 11px; color: #999; background: #f4f4f4; padding: 2px 8px; border-radius: 8px; }
+
+/* ---- @提及面板（底部弹出） ---- */
+.gc-at-panel {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  max-height: 50vh; background: #fff; border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 20px rgba(0,0,0,.12); z-index: 200; overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.gc-at-panel[hidden] { display: none; }
+.gc-at-head { padding: 12px 16px; border-bottom: 1px solid rgba(0,0,0,.06); font-size: 13px; color: #888; }
+.gc-at-body { overflow-y: auto; padding: 4px 0; }
+.gc-at-item {
+  display: flex; align-items: center; gap: 10px; padding: 10px 16px; cursor: pointer;
+}
+.gc-at-item:active { background: #f4f4f4; }
+.gc-at-av {
+  width: 32px; height: 32px; border-radius: 50%; background: #f0f0f0;
+  display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;
+}
+.gc-at-av img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.gc-at-av svg { width: 60%; height: 60%; }
+.gc-at-item span { font-size: 14px; }
+
+/* ---- 群聊列表 / 成员选择面板（v3.26.x：复用 .gc-members-panel 弹层与 .gc-mp-* 行样式） ---- */
+.gc-gp-item { cursor: pointer; }
+.gc-gp-item.cur { background: rgba(0,0,0,.03); }
+.gc-gp-item:active { background: #f4f4f4; }
+.gc-gp-ico svg { width: 19px; height: 19px; }
+.gc-gp-ico.add svg { color: #e8833a; }
+.gc-gp-cur { background: #e8f7ee !important; color: #0a7d3c !important; }
+.gc-gp-del, .gc-mp-rm { font-size: 11px; padding: 4px 9px; }
+.gc-gp-new { cursor: pointer; }
+.gc-gp-new:active { background: #f6f6f6; }
+.gc-gp-new .gc-mp-name { color: #e8833a; font-weight: 600; }
+.gc-mp-add { padding: 10px 16px; border-top: 1px solid rgba(0,0,0,.06); }
+.gc-mp-add button { width: 100%; }
+.gc-gpick-sub { padding: 10px 16px 2px; font-size: 12px; color: #999; }
+.gc-gpick-item { cursor: pointer; }
+.gc-gpick-item:active { background: #f4f4f4; }
+.gc-gpick-item input[type="checkbox"] {
+  width: 16px; height: 16px; flex-shrink: 0; margin: 0;
+  accent-color: #3a8ee6; cursor: pointer;
+}
+.gc-gpick-empty { padding: 28px 16px; text-align: center; font-size: 13px; color: #999; }
+.gc-gpick-ops {
+  display: flex; gap: 10px; padding: 10px 16px;
+  border-top: 1px solid rgba(0,0,0,.06);
+}
+.gc-gpick-ops .gc-set-btn { flex: 1; padding: 9px 0; text-align: center; }
+.gc-gpick-ops .gc-gpick-ok { font-weight: 600; }
+/* v3.34.x #246 历史分页入口（消息列表顶部「查看更早的消息」） */
+.gc-earlier {
+  text-align: center; padding: 8px 14px; margin: 6px auto 2px;
+  width: fit-content; max-width: 82%;
+  font-size: 12px; color: var(--muted, #8a8a8a);
+  background: var(--card-soft, rgba(127, 127, 127, .12));
+  border-radius: 999px; cursor: pointer; user-select: none;
+}
+.gc-earlier:active { opacity: .65; }

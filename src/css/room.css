@@ -1,0 +1,374 @@
+/* ===== 房间：双人小屋（桌面第三页图标 / 聊天更多功能进入；src/js/room.js） =====
+   场景 = 墙面（两窗一门，墙纸主题类）+ 地板（6×4 格，地板主题类）+ 家具 + 梦角。
+   夜晚氛围用 .night 调暗墙面/地板；灯类家具点亮加暖光晕。禁整页 zoom/scale（技术红线）。 */
+
+#page-room { overflow: hidden; }
+.room-stage {
+  flex: 1; display: flex; flex-direction: column; gap: 10px;
+  padding: 10px 14px calc(12px + var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px)));
+  min-height: 0;
+}
+
+/* ---- HUD 状态条 ---- */
+.r-hud { display: flex; flex-wrap: wrap; gap: 6px; }
+.r-chip {
+  position: relative;
+  font-size: 11px; color: var(--ink); opacity: .85;
+  background: var(--glass-bg, rgba(255,255,255,.55));
+  border: 1px solid rgba(0,0,0,.06); border-radius: 999px;
+  padding: 4px 10px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+/* 点数飘字（+n🏠） */
+.r-fly {
+  position: absolute; top: -13px; right: 4px; z-index: 5;
+  font-size: 11.5px; font-weight: 800; color: #c08a1e;
+  text-shadow: 0 1px 0 rgba(255,255,255,.7);
+  pointer-events: none;
+  animation: rFly .82s ease-out forwards;
+}
+@keyframes rFly { from { transform: translateY(2px); opacity: 1; } to { transform: translateY(-17px); opacity: 0; } }
+
+/* ---- 场景 ---- */
+.r-scene {
+  position: relative; flex: none;
+  height: clamp(238px, 54vw, 330px);
+  border-radius: 16px; overflow: hidden;
+  box-shadow: 0 10px 28px rgba(60,45,25,.16), 0 2px 6px rgba(0,0,0,.08);
+  transform: translateZ(0);
+  transition: filter .6s ease;
+}
+/* 简易场景整体光照（JS 按亮灯数实时刷新 --room-bright）：
+   基础亮度恒 1、每点一盏灯 +0.12、封顶 1.3（#546：基础不得为 0——brightness(0)
+   会把整个场景打成纯黑＝「进房间黑屏」）；max(...) 兜底保证任何来源的 0 值
+   也至少渲染到 .45 可见，结构性杜绝同类回归 */
+.r-scene {
+  filter: saturate(calc(var(--room-bright, 1) * .86 + .14)) brightness(max(var(--room-bright, 1), .45));
+}
+.r-wall {
+  position: absolute; left: 0; right: 0; top: 0; height: 44%;
+  transition: filter .6s ease;
+}
+.r-floor {
+  position: absolute; left: 0; right: 0; top: 44%; bottom: 0;
+  transition: filter .6s ease;
+}
+
+/* 墙纸主题 */
+.wall-cream  { background: linear-gradient(#f7f0e2, #eee3cf); }
+.wall-cloud  { background: radial-gradient(60px 26px at 22% 68%, #fff 55%, transparent 56%), radial-gradient(80px 30px at 72% 30%, #fff 55%, transparent 56%), linear-gradient(#dcebfb, #eef5fe); }
+.wall-cabin  { background: repeating-linear-gradient(180deg, #caa06b 0 12px, #bd9160 12px 14px, #c39a67 14px 26px, #b98d5c 26px 28px); }
+.wall-gardenw{ background: radial-gradient(7px 7px at 12% 30%, #f9a8c5 46%, transparent 50%), radial-gradient(6px 6px at 34% 66%, #f9a8c5 46%, transparent 50%), radial-gradient(7px 7px at 58% 24%, #ffd479 46%, transparent 50%), radial-gradient(6px 6px at 82% 60%, #f9a8c5 46%, transparent 50%), radial-gradient(5px 5px at 70% 84%, #fff 46%, transparent 50%), linear-gradient(#e4f4dd, #f0faea); }
+.wall-starw  { background: radial-gradient(1.6px 1.6px at 14% 26%, #fff 50%, transparent 52%), radial-gradient(1.4px 1.4px at 32% 64%, #ffe9b8 50%, transparent 52%), radial-gradient(1.8px 1.8px at 55% 20%, #fff 50%, transparent 52%), radial-gradient(1.3px 1.3px at 74% 52%, #cfe4ff 50%, transparent 52%), radial-gradient(1.7px 1.7px at 88% 30%, #fff 50%, transparent 52%), radial-gradient(1.2px 1.2px at 44% 82%, #fff 50%, transparent 52%), linear-gradient(#232c54, #171d3c); }
+.wall-nightw { background: linear-gradient(#2b3050, #191c33); }
+.wall-stripe { background: repeating-linear-gradient(90deg, #faf3e6 0 26px, #f2e5d0 26px 52px); }
+.wall-dusk   { background: linear-gradient(#f6c99f 0%, #e79a9e 38%, #8f7bb8 72%, #5d5a93 100%); }
+.wall-checkerw{ background: conic-gradient(#efe3d2 25%, #e0cdb2 0 50%, #efe3d2 0 75%, #e0cdb2 0) 0 0/44px 44px; }
+
+/* 墙脚线（踢脚线）：墙地交界立刻有"房间感" */
+.r-wall::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 4px;
+  background: linear-gradient(rgba(74,56,34,.42), rgba(74,56,34,.24));
+  border-radius: 1px;
+}
+.wall-starw::after, .wall-nightw::after { background: linear-gradient(rgba(12,14,30,.75), rgba(12,14,30,.45)); }
+
+/* 星空墙纸：亮星缓慢闪烁（两层错拍） */
+.wall-starw::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(2px 2px at 22% 38%, #fff 50%, transparent 55%),
+    radial-gradient(1.6px 1.6px at 62% 62%, #fff8dc 50%, transparent 55%),
+    radial-gradient(2.2px 2.2px at 84% 18%, #fff 50%, transparent 55%);
+  animation: rTwinkle 2.6s ease-in-out infinite alternate;
+}
+@keyframes rTwinkle { from { opacity: .25; } to { opacity: 1; } }
+
+/* 地板主题 */
+.floor-wood   { background: repeating-linear-gradient(90deg, #dcbd8e 0 15.8%, #d0ae7d 15.8% 16%, #d5b483 16% 33%, #c9a673 33% 33.2%); background-size: 100% 100%; }
+.floor-light  { background: linear-gradient(#eef0f4, #e4e8ee); }
+.floor-carpet { background: radial-gradient(120% 140% at 50% 0%, #f2dade 60%, #e9cbD2 61%); }
+.floor-stone  { background: conic-gradient(#cfd3d8 25%, #c2c7cd 0 50%, #cfd3d8 0 75%, #c2c7cd 0) 0 0/34% 50%; }
+
+/* 夜晚氛围：调暗墙地 + 星空墙提亮星星 */
+.r-scene.night .r-wall { filter: brightness(.52) saturate(.85); }
+.r-scene.night .r-floor { filter: brightness(.55) saturate(.85); }
+.r-scene.night .wall-starw, .r-scene.night .wall-nightw { filter: brightness(.8); }
+
+/* 门与窗（固定布景） */
+.r-door {
+  position: absolute; left: 3.5%; top: 8%;
+  width: 17%; height: 84%;
+  background: linear-gradient(#a97c4f, #96693f);
+  border: 2px solid #7d5732; border-radius: 8px 8px 0 0;
+  box-shadow: inset 0 0 0 3px rgba(255,255,255,.08);
+}
+.r-door::after {
+  content: ''; position: absolute; right: 7px; top: 48%;
+  width: 6px; height: 6px; border-radius: 50%; background: #f4d98b;
+}
+.r-window {
+  position: absolute; top: 12%;
+  width: 21%; height: 66%;
+  border-radius: 8px;
+  border: 3px solid rgba(255,255,255,.75);
+  background: linear-gradient(#bfe0f8, #e8f4fd);
+  box-shadow: 0 2px 6px rgba(0,0,0,.12), inset 0 0 0 1px rgba(0,0,0,.06);
+  overflow: hidden;
+}
+.r-window.wa { left: 30%; }
+.r-window.wb { right: 6%; }
+.r-window.nw { background: linear-gradient(#1c2748, #31406e); border-color: rgba(210,220,255,.35); }
+.r-sky {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px;
+}
+.r-window.wb::before, .r-window.wa::before {
+  content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px;
+  margin-left: -1px; background: rgba(255,255,255,.7);
+}
+.r-window::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 2px;
+  margin-top: -1px; background: rgba(255,255,255,.7);
+}
+
+/* 夜晚窗内流星（错拍划过） */
+.r-window.nw .r-sky::after {
+  content: ''; position: absolute; top: 22%; left: -34%;
+  width: 36%; height: 2px; border-radius: 1px;
+  background: linear-gradient(90deg, transparent, #fff);
+  transform: rotate(-22deg); opacity: 0;
+  animation: rMeteor 7s linear infinite;
+}
+.r-window.wb.nw .r-sky::after { animation-delay: 3.4s; }
+@keyframes rMeteor {
+  0% { left: -34%; opacity: 0; }
+  5% { opacity: .95; }
+  11% { left: 128%; opacity: 0; }
+  100% { left: 128%; opacity: 0; }
+}
+
+/* 下雨时窗外雨滴下滑 */
+.r-scene.raining .r-sky::before {
+  content: ''; position: absolute; left: 0; right: 0; top: -120%; height: 340%;
+  background: repeating-linear-gradient(172deg, transparent 0 8px, rgba(205,228,250,.85) 8px 9.5px);
+  animation: rRainfall .55s linear infinite;
+  pointer-events: none;
+}
+@keyframes rRainfall { to { transform: translateY(29.4%); } }
+
+/* ---- 地板格（放置/移动模式：可放绿色呼吸、被占灰掉） ---- */
+.r-cell { position: absolute; box-sizing: border-box; border-radius: 6px; }
+.r-cell:hover { background: rgba(255,255,255,.18); }
+.r-scene.placing .r-cell.ok {
+  outline: 1.5px solid rgba(96,168,96,.65); outline-offset: -3px;
+  background: rgba(122,200,122,.12);
+  animation: rBreath 1.6s ease-in-out infinite;
+}
+.r-scene.placing .r-cell.bad {
+  outline: 1.5px solid rgba(150,140,130,.35); outline-offset: -3px;
+  background: rgba(120,110,100,.10);
+}
+.r-scene.placing .r-cell.tgt {
+  outline: 2px solid rgba(80,170,90,.85); outline-offset: -3px;
+  background: rgba(110,200,110,.26);
+  animation: none;
+}
+@keyframes rBreath { 0%,100% { background: rgba(122,200,122,.08); } 50% { background: rgba(122,200,122,.28); } }
+
+/* ---- 家具 ---- */
+.r-furn {
+  position: absolute; z-index: 5;
+  transform: translate(-50%, -92%);
+  font-size: clamp(24px, 7vw, 34px);
+  line-height: 1; cursor: pointer; user-select: none; -webkit-user-select: none;
+  -webkit-touch-callout: none; touch-action: none;
+  filter: drop-shadow(0 4px 3px rgba(40,30,15,.25));
+  transition: filter .3s ease;
+}
+/* 接地椭圆阴影（在 emoji 脚下，随元素翻转；z-index:-1 垫到字后面） */
+.r-furn::before {
+  content: ''; position: absolute; left: 50%; bottom: -5px; z-index: -1;
+  width: 74%; height: 9px; transform: translateX(-50%);
+  background: radial-gradient(ellipse at center, rgba(60,45,20,.30), transparent 68%);
+  border-radius: 50%;
+}
+.r-furn:active { transform: translate(-50%, -86%); }
+.r-furn.r-flip { transform: translate(-50%, -92%) scaleX(-1); }
+.r-furn.r-flip:active { transform: translate(-50%, -86%) scaleX(-1); }
+.r-furn.r-lit { filter: drop-shadow(0 4px 3px rgba(40,30,15,.25)) drop-shadow(0 0 9px rgba(255,208,112,.95)); }
+/* 火苗闪烁（蜡烛/星星灯点亮时） */
+.r-furn.r-lit.r-flkc { animation: rFlicker 1.7s ease-in-out infinite; }
+@keyframes rFlicker { 0%,100% { opacity: 1; } 45% { opacity: .82; } 62% { opacity: .92; } }
+/* 长按拖拽中 */
+.r-furn.dragging { z-index: 12; opacity: .88; cursor: grabbing; filter: drop-shadow(0 10px 8px rgba(40,30,15,.32)) drop-shadow(0 0 6px rgba(255,220,150,.5)); }
+
+/* 点亮的灯在地板投暖光斑 */
+.r-pool {
+  position: absolute; z-index: 3; pointer-events: none;
+  width: 74px; height: 44px; transform: translate(-50%, -50%);
+  background: radial-gradient(ellipse at center, rgba(255,196,100,.38) 0%, rgba(255,196,100,.16) 46%, transparent 72%);
+  animation: rPoolIn .5s ease-out;
+}
+.r-pool-f { animation: rPoolIn .5s ease-out, rFlicker 1.7s ease-in-out infinite; }
+@keyframes rPoolIn { from { opacity: 0; transform: translate(-50%, -50%) scale(.6); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+
+/* 花瓶插花徽章（花园联动） */
+.r-bloom {
+  position: absolute; top: -9px; right: -7px;
+  font-size: 13px; text-decoration: none; line-height: 1;
+  animation: rBloomPop .5s cubic-bezier(.2,1.6,.4,1);
+}
+@keyframes rBloomPop { from { transform: scale(0) rotate(-40deg); } to { transform: scale(1) rotate(0); } }
+
+/* ---- 梦角 ---- */
+#room-ta {
+  position: absolute; z-index: 7;
+  width: 44px; height: 50px;
+  transform: translate(-50%, -96%);
+  transition: left .68s ease, top .68s ease;
+  cursor: pointer;
+}
+.r-ta-glow {
+  position: absolute; left: 50%; top: 58%;
+  width: 46px; height: 46px; transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,222,150,.55) 0%, rgba(255,222,150,.18) 45%, transparent 70%);
+  animation: rGlow 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes rGlow { 0%,100% { opacity: .75; } 50% { opacity: 1; } }
+.r-ta-av {
+  position: absolute; left: 50%; top: 0;
+  width: 34px; height: 34px; transform: translateX(-50%);
+  border-radius: 50%;
+  background-color: #efe6d6; background-size: cover; background-position: center;
+  box-shadow: 0 0 0 2px rgba(255,255,255,.75), 0 2px 6px rgba(0,0,0,.18);
+  opacity: .92;
+  pointer-events: none;
+}
+.r-ta-av.r-ta-sil {
+  background: linear-gradient(160deg, rgba(90,84,110,.85), rgba(60,58,86,.85));
+}
+#room-ta.r-faint .r-ta-av { opacity: .16; filter: blur(1.5px) grayscale(.5); }
+#room-ta.r-faint .r-ta-glow { animation-duration: 5s; background: radial-gradient(circle, rgba(200,205,255,.4) 0%, rgba(200,205,255,.12) 45%, transparent 70%); }
+
+/* 走路颠步。FIX 2026-09-16 发热收口：margin-top→transform 合成器路径（走路期间每帧不再重排）；
+   关键帧自带 translateX(-50%) 与基础定位完全一致，仍不与定位 transform 冲突 */
+#room-ta.walking .r-ta-av { animation: rBob .46s ease-in-out infinite; }
+#room-ta.walking .r-ta-glow { animation-duration: 1.6s; }
+@keyframes rBob { 0%,100% { transform: translateX(-50%); } 50% { transform: translateX(-50%) translateY(-4px); } }
+/* 坐/躺等安顿姿态：略缩小下沉，显得"坐进去了" */
+#room-ta.seated .r-ta-av { width: 29px; height: 29px; margin-top: 7px; opacity: .95; }
+#room-ta.seated .r-ta-glow { width: 40px; height: 40px; top: 62%; }
+
+/* ---- 入场：灯光从暗到亮渐显 ---- */
+.r-scene.room-in { animation: roomIn .95s ease-out; }
+@keyframes roomIn { from { filter: brightness(.32); } to { filter: brightness(1); } }
+
+/* ---- 升级庆祝层 ---- */
+.r-fete {
+  position: absolute; inset: 0; z-index: 20;
+  pointer-events: none; overflow: hidden; border-radius: inherit;
+  background: radial-gradient(circle at 50% 42%, rgba(255,240,198,.28), transparent 62%);
+}
+.r-fete-t {
+  position: absolute; top: 34%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 19px; font-weight: 800; color: #7a5a1e;
+  text-shadow: 0 1px 0 #fff, 0 0 16px rgba(255,215,130,.95);
+  white-space: nowrap;
+  animation: rFeteT 2.4s ease forwards;
+}
+@keyframes rFeteT {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.55); }
+  14% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  78% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -62%) scale(1); }
+}
+.r-fete i {
+  position: absolute; bottom: -24px; line-height: 1; opacity: 0;
+  animation: rFeteStar 1.9s ease-in forwards;
+}
+@keyframes rFeteStar {
+  0% { transform: translateY(0) rotate(0); opacity: 0; }
+  14% { opacity: 1; }
+  100% { transform: translateY(-270px) rotate(48deg); opacity: 0; }
+}
+
+/* ---- TA 头顶气泡（场景顶部居中，轻提示） ---- */
+.r-bubble {
+  position: absolute; z-index: 9; top: 8px; left: 50%;
+  transform: translateX(-50%);
+  max-width: 76%;
+  background: rgba(255,255,255,.94); color: #333;
+  border: 1px solid rgba(0,0,0,.07); border-radius: 12px;
+  padding: 7px 12px; font-size: 12.5px; line-height: 1.5;
+  box-shadow: 0 4px 12px rgba(0,0,0,.12);
+  white-space: pre-wrap; word-break: break-word;
+  pointer-events: none;
+}
+.r-bubble.pop { animation: rPop .28s ease; }
+@keyframes rPop { from { transform: translateX(-50%) scale(.85); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
+
+/* ---- 放置/移动横幅 ---- */
+.r-banner {
+  position: absolute; z-index: 10; bottom: 8px; left: 50%;
+  transform: translateX(-50%);
+  display: flex; align-items: center; gap: 8px;
+  max-width: 92%;
+  background: rgba(28,26,22,.82); color: #fff;
+  border-radius: 999px; padding: 7px 8px 7px 14px;
+  font-size: 12px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  white-space: nowrap;
+}
+.r-banner span { overflow: hidden; text-overflow: ellipsis; }
+.r-banner button {
+  border: 0; border-radius: 999px; padding: 4px 12px;
+  font-size: 12px; background: rgba(255,255,255,.92); color: #333; font-weight: 600;
+}
+/* display:flex 会压过 UA 的 [hidden]{display:none}（fish 时机条同款坑）：横幅必须显式补回才能真正隐藏/自己消失 */
+.r-banner[hidden] { display: none; }
+
+/* ---- TA 状态行 / 感应输出 ---- */
+.r-status {
+  text-align: center; font-size: 12.5px; color: var(--ink); opacity: .72;
+  min-height: 18px;
+}
+.r-sense-out {
+  white-space: pre-line;
+  font-size: 12.5px; line-height: 1.7; color: var(--ink);
+  background: var(--glass-bg, rgba(255,255,255,.55));
+  border: 1px solid rgba(0,0,0,.06); border-radius: 12px;
+  padding: 10px 12px;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+
+/* ---- 底部操作条 ---- */
+.r-bar { display: flex; gap: 8px; }
+.r-bar button {
+  flex: 1; border: 0; border-radius: 14px;
+  padding: 11px 0; font-size: 13.5px; font-weight: 600;
+  background: var(--glass-bg, rgba(255,255,255,.66));
+  color: var(--ink);
+  border: 1px solid rgba(0,0,0,.06);
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  cursor: pointer;
+}
+.r-bar button:active { transform: translateY(1px); }
+
+/* 无障碍 / 低端机：偏好减弱动效时关闭全部动画过渡 */
+@media (prefers-reduced-motion: reduce) {
+  #page-room *,
+  #page-room *::before,
+  #page-room *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+/* 深色模式下玻璃变量兜底（dark.css 未覆盖本页自定义元素时保持可读） */
+[data-theme="dark"] .r-chip,
+[data-theme="dark"] .r-sense-out,
+[data-theme="dark"] .r-bar button { color: #eee; background: rgba(40,40,48,.66); border-color: rgba(255,255,255,.08); }

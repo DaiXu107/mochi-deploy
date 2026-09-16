@@ -1,0 +1,1629 @@
+/* ===== 鑱婂ぉ鏍稿績鏍峰紡锛堟秷鎭?/ 杈撳叆鏍?/ 鍗婃 / 鑱婂ぉ鍗＄墖锛?===== */
+/* ===== 鑱婂ぉ椤?===== */
+.chat-head {
+  display:flex; align-items:center; gap:10px;
+  padding:8px 2px 12px; flex-shrink:0;
+  /* v3.5.124锛歴ticky 鍥哄畾椤堕儴鈥斺€旀墜鏈虹鍏ㄥ睆涓嬫秷鎭尯婊氬姩绌块€?瑙嗚瑙嗗彛
+     鐬€佸彉鍖栨椂锛岄《閮ㄦ爮锛堣繑鍥?澶村儚/鏄电О/璁剧疆锛変笉鍐嶈甯﹀嚭灞忓箷 */
+  position:sticky; top:0; z-index:5;
+  /* v3.5.89 缁熶竴妗岄潰鐧借壊绠€绾﹂鏍硷紙鍚?.glass锛夛細鐧藉簳 + 娣¤竟 + 杞婚槾褰?*/
+  background:rgba(255,255,255,.92);
+  border-bottom:1px solid rgba(0,0,0,.1);
+  box-shadow:0 2px 8px rgba(0,0,0,.04);
+}
+.ch-back {
+  width:40px; height:40px; border-radius:50%;
+  background: rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.1);
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+  flex-shrink:0;
+}
+.ch-back svg { width:18px; height:18px; }
+.ch-name {
+  flex:1; min-width:0;
+  font-size:17px; font-weight:700; letter-spacing:.5px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.ch-settings {
+  width:34px; height:34px; border-radius:50%;
+  background: rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.1);
+  display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;
+}
+.ch-settings svg { width:18px; height:18px; }
+/* 椤堕儴鏍忚仈绯讳汉澶村儚锛堢偣鍑绘墦寮€鏌ュ矖鍗婃锛?*/
+.ch-av {
+  width:34px; height:34px; border-radius:var(--msg-av-radius, 50%); flex-shrink:0;
+  background:#e9e9e9; overflow:hidden;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer;
+}
+.ch-av svg { width:16px; height:16px; }
+.ch-av img { width:100%; height:100%; object-fit:cover; display:block; border-radius:var(--msg-av-radius, 50%); }
+/* 椤堕儴鏄电О锛氱偣鍑汇€岃瀵规柟缁х画璇淬€?*/
+#chat-partner-name { cursor:pointer; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; }
+#chat-partner-name:active { opacity:.6; }
+
+.chat-body {
+  flex:1; min-height:0; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none;
+  padding:6px 18px; display:flex; flex-direction:column; gap:14px;
+  background:transparent; position:relative;
+  -webkit-overflow-scrolling:touch;
+  /* v3.5.124锛氭粴鍔ㄨ竟鐣屼笉绌块€忊€斺€旀秷鎭尯婊氬埌椤?搴曚笉鍐嶅甫鍔ㄩ〉闈紙鍚《閮ㄦ爮锛夋粴鍔?*/
+  overscroll-behavior:contain;
+  /* v3.6.x锛氬己鍒剁嫭绔嬪悎鎴愬眰鈥斺€旈儴鍒嗘墜鏈烘祻瑙堝櫒锛堣€?WebKit/鍥戒骇鍐呮牳锛夊湪鐐瑰嚮杈撳叆鏍忋€?     閿洏寮瑰嚭銆?phone 琚攣瀹氫负 fixed 涓旈珮搴﹂鍙樼殑鐬棿锛屾粴鍔ㄥ鍣ㄧ粯鍒跺眰澶辨晥锛?     娑堟伅鍖哄唴瀹逛粛鍦?DOM 閲屽嵈涓嶇粯鍒?鈫?鑱婂ぉ椤电櫧灞忥紙鍙戦€佹秷鎭Е鍙戦噸鎺掑悗鎵嶆仮澶嶏級銆?     translateZ(0) 璁╂秷鎭尯濮嬬粓鏈夌嫭绔嬬粯鍒跺眰锛涚幇浠ｆ祻瑙堝櫒瀵规粴鍔ㄥ鍣ㄨ嚜鍔ㄥ缓灞傦紝
+     姝ゅ０鏄庢棤鍓綔鐢紙.chat-body 鍐呮棤 fixed/闅忚鍙ｅ畾浣嶇殑鍚庝唬锛?msg-actions 涓嶅湪姝ゅ鍣ㄥ唴锛夈€?     iOS Safari 璞佸厤鐢?mobile-adapt.js 杩愯鏃惰缃唴鑱?transform:none锛堢敤 JS 鍒ゆ柇鏇村噯纭紝
+     涓嶈兘鐢?@supports 鍒ゆ柇 webkit 灞炴€р€斺€斿畨鍗?Chrome 涔熻瘑鍒?-webkit-touch-callout锛?*/
+  transform:translateZ(0);
+}
+.chat-body::-webkit-scrollbar { display:none; }
+/* v3.26.x：聊天记录加载进度条——切桌面后打开聊天、IDB 异步读库期间消息区为空，
+   中央覆盖非阻塞进度提示（pointer-events:none 不挡滚动/点击，读库完成自动隐藏） */
+.chat-loading {
+  position:absolute; left:50%; top:38%; transform:translate(-50%,-50%);
+  z-index:5; pointer-events:none;
+}
+.chat-loading-card {
+  background:rgba(255,255,255,.95); border:1px solid rgba(0,0,0,.1);
+  border-radius:12px; padding:14px 18px; min-width:190px;
+  display:flex; flex-direction:column; gap:8px; align-items:center;
+  box-shadow:0 4px 16px rgba(0,0,0,.08);
+}
+.chat-loading-bar {
+  width:150px; height:5px; border-radius:3px; background:#e9e9e9; overflow:hidden; position:relative;
+}
+.chat-loading-bar i {
+  position:absolute; top:0; left:-40%; width:40%; height:100%;
+  border-radius:3px; background:#111;
+  animation:chatLoadSlide 1.1s ease-in-out infinite;
+}
+.chat-loading-txt { font-size:12px; color:#888; }
+/* FIX 2026-09-16 发热收口：left→transform 合成器路径（免每帧重排）。条宽 150px 固定、
+   滑块 60px，translateX(350%)＝210px，与原 left:-40%→100%（-60px→150px）位移像素等价 */
+@keyframes chatLoadSlide { 0% { transform:translateX(0); } 100% { transform:translateX(350%); } }
+
+.msg { display:flex; align-items:flex-end; gap:8px; max-width:85%; }
+.msg-in { align-self:flex-start; }
+.msg-out { align-self:flex-end; flex-direction:row; }
+.msg-av {
+  width:40px; height:40px; border-radius:var(--msg-av-radius, 50%); flex-shrink:0;
+  background:#e9e9e9; overflow:hidden;
+  display:flex; align-items:center; justify-content:center;
+}
+.msg-av svg { width:19px; height:19px; }
+.msg-av img { width:100%; height:100%; object-fit:cover; border-radius:var(--msg-av-radius, 50%); display:block; }
+.msg-bubble {
+  /* v3.6.x锛歳elative 渚涗富鍔ㄥ彂閫佺埍蹇冩爣璇嗭紙.msg-hi-heart锛夌粷瀵瑰畾浣?*/
+  position:relative;
+  padding: var(--chat-bubble-pad, 11px 14px);
+  font-size: var(--chat-font-size, 14px);
+  border-radius: var(--chat-bubble-radius, 18px); line-height:1.5; word-break:break-word;
+  background:#fff; border:1px solid rgba(255,255,255,.9); box-shadow:0 2px 8px rgba(0,0,0,.05);
+  /* v3.5.107锛氬厑璁告皵娉℃敹缂╋紝闃叉鍥剧墖/闀垮唴瀹规妸鍙充晶澶村儚鍒楁尋鍑哄睆澶栵紙flex 榛樿 min-width:auto锛?*/
+  min-width:0;
+  /* v3.6.x锛氱鐢ㄦ枃鏈€夋嫨鈥斺€旀皵娉＄偣鍑?闀挎寜鏄脊鎿嶄綔鑿滃崟锛孉ndroid 闀挎寜涓嶅啀鍙犲姞绯荤粺鏂囨湰閫夋嫨/澶嶅埗宸ュ叿鏍?*/
+  user-select:none; -webkit-user-select:none;
+}
+.msg-in .msg-bubble { background: var(--msg-in-bg, #ffffff); color: var(--msg-in-ink, #111111); }
+.msg-out .msg-bubble { background: var(--msg-out-bg, #111111); color: var(--msg-out-ink, #ffffff); }
+
+/* 消息入场动画：仅新增消息（非批量渲染）时触发。
+   柔和上浮淡入——用「指数减速」曲线（ease-out-quint，起步快、末端自然落定）取代
+   v3.27.x 的过冲回弹（cubic-bezier y 值 >1 + scale(.92/.95/.96)，密集聊天里弹跳出、突兀）；
+   保留极轻微 scale(.98/.985/.99) 作「活气」，不碰布局属性（只动 transform/opacity）；
+   reduced-motion 降级为直接显示 */
+.msg-enter {
+  animation: msgPopIn .4s cubic-bezier(.22,1,.36,1) both;
+}
+.msg-in.msg-enter {
+  animation-name: msgInPop;
+  animation-duration: .45s; /* 联系人（in）消息稍微放慢，更柔和 */
+  transform-origin: left bottom;
+}
+.msg-out.msg-enter {
+  animation-name: msgOutPop;
+  transform-origin: right bottom;
+}
+@keyframes msgPopIn {
+  from { opacity: 0; transform: translateY(7px) scale(.985); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes msgInPop {
+  from { opacity: 0; transform: translateY(8px) scale(.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes msgOutPop {
+  from { opacity: 0; transform: translateY(5px) scale(.99); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .msg-enter { animation: none; }
+}
+
+/* 涓诲姩鍙戦€佹爣璇嗭細鑱旂郴浜轰富鍔ㄦ壘浣犵殑娑堟伅锛屾皵娉″乏涓婅涓€鏋氬皬鐖卞績锛堢煝閲忓浘锛?   v3.6.x锛氱埍蹇冩斁鍦ㄦ皵娉″唴閮ㄥ乏涓婅锛?px/4px 鍋忕Щ + 9px 灏哄锛屾伆濂借惤鍦ㄦ皵娉?   11px/14px 鍐呰竟璺濊寖鍥村唴锛屼笉鍘嬫枃瀛楋級锛涙鍓?top/left:-8px 鏄寕鍦ㄦ皵娉″瑙?*/
+.msg-hi-heart {
+  position:absolute;
+  /* v3.26.x：贴在气泡内部左上角（top:2px/left:4px），与默认 padding 11px/14px 配合
+     落在气泡内边距阔围内不压文字。用户反馈「半溢出气泡外侧 -3px/-3px」会飞出气泡，改回气泡内。*/
+  top:2px; left:4px;
+  width:10px; height:10px;
+  color:#ff4d6a;
+  pointer-events:none;
+  z-index:5;
+  display:block;
+  /* v3.26.x：移除双层 drop-shadow 投影（白色发光+黑色投影）。浅色气泡上黑色投影呈灰色阴影，用户反馈删掉 */
+}
+
+/* 澶村儚鍒楋細澶村儚 + 鏃堕棿杞达紙鏃堕棿鍦ㄥご鍍忓簳涓嬶級 */
+.msg-side {
+  display:flex; flex-direction:column; align-items:center; gap:3px; flex-shrink:0;
+}
+.msg-time {
+  /* v3.5.133锛?px鈫?0px锛堟墜鏈虹鍙鎬э紝鏃堕棿鎴虫瘡姘旀场閮藉嚭鐜帮級 */
+  font-size:10px; line-height:1; color:var(--msg-time-ink, #111111); letter-spacing:.5px;
+  font-weight:400; white-space:nowrap;
+  opacity:.5;
+}
+/* 鏃堕棿杞存牱寮忥紙v3.9.x锛岃亰澶╄缃€屾椂闂磋酱鏍峰紡銆嶏紝body 涓婃寕 cs-time-* 绫婚┍鍔級
+   榛樿銆屽ご鍍忎笅鏂广€嶅嵆涓婃柟鍘熸牱寮忥紝鏃犻渶棰濆瑙勫垯銆傛秷鎭粨鏋勪笉鍙橈紝CSS 绫诲嵆鏃剁敓鏁?   锛堟敹钘忛〉 #page-fav 涓庣兢鑱婂鐢?.msg-side/.msg-time锛屽悓鏍峰彈杩欎簺绫诲奖鍝嶏紝鍏ㄥ眬涓€鑷达級銆?*/
+/* 姘旀场涓嬫柟锛氭椂闂翠粠澶村儚鍒楃Щ鍒版皵娉′笅娌匡紙缁濆瀹氫綅鐩稿娑堟伅琛岋紝琛屽唴鍙暀澶村儚锛?*/
+body.cs-time-under-bubble .msg { position:relative; }
+body.cs-time-under-bubble .msg-side .msg-time {
+  position:absolute; top:calc(100% + 3px); padding:2px 8px; border-radius:10px;
+  background:rgba(0,0,0,.05); opacity:.6; letter-spacing:.3px; z-index:2;
+}
+body.cs-time-under-bubble .msg-in .msg-side .msg-time { right:0; }
+body.cs-time-under-bubble .msg-out .msg-side .msg-time { left:0; }
+/* 鏃堕棿姘旀场锛氬ご鍍忎笌鏃堕棿骞舵帓锛屾椂闂磋兌鍥婂湪澶村儚澶栦晶锛堣创杩戝睆骞曡竟涓€渚э級锛岀旱鍚戝眳涓?*/
+body.cs-time-bubble .msg-side { display:flex; flex-direction:row; align-items:center; gap:8px; }
+body.cs-time-bubble .msg-side .msg-time {
+  padding:3px 8px; border-radius:10px; background:rgba(0,0,0,.05);
+  opacity:.6; letter-spacing:.3px;
+}
+/* 姘旀场澶栦晶鎮诞锛氬皬鑳跺泭娴湪姘旀场澶栦晶涓婅锛堣创杩戝睆骞曡竟閭ｄ竴瑙掞級 */
+body.cs-time-float .msg { position:relative; }
+body.cs-time-float .msg-side .msg-time {
+  position:absolute; top:-4px; padding:2px 8px; border-radius:10px;
+  background:rgba(0,0,0,.06); opacity:.65; letter-spacing:.3px; z-index:2;
+}
+body.cs-time-float .msg-in .msg-side .msg-time { right:-4px; }
+body.cs-time-float .msg-out .msg-side .msg-time { left:-4px; }
+/* 娑堟伅涓婃柟灞呬腑锛氭暣琛屾媺婊★紝鏃堕棿鑳跺泭灞呬腑鎮诞鍦ㄦ秷鎭笂鏂癸紙绫讳技绯荤粺鏃堕棿鍒嗛殧鏉★級 */
+body.cs-time-center .msg { position:relative; padding-top:18px; width:100%; max-width:100%; }
+body.cs-time-center .msg-in { justify-content:flex-start; }
+body.cs-time-center .msg-out { justify-content:flex-end; }
+body.cs-time-center .msg-side .msg-time {
+  position:absolute; top:0; left:50%; transform:translateX(-50%);
+  padding:2px 10px; border-radius:10px; background:rgba(0,0,0,.05);
+  opacity:.6; letter-spacing:.3px;
+}
+/* 闅愯棌锛氫笉鏄剧ず鏃堕棿 */
+body.cs-time-hidden .msg-time { display:none; }
+/* 鏃堕棿鍒嗛殧绾匡紙v3.9.x锛岃亰澶╄缃€屾椂闂磋酱鏍峰紡-鏃堕棿鍒嗛殧绾裤€嶏級锛氬井淇″紡灞呬腑鏃堕棿鑳跺泭銆?   鎻掑叆閫昏緫鍦?chat.js锛坮enderWindow 鎵归噺 + addRec 澧為噺 + 鍒囨崲鏍峰紡鍗虫椂閲嶆覆鏌擄級锛孋SS 鍙鏍峰紡锛?   鑱婂ぉ椤碉紙#chat-body锛夋瘡鏉℃秷鎭殑 .msg-time 闅愯棌锛屾敼鐢卞垎闅旀潯鏇夸唬鏄剧ず鏃堕棿銆?   鏀惰棌椤碉紙#fav-list锛?缇よ亰锛?gc-body锛変笉鍚彃鍏ラ€昏緫锛宮sg-time 淇濈暀鍘熸牱寮忎笉鍙楀奖鍝嶃€?   .msg-time-divider 榛樿 display:none鈥斺€斾粠 divider 鍒囧埌鍏跺畠鏍峰紡鏃跺凡鎻掑叆鐨?DOM 鍏冪礌鑷姩闅愯棌锛?   涓嶅崰甯冨眬锛涗笅娆?renderWindow 閲嶅缓浼氭竻绌恒€?*/
+body.cs-time-divider #chat-body .msg-time { display:none; }
+.msg-time-divider { display:none; justify-content:center; margin:14px 0 10px; }
+body.cs-time-divider .msg-time-divider { display:flex; }
+.msg-time-divider span {
+  padding:3px 10px; border-radius:999px; background:rgba(0,0,0,.05);
+  font-size:10px; line-height:1; color:var(--msg-time-ink, #111111);
+  letter-spacing:.3px; opacity:.6; white-space:nowrap;
+}
+/* 鑱旂郴浜烘鍦ㄨ緭鍏ワ細姝ｅ父娴佸崰浣嶏紝鏃犻渶棰濆鐣欑櫧琛ュ伩锛堟鍓嶆诞灞傛柟妗堝凡绉婚櫎锛?*/
+
+/* 鑱旂郴浜恒€屾鍦ㄨ緭鍏ャ€嶇姸鎬侊細娑堟伅鍖轰笌杈撳叆鏍忎箣闂寸殑鍐呭祵鏉★紙姝ｅ父娴侊紝涓嶉伄鎸′换浣曟秷鎭級
+   v3.5.27 浠?鎮诞鍦ㄨ緭鍏ユ爮涓婃柟"鏀逛负鏄熻█寮忓唴宓屾潯锛氬嚭鐜版椂鍗犱竴灏忚锛屾秷鎭尯鑷姩缂╁皬锛屼笉鍘嬫皵娉?*/
+/* 鑱旂郴浜恒€屾鍦ㄨ緭鍏ャ€嶏細绾枃瀛椾竴琛岋紙v3.5.47锛?   width:fit-content 鈫?鍙崰鏂囧瓧瀹藉害锛屼笉閫忓嚭鏁磋澹佺焊銆佷笉褰㈡垚鑹插潡/鐭╁舰锛?   閫忔槑鑳屾櫙锛屽氨鏄竴琛屽共鍑€鐨勬枃瀛楁彁绀猴紝涓嶉伄鎸℃秷鎭?*/
+/* 鑱旂郴浜恒€屾鍦ㄨ緭鍏ャ€嶏細鎮诞鍦ㄨ緭鍏ユ爮姝ｄ笂鏂圭殑灏忓瓧锛坴3.5.49 褰诲簳鏀逛负鎮诞寮忥級
+   涓嶅崰甯冨眬楂樺害 鈫?涓嶆尋鍔ㄦ秷鎭尯銆佷笉閬尅浠讳綍娑堟伅銆佷笉褰卞搷搴曢儴闂磋窛锛?   鏈Е鍙戞椂 display:none 瀹屽叏涓嶅瓨鍦紙鏃犱换浣曞崰浣?閬尅锛夛紱
+   v3.5.50 淇锛氬厓绱犲繀椤讳綅浜?.chat-input-row 鍐呴儴锛堝叾 position:relative 涓哄寘鍚潡锛夛紝
+   bottom:calc(100% + 4px) 鎵嶈兘姝ｇ‘鎮诞鍦ㄨ緭鍏ユ爮姝ｄ笂鏂癸紙姝ゅ墠璇斁鍦?page-chat 涓嬶紝
+   absolute 鐩稿鏁撮〉瀹氫綅锛屼綅缃敊涔憋級 */
+/* 鑱旂郴浜恒€屾鍦ㄨ緭鍏ャ€嶏細娑堟伅鍖轰笌杈撳叆鏍忎箣闂寸殑鍐呭祵鍗犱綅琛岋紙v3.6.x 鐢辨偓娴紡鏀瑰洖锛?   鍗犱竴琛屻€侀殢娑堟伅鍖烘甯告粴鍔紝涓嶆偓娴€佷笉閬尅浠讳綍娑堟伅锛涙湭瑙﹀彂鏃?display:none 鏃犵棔銆?   v3.5.49 鏇炬敼涓烘偓娴紡锛坅bsolute 鐩稿杈撳叆鏍?+ z-index:5锛夛紝娑堟伅婊氬姩鏃朵細浠?   杩欒鐏拌壊灏忓瓧涓嬫柟绌胯繃銆佽鐩栦綇锛堢敤鎴峰弽棣?鐏拌壊涓€琛岄伄鎸¤亰澶╂秷鎭?锛夆€斺€?   鏀瑰洖 v3.5.27/44 鐨勫唴宓屾柟妗堬紝chat.js showTyping/hideTyping 宸叉湁鍗犱綅婊氬姩澶勭悊銆?   v3.7.x 鍥炲綊淇锛氬繀椤?align-self:flex-start + width:fit-content锛坴3.5.47 鏇炬湁锛?   鏀瑰唴宓屾椂婕忔帀锛夆€斺€旀湰琛屾槸 #page-chat锛坒lex column锛夌殑鐩存帴瀛愰」锛宎lign-items 榛樿
+   stretch 浼氭妸瀹冩媺鎴愭暣琛屽叏瀹介€忔槑鍧楋紱璁剧疆浜嗚亰澶╁绾革紙cs-bg 閾烘弧 #page-chat锛夋椂
+   鏁磋閫忓嚭澹佺焊鍥炬锛岀湅璧锋潵"涓嶆槸鍙湁鏂囧瓧銆佽繖涓€鏁磋鏄竴涓浘褰?锛堢敤鎴峰弽棣堬級銆?   align-self:flex-start 璁?flex 浜ゅ弶杞翠笉鎷変几锛堝搴︽敹缂╁埌鍐呭锛宖lex 鍩虹灞炴€э紝
+   浠讳綍鏀寔 flex 鐨勫唴鏍搁兘鐢熸晥锛屼笉渚濊禆 fit-content 鍏抽敭瀛楃殑鏀寔搴︼級锛?   fit-content 鍙屼繚闄╋紝琛屽彧鍗犳枃瀛楀搴︼紝涓嶉€忓嚭鏁磋澹佺焊銆佷笉褰㈡垚鑹插潡/鐭╁舰 */
+.chat-typing {
+  flex-shrink:0;
+  align-self:flex-start;
+  width:fit-content;
+  padding:2px 18px 4px;
+  font-size:12px;
+  color:var(--typing-ink, #8a8a8a);
+  letter-spacing:.5px;
+  background:transparent;
+  white-space:nowrap;
+  pointer-events:none;
+}
+.chat-typing[hidden] { display:none; }
+/* 娑堟伅鍖哄簳閮ㄧ暀鐧斤紝鏈€鍚庝竴鏉℃秷鎭笉璐磋緭鍏ユ爮 */
+.chat-body { padding-bottom:24px; }
+
+/* 寰呭彂閫佽崏绋挎潯锛堝浘鐗?琛ㄦ儏缁勫悎 + 寮曠敤棰勮锛夆€斺€旀棤杈规锛屼笉鏄剧ず鐧借壊闀挎柟褰㈡
+   v3.7.x锛氭敼绾靛悜鎺掑垪鈥斺€斿紩鐢ㄩ瑙堟潯鍦ㄤ笂銆佸浘鐗囩缉鐣ュ浘鍦ㄤ笅锛屽彲鍚屾椂瀛樺湪 */
+.chat-draft {
+  display:flex; flex-direction:column; align-items:stretch; gap:8px;
+  margin:6px 4px 0; padding:8px 10px;
+  background:transparent; border:none;
+  border-radius:12px;
+}
+.chat-draft[hidden] { display:none; }
+/* 寮曠敤棰勮鏉★紙v3.7.x锛氱偣娑堟伅鎿嶄綔銆屽紩鐢ㄣ€嶅悗鏄剧ず寮曠敤浜嗕粈涔堬紝鉁?鍒犻櫎锛夆€斺€?   涓€х伆搴?+ 宸︿晶绔栨潯锛屾繁娴呬富棰橀€氬悆 */
+.chat-draft-quote { display:flex; }
+.chat-draft-quote[hidden] { display:none; }
+.chat-draft-quote-bar {
+  display:flex; align-items:center; gap:8px; flex:1; min-width:0;
+  padding:6px 8px; border-radius:8px;
+  background:rgba(127,127,127,.13);
+  border-left:3px solid rgba(127,127,127,.5);
+}
+.chat-draft-quote-img {
+  width:22px; height:22px; border-radius:5px; object-fit:cover;
+  flex-shrink:0; border:1px solid rgba(0,0,0,.08);
+}
+.chat-draft-quote-text {
+  flex:1; min-width:0; font-size:12.5px; line-height:1.35; color:inherit;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.chat-draft-items { display:flex; gap:8px; overflow-x:auto; flex:1; scrollbar-width:none; }
+.chat-draft-items::-webkit-scrollbar { display:none; }
+.chat-draft-item {
+  position:relative; width:44px; height:44px; border-radius:8px; overflow:hidden; flex-shrink:0;
+  border:1px solid rgba(0,0,0,.08);
+}
+.chat-draft-item img { width:100%; height:100%; object-fit:cover; display:block; }
+.chat-draft-x {
+  position:absolute; top:0; right:0; width:16px; height:16px;
+  background:rgba(0,0,0,.55); color:#fff; border:none; font-size:10px;
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+/* 寮曠敤棰勮鏉＄殑 鉁?鍒犻櫎鎸夐挳锛氬繀椤诲啓鍦ㄦ湰鏉★紙.chat-draft-x position:absolute锛変箣鍚庘€斺€?   鍚屼紭鍏堢骇 (0,1,0) 鍚庡畾涔夎€呯敓鏁堬紝鍚﹀垯琚?absolute 瑕嗙洊璺戝嚭棰勮鏉″锛堢敤鎴风湅涓嶅埌鍒犻櫎鎸夐挳锛?*/
+.chat-draft-quote-x {
+  position:static; width:18px; height:18px; flex-shrink:0;
+  border-radius:50%; background:rgba(127,127,127,.45);
+  font-size:11px; line-height:1;
+}
+
+/* 缁勫悎娑堟伅锛氬悓涓€鏉℃皵娉″唴 鍥剧墖缃戞牸 + 鏂囧瓧 */
+.msg-parts-imgs { display:flex; gap:4px; margin-bottom:6px; }
+.msg-img { max-width:90px; max-height:90px; border-radius:8px; display:block; }
+/* 鍥剧墖娑堟伅锛氬ぇ鍥撅紙v3.5.43 鏀惧ぇ鍒?260px锛屽彲鐐瑰嚮鏌ョ湅锛夛紱琛ㄦ儏鍖呬繚鎸佸皬鍥?90px
+   鍙岀被 .msg-img.msg-img-big锛氫笌涓嬫柟 .msg-img锛?6px 涓婇檺锛夊悓浼樺厛绾ф椂鍚庡啓鑰呬細鐩栨帀澶у浘
+   鈫?鐢ㄦ洿楂樹紭鍏堢骇淇濊瘉銆愬浘鐗囥€戞亽涓哄ぇ鍥撅紝涓嶈鍘嬫垚琛ㄦ儏鍖呭ぇ灏?*/
+.msg-img.msg-img-big { max-width:min(260px, 100%); max-height:260px; border-radius:10px; cursor:zoom-in; }
+/* 缁勫悎娑堟伅锛堟枃瀛?鍥剧墖锛夐噷鐨勩€愬浘鐗囥€戜笌绾浘鐗囨秷鎭悓灏哄锛?60px锛夛紱銆愯〃鎯呭寘銆戜繚鎸?90px 灏忓浘 */
+.msg-parts-imgs .msg-img-big { max-width:min(260px, 100%); max-height:260px; }
+.msg-parts-imgs.multi { flex-wrap:wrap; }
+.msg-parts-imgs.multi .msg-img { width:70px; height:70px; object-fit:cover; }
+.msg-parts-imgs.multi .msg-img-big { width:110px; height:110px; object-fit:cover; }
+/* #385 文本气泡内嵌媒体池令牌渲染的行内图（把乱码令牌串还原成图；media-pool 观察器解图后 src 变 dataURL） */
+.msg-inline-tok { max-width:80px; max-height:80px; height:auto; border-radius:8px; vertical-align:middle; object-fit:contain; margin:0 2px; }
+
+/* 鎼滅储鑱婂ぉ璁板綍锛氳亰澶╅〉鍐呭祵瑕嗙洊灞傦紙v3.5.52锛屾槦瑷€寮忊€斺€斾笉绂诲紑鑱婂ぉ椤碉級 */
+/* 鎼滅储鑱婂ぉ璁板綍锛氳亰澶╅〉搴曢儴鍗婃锛坴3.5.53 闇插嚭鑱婂ぉ娑堟伅锛夆€斺€斿鐢?.poke-card 甯冨眬 */
+.chat-search { height:auto; max-height:60%; }
+.chat-search[hidden] { display:none; }
+.chat-search-new {
+  flex-shrink:0; display:flex; align-items:center; gap:3px;
+  border:1px solid rgba(0,0,0,.12); background:#fff; color:var(--ink);
+  font-size:12px; font-weight:600; padding:6px 12px; border-radius:99px;
+  cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.chat-search-new:active { background:rgba(0,0,0,.05); }
+.chat-search-bar {
+  display:flex; gap:8px; padding:2px 2px 10px; flex-shrink:0;
+}
+.chat-search-input {
+  flex:1; min-width:0; border:1px solid rgba(0,0,0,.1); border-radius:99px;
+  padding:9px 14px; font-size:14px; font-family:inherit; outline:none; background:#f6f6f6;
+}
+.chat-search-input:focus { border-color:var(--ink); background:#fff; }
+.chat-search-go {
+  flex-shrink:0; border:none; border-radius:99px; padding:0 18px;
+  background:var(--ink); color:#fff; font-size:13px; font-weight:700;
+  cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+/* v3.7.x锛氭寜鏃ユ湡鏌ヨ鈥斺€斿紑濮?缁撴潫鏃ユ湡 + 娓呴櫎锛屼笌鍏抽敭璇嶅彲缁勫悎浣跨敤 */
+.chat-search-date {
+  display:flex; align-items:center; gap:6px; padding:0 2px 10px; flex-shrink:0;
+}
+.chat-search-date-input {
+  flex:1; min-width:0; border:1px solid rgba(0,0,0,.1); border-radius:10px;
+  padding:6px 8px; font-size:12px; font-family:inherit; outline:none; background:#f6f6f6;
+  color:var(--ink); -webkit-appearance:none; appearance:none;
+}
+.chat-search-date-input:focus { border-color:var(--ink); background:#fff; }
+.chat-search-date-sep { flex-shrink:0; font-size:12px; color:var(--muted); }
+.chat-search-date-clear {
+  flex-shrink:0; border:1px solid rgba(0,0,0,.1); background:#fff; color:var(--ink);
+  font-size:12px; padding:6px 10px; border-radius:99px; cursor:pointer;
+  font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.chat-search-date-clear:active { background:rgba(0,0,0,.05); }
+.chat-search-results {
+  flex:1; overflow-y:auto; padding:2px 2px 4px;
+  scrollbar-width:none; -ms-overflow-style:none;
+}
+.chat-search-results::-webkit-scrollbar { display:none; }
+.chat-search-results .tc-listitem { cursor:pointer; border-radius:12px; padding:9px 12px; }
+.chat-search-results .tc-listitem:active { background:rgba(0,0,0,.05); }
+.chat-search-hl { background:#ffe58f; border-radius:2px; padding:0 1px; }
+.chat-search-empty { text-align:center; color:#c0c0c0; font-size:12px; padding:24px 0; }
+
+/* 鑱婂ぉ椤佃緭鍏ュ崐妗嗭紙閭€璇稵A / 闂棶TA锛寁3.5.52 闇插嚭鑱婂ぉ娑堟伅锛?*/
+.chat-ask-body { display:flex; flex-direction:column; gap:10px; }
+/* v3.26.x：聊天页半框主输入框「一键清空 ✕」——复用全局 .dec-inp-wrap/.dec-inp-clear 款式 */
+.chat-ask-inp-wrap { position:relative; }
+.chat-ask-inp-wrap .chat-ask-input,
+.chat-ask-inp-wrap .chat-ask-input.ce-box { padding-right:38px; }
+/* v3.26.x：聊天页半框「批量设置问卷」按钮（仅问问TA 模式显示） */
+.chat-ask-bulk { padding:9px 0; border-radius:10px; border:1px solid rgba(0,0,0,.12); background:rgba(255,255,255,.94); color:var(--ink); font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent; }
+.chat-ask-bulk[hidden] { display:none; }
+.chat-ask-bulk:active { opacity:.75; }
+.chat-ask-input {
+  border:1px solid rgba(0,0,0,.12); border-radius:12px; padding:11px 14px;
+  font-size:14px; font-family:inherit; outline:none; background:#fff; color:var(--ink);
+  width:100%; box-sizing:border-box;
+}
+/* v3.x：邀请TA/问问TA 输入栏转 .ce-box 后常驻合成层——防 syncAndroidKb 平移/
+   半框弹起残留文字停在旧合成层=「文字飞出输入栏」（同 #118 .tc-input.ce-box）。
+   另：mobile-adapt ceConvert 给每个 ce-box 内联 min-height:24px + border-box，
+   会把 .chat-ask-input 的 padding:11px+border 挤出内容区，占位文字被裁到框外
+   （实测 clientH=23 < scrollH=35，文字溢出）——用 !important 抬高到含内边距的
+   单行自然高度，文字才能完整落在框内；仅此处 ce-box，iOS/原生输入不受影响 */
+.chat-ask-input.ce-box { will-change: transform; min-height:48px !important; }
+.chat-ask-input:focus {
+  border-color:var(--ink);
+  /* v3.7.x锛氬畨鍗?Chrome 閿洏寮瑰嚭鍔ㄧ敾鎶?fixed 鍗婃涓婄Щ鏃讹紝鑱氱劍鐨?contenteditable
+     锛坈e-box锛夋枃鏈眰鍋跺彂鍋滃湪鏃т綅缃紝琛ㄧ幇=鏂囧瓧鏄剧ず鍦ㄨ緭鍏ユ澶栭潰銆倀ranslateZ(0)
+     璁╄緭鍏ユ鍦ㄨ仛鐒︽湡闂磋嚜甯︾嫭绔嬪悎鎴愬眰锛岄€愬抚鎸夊綋鍓嶅竷灞€浣嶇疆鍚堟垚锛屾枃鏈笉鍐嶉敊浣?*/
+  transform:translateZ(0);
+}
+/* 闂棶TA 鍥炲绫诲瀷閫夋嫨锛堟枃瀛楀洖澶?鍗曢€夐锛寁3.6.x锛?*/
+.chat-ask-type { display:flex; gap:8px; }
+.chat-ask-type[hidden] { display:none; }
+.chat-ask-type-btn {
+  flex:1; border:1px solid rgba(0,0,0,.12); border-radius:10px; padding:8px 0;
+  background:#fff; color:#666; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
+  text-align:center; -webkit-tap-highlight-color:transparent;
+}
+.chat-ask-type-btn.sel { background:var(--ink); color:#fff; border-color:var(--ink); }
+/* v3.26.x：聊天页半框单选题选项框「一键清空 ✕」——复用全局 .dec-inp-wrap 款式 */
+.chat-ask-opts-wrap { position:relative; }
+.chat-ask-opts-wrap .chat-ask-opts,
+.chat-ask-opts-wrap .ce-box.chat-ask-opts { padding-right:38px; }
+.chat-ask-opts-wrap[hidden] { display:none; }
+.chat-ask-opts {
+  width:100%; box-sizing:border-box; border:1px solid rgba(0,0,0,.12); border-radius:12px;
+  padding:11px 14px; font-size:14px; font-family:inherit; outline:none; background:#fff; color:var(--ink);
+  resize:none; line-height:1.5;
+}
+.chat-ask-opts:focus {
+  border-color:var(--ink);
+  /* 鍚屼笂锛氬崟閫夐€夐」杈撳叆妗嗗悓鏍峰湪 fixed 鍗婃鍐咃紝鑱氱劍鏈熼棿寤虹嫭绔嬪悎鎴愬眰闃叉枃鏈敊浣?*/
+  transform:translateZ(0);
+}
+/* v3.23.x：单选题选项框（安卓转 .ce-box 后带同类名）随行数无限增高，把「发送」
+   顶出半框屏外=「选项太多无法发送」；限高 + 框内滚动（同帮我决定 dec-opts 修法） */
+.ce-box.chat-ask-opts {
+  max-height:150px; overflow-y:auto; overscroll-behavior:contain;
+}
+.chat-ask-actions { display:flex; gap:8px; }
+.chat-ask-actions .cc-tool { flex:1; }
+
+/* 鑱婂ぉ椤靛崰鍗滃崐妗嗭紙v3.5.53锛夛細妯″紡/寮犳暟鍒囨崲 + 鎶界墝缁撴灉锛屽鐢?.div-* 鍗＄墖鏍峰紡 */
+#chat-divine-body .div-modes-wrap,
+#chat-divine-body .div-counts-wrap {
+  display:flex; gap:8px; margin-bottom:10px;
+}
+#chat-divine-body .div-mode {
+  flex:1; padding:9px 0; border-radius:11px; text-align:center;
+  border:1px solid rgba(0,0,0,.12); background:rgba(255,255,255,.92);
+  color:#666; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
+  -webkit-tap-highlight-color:transparent;
+}
+#chat-divine-body .div-mode.sel { background:var(--ink); color:#fff; border-color:var(--ink); }
+/* v3.26.x：占卜对象选择（聊天页半框）——按钮换行自适应、跟随桌面 pill 样式，覆盖上面 flex:1 全宽 */
+#chat-divine-body .div-chat-targets { flex-wrap:wrap; }
+#chat-divine-body .div-chat-targets .div-mode { flex:0 0 auto; padding:8px 12px; border-radius:99px; }
+#chat-divine-body .div-draw {
+  width:100%; margin-top:4px;
+}
+#chat-divine-body .div-spread { display:flex; gap:10px; overflow-x:auto; padding:10px 0 4px; }
+#chat-divine-body .div-mini { flex:0 0 92px; display:flex; flex-direction:column; align-items:center; gap:5px; }
+#chat-divine-body .div-card-face {
+  width:100%; aspect-ratio:1; background:#eceff3; border:1px solid rgba(0,0,0,.05);
+  border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+}
+#chat-divine-body .div-card-ico svg { width:24px; height:24px; }
+#chat-divine-body .div-card-name { font-size:11px; font-weight:700; color:var(--ink); }
+#chat-divine-body .div-card-meaning { font-size:10px; color:var(--muted); line-height:1.5; text-align:center; }
+#chat-divine-body .div-mini-tag { font-size:9px; color:var(--muted); }
+#chat-divine-body .div-summary { text-align:center; font-size:12px; color:var(--ink); font-weight:600; margin-top:6px; }
+#chat-divine-body .div-result-empty { text-align:center; color:#c0c0c0; font-size:12px; padding:14px 0; }
+
+.chat-input-row {
+  display:flex; align-items:center; gap:8px;
+  border-radius:99px; padding:14px 12px 14px 16px; flex-shrink:0; margin-top:8px;
+  /* v3.5.89 缁熶竴妗岄潰鐧借壊绠€绾﹂鏍硷紙鍚?.glass锛夛細鐧藉簳 + 娣¤竟 + 杞婚槾褰?*/
+  background:rgba(255,255,255,.92);
+  border:1px solid rgba(0,0,0,.1);
+  box-shadow:0 2px 8px rgba(0,0,0,.04);
+  /* 渚涖€屽鏂规鍦ㄨ緭鍏ャ€嶆彁绀虹粷瀵瑰畾浣嶏紙鎮诞鍦ㄦ爮涓婃柟锛屼笉鍗犲竷灞€楂樺害锛?*/
+  position:relative;
+}
+.chat-input {
+  flex:1; min-width:0; border:none; outline:none; background:transparent;
+  font-size:15px; font-family:inherit; color:var(--ink);
+  /* v3.5.127锛歝ontenteditable div 鐗堣緭鍏ユ鈥斺€擟hrome 涓嶅 contenteditable
+     寮广€岃嚜鍔ㄥ～鍏呫€嶆潯锛坕nput 鏃犺濡備綍閮戒細琚瘑鍒垚琛ㄥ崟瀛楁锛夈€傝ˉ榻?div 鐗?     闇€瑕佺殑鎺掔増锛氳楂樺榻愩€侀暱鏂囨湰鎹㈣銆佽秴楂樻粴鍔ㄣ€?     v3.6.x锛氫笉鍐嶅姞 -webkit-user-modify:read-write-plaintext-only鈥斺€?     iOS Safari 瀵瑰畠鏀寔鏈?bug锛堥儴鍒嗙増鏈細闃绘 contenteditable 杈撳叆/閿洏锛夛紝
+     鍘绘帀鍚?contenteditable 鍦?iOS/瀹夊崜鍧囨甯歌緭鍏?*/
+  line-height:1.45; min-height:21px; max-height:96px; overflow-y:auto;
+  white-space:pre-wrap; word-break:break-word; caret-color:var(--ink);
+  scrollbar-width:none; -ms-overflow-style:none;
+}
+.chat-input::-webkit-scrollbar { display:none; }
+/* 绌哄唴瀹规椂鏄剧ず placeholder锛坈ontenteditable 鏃?placeholder 灞炴€э紝鐢?:empty 浼厓绱狅級 */
+.chat-input:empty::before {
+  content:attr(data-ph); color:#b5b5b5; pointer-events:none;
+}
+.chat-send {
+  outline:none; cursor:pointer; flex-shrink:0;
+  background:var(--send-bg, #111111); color:var(--send-ink, #ffffff); font-size:14px; font-weight:600;
+  padding:12px 24px; border-radius:99px; font-family:inherit;
+  /* 涓庡叾浠栬緭鍏ユ爮鍔熻兘鎸夐挳涓€鑷寸殑鐏拌壊鎻忚竟 */
+  border:1px solid rgba(0,0,0,.1);
+}
+
+/* 鍏ㄥ睆鑱婂ぉ锛氬ご閮?娑堟伅/杈撳叆鏍忓乏鍙?18px 瀵归綈锛岃儗鏅摵婊?*/
+#page-chat {
+  position:relative;
+  /* v3.5.125锛氳亰澶╅〉鏁翠綋姘镐笉婊氬姩鈥斺€斿彧鏈夋秷鎭尯锛?chat-body锛夊唴閮ㄦ粴鍔ㄣ€?     浠庣粨鏋勪笂娑堢伃銆岄〉闈㈡暣浣撹婊氬姩/鍥炲脊甯﹁蛋椤堕儴鏍忋€嶏細.page 閫氱敤鏍峰紡鏄?     overflow-y:auto锛堝唴瀹硅秴楂樻椂椤甸潰鍙粴锛岄《閮ㄨ仈绯讳汉鏍忎細琚帹鍑哄睆骞曪級锛?     杩欓噷瑕嗙洊涓?hidden鈥斺€旈《閮ㄦ爮涓庤緭鍏ユ爮鐗╃悊鍥哄畾锛屼换浣曟儏鍐碉紙娑堟伅瓒呴珮銆?     鍏ㄥ睆銆佽緭鍏ユ硶寮瑰嚭銆佹粴鍔ㄥ埌杈圭晫鍥炲脊锛夐兘涓嶄細鍐嶇Щ鍔?*/
+  overflow:hidden;
+  overscroll-behavior:none;
+}
+.page.full .chat-head {
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 18px 12px;
+  margin: 0;
+  background:rgba(255,255,255,.92); /* v3.5.89 缁熶竴妗岄潰鐧借壊绠€绾﹂鏍?*/
+  border-bottom:1px solid rgba(0,0,0,.1);
+  box-shadow:0 2px 8px rgba(0,0,0,.04);
+}
+.page.full .chat-body { padding: 14px 18px 28px; } /* v3.5.48 搴曢儴鐣欑櫧鍔犲ぇ锛氭渶鍚庝竴鏉℃秷鎭笉璐磋緭鍏ユ爮 */
+.page.full .chat-input-row { margin: 8px 18px 16px; }
+
+/* 杈撳叆鏍忓浘鏍囨寜閽紙鏇村鍔熻兘 / 琛ㄦ儏鍖咃級 */
+.ch-input-btn {
+  width:38px; height:38px; border-radius:50%; cursor:pointer; flex-shrink:0;
+  background:rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.1);
+  color:#555; box-shadow:0 1px 4px rgba(0,0,0,.04);
+  display:flex; align-items:center; justify-content:center;
+  -webkit-tap-highlight-color:transparent;
+}
+.ch-input-btn:active { background:rgba(0,0,0,.08); }
+.ch-input-btn svg { width:20px; height:20px; }
+
+/* 鎷嶄竴鎷?/ 鎹㈠ご鍍忥細灞呬腑鐏板瓧灏忓崱鐗囷紙鍙€夐檮甯︿竴寮犲ご鍍忓浘锛?*/
+.msg-poke {
+  align-self:center; text-align:center;
+  font-size:12px; color:var(--msg-time-ink, #8a8a8a);
+  padding:6px 16px; max-width:80%;
+  background:rgba(0,0,0,.03);
+  border:1px solid rgba(0,0,0,.045);
+  border-radius:16px;
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+}
+.msg-poke-img {
+  width:42px; height:42px; border-radius:50%; object-fit:cover;
+  border:1px solid rgba(0,0,0,.1);
+  box-shadow:0 1px 4px rgba(0,0,0,.1);
+}
+/* v3.10.x锛氫俊浠堕€氱煡锛堝啓淇?鍥炰俊/鏉ヤ俊/鍥炰俊鍒拌揪锛夊彲鐐瑰嚮鐩磋揪淇＄鈥斺€?   鍔犱笅鍒掕櫄绾挎彁绀哄彲鐐癸紝鎸変笅鍙嶉鍙樻繁 */
+.msg-poke.mail-notice { cursor:pointer; }
+.msg-poke.mail-notice > span:first-child { text-decoration:underline dashed rgba(0,0,0,.25); text-underline-offset:3px; }
+.msg-poke.mail-notice:active { background:rgba(0,0,0,.08); }
+
+/* 鏇村鍔熻兘闈㈡澘锛堟偓娴湪杈撳叆鏍忎笂鏂癸級
+   v3.5.110锛歜ottom 鍔?safe-area锛屽叏闈㈠睆鍏ㄥ睆妯″紡涓嬩笌杈撳叆鏍忓悓姝ヤ笂绉伙紝涓嶉敊浣?   v3.10.x锛歠ixed 鈫?absolute鈥斺€斿畨鍗?resizes-visual 涓嬮敭鐩樺彧缂?visualViewport锛?   fixed 闈㈡澘閿氬畾鍏ㄩ珮 layout viewport 涓嶅姩锛沘bsolute 閿氬畾 .phone/#page-chat锛?   閿洏寮瑰嚭鏃跺鍣ㄨ syncAndroidKb 鏀剁缉銆侀潰鏉胯窡鐫€鍋滈潬杈撳叆鏍忎笂鏂癸紙鍚﹀垯鎵撳紑鍗?   鑷姩鑱氱劍鐨勫崐妗嗕細鏁翠綋鎺夊埌鍗囪捣鍚庣殑杈撳叆鏍忎笅鏂?閿洏鍚庨潰锛夈€傛墜鏈虹 .phone
+   婊″睆鏃朵袱鑰呭嚑浣曠瓑浠凤紱妗岄潰瀹藉睆鏈氨鐢辨枃鏈?@media 鏀?absolute锛屾澶勭粺涓€銆?*/
+.more-panel {
+  position:absolute; left:18px; right:18px; bottom:calc(96px + var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px))); z-index:60;
+  background:rgba(255,255,255,.97);
+  border:1px solid rgba(0,0,0,.1);
+  border-radius:20px; box-shadow:0 12px 32px rgba(0,0,0,.1);
+  padding:16px;
+}
+.more-panel[hidden] { display:none; }
+/* 鏇村鍔熻兘闈㈡澘锛氶《閮ㄥ垎绫诲垏鎹紙v3.15.x锛氬姛鑳藉澶氬悗鐢变袱椤电鏀逛负鍒嗙被 chips
+   甯哥敤/浜掑姩/灏忔父鎴?宸ュ叿/TA鐨勬彁闂紱绐勫睆鏀句笉涓嬫椂妯悜婊氬姩锛?*/
+.more-tabs { display:flex; gap:6px; margin-bottom:14px; overflow-x:auto; scrollbar-width:none; }
+.more-tabs::-webkit-scrollbar { display:none; }
+.more-tab {
+  flex:0 0 auto; padding:7px 13px; font-size:12px; font-weight:700;
+  border:1px solid rgba(0,0,0,.1); border-radius:99px;
+  background:rgba(255,255,255,.92); color:#666; cursor:pointer;
+  font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.more-tab.sel { background:#111; color:#fff; border-color:#111; }
+/* v3.26.x：flex-wrap 会随屏宽自动换行导致不同手机每行 3~4 个不一；改 4 列 grid 固定每行 4 个 */
+.more-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; justify-items:center; }
+.more-grid[hidden] { display:none; }
+/* .more-item 鑷甫 display:flex锛岄渶鏄惧紡鍏滃簳 hidden 灞炴€э紙鍒嗙被杩囨护闈犲畠闅愯棌锛?*/
+.more-item[hidden] { display:none; }
+.more-item {
+  width:100%; max-width:64px; display:flex; flex-direction:column; align-items:center; gap:7px;
+  background:transparent; border:none; cursor:pointer; font-family:inherit;
+  color:var(--ink); -webkit-tap-highlight-color:transparent;
+}
+.more-item .mi-ico {
+  width:50px; height:50px; border-radius:16px;
+  background:rgba(255,255,255,.97);
+  border:1px solid rgba(0,0,0,.1);
+  box-shadow:0 2px 8px rgba(0,0,0,.06);
+  display:flex; align-items:center; justify-content:center;
+  transition:transform .15s ease, box-shadow .15s ease;
+}
+.more-item .mi-ico svg { width:23px; height:23px; color:#444; }
+.more-item:active .mi-ico {
+  transform:translateY(1px) scale(.97);
+  box-shadow:0 1px 3px rgba(0,0,0,.06);
+}
+.more-item svg { width:22px; height:22px; }
+.more-item span { font-size:11px; }
+
+/* 閫氳瘽鍗婃锛堝鐢?.poke-card 瀹瑰櫒锛夛細鐘舵€佽 + 鎷ㄦ墦/鎸傛柇澶ф寜閽?*/
+#chat-call-panel .poke-card-scroll { min-height:0; max-height:none; }
+.call-panel-status {
+  text-align:center; font-size:13px; font-weight:600; color:var(--ink);
+  padding:10px 0 12px;
+}
+.call-panel-dial,
+.call-panel-hang {
+  width:100%; display:flex; align-items:center; justify-content:center; gap:8px;
+  padding:14px; margin-bottom:10px; border:none; border-radius:16px;
+  font-size:15px; font-weight:700; cursor:pointer; font-family:inherit;
+}
+.call-panel-dial { background:var(--ink); color:#fff; }
+.call-panel-hang { background:#e5484d; color:#fff; }
+.call-panel-dial:active, .call-panel-hang:active { opacity:.85; }
+.call-panel-dial svg, .call-panel-hang svg { width:18px; height:18px; flex-shrink:0; }
+
+/* v3.12.x锛氶€氳瘽鍗婃銆岃仈绯讳汉澶村儚 / 閫氳瘽鑳屾櫙鍥剧墖銆嶇紪杈戣锛堟洿澶氬姛鑳解啋閫氳瘽 鐩存帴淇敼锛?*/
+.call-panel-row {
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:12px 14px; margin-bottom:8px;
+  background:rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.1); border-radius:14px;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+}
+.call-panel-row:active { opacity:.75; }
+.call-panel-row .cpr-txt { font-size:13px; font-weight:600; color:var(--ink); }
+.call-panel-row .cpr-val { font-size:12px; color:var(--muted); }
+.call-panel-row-danger .cpr-txt { color:#e5484d; }
+
+/* 鐚滄嫵鍗婃锛堝鐢?.poke-card 瀹瑰櫒锛夛細鎴樼哗 + 鎻愮ず + 涓変釜鍑烘嫵鎸夐挳 */
+#chat-rps-panel { height:auto; max-height:56%; }
+#chat-rps-panel .poke-card-scroll { min-height:0; max-height:none; }
+.rps-score {
+  text-align:center; font-size:13px; font-weight:700; color:var(--ink);
+  padding:6px 0 10px; letter-spacing:.5px;
+}
+.rps-hint {
+  text-align:center; font-size:12px; color:var(--muted);
+  padding:0 0 14px;
+}
+.rps-choices {
+  display:flex; gap:12px; justify-content:center; padding:4px 0 6px;
+}
+.rps-choice {
+  flex:1; max-width:120px; display:flex; flex-direction:column; align-items:center; gap:8px;
+  padding:16px 8px; border:1px solid rgba(0,0,0,.1); border-radius:16px;
+  background:rgba(255,255,255,.92); color:var(--ink); cursor:pointer; font-family:inherit;
+  -webkit-tap-highlight-color:transparent; transition:transform .15s ease, box-shadow .15s ease;
+  box-shadow:0 2px 8px rgba(0,0,0,.05);
+}
+.rps-choice:active { transform:translateY(1px) scale(.97); box-shadow:0 1px 3px rgba(0,0,0,.05); }
+.rps-c-ico {
+  width:46px; height:46px; border-radius:14px;
+  background:rgba(0,0,0,.04); display:flex; align-items:center; justify-content:center;
+}
+.rps-c-ico svg { width:26px; height:26px; color:#444; }
+.rps-choice span:last-child { font-size:13px; font-weight:600; }
+
+/* 鐚滄嫵缁撴灉娑堟伅锛氬眳涓櫧搴曠伆杈瑰崱鐗囷紝鍙屾柟鎵嬪娍瀵规瘮 + 缁撴灉鏂囧瓧锛岀畝绾︽棤褰╄壊 */
+.msg-rps { align-self:center; width:100%; display:flex; justify-content:center; padding:4px 0; animation:rpsFadeIn .35s ease both; }
+@keyframes rpsFadeIn { from { opacity:0; transform:translateY(8px) scale(.96); } to { opacity:1; transform:none; } }
+.msg-rps-card {
+  max-width:82%; min-width:240px; text-align:center;
+  background:rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.1);
+  border-radius:16px; padding:12px 16px;
+  box-shadow:0 2px 8px rgba(0,0,0,.05);
+}
+.msg-rps-hands {
+  display:flex; align-items:center; justify-content:center; gap:14px;
+  padding:2px 0 10px;
+}
+.msg-rps-hand {
+  display:flex; flex-direction:column; align-items:center; gap:6px; min-width:72px;
+}
+.msg-rps-ico {
+  width:44px; height:44px; border-radius:50%;
+  background:rgba(0,0,0,.04); display:flex; align-items:center; justify-content:center;
+}
+.msg-rps-ico svg { width:24px; height:24px; color:#555; }
+.msg-rps-name { font-size:11px; color:var(--muted); }
+.msg-rps-vs { font-size:12px; font-weight:700; color:#999; letter-spacing:1px; }
+.msg-rps-result { font-size:13px; font-weight:700; color:var(--ink); padding-top:4px; border-top:1px dashed rgba(0,0,0,.1); }
+
+/* 鎷嶄竴鎷嶆诞灞傚崱鐗囷紙搴曢儴鍗婃锛岄湶鍑洪《閮ㄨ亰澶╂秷鎭紝鏂逛究杈圭湅杈圭帺锛?   搴曢儴 96px锛氭偓鍋滃湪杈撳叆鏍忎笂鏂癸紝涓嶅帇浣?涓嶈鐩栬緭鍏ユ爮锛堣緭鍏ユ爮椤堕儴绾?82px锛?   v3.5.110锛歜ottom 鍔?safe-area锛屽叏闈㈠睆鍏ㄥ睆妯″紡涓嬩笌杈撳叆鏍忓悓姝ヤ笂绉伙紝涓嶉敊浣?   v3.10.x锛歠ixed 鈫?absolute鈥斺€旈敭鐩樺脊鍑烘椂闅忔敹缂╁悗鐨?.phone/#page-chat 鍋滈潬锛?   涓嶅啀閿氬畾鍏ㄩ珮 layout viewport 鎺夊埌杈撳叆鏍忎笅鏂癸紙璇﹁ .more-panel 澶勬敞閲婏級 */
+.poke-card {
+  position:absolute; top:auto; bottom:calc(96px + var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px))); left:18px; right:18px;
+  height:auto; max-height:48%;
+  display:flex; flex-direction:column;
+  background:rgba(255,255,255,.97);
+  border:1px solid rgba(0,0,0,.1);
+  border-top-left-radius:22px; border-top-right-radius:22px;
+  border-bottom-left-radius:14px; border-bottom-right-radius:14px;
+  box-shadow:0 12px 32px rgba(0,0,0,.14);
+  z-index:70; padding:14px 16px 14px;
+}
+.poke-card[hidden] { display:none; }
+/* v3.25.x：横屏/矮视口（小米15 Pro 横屏全屏等，CSS 高约 384px）下 48% 放不下
+   我的拍一拍 tab 的固定行（tabs+分组栏+输入 footer），内容溢出面板底边=UI 错乱 */
+@media (max-height:560px) {
+  .poke-card { max-height:76%; }
+}
+.poke-card-head {
+  display:flex; align-items:center; justify-content:space-between;
+  flex-wrap:wrap; row-gap:6px; /* #306：控件过多时整组换到第二行（放得下时形态不变），防止把标题挤成一字一行竖排 */
+  font-size:15px; font-weight:700; margin-bottom:10px;
+}
+.poke-card-head > span { white-space:nowrap; } /* #306：标题不许被压缩换行（竖排字的根因） */
+.poke-card-head-actions {
+  display:flex; align-items:center; gap:8px; margin-left:auto;
+}
+.poke-card-head-actions .chat-search-new { padding:5px 12px; }
+.poke-card-close {
+  width:28px; height:28px; border-radius:50%; border:none; cursor:pointer;
+  background:rgba(0,0,0,.06); color:#666; font-size:14px;
+  display:flex; align-items:center; justify-content:center;
+}
+.poke-card-scroll { flex:1; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none; min-height:60px; max-height:40vh; padding:2px; }
+.poke-card-scroll::-webkit-scrollbar { display:none; }
+/* 鏌ュ矖鍗婃锛氬唴瀹瑰皯锛岀缉灏忛珮搴︼紙鍙绾充笁琛屾棩甯?+ 鏇存柊鏃堕棿锛?*/
+#ck-panel { height:auto; max-height:56%; }
+#ck-panel .poke-card-scroll { min-height:0; max-height:none; }
+/* 甯垜鍐冲畾鍗婃锛氬唴瀹瑰锛岃皟澶ч珮搴︼紙鏈緭鍏ユ椂琛ㄥ崟涔熷畬鏁存樉绀猴紝涓嶇敤婊戝姩锛?*/
+#chat-decision-panel { height:auto; max-height:68%; }
+#chat-decision-panel .poke-card-scroll { min-height:0; max-height:none; }
+/* 甯垜鍐冲畾銆岃嚜瀹氫箟閫夐」銆嶏細閫夐」杈撳叆妗嗗湪瀹夊崜琚浆鎴?contenteditable .ce-box锛?   榛樿浼氶殢琛屾暟鏃犱笂闄愬楂橈紝鎶婁笅鏂规帶浠堕《鍑哄睆骞曚笖鏁存鏃犳硶涓婂垝銆?   璁鹃珮搴︿笂闄?+ 妗嗗唴婊氬姩锛岃閫夐」澶氱殑鍦烘櫙涔熻兘姝ｅ父婊氬姩鏌ョ湅銆?*/
+/* FIX 2026-09-11：输入法（键盘）弹出期选项框聚焦、手指在其上起滑时，contain 会连
+   「框内无内容可滚」的滚动链也一并拦断 → 外层 .poke-card-scroll 整卡无法上滑（两处
+   决定面板同款反馈）。改 auto：框内溢出仍先在框内滚，到边界/无溢出时放行给面板 */
+#chat-decision-body .dec-inp-wrap .ce-box[data-for="dec-opts"] { max-height:176px; overflow-y:auto; overscroll-behavior:auto; }
+/* 多人决定「自定义选项」同款：安卓被转成 contenteditable ce-box 后，gd-opts 原漏了
+   高度上限，选项输入框随内容无限增高，把下方控件顶出屏幕且整列无法上划（同 dec-opts
+   修法）——补上 高度上限 + 框内滚动 */
+#chat-gdecision-body .dec-inp-wrap .ce-box[data-for="gd-opts"] { max-height:176px; overflow-y:auto; overscroll-behavior:auto; }
+.poke-big {
+  flex-shrink:0; display:flex; align-items:center; justify-content:center; gap:6px;
+  margin-top:12px; padding:12px; border:none; border-radius:14px;
+  background:var(--ink); color:#fff; font-size:14px; font-weight:700;
+  cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.poke-big:active { opacity:.85; }
+.poke-big svg { width:18px; height:18px; }
+/* 鎷嶄竴鎷嶅崱鐗囷細椤堕儴鍒嗙粍鍒囨崲鏍忥紙chips 澶嶇敤 .emoji-g-chip 鏍峰紡锛?*/
+.poke-groups {
+  display:flex; gap:6px; overflow-x:auto; padding:0 2px 10px;
+  flex-shrink:0; scrollbar-width:none; -ms-overflow-style:none;
+}
+.poke-groups::-webkit-scrollbar { display:none; }
+.poke-groups .emoji-g-chip {
+  padding:9px 14px; font-size:13px; font-weight:700; border-radius:11px;
+}
+/* v3.25.x：分组栏尾部「＋ 分组」chip（新建分组入口，仅我的拍一拍显示） */
+.poke-g-add {
+  border:1px dashed rgba(0,0,0,.3); background:rgba(255,255,255,.92); color:#888;
+}
+/* 鎷嶄竴鎷嶅崱鐗囷細鑷畾涔夋枃瀛楄緭鍏ヨ锛堝鐢ㄨ亰澶╂悳绱㈣緭鍏ヨ椋庢牸锛?*/
+/* v3.25.x 重设计：输入行=面板 footer，位于列表之后（面板最底部）——键盘弹起面板收缩时
+   它是最后一行、离键盘最近不会被盖住。旧版在分组栏与列表之间，键盘弹起时被固定行挤出
+   面板底边，输入框被顶到输入栏/键盘后面，浏览器为露焦点平移视口=整页飞（用户报障）
+   v3.26.x（2026-09-15）重设计——旧版输入框/存入/戳TA 三个控件全是 99px 全圆胶囊
+   且不等高（输入框≈40px、按钮≈36px，flex 居中后上下错位）；而面板内 tab/分组 chip
+   是 11px 圆角矩形、字卡 16px，全圆胶囊混在方圆语言里显得「又方又圆」很突兀
+   （用户反馈）。新版三控件统一 11px 圆角 + 40px 等高，归入面板控件层（tab/chip）
+   的圆角矩形语言；appearance:none 关闭 iOS/安卓 UA 对 input 的默认样式（内阴影/
+   自带圆角），避免与自绘样式叠加出「半方半圆」。安卓转 .ce-box 后 line-height:20px
+   胜过 .ce-box 的 1.5（chat-main.css 后加载），一行文字仍垂直居中 */
+.poke-input-row {
+  display:flex; gap:8px; align-items:stretch; padding:10px 2px 0; margin-top:2px;
+  border-top:1px solid rgba(0,0,0,.08); flex-shrink:0;
+}
+.poke-input {
+  flex:1; min-width:0; height:40px; border:1px solid transparent; border-radius:11px;
+  padding:9px 14px; font-size:14px; line-height:20px; font-family:inherit; outline:none;
+  background:#f4f4f5; -webkit-appearance:none; appearance:none; box-shadow:none;
+}
+.poke-input:focus { border-color:var(--ink); background:#fff; }
+/* 存入：把输入的文字保存到当前选中的分组（描边次级按钮，与发送区分） */
+.poke-input-save {
+  flex-shrink:0; height:40px; border:1px solid rgba(0,0,0,.18); border-radius:11px;
+  padding:0 15px; background:#fff; color:var(--ink); font-size:13px; font-weight:700;
+  cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.poke-input-save:active { background:rgba(0,0,0,.06); }
+.poke-input-go {
+  flex-shrink:0; height:40px; border:none; border-radius:11px;
+  padding:0 17px; background:var(--ink); color:#fff; font-size:13px; font-weight:700;
+  cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.poke-input-go:active { opacity:.85; }
+/* 鎷嶄竴鎷嶅崱鐗囷細鑱旂郴浜?鎴戞柟 鍙?tab 琛岋紙鐙珛 .poke-tab鈥斺€旀牱寮忓悓 .emoji-tab 浣嗙被鍚嶇嫭绔嬶紝
+   閬垮厤琛ㄦ儏鍖呴潰鏉垮叏灞€ .emoji-tab 鐩戝惉鍔寔鎷嶄竴鎷?tab 鐐瑰嚮锛夛紙v3.7.x锛?*/
+.poke-tabs-row {
+  display:flex; gap:6px; margin-bottom:10px; flex-shrink:0;
+}
+.poke-tabs-row .poke-tab {
+  flex:1; min-width:0; padding:9px 6px; font-size:12px; white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis;
+  border-radius:11px; border:1px solid rgba(0,0,0,.1);
+  background:rgba(255,255,255,.92); color:#666; font-weight:700;
+  cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.poke-tabs-row .poke-tab.sel {
+  background:var(--ink); color:var(--card-bg, #fff); border-color:var(--ink); font-weight:800;
+}
+/* 鎷嶄竴鎷嶅弻 tab 棰滆壊鍖哄垎锛坴3.7.x锛夛細鑱旂郴浜虹殑=娴呰壊鎻忚竟锛堝鏂规皵娉￠锛夛紝鎴戠殑=娣辫壊濉厖锛堟垜鏂规皵娉￠锛?*/
+.poke-tabs-row .poke-tab.poke-tab-ta.sel {
+  background:transparent; color:var(--ink); border-color:var(--ink);
+  border-width:1.5px; font-weight:800;
+}
+.poke-tabs-row .poke-tab.poke-tab-mine.sel {
+  background:var(--ink); color:var(--card-bg, #fff); border-color:var(--ink); font-weight:800;
+}
+/* v3.26.x: public poke tab selected - solid fill, unified with mine tab */
+.poke-tabs-row .poke-tab.poke-tab-pub.sel {
+  background:var(--ink); color:var(--card-bg, #fff); border-color:var(--ink); font-weight:800;
+}
+.poke-add-btn {
+  flex:0 0 auto; padding:9px 12px; border-radius:11px;
+  border:1px dashed rgba(0,0,0,.25); background:rgba(255,255,255,.92);
+  color:#666; font-size:13px; font-weight:700; cursor:pointer;
+  font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.poke-add-btn:active { opacity:.85; }
+/* display:flex 浼氳鐩?hidden 灞炴€э紝蹇呴』鏄惧紡琛?[hidden] 鎵嶇湡姝ｉ殣钘忥紙v3.7.x锛氳仈绯讳汉鐨勬媿涓€鎷嶉殣钘忓伐鍏疯/杈撳叆琛岋級 */
+.poke-input-row[hidden] { display:none; }
+/* v3.26.x: my invite cards in chat ask panel (mirrors poke mine tab) */
+.invite-list { display:flex; flex-direction:column; gap:0; }
+.invite-list .cc-item { background:rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.1); }
+.invite-list .cc-item:active { background:rgba(0,0,0,.04); }
+.invite-list .cc-empty { padding:18px 0; }
+/* display:flex 会压过 UA 的 [hidden]{display:none}，必须显式补回（问问TA 模式下隐藏邀请字卡区与存入按钮） */
+.invite-list[hidden] { display:none; }
+#invite-groups[hidden] { display:none; }
+#chat-ask-save[hidden] { display:none; }
+/* v3.x：邀请TA ——顶部分组栏批量管理 chip 选中态 */
+.inv-g-batch { border-style:dashed; }
+.inv-g-batch.on { background:#111; color:#fff; border-color:#111; }
+/* v3.x：邀请TA ——批量模式下自建分组 chip 上的 ✎/✕ 迷你操作符（预设分组不显示） */
+.inv-g-op {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:17px; height:17px; margin-left:3px; border-radius:50%;
+  background:rgba(0,0,0,.06); color:#888; font-size:11px; line-height:1;
+  vertical-align:-1px; font-style:normal; cursor:pointer;
+}
+.inv-g-op:active { background:rgba(0,0,0,.15); color:#111; }
+.inv-g-op[data-op="rm"]:active { background:rgba(224,85,85,.15); color:#e05555; }
+/* v3.x：邀请TA ——批量态字卡行（左侧勾选框 + top 对齐，仿 .ti-batch-row） */
+.invite-batch-item { display:flex; align-items:flex-start; }
+.inv-batch-cb {
+  flex:0 0 auto; width:30px; height:26px; margin-right:6px;
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+  -webkit-tap-highlight-color:transparent; margin-top:4px;
+}
+.inv-batch-cb input[type="checkbox"] { width:18px; height:18px; cursor:pointer; accent-color:var(--ink); }
+/* 鎷嶄竴鎷嶅垪琛細棰勮/鑷畾涔?灏忚妭鏍囬 */
+.poke-sec-label {
+  font-size:11px; color:var(--muted); padding:8px 2px 4px; flex-shrink:0;
+}
+/* 鎷嶄竴鎷嶅崱鐗囷細鎴戠殑鎷嶄竴鎷嵚风敤鎴峰垎缁勫瓧鍗＄殑淇敼/鍒犻櫎鎸夐挳锛堥璁?鑱旂郴浜虹殑鍙锛屼笉鏄剧ず锛?*/
+.poke-card-ops {
+  display:flex; gap:6px; flex-shrink:0; align-items:center; margin-left:auto;
+}
+.poke-card-op {
+  width:26px; height:26px; border-radius:50%; border:none; cursor:pointer;
+  background:rgba(0,0,0,.06); color:#999; font-size:12px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  -webkit-tap-highlight-color:transparent; font-family:inherit; padding:0;
+}
+.poke-card-op svg { width:13px; height:13px; }
+.poke-card-op:active { background:rgba(0,0,0,.12); }
+.poke-op-edit:active { color:var(--ink); }
+.poke-op-del:active { background:rgba(224,85,85,.15); color:#e05555; }
+/* 琛ㄦ儏鍖呴潰鏉匡細搴曢儴鍗婃锛岄湶鍑洪《閮ㄨ亰澶╂秷鎭紝楂樺害闅忓唴瀹硅嚜閫傚簲锛堟渶澶氬崐灞忥紝绌烘€佺揣鍑戯級
+   v3.5.110锛歜ottom 鍔?safe-area锛屽叏闈㈠睆鍏ㄥ睆妯″紡涓嬩笌杈撳叆鏍忓悓姝ヤ笂绉伙紝涓嶉敊浣?   v3.10.x锛歠ixed 鈫?absolute锛堝悓 .poke-card鈥斺€旈敭鐩樺脊鍑烘椂闅忓鍣ㄥ仠闈犺緭鍏ユ爮涓婃柟锛?*/
+.emoji-card {
+  position:absolute; top:auto; bottom:calc(96px + var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px))); left:18px; right:18px;
+  height:auto; max-height:55%;
+  display:flex; flex-direction:column;
+  background:rgba(255,255,255,.97);
+  border:1px solid rgba(0,0,0,.1);
+  border-top-left-radius:22px; border-top-right-radius:22px;
+  border-bottom-left-radius:14px; border-bottom-right-radius:14px;
+  box-shadow:0 12px 32px rgba(0,0,0,.14);
+  z-index:70; padding:14px 16px 14px;
+}
+/* 琛ㄦ儏鍖呴潰鏉匡細椤堕儴鍒嗙粍鍒囨崲鏍忥紙妯悜婊氬姩 chips锛?*/
+.emoji-groups {
+  display:flex; gap:6px; overflow-x:auto; padding:0 2px 8px;
+  flex-shrink:0; scrollbar-width:none; -ms-overflow-style:none;
+}
+.emoji-groups::-webkit-scrollbar { display:none; }
+.emoji-g-chip {
+  flex:0 0 auto; padding:7px 14px; font-size:12px; border-radius:99px;
+  border:1px solid rgba(0,0,0,.1); background:rgba(255,255,255,.92);
+  color:#666; cursor:pointer; font-family:inherit; font-weight:600;
+  -webkit-tap-highlight-color:transparent;
+}
+.emoji-g-chip.sel { background:#111; color:#fff; border-color:#111; }
+/* 琛ㄦ儏鍖呴潰鏉匡細TA / 鎴戠殑 鍙?tab锛坴3.5.31锛?*/
+.emoji-head {
+  display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;
+}
+.emoji-tabs {
+  display:flex; gap:6px; flex:1; min-width:0;
+}
+.emoji-tab {
+  flex:1; padding:9px 6px; border-radius:11px; border:1px solid rgba(0,0,0,.1);
+  background:rgba(255,255,255,.92); color:#666; font-size:13px; font-weight:700;
+  cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+  white-space:nowrap;
+}
+.emoji-tab.sel { background:var(--ink); color:#fff; border-color:var(--ink); }
+/* v3.12.x锛氶儴鍒嗗畨鍗撴祻瑙堝櫒锛坴ivo/OPPO 绛夛級浼氱粰鐐规寜杩囩殑鎸夐挳鐢昏櫄绾胯仛鐒︽鈥斺€旂偣
+   銆屽叕鐢ㄨ〃鎯呭寘銆嶅悗璇?tab 鍛ㄥ洿鍑虹幇铏氱嚎妗嗭紝鐪嬭捣鏉ヤ笌鍏朵粬涓や釜 tab 涓嶇粺涓€銆傜粺涓€鍏虫帀
+   鑱氱劍澶栨锛堥€変腑鎬佷粛鐢?.sel 娣辫壊濉厖琛ㄨ揪锛涜亰澶?鏈嬪弸鍦堣瘎璁洪潰鏉垮叡鐢ㄦ湰绫讳竴骞剁敓鏁堬級 */
+.emoji-tab:focus, .emoji-tab:focus-visible { outline:none; }
+/* v3.11.x锛氳〃鎯呭寘闈㈡澘涓夊垎鍖猴紙鍏敤/鑱旂郴浜?鎴戠殑锛夆€斺€斿瓧鍙风暐鏀?+ 闀挎樀绉扮渷鐣ュ彿闃叉孩鍑?   锛堥€夋嫨鍣ㄩ檺瀹?#emoji-panel锛氭湅鍙嬪湀璇勮闈㈡澘澶嶇敤 .emoji-tab 涓嶅彈褰卞搷锛?*/
+#emoji-panel .emoji-tab {
+  padding:9px 4px; font-size:12px; min-width:0;
+  overflow:hidden; text-overflow:ellipsis;
+}
+/* v3.12.x锛氥€岄殣钘忚仈绯讳汉鐨勮〃鎯呭寘銆嶅紑鍏虫敹璧峰叕鐢?TA 鐨?tab鈥斺€旀寜 .emoji-tools[hidden]
+   鍏堜緥鏄惧紡鍏滃簳锛岄槻鍚庣画缁?.emoji-tab 鍔?display 鍚?hidden 灞炴€уけ鏁堬紙鑱婂ぉ涓?   鏈嬪弸鍦堣瘎璁洪潰鏉垮鐢ㄥ悓涓€绫诲悕锛屼竴鏉¤鍒欏弻瑕嗙洊锛?*/
+.emoji-tab[hidden] { display:none !important; }
+.emoji-head .poke-card-close { margin-left:10px; }
+/* 鎴戠殑琛ㄦ儏鍖呭伐鍏疯 */
+.emoji-tools {
+  display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; flex-shrink:0;
+}
+.emoji-tools[hidden] { display:none; }
+.emoji-tool {
+  flex:1; min-width:64px; padding:8px 6px; border-radius:10px;
+  border:1px solid rgba(0,0,0,.12); background:rgba(255,255,255,.92);
+  color:var(--ink); font-size:12px; font-weight:600; cursor:pointer; font-family:inherit;
+  -webkit-tap-highlight-color:transparent;
+}
+.emoji-tool:active { background:rgba(0,0,0,.05); }
+/* 鎵归噺绠＄悊宸ュ叿鏉?*/
+.emoji-batch {
+  display:flex; align-items:center; gap:8px; flex-shrink:0;
+  background:#fff; border:1px solid rgba(0,0,0,.12);
+  border-radius:14px; padding:9px 12px; margin-top:10px;
+  box-shadow:0 6px 18px rgba(0,0,0,.08);
+}
+.emoji-batch[hidden] { display:none; }
+.emoji-batch-count { flex:1; font-size:12px; color:var(--muted); font-weight:600; }
+.emoji-batch-btn {
+  border:1px solid rgba(0,0,0,.2); background:#fff; color:var(--ink);
+  font-size:12px; font-weight:600; padding:7px 12px; border-radius:10px;
+  cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.emoji-batch-btn.del { border-color:#e05555; color:#e05555; }
+.emoji-batch-btn:active { background:rgba(0,0,0,.05); }
+/* 鎵归噺妯″紡鍕鹃€夎鏍?*/
+.emoji-item.sel { position:relative; background:rgba(0,0,0,.05); }
+.emoji-item.sel::after {
+  content:''; position:absolute; inset:0; border:2px solid var(--ink); border-radius:0;
+  pointer-events:none;
+}
+.emoji-check {
+  position:absolute; top:3px; right:3px; width:16px; height:16px; border-radius:50%;
+  background:var(--ink); color:#fff; font-size:10px; font-weight:700;
+  display:flex; align-items:center; justify-content:center; pointer-events:none;
+}
+/* 绠＄悊鍒嗙粍寮瑰眰锛氭敼鍚嶆寜閽?*/
+.my-mg-panel .mg-row .mg-rn {
+  border:1px solid rgba(0,0,0,.15); background:#fff; color:#555;
+  font-size:11px; padding:4px 10px; border-radius:8px; cursor:pointer;
+  font-family:inherit;
+}
+/* v3.5.76 鍩虹 .emoji-grid锛氭湅鍙嬪湀璇勮闈㈡澘绛夊姩鎬佺綉鏍间篃鎸?4 鍒楁覆鏌?   锛堟鍓嶅彧鏈?#emoji-list 浣滅敤鍩熺増鏈?4 鍒楋紝鍔ㄦ€侀潰鏉挎棤鐖剁骇 id 鈫?姣忚鍙湁 1 涓〃鎯咃級 */
+.emoji-grid {
+  display:grid; grid-template-columns:repeat(4, 1fr); gap:0;
+  background:rgba(255,255,255,.92); border-radius:12px;
+  border:1px solid rgba(0,0,0,.08);
+  overflow:hidden;
+}
+#emoji-list .emoji-grid {
+  display:grid; grid-template-columns:repeat(4, 1fr); gap:0;
+  background:rgba(255,255,255,.92); border-radius:12px;
+  border:1px solid rgba(0,0,0,.08);
+  overflow:hidden;
+}
+#emoji-list .cc-group-header {
+  display:inline-flex;           /* 瀹藉害鎸夊唴瀹癸紝涓嶅崰婊℃暣琛?*/
+  width:fit-content;
+  background:rgba(0,0,0,.05);
+  border-radius:8px;
+  padding:5px 12px; margin:10px 0 6px;
+}
+#emoji-list .cc-group-header:first-child { margin-top:2px; }
+.emoji-item {
+  aspect-ratio:1; overflow:hidden; cursor:pointer;
+  background:transparent;
+  border-right:1px solid rgba(0,0,0,.06);
+  border-bottom:1px solid rgba(0,0,0,.06);
+  display:flex; align-items:center; justify-content:center;
+  padding:0; -webkit-tap-highlight-color:transparent;
+}
+/* 姣忚鏈€鍚庝竴涓幓鎺夊彸杈圭嚎锛屾渶鍚庝竴鍒楀簳閮ㄥ幓鎺変笅杈圭嚎 */
+.emoji-item:nth-child(4n) { border-right:none; }
+.emoji-item:last-child { border-bottom:none; }
+.emoji-item:active { background:rgba(0,0,0,.05); }
+.emoji-item img { width:82%; height:82%; object-fit:contain; border-radius:0; display:block; }
+.emoji-empty { text-align:center; color:#c0c0c0; font-size:12px; padding:30px 0; }
+
+/* v3.11.x锛氭壒閲忓彂閫侀潰鏉库€斺€斿鐢?.poke-card 搴曢儴鍗婃甯冨眬 */
+.batch-card { max-height:62%; }
+.batch-card .batch-count { font-size:12px; font-weight:600; color:var(--muted); margin-left:6px; }
+/* 宸ュ叿鍖猴細鏂囧瓧杈撳叆琛?+ 琛ㄦ儏鍖?鍥剧墖 鎸夐挳琛?*/
+.batch-tools { flex-shrink:0; }
+.batch-btns { display:flex; gap:6px; padding:0 2px 10px; }
+.batch-tool {
+  flex:1; min-width:0; display:flex; align-items:center; justify-content:center; gap:6px;
+  padding:10px 6px; border-radius:11px;
+  border:1px solid rgba(0,0,0,.12); background:rgba(255,255,255,.92);
+  color:var(--ink); font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;
+  -webkit-tap-highlight-color:transparent;
+}
+.batch-tool:active { background:rgba(0,0,0,.05); }
+.batch-tool svg { width:18px; height:18px; flex-shrink:0; }
+/* 寰呭彂閫侀槦鍒楀垪琛?*/
+.batch-list { max-height:32vh; }
+.batch-empty { text-align:center; color:#c0c0c0; font-size:12px; padding:24px 0; }
+.batch-item {
+  display:flex; align-items:center; gap:10px;
+  padding:8px 10px; margin-bottom:8px; border-radius:12px;
+  background:rgba(0,0,0,.04); border:1px solid rgba(0,0,0,.06);
+}
+.batch-item:last-child { margin-bottom:0; }
+.batch-item-idx {
+  flex-shrink:0; width:18px; height:18px; border-radius:50%;
+  background:var(--ink); color:var(--card-bg, #fff); font-size:11px; font-weight:700;
+  display:flex; align-items:center; justify-content:center;
+}
+.batch-item-media {
+  width:42px; height:42px; border-radius:8px; object-fit:cover; flex-shrink:0;
+  border:1px solid rgba(0,0,0,.1);
+}
+.batch-item-text {
+  flex:1; min-width:0; font-size:13px; color:var(--ink);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.batch-item-type { flex-shrink:0; font-size:11px; color:#999; }
+.batch-item-x {
+  flex-shrink:0; width:24px; height:24px; border-radius:50%;
+  border:none; background:rgba(0,0,0,.08); color:#888; font-size:12px;
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.batch-item-x:active { background:rgba(0,0,0,.16); }
+/* 搴曢儴鎿嶄綔鏉?*/
+.batch-foot { display:flex; align-items:center; gap:8px; padding-top:10px; flex-shrink:0; }
+.batch-clear {
+  flex-shrink:0; padding:0 16px; border-radius:14px; height:44px;
+  border:1px solid rgba(0,0,0,.15); background:#fff; color:#666;
+  font-size:13px; font-weight:700; cursor:pointer; font-family:inherit;
+  -webkit-tap-highlight-color:transparent;
+}
+.batch-clear:active { background:rgba(0,0,0,.05); }
+
+/* 鑱婂ぉ鍥剧墖娑堟伅 */
+.msg-img {
+  max-width:96px; max-height:96px; border-radius:10px; display:block;
+}
+
+/* 寮曠敤鍥剧墖缂╃暐鍥?*/
+.msg-quote-img {
+  display:inline-block; width:34px; height:34px; border-radius:6px;
+  object-fit:cover; vertical-align:middle; margin-top:4px;
+}
+.msg-quote-imgs {
+  display:inline-flex; gap:4px; margin-right:6px; vertical-align:middle;
+}
+.msg-quote-imgs .msg-quote-img { margin-top:0; }
+
+/* 寮曠敤鍧楋紙甯︺€屽紩鐢?XX銆嶆爣绛撅紝娓呮櫚鍙锛?*/
+/* v3.12.x锛氬紩鐢ㄥ潡鍙偣鈥斺€旂偣鍑昏烦杞埌琚紩鐢ㄧ殑鍘熸秷鎭紙chat.js 濮旀墭澶勭悊锛?*/
+.msg-quote {
+  font-size:12px; border-left:3px solid currentColor;
+  padding:4px 8px; margin-bottom:5px; border-radius:0 6px 6px 0;
+  background:rgba(0,0,0,.05);
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+}
+.msg-quote:active { opacity:.6; }
+.msg-quote-label {
+  display:block; font-size:10px; font-weight:700;
+  color:inherit; opacity:.6; margin-bottom:2px;
+}
+.msg-quote-text {
+  color:inherit; opacity:.8; word-break:break-word;
+  /* 超长内容（旧数据里的 base64 引用）最多两行，不铺满整屏；
+     inline-block 而非 -webkit-box，保持与 .msg-quote-imgs 同行排布 */
+  display:inline-block; vertical-align:top; max-width:100%;
+  max-height:2.8em; overflow:hidden;
+}
+
+/* 鎯呯华/蹇冩剰/鎰忓浘瀛楀崱锛氭墍鏈夊瓧鍗″寘鍦?.msg-moods 瀹瑰櫒鍐咃紝
+   瀹瑰櫒椤堕儴涓€鏉¤櫄绾夸笌姝ｆ枃闅旂锛涘瓧鍗″湪瀹瑰櫒鍐?flex 绱у噾鍚岃锛屾斁涓嶄笅鎵嶈嚜鍔ㄦ崲琛?*/
+.msg-moods {
+  display:flex; flex-wrap:wrap; align-items:center;
+  gap:4px 10px; margin-top:5px; padding-top:5px;
+  border-top:1px dashed rgba(0,0,0,.12);
+}
+.msg-mood {
+  display:inline-flex; align-items:center;
+  font-size:11px; color:inherit; opacity:.75;
+  white-space:nowrap;
+}
+.msg-mood span { font-weight:600; }
+
+
+/* 鎯呯华/蹇冩剰/鎰忓浘瀛楀崱鏍囩 */
+.msg-mood .msg-mood-tag {
+  display:inline-block; font-size:10px; font-weight:600;
+  padding:1px 6px; border-radius:99px; margin-right:5px;
+  background:rgba(0,0,0,.08); opacity:.8; vertical-align:1px;
+}
+
+/* 娑堟伅姘旀场鎿嶄綔鑿滃崟 */
+.msg-actions {
+  position:fixed; display:flex; gap:6px; z-index:80;
+  background:rgba(255,255,255,.97);
+  border:1px solid rgba(0,0,0,.1);
+  border-radius:18px; box-shadow:0 10px 28px rgba(0,0,0,.1);
+  padding:8px;
+}
+.msg-actions[hidden] { display:none; }
+/* 鎼滅储缁撴灉璺宠浆瀹氫綅楂樹寒 */
+.msg.highlight { animation:msg-flash 1.2s ease 2; }
+@keyframes msg-flash {
+  0%, 100% { background:transparent; }
+  50% { background:rgba(255,220,120,.35); border-radius:12px; }
+}
+.ma-btn {
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  background:transparent; border:none; cursor:pointer;
+  font-size:10px; color:#444; font-family:inherit; padding:6px 10px;
+  border-radius:12px; -webkit-tap-highlight-color:transparent;
+}
+.ma-btn svg { width:20px; height:20px; }
+.ma-btn[hidden] { display:none; }
+.ma-btn:active { background:rgba(0,0,0,.07); }
+
+/* 灞呬腑鍗＄墖娑堟伅锛堥個璇?鎻愰棶锛?*/
+.msg-center { align-self:center; width:100%; display:flex; justify-content:center; padding:4px 0; }
+.msg-center-card {
+  max-width:80%; text-align:center;
+  font-size:12px; color:var(--ink);
+  background:rgba(255,255,255,.92);
+  border:1px solid rgba(0,0,0,.1);
+  border-radius:14px; padding:9px 18px;
+  box-shadow:0 2px 8px rgba(0,0,0,.04);
+}
+
+/* v3.6.x锛氫簰鍔ㄥ崱鐗囧氨鍦颁綔绛斿尯鈥斺€旂偣鍑诲崱鐗囩洿鎺ュ湪鑱婂ぉ椤靛睍寮€锛屼笉寮圭獥 */
+.msg-inplace {
+  margin-top:12px; padding-top:10px; border-top:1px dashed rgba(0,0,0,.12);
+  display:flex; flex-direction:column; gap:8px;
+}
+.msg-inplace .ip-opt {
+  display:block; width:100%; padding:10px 12px; border:1px solid rgba(0,0,0,.1);
+  border-radius:10px; background:#fff; color:var(--ink); font-size:13px;
+  cursor:pointer; font-family:inherit; text-align:center;
+  -webkit-tap-highlight-color:transparent;
+}
+.msg-inplace .ip-opt:active { background:rgba(0,0,0,.05); }
+.msg-inplace .ip-chips { display:flex; flex-wrap:wrap; gap:6px; }
+.msg-inplace .ip-chip {
+  padding:6px 12px; border:1px solid rgba(0,0,0,.12); border-radius:16px;
+  background:#fff; color:var(--ink); font-size:12px; cursor:pointer; font-family:inherit;
+  -webkit-tap-highlight-color:transparent;
+}
+.msg-inplace .ip-chip:active { background:rgba(0,0,0,.05); }
+.msg-inplace .ip-row { display:flex; gap:8px; }
+.msg-inplace .ip-input {
+  flex:1; min-width:0; border:1px solid rgba(0,0,0,.12); border-radius:10px;
+  padding:9px 12px; font-size:14px; font-family:inherit; outline:none; background:#fff; color:var(--ink);
+}
+.msg-inplace .ip-input:focus { border-color:var(--ink); }
+.msg-inplace .ip-send {
+  flex-shrink:0; border:none; border-radius:10px; padding:0 18px;
+  background:var(--ink); color:#fff; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
+}
+.msg-inplace .ip-send:active { opacity:.85; }
+/* v3.7.x锛氶棶闂甌A 鍗曢€夐宸蹭綔绛旂殑閫夐」鏌ョ湅鈥斺€斿垪鍑鸿缃殑閫夐」+鍚勯€夐」棰勮鍥炲簲锛孴A 閫夌殑閫夐」楂樹寒 */
+.msg-inplace .ip-opt-row {
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:9px 12px; border:1px solid rgba(0,0,0,.1); border-radius:10px;
+  background:#fff; color:var(--ink); font-size:13px;
+}
+.msg-inplace .ip-opt-row.sel { border-color:var(--ink); background:rgba(0,0,0,.04); font-weight:600; }
+.msg-inplace .ip-opt-row .ip-opt-t { min-width:0; }
+.msg-inplace .ip-opt-row .ip-opt-reply { flex-shrink:0; font-size:12px; opacity:.6; }
+
+/* ===== TA鐨勮闂?===== */
+/* 鑱婂ぉ閲岀殑璇㈤棶鍗＄墖 */
+.msg-ask { align-self:center; width:100%; display:flex; justify-content:center; padding:2px 0; }
+.msg-ask-card {
+  max-width:78%; min-width:220px; text-align:center;
+  background:#fff; border:1px solid rgba(0,0,0,.1);
+  border-radius:16px; padding:14px 16px;
+  box-shadow:0 2px 8px rgba(0,0,0,.05);
+  cursor:pointer;
+}
+.msg-ask-card.answered { cursor:pointer; }
+.msg-ask-q { font-size:14px; font-weight:700; color:var(--ink); line-height:1.5; }
+.msg-ask-tip { font-size:11px; color:var(--muted); margin-top:8px; }
+.msg-ask-a { font-size:12px; color:#3b7a4e; font-weight:600; margin-top:8px; }
+
+/* ===== 批量问卷长卡片（v3.33.x #521 special:'ask-survey'）===== */
+/* 观感严格对齐单题 ask-card（.msg-ask-card：同 max-width/min-width/圆角/内边距/阴影/居中），
+   标题对应 msg-ask-q、逐题答案对应 msg-ask-a、底部提示对应 msg-ask-tip；无 emoji、无独立进度徽标。
+   TA 逐题作答的进度由 ta-ask.js 经 chatSyncSurveyCard 回写快照后原地重画 innerHTML（不整窗重建） */
+.msg-survey-card {
+  max-width:78%; min-width:220px; text-align:center;
+  background:#fff; border:1px solid rgba(0,0,0,.1);
+  border-radius:16px; padding:14px 16px;
+  box-shadow:0 2px 8px rgba(0,0,0,.05);
+  cursor:pointer;
+}
+.msg-survey-head { font-size:14px; font-weight:700; color:var(--ink); line-height:1.5; }
+.msg-survey-list { display:flex; flex-direction:column; gap:10px; margin-top:10px; }
+.msg-survey-item { font-size:13px; color:var(--ink); line-height:1.5; }
+.msg-survey-q { font-weight:600; word-break:break-word; }
+.msg-survey-opts { display:flex; flex-wrap:nowrap; justify-content:center; gap:6px; margin-top:6px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+/* 选项观感对齐单题作答的选项 chip（.msg-inplace .ip-chip：白底 + 细边 + 墨色字），
+   不再用灰色小标签；TA 选中的那个加 .sel 高亮（同 .ip-opt-row.sel 口径） */
+.msg-survey-opt {
+  flex:0 0 auto; white-space:nowrap;
+  padding:6px 12px; border:1px solid rgba(0,0,0,.12); border-radius:16px;
+  background:#fff; color:var(--ink); font-size:12px;
+}
+.msg-survey-opt.sel { border-color:var(--ink); font-weight:700; }
+.msg-survey-a { font-size:12px; font-weight:600; color:#3b7a4e; margin-top:4px; word-break:break-word; }
+.msg-survey-tip { font-size:11px; color:var(--muted); margin-top:8px; }
+
+/* ===== TA鐨勫皬闂 ===== */
+/* 鑱婂ぉ閲岀殑閫夋嫨棰樺崱鐗?*/
+.msg-choose-card {
+  max-width:78%; min-width:220px; text-align:center;
+  background:#fff; border:1px solid rgba(0,0,0,.1);
+  border-radius:16px; padding:14px 16px;
+  box-shadow:0 2px 8px rgba(0,0,0,.05);
+  cursor:pointer;
+}
+.msg-choose-card.answered { cursor:pointer; }
+.msg-choose-r { font-size:12px; color:var(--ink); opacity:.75; margin-top:6px; line-height:1.5; }
+
+/* 浜掑姩鍗＄墖鏀惰棌鎸夐挳锛氬崱鐗囧簳閮ㄥ眳涓殑灏忕埍蹇冿紙鏀惰棌鏁村崱杩涙闈㈡敹钘忛〉锛?   v3.6.77锛氶粯璁ら殣钘忥紝鐐瑰嚮鍗＄墖鎵嶆诞鐜帮紙鍗＄墖鍔?.show-fav 鏄剧ず锛岀偣鍑诲崱鐗囧鍖哄煙鑷姩鏀惰捣锛?*/
+.msg-fav-heart {
+  margin-top:10px; border:none; cursor:pointer; font-family:inherit;
+  display:none; align-items:center; gap:4px;
+  background:rgba(0,0,0,.05); color:#999;
+  border-radius:99px; padding:5px 12px;
+  font-size:11px; font-weight:600;
+  -webkit-tap-highlight-color:transparent;
+}
+.msg-ask-card.show-fav .msg-fav-heart,
+.msg-choose-card.show-fav .msg-fav-heart {
+  display:inline-flex; animation:favFadeIn .18s ease;
+}
+@keyframes favFadeIn { from { opacity:0; transform:translateY(2px); } to { opacity:1; transform:none; } }
+.msg-fav-heart svg { width:12px; height:12px; }
+.msg-fav-heart:active { background:rgba(255,77,106,.12); color:#ff4d6a; }
+/* 互动卡片发送时间：展开收藏心形时与心形一同显示，精确到秒 */
+.msg-fav-time {
+  margin-top:4px; font-size:11px; color:#999; line-height:1.4;
+  display:none; -webkit-tap-highlight-color:transparent;
+}
+.msg-ask-card.show-fav .msg-fav-time,
+.msg-choose-card.show-fav .msg-fav-time {
+  display:block; animation:favFadeIn .18s ease;
+}
+
+/* ===== 璇煶娑堟伅 ===== */
+/* 鎾斁鎸夐挳 + 娉㈠舰 + 鏂囦欢鍚?*/
+.msg-voice {
+  display:flex; align-items:center; gap:8px; min-width:150px; max-width:220px;
+}
+.msg-voice-play {
+  flex-shrink:0; width:30px; height:30px; border-radius:50%;
+  border:1px solid rgba(0,0,0,.15); background:rgba(0,0,0,.05);
+  color:var(--ink); cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:transform .12s ease, background .15s ease, border-color .15s ease, color .15s ease;
+}
+.msg-voice-play svg { width:13px; height:13px; }
+.msg-voice-play.playing { background:var(--ink); color:#fff; border-color:var(--ink); }
+/* 点按互动反馈：按下微缩；播放中三角换暂停双竖条（录制面板试听钮/群聊语音同款双图标） */
+.msg-voice-play:active { transform:scale(.85); }
+.msg-voice-play .voice-ico-pause { display:none; }
+.msg-voice-play.playing .voice-ico-play { display:none; }
+.msg-voice-play.playing .voice-ico-pause { display:block; }
+.msg-voice-wave {
+  display:flex; align-items:flex-end; gap:2px; height:18px; flex:1;
+}
+.msg-voice-wave i {
+  width:3px; border-radius:2px; background:var(--ink); opacity:.4;
+  height:40%; animation:voiceWave .9s ease-in-out infinite alternate;
+  animation-play-state:paused;
+}
+.msg-voice-wave i:nth-child(1) { height:40%; animation-delay:0s; }
+.msg-voice-wave i:nth-child(2) { height:65%; animation-delay:.12s; }
+.msg-voice-wave i:nth-child(3) { height:85%; animation-delay:.24s; }
+.msg-voice-wave i:nth-child(4) { height:55%; animation-delay:.36s; }
+.msg-voice-wave i:nth-child(5) { height:35%; animation-delay:.48s; }
+.msg-voice-play.playing + .msg-voice-wave i { animation-play-state:running; }
+@keyframes voiceWave { from { transform:scaleY(.55); } to { transform:scaleY(1.15); } }
+.msg-voice-name {
+  flex-shrink:0; font-size:11px; color:var(--muted);
+  max-width:70px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+
+/* ===== 閫氳瘽绯荤粺 ===== */
+.call-mask {
+  position:fixed; inset:0; z-index:95;
+  background:rgba(0,0,0,.5);
+  display:flex; align-items:center; justify-content:center;
+}
+.call-mask[hidden] { display:none; }
+.call-panel {
+  width:min(320px, 86vw); text-align:center;
+  background:rgba(255,255,255,.97);
+  border:1px solid rgba(0,0,0,.1); border-radius:26px;
+  box-shadow:0 20px 50px rgba(0,0,0,.25);
+  padding:16px 20px 22px;
+}
+/* v3.5.50 閫氳瘽鑳屾櫙锛氭湁鑳屾櫙鍥炬椂鏂囧瓧鍔犵櫧鎶曞奖鎻愰珮鍙鎬?*/
+.call-panel.has-bg .call-title,
+.call-panel.has-bg .call-name,
+.call-panel.has-bg .call-status,
+.call-panel.has-bg .call-duration,
+.call-panel.has-bg .call-countdown {
+  text-shadow:0 1px 3px rgba(255,255,255,.85), 0 0 8px rgba(255,255,255,.6);
+}
+.call-mini.has-bg .call-mini-name,
+.call-mini.has-bg .call-mini-time {
+  text-shadow:0 1px 3px rgba(255,255,255,.85), 0 0 8px rgba(255,255,255,.6);
+}
+.call-head {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:4px;
+}
+.call-title { font-size:14px; font-weight:700; color:var(--ink); letter-spacing:1px; }
+.call-minimize {
+  width:30px; height:30px; border-radius:50%; border:1px solid rgba(0,0,0,.1);
+  background:#fff; color:#666; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+}
+.call-minimize svg { width:15px; height:15px; }
+.call-minimize[hidden] { display:none; }
+.call-minimize:active { background:rgba(0,0,0,.06); }
+.call-av {
+  width:84px; height:84px; margin:0 auto 14px; border-radius:50%;
+  background:#e9e9e9; overflow:hidden;
+  display:flex; align-items:center; justify-content:center;
+}
+.call-av img { width:100%; height:100%; object-fit:cover; display:block; }
+.call-av svg { width:34px; height:34px; }
+.call-name { font-size:18px; font-weight:800; color:var(--ink); }
+.call-status { font-size:13px; color:var(--muted); margin-top:6px; }
+.call-duration { font-size:26px; font-weight:300; color:var(--ink); margin-top:8px; font-variant-numeric:tabular-nums; }
+.call-countdown { font-size:12px; color:#e05555; margin-top:6px; }
+.call-btns { display:flex; justify-content:center; gap:26px; margin-top:24px; }
+.call-btn {
+  width:62px; height:62px; border-radius:50%; border:none; cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  color:#fff; font-size:10px; font-weight:600;
+}
+.call-btn svg { width:24px; height:24px; }
+.call-btn[hidden] { display:none; }
+.call-hang { background:#ff4d4f; }
+.call-reject { background:#ff4d4f; }
+.call-answer { background:#52c41a; }
+.call-btn:active { transform:scale(.94); }
+
+/* 閫氳瘽灏忔锛堟帴閫氬悗鏈€灏忓寲锛涚櫧鑹层€佸彲鎷栧姩锛涗綅浜庤緭鍏ユ爮涓婃柟锛?   v3.5.110锛歜ottom 鍔?safe-area锛屽叏闈㈠睆鍏ㄥ睆妯″紡涓嬩笌杈撳叆鏍忓悓姝ヤ笂绉伙紝涓嶉敊浣?*/
+.call-mini {
+  position:fixed; left:50%; bottom:calc(96px + var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px))); transform:translateX(-50%);
+  /* v3.5.127锛歾 90 鈫?95鈥斺€斾笌 modal-mask 鍚屽眰鏃朵細琚脊绐楃洊浣忥紙閫氳瘽涓墦寮€寮圭獥锛?     閫氳瘽灏忔/鎸傛柇鍏ュ彛涓嶅彲瑙侊級 */
+  z-index:95;
+  display:flex; align-items:center; gap:10px;
+  background:#fff; color:var(--ink);
+  border:1px solid rgba(0,0,0,.12);
+  border-radius:99px; padding:8px 8px 8px 10px;
+  box-shadow:0 6px 20px rgba(0,0,0,.18);
+  cursor:grab; user-select:none; touch-action:none;
+}
+.call-mini:active { cursor:grabbing; }
+.call-mini[hidden] { display:none; }
+/* ===== 瀹藉睆锛圥C 娴忚鍣ㄩ瑙堬紝>900px锛夛細閫氳瘽灏忔鏀惰繘 .phone 妯℃嫙妗?=====
+   v3.10.x锛氭洿澶氬姛鑳介潰鏉?.poke-card 鍚勫姛鑳藉崐妗?琛ㄦ儏鍖呴潰鏉垮凡鍦ㄥ熀纭€瑙勫垯閲岀粺涓€鏀?   position:absolute锛堥敭鐩樺仠闈?+ 瀹藉睆閿氬畾涓€娆¤В鍐筹級锛屾澶勫彧鍓?.call-mini鈥斺€?   瀹冨熀纭€瑙勫垯浠嶆槸 fixed锛堟嫋鍔ㄥ畾浣嶅潗鏍囨寜瑙嗗彛璁＄畻锛岀湡鏈轰笉鍔級锛屽灞忎笅 .phone 鏄?   灞呬腑妯℃嫙妗嗭紝fixed 浼氶敋瀹氥€愭祻瑙堝櫒绐楀彛銆戞帀鍒版墜鏈烘澶栵紝鏁呬粎绐勫睆澶栨敼 absolute銆?   html:not(.force-mobile) 鎺掗櫎銆屾墜鏈轰吉瑁呮闈?UA銆嶅満鏅紙涓嶅姩鐪熸満琛屼负锛夈€?*/
+@media (min-width: 901px) {
+  html:not(.force-mobile) .call-mini {
+    position:absolute;
+  }
+}
+.call-mini-av {
+  width:38px; height:38px; border-radius:50%; overflow:hidden; flex-shrink:0;
+  background:#e9e9e9; display:flex; align-items:center; justify-content:center;
+}
+.call-mini-av img { width:100%; height:100%; object-fit:cover; display:block; }
+.call-mini-av svg { width:16px; height:16px; }
+.call-mini-info { display:flex; flex-direction:column; }
+.call-mini-name { font-size:12px; font-weight:700; }
+.call-mini-time { font-size:10px; opacity:.75; font-variant-numeric:tabular-nums; }
+.call-mini-hang {
+  width:34px; height:34px; border-radius:50%; border:none; cursor:pointer; flex-shrink:0;
+  background:#ff4d4f; color:#fff;
+  display:flex; align-items:center; justify-content:center;
+}
+.call-mini-hang svg { width:16px; height:16px; }
+.call-mini-hang:active { transform:scale(.92); }
+
+/* 瀛楀崱绾у眬閮ㄦ挙鍥烇細鑳跺泭鎻愮ず + 灞曞紑鍐呭 */
+.msg-poke-seg {
+  display:inline-flex; align-items:center; gap:3px;
+  font-size:11px; color:var(--muted); cursor:pointer; user-select:none;
+  background:#fff; border:1px solid rgba(0,0,0,.1);
+  box-shadow:0 1px 4px rgba(0,0,0,.06);
+  padding:3px 12px; border-radius:14px;
+}
+.msg-poke-seg-detail {
+  margin-top:6px; padding:8px 12px; border-radius:10px;
+  background:rgba(0,0,0,.04); font-size:12px; color:var(--ink); line-height:1.8;
+}
+
+/* 绯荤粺娑堟伅锛堟潵鐢?閫氳瘽锛夊唴鑱旂煝閲忓浘鏍?*/
+.msg-poke svg, .msg-center-card svg { width:15px; height:15px; vertical-align:-2px; margin-right:3px; color:inherit; }
+
+/* v3.5.126锛氱Щ闄?background-attachment:fixed 鍏滃簳鈥斺€旀墜鏈轰笂 fixed 鑳屾櫙鐩稿瑙嗗彛
+   瀹氫綅锛屽叏灞?杈撳叆娉?瀹夊叏鍖哄彉鍖栨椂姣斾緥閿欎綅銆佷笖绉诲姩绔檷閲囨牱鍙戠硦銆?    鑱婂ぉ椤垫湰韬笉婊氬姩锛坥verflow:hidden锛夛紝榛樿 scroll 妯″紡涓嬭儗鏅嵆鍥哄畾锛屾棤闇€ fixed銆?    鑳屾櫙閾烘弧閫昏緫鐢?JS applySettings 璁剧疆锛坈over + center锛夈€?*/
+
+/* ===== 绾㈠寘闈㈡澘锛堝簳閮ㄥ崐妗嗭紝鐧界伆绠€绾︼級 ===== */
+.rp-side-row { display:flex; gap:8px; margin-bottom:14px; }
+.rp-side {
+  flex:1; padding:9px 0; font-size:13px; font-weight:600;
+  border:1px solid rgba(0,0,0,.1); border-radius:99px;
+  background:rgba(255,255,255,.92); color:#666; cursor:pointer;
+  font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.rp-side.sel { background:#111; color:#fff; border-color:#111; }
+.rp-section { margin-bottom:14px; }
+.rp-section-title {
+  font-size:12px; font-weight:700; color:var(--ink); margin-bottom:8px;
+  display:flex; align-items:center; gap:8px;
+}
+.rp-qixi-tag {
+  font-size:10px; font-weight:600; color:#fff; background:#aaa;
+  padding:2px 7px; border-radius:99px;
+}
+.rp-qixi-today .rp-qixi-tag { background:#111; }
+.rp-qixi-today .rp-section-title { color:var(--ink); }
+.rp-amounts { display:flex; flex-wrap:wrap; gap:8px; }
+.rp-amt {
+  padding:9px 14px; font-size:13px; font-weight:600;
+  border:1px solid rgba(0,0,0,.12); border-radius:12px;
+  background:#fff; color:var(--ink); cursor:pointer; font-family:inherit;
+  -webkit-tap-highlight-color:transparent; transition:all .15s ease;
+}
+.rp-amt.sel { background:#111; color:#fff; border-color:#111; }
+.rp-amt:active { transform:translateY(1px); }
+.rp-amt.rp-rand { width:100%; text-align:center; }
+.rp-rand-val { font-size:12px; color:var(--muted); margin-top:8px; min-height:16px; }
+.rp-input {
+  width:100%; border:1px solid rgba(0,0,0,.12); border-radius:10px;
+  padding:10px 12px; font-size:14px; font-family:inherit; outline:none;
+  background:#fff; color:var(--ink); box-sizing:border-box;
+}
+.rp-input:focus { border-color:var(--ink); }
+.rp-send {
+  width:100%; padding:12px 0; font-size:14px; font-weight:700;
+  border:none; border-radius:12px; background:#111; color:#fff;
+  cursor:pointer; font-family:inherit; margin-top:4px;
+  -webkit-tap-highlight-color:transparent;
+}
+.rp-send:active { opacity:.85; }
+
+/* ===== 绾㈠寘娑堟伅鍗＄墖锛堢櫧搴曠畝绾︼紝灏侀潰鍥句綔椤堕儴妯箙锛?===== */
+.msg-rp { align-self:center; width:100%; display:flex; justify-content:center; padding:2px 0; }
+.msg-rp-card {
+  max-width:78%; min-width:220px; text-align:center;
+  background:#fff; border:1px solid rgba(0,0,0,.1);
+  border-radius:16px; padding:14px 18px;
+  box-shadow:0 2px 8px rgba(0,0,0,.05);
+  cursor:pointer; position:relative; overflow:hidden;
+}
+.msg-rp-card.has-cover { background-size:cover; background-position:center; }
+.msg-rp-card.has-cover > * { position:relative; z-index:1; }
+.msg-rp-card.has-cover::before {
+  content:''; position:absolute; inset:0; border-radius:16px;
+  background:rgba(255,255,255,.78); z-index:0;
+}
+.msg-rp-top { display:flex; align-items:center; justify-content:center; gap:6px; color:var(--muted); }
+.msg-rp-ico { display:inline-flex; }
+.msg-rp-ico svg { width:18px; height:18px; color:#888; }
+.msg-rp-label { font-size:12px; font-weight:600; color:#888; }
+.msg-rp-amt { font-size:24px; font-weight:800; color:var(--ink); margin:8px 0 4px; font-variant-numeric:tabular-nums; }
+.msg-rp-wish { font-size:13px; color:var(--ink); margin-bottom:10px; }
+.msg-rp-foot {
+  display:flex; justify-content:space-between; align-items:center;
+  font-size:11px; color:var(--muted);
+  padding-top:8px; border-top:1px dashed rgba(0,0,0,.1);
+}
+.msg-rp-status { font-weight:600; }
+.msg-rp-card.opened .msg-rp-status { color:var(--ink); }
+.msg-rp-card.opened { border-color:rgba(0,0,0,.18); }
+.msg-rp-card.expired { opacity:.6; }
+.msg-rp-card.expired .msg-rp-status { color:var(--muted); }
+/* 鑺辨湹鍗＄墖 */
+.msg-flower { align-self:center; width:100%; display:flex; justify-content:center; padding:4px 0; }
+.msg-flower-card {
+  width:min(260px,82vw); padding:0 0 14px; border-radius:20px;
+  background:linear-gradient(160deg, #fff5f7 0%, #fce4ec 45%, #f8bbd0 100%);
+  border:1px solid rgba(233,30,99,.12);
+  box-shadow:0 4px 20px rgba(233,30,99,.12), 0 1px 3px rgba(0,0,0,.04);
+  text-align:center; position:relative; overflow:hidden;
+}
+.msg-flower-bar { height:4px; background:linear-gradient(90deg, #f48fb1, #ec407a, #f48fb1); margin-bottom:14px; }
+/* FIX 2026-09-16 发热收口：花卡常驻聊天记录，infinite＝可视区每帧合成空转；
+   到达时浮 3 次（约 9s）后静止，视觉几乎无差 */
+.msg-flower-emoji { font-size:44px; line-height:1; margin-bottom:8px; animation:flowerFloat 3s ease-in-out 3; }
+@keyframes flowerFloat { 0%,100% { transform:translateY(0) rotate(0deg); } 50% { transform:translateY(-4px) rotate(5deg); } }
+.msg-flower-name { font-size:15px; font-weight:700; color:#ad1457; margin-bottom:8px; letter-spacing:.5px; }
+.msg-flower-divider { display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:10px; color:#e91e63; font-size:10px; }
+.msg-flower-divider span { width:28px; height:1px; background:linear-gradient(90deg, transparent, #e91e63, transparent); }
+.msg-flower-wish { font-size:13px; color:#880e4f; line-height:1.6; margin-bottom:10px; word-break:break-word; font-style:italic; padding:0 14px; }
+.msg-flower-foot { font-size:11px; color:rgba(136,14,79,.45); padding-top:8px; margin:0 18px; border-top:1px solid rgba(233,30,99,.1); }
+.rp-balance {
+  font-size:11px; color:var(--muted); text-align:center;
+  padding:4px 0 8px; border-bottom:1px solid rgba(0,0,0,.06); margin-bottom:10px;
+  cursor:pointer; -webkit-tap-highlight-color:transparent; user-select:none;
+}
+.rp-balance:active { opacity:.6; }
+/* 绾㈠寘灏侀潰涓婁紶鍖?*/
+.rp-cover-row { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.rp-cover-preview {
+  width:72px; height:48px; border-radius:8px; flex-shrink:0;
+  background:#f0f0f0;
+  background-size:cover; background-position:center;
+  display:flex; align-items:center; justify-content:center;
+  overflow:hidden; border:1px solid rgba(0,0,0,.1);
+}
+.rp-cover-preview span { font-size:9px; color:var(--muted); text-align:center; padding:0 4px; }
+.rp-cover-actions { display:flex; flex-direction:column; gap:6px; }
+.rp-cover-btn {
+  padding:6px 12px; font-size:12px; font-weight:600;
+  border:1px solid rgba(0,0,0,.12); border-radius:8px;
+  background:#fff; color:var(--ink); cursor:pointer; font-family:inherit;
+  -webkit-tap-highlight-color:transparent;
+}
+.rp-cover-btn:active { background:rgba(0,0,0,.05); }
+.rp-cover-btn[hidden] { display:none; }
+
+/* v3.29.x：红包半框「设置」→ TA 自动发红包（概率/每日上限）。入口在红包面板头部，
+   设置区复用 .set-row 行样式；打开设置时隐藏余额行与滚动主体，完成/关闭面板后恢复 */
+.rp-head-set {
+  padding:4px 12px; font-size:12px; font-weight:600;
+  border:1px solid rgba(0,0,0,.12); border-radius:14px;
+  background:#fff; color:var(--ink); cursor:pointer; font-family:inherit;
+  -webkit-tap-highlight-color:transparent;
+}
+.rp-head-set:active { background:rgba(0,0,0,.05); }
+.rp-settings { padding:2px 0 0; }
+.rp-settings[hidden], .rp-balance[hidden] { display:none; }
+.rp-settings-title {
+  font-size:13px; font-weight:700; color:var(--ink);
+  padding:6px 2px 10px; letter-spacing:.3px;
+}
+.rp-settings .set-row {
+  background:rgba(0,0,0,.03); border-radius:14px; margin-bottom:8px; border-bottom:none;
+}
+.rp-settings .set-row:last-child { margin-bottom:0; }
+.rp-settings .set-row .val { white-space:nowrap; }
+.rp-settings-done { margin-top:10px; }
+
+
+
+/* ===== v3.16.x：语音消息录制半框（聊天设置「我可发送语音」开启后，输入栏「麦克风」按钮打开）
+     录音（最长 60 秒）→ 试听 → 发送为既有格式语音消息（复用 .msg-voice 播放链路） ===== */
+.voice-card { max-height:58%; }
+.voice-card .voice-status { font-size:11px; font-weight:600; color:var(--muted); margin-left:6px; }
+.voice-stage {
+  flex-shrink:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:12px; padding:20px 0 8px;
+}
+.voice-wave { display:flex; align-items:center; gap:4px; height:46px; }
+.voice-wave i {
+  width:4px; height:28%; border-radius:3px; background:var(--ink); opacity:.22;
+  transition:height .25s ease;
+}
+.voice-card.recording .voice-wave i {
+  opacity:.85;
+  animation:voiceRecWave .8s ease-in-out infinite alternate;
+}
+.voice-wave i:nth-child(1) { height:34%; animation-delay:0s; }
+.voice-wave i:nth-child(2) { height:58%; animation-delay:.1s; }
+.voice-wave i:nth-child(3) { height:82%; animation-delay:.2s; }
+.voice-wave i:nth-child(4) { height:100%; animation-delay:.3s; }
+.voice-wave i:nth-child(5) { height:76%; animation-delay:.4s; }
+.voice-wave i:nth-child(6) { height:52%; animation-delay:.5s; }
+.voice-wave i:nth-child(7) { height:36%; animation-delay:.6s; }
+@keyframes voiceRecWave { from { transform:scaleY(.45); } to { transform:scaleY(1.05); } }
+.voice-time {
+  font-size:27px; font-weight:700; color:var(--ink); letter-spacing:1px;
+  font-variant-numeric:tabular-nums; line-height:1;
+}
+.voice-preview {
+  flex-shrink:0; display:flex; align-items:center; gap:10px;
+  padding:8px 14px; margin:10px 0 0;
+  background:rgba(0,0,0,.04); border:1px solid rgba(0,0,0,.08); border-radius:14px;
+  align-self:flex-start;
+}
+/* display:flex 会压过 UA 的 [hidden]{display:none}（fish 时机条同款坑），必须显式补回 */
+.voice-preview[hidden] { display:none; }
+.voice-preview-txt { font-size:12px; font-weight:600; color:var(--muted); white-space:nowrap; }
+.voice-foot { flex-shrink:0; display:flex; gap:10px; padding-top:14px; }
+/* v3.26.x 重设计：两按钮统一尺寸/圆角/字号——此前 rec 是 24px 圆角/13px 字/最小宽 104 的胶囊，
+   send 复用 .poke-big（14px 圆角/14px 字 + margin-top:12px），一高一低大小不一。
+   现在 rec=描边次按钮、send=主题色主按钮，同高 44px 同圆角，等宽对齐。 */
+.voice-rec-btn, .voice-send-big {
+  flex:1; min-width:0; height:44px; padding:0 12px; margin-top:0;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:14px; font-size:14px; font-weight:700; font-family:inherit;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+  transition:opacity .15s ease, background .15s ease, border-color .15s ease;
+}
+.voice-rec-btn {
+  border:1.5px solid rgba(0,0,0,.18); background:transparent; color:var(--ink);
+}
+.voice-rec-btn:active { opacity:.7; }
+.voice-rec-btn.rec {
+  background:#e5484d; border-color:transparent; color:#fff;
+  animation:voiceRecPulse 1.15s ease-in-out infinite;
+}
+@keyframes voiceRecPulse {
+  0%,100% { box-shadow:0 0 0 0 rgba(229,72,77,.35); }
+  50% { box-shadow:0 0 0 7px rgba(229,72,77,0); }
+}
+.voice-send-big {
+  /* border 同 rec 保持 1.5px（透明）：Chromium 对 basis 0% 的 flex 按钮，一方有 border
+     一方无 border 时宽度分配不等（实测差 2.67px），两边同 border 即等宽 */
+  border:1.5px solid transparent; background:var(--btn-bg,#111); color:var(--btn-ink,#fff);
+}
+.voice-send-big:active { opacity:.85; }
+.voice-send-big[disabled] { opacity:.4; pointer-events:none; }
+/* 我发出的语音气泡落在深色 out 气泡上：播放钮/波形原是浅底深色系（为 in 侧设计），黑底上不可见 */
+.msg-out .msg-voice-play { background:rgba(255,255,255,.16); border-color:rgba(255,255,255,.35); color:#fff; }
+.msg-out .msg-voice-play.playing { background:#fff; color:#111; border-color:#fff; }
+.msg-out .msg-voice-wave i { background:#fff; opacity:.55; }
+@media (prefers-reduced-motion: reduce) {
+  .voice-card .voice-wave i, .voice-rec-btn.rec, .msg-voice-play { animation:none !important; transition:none !important; }
+}
+/* ---- 深色模式兜底（dark.css 未覆盖本功能自定义元素时保持可读，fish/drift/room 同款惯例） ---- */
+[data-theme="dark"] .voice-preview { background:rgba(255,255,255,.07); border-color:rgba(255,255,255,.12); }
+[data-theme="dark"] .voice-wave i { opacity:.4; }
+[data-theme="dark"] .voice-card.recording .voice-wave i { opacity:.9; }
+[data-theme="dark"] .msg-voice-play.voice-play-btn { background:rgba(255,255,255,.1); border-color:rgba(255,255,255,.16); }
+[data-theme="dark"] .voice-rec-btn { border-color:rgba(255,255,255,.28); color:#fff; }

@@ -1,0 +1,450 @@
+/* ===== 花园功能样式（桌面第三页） ===== */
+/* 天气栏 */
+.garden-weather-bar {
+  display:flex; align-items:center; gap:8px;
+  padding:10px 18px; font-size:13px; color:var(--muted);
+}
+.garden-weather-ico { font-size:20px; }
+.garden-weather-txt { flex:1; }
+.garden-season { font-size:12px; opacity:.7; }
+
+/* 滚动区 */
+.garden-scroll { flex:1; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none; }
+.garden-scroll::-webkit-scrollbar { display:none; }
+
+/* 花园网格：4列自适应行数，每格正方形 */
+.garden-grid {
+  display:grid; grid-template-columns:repeat(4, 1fr);
+  gap:8px; padding:0 18px 14px;
+  min-height:360px; align-content:start;
+}
+.garden-plot {
+  aspect-ratio:1;
+  border-radius:14px; background:rgba(255,255,255,.94);
+  border:1.5px solid rgba(0,0,0,.06);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  cursor:pointer; position:relative; overflow:hidden;
+  transition:border-color .2s ease, box-shadow .2s ease;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
+}
+.garden-plot:active { border-color:rgba(0,0,0,.18); box-shadow:0 2px 10px rgba(0,0,0,.08); }
+.garden-plot.empty { border-style:dashed; border-color:rgba(0,0,0,.12); background:rgba(255,255,255,.7); }
+.garden-plot.watered { border-color:rgba(76,175,128,.35); }
+
+/* 植物 */
+.garden-plant-emoji { font-size:24px; line-height:1; transform-origin: 50% 80%; will-change: transform; }
+.garden-plot.bloomed .garden-plant-emoji { animation: gardenSway 3.2s ease-in-out infinite; }
+.garden-plot.wilted .garden-plant-emoji { filter: grayscale(.55) brightness(.9); }
+.garden-plot.wilted { border-color: rgba(139,90,43,.45); background: rgba(245,235,220,.6); }
+.garden-plant-stage.wilted-stage { color:#a1887f; font-weight:600; }
+@keyframes gardenPop { 0% { transform: scale(.6); opacity:0; } 60% { transform: scale(1.12); opacity:1; } 100% { transform: scale(1); opacity:1; } }
+@keyframes gardenBloom { 0% { transform: scale(.7) rotate(-12deg); opacity:0; } 50% { transform: scale(1.25) rotate(8deg); opacity:1; } 100% { transform: scale(1) rotate(0); opacity:1; } }
+@keyframes gardenSway { 0%,100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+@keyframes gardenWilt { 0% { transform: scale(1.1) rotate(0); } 100% { transform: scale(.95) rotate(-6deg); } }
+.garden-plant-name { font-size:10px; color:var(--ink); font-weight:600; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; padding:0 4px; box-sizing:border-box; }
+.garden-plant-stage { font-size:9px; color:var(--muted); margin-top:0; }
+
+/* 空地 */
+.garden-plot-empty-txt { font-size:9px; color:var(--muted); opacity:.5; }
+
+/* 水量条 */
+.garden-water-bar {
+  position:absolute; bottom:3px; left:6px; right:6px; height:2px;
+  border-radius:1px; background:rgba(0,0,0,.06); overflow:hidden;
+}
+.garden-water-fill {
+  height:100%; border-radius:1px;
+  background:linear-gradient(90deg, #64b5f6, #42a5f5);
+  transition:width .4s ease;
+}
+.garden-water-fill.low { background:linear-gradient(90deg, #ef9a9a, #e57373); }
+.garden-water-fill.ok { background:linear-gradient(90deg, #a5d6a7, #66bb6a); }
+
+/* 点击选中状态 */
+.garden-plot.selected { border-color:#111; box-shadow:0 2px 12px rgba(0,0,0,.12); }
+
+/* 生长进度条 */
+.garden-grow-bar {
+  position:absolute; bottom:6px; left:6px; right:6px; height:2px;
+  border-radius:1px; background:rgba(0,0,0,.06); overflow:hidden;
+}
+.garden-grow-fill {
+  height:100%; border-radius:2px;
+  background:linear-gradient(90deg, #81c784, #4caf50);
+  transition:width .4s ease;
+}
+
+/* 工具条 */
+.garden-toolbar {
+  display:flex; gap:4px; padding:0 12px 14px;
+  overflow-x:auto; scrollbar-width:none; -ms-overflow-style:none;
+}
+.garden-toolbar::-webkit-scrollbar { display:none; }
+.garden-tool {
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  padding:8px 6px; border-radius:12px;
+  border:1px solid rgba(0,0,0,.1); background:rgba(255,255,255,.94);
+  cursor:pointer; font-family:inherit; font-size:11px; color:var(--ink);
+  min-width:42px; flex:0 0 auto;
+  transition:background .15s ease, border-color .15s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+.garden-tool:active { background:#111; color:#fff; }
+.garden-tool:active svg { stroke:#fff; }
+.garden-tool svg { width:22px; height:22px; }
+.garden-tool-label { font-size:11px; font-weight:600; }
+.garden-tool.batch { background:rgba(76,175,80,.12); border-color:rgba(76,175,80,.3); }
+.garden-tool.batch:active { background:#4caf50; }
+
+/* 日志 */
+.garden-log {
+  margin:0 18px 18px; padding:14px 16px;
+  border-radius:18px;
+}
+.garden-log-title { font-size:14px; font-weight:700; margin-bottom:10px; }
+.garden-log-list { display:flex; flex-direction:column; gap:6px; max-height:200px; overflow-y:auto; }
+.garden-log-item {
+  display:flex; align-items:flex-start; gap:8px;
+  font-size:12px; color:var(--muted); line-height:1.4;
+}
+.garden-log-item .who { color:var(--ink); font-weight:600; flex-shrink:0; }
+.garden-log-item .act { flex:1; }
+.garden-log-item .tm { font-size:10px; opacity:.5; flex-shrink:0; }
+
+/* 种植弹窗 */
+.garden-plant-select {
+  display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;
+  padding:6px 0;
+}
+.garden-seed {
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+  padding:10px 6px; border-radius:14px;
+  border:1px solid rgba(0,0,0,.08); cursor:pointer;
+  font-size:12px; color:var(--ink); font-weight:600;
+  transition:border-color .15s ease, background .15s ease;
+}
+.garden-seed:active { background:rgba(0,0,0,.04); border-color:#111; }
+.garden-seed .seed-emoji { font-size:28px; }
+.garden-seed .seed-name { font-size:11px; }
+
+/* 等级条 */
+.garden-level-bar {
+  display:flex; align-items:center; gap:8px;
+  padding:0 18px 10px; font-size:12px;
+}
+.garden-lv-num { font-weight:700; color:var(--ink); flex-shrink:0; }
+.garden-lv-track { flex:1; height:6px; border-radius:3px; background:rgba(0,0,0,.06); overflow:hidden; }
+.garden-lv-fill { height:100%; border-radius:3px; background:linear-gradient(90deg,#ffd54f,#ffb300); transition:width .4s ease; }
+.garden-lv-exp { color:var(--muted); flex-shrink:0; font-size:11px; }
+
+/* 统计 */
+.garden-stats {
+  display:flex; justify-content:center; gap:20px;
+  padding:0 18px 12px; font-size:13px; color:var(--muted);
+}
+.gs-item b { color:var(--ink); font-size:16px; font-weight:700; margin-right:2px; }
+
+/* 图鉴 */
+.garden-dex { margin:0 18px 14px; padding:14px 16px; border-radius:18px; }
+.garden-dex-title { font-size:14px; font-weight:700; margin-bottom:10px; }
+.garden-dex-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.garden-dex-item {
+  display:flex; align-items:center; gap:6px; padding:8px 6px;
+  border-radius:12px; background:rgba(0,0,0,.03); font-size:11px;
+}
+.garden-dex-item.locked, .garden-dex-item.unknown { opacity:.4; justify-content:center; }
+.garden-dex-item .dex-emoji { font-size:18px; }
+.garden-dex-item .dex-name { color:var(--ink); font-weight:600; flex:1; }
+.garden-dex-item .dex-cnt { color:var(--muted); font-size:10px; }
+
+/* 库存 + 花束 */
+.garden-inv { margin:0 18px 18px; padding:14px 16px; border-radius:18px; }
+.garden-inv-title { font-size:14px; font-weight:700; margin-bottom:10px; }
+.garden-inv-list { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+.garden-inv-item {
+  font-size:12px; padding:4px 10px; border-radius:99px;
+  background:rgba(0,0,0,.04); color:var(--ink);
+  white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis;
+}
+.garden-inv-empty { font-size:12px; color:var(--muted); text-align:center; padding:8px 0; }
+.garden-bouquet-btn {
+  display:block; width:100%; padding:10px; border-radius:14px;
+  border:none; background:#e85a8f; color:#fff; font-size:13px; font-weight:600;
+  cursor:pointer; font-family:inherit;
+}
+.garden-bouquet-btn:active { opacity:.8; }
+
+/* 访客 */
+.garden-visitor {
+  display:none; align-items:center; gap:8px;
+  margin:0 18px 10px; padding:10px 14px; border-radius:14px;
+  background:linear-gradient(90deg, rgba(255,215,0,.12), rgba(255,149,0,.08));
+  font-size:12px; color:var(--ink);
+  animation: gardenVisitorPulse 2s ease-in-out infinite;
+}
+.garden-visitor-emoji { font-size:20px; }
+.garden-visitor-txt { flex:1; }
+@keyframes gardenVisitorPulse {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+/* 装饰 */
+.garden-decor { margin:0 18px 14px; padding:14px 16px; border-radius:18px; }
+.garden-decor-title { font-size:14px; font-weight:700; margin-bottom:10px; }
+.garden-decor-list { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+.garden-decor-item {
+  font-size:12px; padding:4px 10px; border-radius:99px;
+  background:rgba(0,0,0,.04); color:var(--ink);
+  white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis;
+}
+.garden-decor-buff { font-size:10px; color:#4caf50; font-weight:600; margin-left:2px; }
+.garden-decor-empty { font-size:12px; color:var(--muted); text-align:center; padding:8px 0; }
+.garden-decor-shop-btn {
+  display:block; width:100%; padding:10px; border-radius:14px;
+  border:none; background:#7cb342; color:#fff; font-size:13px; font-weight:600;
+  cursor:pointer; font-family:inherit;
+}
+.garden-decor-shop-btn:active { opacity:.8; }
+
+/* 排行榜 */
+.garden-lb { margin:0 18px 18px; padding:14px 16px; border-radius:18px; }
+.garden-lb-title { font-size:14px; font-weight:700; margin-bottom:10px; }
+.garden-lb-head {
+  display:flex; justify-content:space-between;
+  font-size:11px; color:var(--muted); margin-bottom:6px; padding:0 4px;
+}
+.garden-lb-row {
+  display:flex; align-items:center; gap:8px; margin-bottom:8px;
+}
+.lb-label { font-size:11px; color:var(--muted); width:32px; flex-shrink:0; }
+.lb-bar {
+  flex:1; height:20px; border-radius:10px; overflow:hidden;
+  display:flex; font-size:10px; color:#fff; font-weight:600;
+}
+.lb-me {
+  height:100%; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(90deg, #42a5f5, #1e88e5);
+  transition: width .4s ease; min-width:0; overflow:hidden;
+}
+.lb-ta {
+  height:100%; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(90deg, #ef5350, #e53935);
+  transition: width .4s ease; min-width:0; overflow:hidden;
+}
+
+.garden-scroll { position: relative; }
+
+/* ===== 季节主题 ===== */
+[data-season="0"] .garden-plot { border-color: rgba(129,199,132,.32); }
+[data-season="1"] .garden-plot { border-color: rgba(100,181,246,.32); }
+[data-season="2"] .garden-plot { border-color: rgba(255,183,77,.32); }
+[data-season="3"] .garden-plot { border-color: rgba(189,223,253,.45); }
+
+/* ===== 稀有花发光 ===== */
+.garden-plot.rare { box-shadow: 0 0 14px rgba(255,215,0,.45), inset 0 0 8px rgba(255,235,150,.2); }
+.garden-plot.rare .garden-plant-emoji { filter: drop-shadow(0 0 6px rgba(255,215,0,.7)); }
+.garden-plot.rare.bloomed .garden-plant-emoji { animation: gardenSway 3.2s ease-in-out infinite, gardenRareGlow 2s ease-in-out infinite; }
+@keyframes gardenRareGlow { 0%,100% { filter: drop-shadow(0 0 5px rgba(255,215,0,.5)); } 50% { filter: drop-shadow(0 0 10px rgba(255,215,0,.9)); } }
+
+/* ===== 图鉴稀有页 ===== */
+.garden-dex-sub { font-size: 12px; font-weight: 700; margin: 10px 0 6px; color: #f9a825; }
+.garden-dex-grid.rare-grid .garden-dex-item.rare { background: linear-gradient(90deg, rgba(255,215,0,.12), rgba(255,149,0,.08)); border: 1px solid rgba(255,215,0,.3); }
+.garden-dex-item.rare .dex-emoji { filter: drop-shadow(0 0 3px rgba(255,215,0,.6)); }
+
+/* ===== 每日任务条 ===== */
+.garden-daily {
+  margin: 0 18px 10px; padding: 10px 14px; border-radius: 14px;
+  background: linear-gradient(90deg, rgba(255,193,7,.12), rgba(255,152,0,.08));
+}
+.garden-daily-title { font-size: 12px; font-weight: 700; color: var(--ink); margin-bottom: 6px; }
+.garden-daily-tasks { display: flex; gap: 8px; }
+.garden-daily-task {
+  flex: 1; display: flex; align-items: center; gap: 4px; justify-content: center;
+  padding: 5px 4px; border-radius: 10px; background: rgba(255,255,255,.6);
+  font-size: 11px; color: var(--muted);
+}
+.garden-daily-task.done { background: rgba(76,175,80,.2); color: #2e7d32; font-weight: 600; }
+.dt-emoji { font-size: 14px; }
+
+/* ===== 成就墙 ===== */
+.garden-achv { margin: 0 18px 18px; padding: 14px 16px; border-radius: 18px; background: rgba(255,255,255,.6); }
+.garden-achv-title { font-size: 14px; font-weight: 700; margin-bottom: 10px; }
+.garden-achv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.garden-achv-item {
+  display: flex; align-items: center; gap: 6px; padding: 8px 6px;
+  border-radius: 12px; background: rgba(0,0,0,.03); font-size: 11px;
+  opacity: .5;
+}
+.garden-achv-item.done { opacity: 1; background: linear-gradient(90deg, rgba(255,215,0,.14), rgba(255,149,0,.08)); }
+.achv-emoji { font-size: 18px; }
+.achv-name { color: var(--ink); font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ===== Tab 分区（#503 重做：吸顶胶囊条，横向可滑，日多模块不再全挤一页） ===== */
+.garden-tabs {
+  display: flex; gap: 6px; padding: 8px 14px 10px;
+  overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none;
+  position: sticky; top: 0; z-index: 8;
+  background: linear-gradient(180deg, rgba(245,245,240,.96) 70%, rgba(245,245,240,0));
+}
+.garden-tabs::-webkit-scrollbar { display: none; }
+.garden-tab {
+  flex: 0 0 auto; display: flex; flex-direction: row; align-items: center; gap: 5px;
+  padding: 8px 14px; border-radius: 99px; border: 1px solid rgba(0,0,0,.08);
+  background: rgba(255,255,255,.9); cursor: pointer; font-family: inherit; color: var(--ink);
+  transition: background .15s ease, color .15s ease; -webkit-tap-highlight-color: transparent;
+}
+.garden-tab.active { background: linear-gradient(90deg, #66bb6a, #43a047); color: #fff; border-color: transparent; }
+.gt-emoji { font-size: 14px; }
+.garden-tab.active .gt-emoji { filter: drop-shadow(0 1px 1px rgba(0,0,0,.35)); }
+.gt-name { font-size: 12px; font-weight: 600; white-space: nowrap; }
+.garden-panel { display: none; padding-bottom: 8px; }
+.garden-panel.active { display: block; }
+
+/* ===== #503 空地折叠砖 ===== */
+.garden-fold-tile {
+  aspect-ratio: 1; border-radius: 14px;
+  border: 1.5px dashed rgba(0,0,0,.18); background: rgba(255,255,255,.55);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  font-size: 11px; color: var(--muted); cursor: pointer; user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.garden-fold-tile:active { background: rgba(0,0,0,.05); }
+.garden-fold-hint { font-size: 9px; opacity: .6; }
+
+/* ===== #503 日志「查看全部」开关 ===== */
+.garden-log-toggle {
+  float: right; border: none; background: none; font-family: inherit;
+  font-size: 11px; font-weight: 600; color: #43a047; cursor: pointer; padding: 0;
+}
+.garden-log-list { max-height: 320px; }
+
+/* ===== 花艺工坊 ===== */
+.garden-craft { margin: 0 18px 18px; padding: 14px 16px; border-radius: 18px; background: rgba(255,255,255,.6); }
+.garden-craft-title { font-size: 14px; font-weight: 700; margin-bottom: 10px; }
+.garden-craft-list { display: flex; flex-direction: column; gap: 10px; }
+.garden-recipe {
+  padding: 12px; border-radius: 14px; background: rgba(0,0,0,.03);
+  border: 1px solid transparent;
+}
+.garden-recipe.can { background: linear-gradient(90deg, rgba(232,90,143,.08), rgba(255,193,7,.06)); border-color: rgba(232,90,143,.25); }
+.garden-recipe.made { border-color: rgba(76,175,80,.3); }
+.recipe-head { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.recipe-emoji { font-size: 18px; }
+.recipe-name { font-size: 13px; font-weight: 700; color: var(--ink); }
+.recipe-made { font-size: 10px; color: #4caf50; margin-left: auto; }
+.recipe-need { font-size: 11px; color: var(--muted); margin-bottom: 4px; letter-spacing: 1px; }
+.recipe-wish { font-size: 11px; color: var(--ink); opacity: .8; line-height: 1.5; margin-bottom: 8px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.recipe-btn {
+  display: block; width: 100%; padding: 7px; border-radius: 10px;
+  border: none; background: #e85a8f; color: #fff; font-size: 12px; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+}
+.recipe-btn:active { opacity: .8; }
+.recipe-btn[disabled] { opacity: .5; cursor: default; }
+.recipe-need .rq.short { color: #e0524f; font-weight: 700; letter-spacing: 0; }
+.recipe-lack { font-size: 11px; color: #e0524f; margin: -2px 0 4px; }
+
+/* ===== 花园年报 ===== */
+.garden-report { margin: 0 18px 18px; }
+.garden-report-card {
+  padding: 18px 16px; border-radius: 18px;
+  background: linear-gradient(135deg, rgba(102,187,67,.12), rgba(255,193,7,.1));
+  text-align: center;
+}
+.report-year { font-size: 18px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+.report-lv { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+.report-stats { display: flex; flex-wrap: wrap; justify-content: space-around; gap: 8px; margin-bottom: 14px; }
+.rs-item { font-size: 11px; color: var(--muted); min-width: 0; }
+.rs-item b { display: block; font-size: 18px; color: var(--ink); font-weight: 700; }
+.report-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 12px; margin-bottom: 4px; border-radius: 10px;
+  background: rgba(255,255,255,.5); font-size: 12px;
+}
+.report-row span { color: var(--muted); }
+.report-row b { color: var(--ink); font-weight: 600; }
+.report-share-btn {
+  display: block; width: 100%; margin-top: 12px; padding: 10px; border-radius: 14px;
+  border: none; background: #43a047; color: #fff; font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+}
+.report-share-btn:active { opacity: .8; }
+
+/* ===== 地块特效（浇水/施肥/收获） ===== */
+.garden-fx {
+  position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 5; border-radius: 14px; overflow: hidden;
+}
+.garden-fx.fx-water::before {
+  content: ""; position: absolute; left: 50%; top: -10px;
+  width: 8px; height: 8px; margin-left: -4px; border-radius: 50%;
+  background: radial-gradient(circle, #4fc3f7, #0288d1);
+  box-shadow: -10px 0 0 #4fc3f7, 10px 0 0 #29b6f6;
+  animation: fxDrop .9s ease-in forwards;
+}
+.garden-fx.fx-fert::before {
+  content: ""; position: absolute; left: 50%; top: 50%;
+  width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%;
+  border: 2px solid #ffb300; opacity: .8;
+  animation: fxRing .8s ease-out forwards;
+}
+.garden-fx.fx-harvest::before,
+.garden-fx.fx-harvest::after {
+  content: ""; position: absolute; width: 6px; height: 6px; border-radius: 50%;
+  background: #ff80ab; box-shadow: 0 0 6px #ff80ab;
+}
+.garden-fx.fx-harvest::before { left: 20%; top: 50%; animation: fxFly1 1s ease-out forwards; }
+.garden-fx.fx-harvest::after { right: 20%; top: 50%; animation: fxFly2 1s ease-out forwards; }
+@keyframes fxDrop { to { top: 110%; } }
+@keyframes fxRing { to { width: 80px; height: 80px; margin: -40px 0 0 -40px; opacity: 0; } }
+@keyframes fxFly1 { to { transform: translate(-30px, -40px); opacity: 0; } }
+@keyframes fxFly2 { to { transform: translate(30px, -40px); opacity: 0; } }
+
+/* ===== 品质标记 ===== */
+.garden-qual-tag {
+  display: inline-block; margin-left: 4px; padding: 1px 5px;
+  border-radius: 8px; font-size: 9px; font-weight: 700; letter-spacing: .5px;
+  background: linear-gradient(90deg, rgba(255,193,7,.18), rgba(255,111,0,.14));
+  color: #c67800;
+}
+
+/* ===== 杂交按钮 ===== */
+.garden-tool.hybrid { background: rgba(156,39,176,.1); border-color: rgba(156,39,176,.3); }
+.garden-tool.hybrid:active { background: #9c27b0; }
+/* #446 开垦（扩建改自愿·资格确认）与补种（空地一键按上次品种补齐） */
+.garden-tool.reclaim { background: rgba(0,150,136,.1); border-color: rgba(0,150,136,.3); }
+.garden-tool.reclaim:active { background: #009688; }
+/* #503 收地 */
+.garden-tool.shrink { background: rgba(233,30,99,.07); border-color: rgba(233,30,99,.25); }
+.garden-tool.shrink:active { background: #e91e63; }
+.garden-tool.replant.batch { background: rgba(76,175,80,.12); border-color: rgba(76,175,80,.3); }
+
+/* ===== 杂交配方列表 ===== */
+.garden-craft-sub { font-size: 13px; font-weight: 700; margin: 14px 0 8px; }
+.hybrid-list .garden-recipe.hybrid { background: rgba(156,39,176,.05); }
+.hybrid-list .garden-recipe.hybrid.made { border-color: rgba(156,39,176,.3); background: rgba(156,39,176,.08); }
+.recipe-locked { font-size: 10px; color: var(--muted); margin-left: auto; }
+
+/* ===== 无障碍：减少动画 ===== */
+@media (prefers-reduced-motion: reduce) {
+  .garden-plot.bloomed .garden-plant-emoji,
+  .garden-plot.rare.bloomed .garden-plant-emoji { animation: none !important; }
+  .garden-fx { display: none !important; }
+}
+
+/* ===== 图鉴搜索+季节筛选 ===== */
+.garden-dex-bar { margin-bottom: 10px; }
+.garden-dex-search { width: 100%; padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(0,0,0,.1); background: rgba(255,255,255,.8); font-size: 13px; margin-bottom: 8px; box-sizing: border-box; font-family: inherit; color: var(--ink); }
+.garden-dex-seasons { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
+.garden-dex-season { padding: 4px 10px; border-radius: 99px; border: none; background: rgba(0,0,0,.05); font-size: 11px; cursor: pointer; font-family: inherit; color: var(--ink); -webkit-tap-highlight-color: transparent; }
+.garden-dex-season.active { background: linear-gradient(90deg, #66bb6a, #43a047); color: #fff; }
+.garden-dex-empty { text-align: center; padding: 20px; color: var(--muted); font-size: 13px; }
+
+/* ===== 花盆等级标记 ===== */
+.garden-pot-mark { position: absolute; top: 2px; left: 3px; font-size: 9px; font-weight: 700; padding: 1px 4px; border-radius: 6px; background: linear-gradient(90deg, rgba(255,193,7,.3), rgba(255,111,0,.2)); color: #c67800; z-index: 4; }
+
+/* ===== 升级按钮 ===== */
+.garden-tool.upgrade { background: rgba(255,193,7,.1); border-color: rgba(255,193,7,.3); }
+.garden-tool.upgrade:active { background: #ffb300; }

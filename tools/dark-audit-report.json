@@ -1,0 +1,4330 @@
+[
+ {
+  "step": "app:chat",
+  "visible": "page-chat",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#chat-send",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#chat-send",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "app:home",
+  "visible": "page-home",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#page-home>div.fav-tabs>button.fav-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#page-home>div.fav-tabs>button.fav-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "app:mail",
+  "visible": "page-mail",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#page-mail>div.fav-tabs>button.fav-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#page-mail>div.fav-tabs>button.fav-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "app:feed",
+  "visible": "page-feed",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "app:calendar",
+  "visible": "page-calendar",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#cal-grid>span.cal-cell.today.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#cal-grid>span.cal-cell.today.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#cal-mood-ico",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#cal-mood-ico",
+     "fg": "rgb(30,30,30)",
+     "ratio": 14.63
+    }
+   }
+  ]
+ },
+ {
+  "step": "app:memory",
+  "visible": "page-memory",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#rel-type-row>button.mem-type-pill.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#rel-type-row>button.mem-type-pill.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "app:divination",
+  "visible": "page-divine",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#div-modes>button.div-mode.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#div-modes>button.div-mode.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#div-counts>button.div-mode.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#div-counts>button.div-mode.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#div-draw",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#div-draw",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "app:note",
+  "visible": "page-fav",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#fav-tab-mine",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#fav-tab-mine",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#fav-kind-tabs>button.fav-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#fav-kind-tabs>button.fav-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "app:music",
+  "visible": "page-music",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#page-music>div.sm-float-row>label.toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#page-music>div.sm-float-row>label.toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#page-music>div.fav-tabs>button.fav-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#page-music>div.fav-tabs>button.fav-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#music-lib-filter>button.mlf-chip.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#music-lib-filter>button.mlf-chip.sel",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   }
+  ]
+ },
+ {
+  "step": "app:stats",
+  "visible": "page-stats",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#page-stats>div.fav-tabs>button.fav-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#page-stats>div.fav-tabs>button.fav-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "app:interact",
+  "visible": "page-interact",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#page-interact>div.fav-tabs>button.fav-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#page-interact>div.fav-tabs>button.fav-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "app:checkin",
+  "visible": "page-checkin",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "app:garden",
+  "visible": "page-garden",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "app:cjian",
+  "visible": "page-cjian",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#cj-groups>button.cj-gchip.on",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#cj-groups>button.cj-gchip.on",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#cj-list>div.cj-card>div.cj-card-tags>span.cj-tag.cj-tag-p",
+    "level": "high",
+    "detail": "rgb(255, 247, 237)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#cj-list>div.cj-card>div.cj-card-tags>span.cj-tag.cj-tag-p",
+     "fg": "rgb(183,121,31)",
+     "ratio": 3.43
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#cj-list>div.cj-card>button.cj-go",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#cj-list>div.cj-card>button.cj-go",
+     "fg": "rgb(30,30,30)",
+     "ratio": 14.63
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#cj-perceive",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#cj-perceive",
+     "fg": "rgb(30,30,30)",
+     "ratio": 14.63
+    }
+   }
+  ]
+ },
+ {
+  "step": "app:tongpin",
+  "visible": "page-tongpin",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "app:shenshou",
+  "visible": "page-shenshou",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "app:period",
+  "visible": "page-period",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "app:accounting",
+  "visible": "page-accounting",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#acc-view-tabs>button.acc-view-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#acc-view-tabs>button.acc-view-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#acc-type-tabs>button.acc-type-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#acc-type-tabs>button.acc-type-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#acc-cat-grid>button.acc-cat.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#acc-cat-grid>button.acc-cat.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#acc-save",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#acc-save",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#acc-filter-tabs>button.acc-filter-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#acc-filter-tabs>button.acc-filter-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "app:memo-arc",
+  "visible": "page-memo-arc",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#narc-root>div.narc-chips>button.narc-chip.on",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#narc-root>div.narc-chips>button.narc-chip.on",
+     "fg": "rgb(30,30,30)",
+     "ratio": 14.63
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "button.narc-mrow>span.nm-main>span.nm-title>i.nm-core",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "button.narc-mrow>span.nm-main>span.nm-title>i.nm-core",
+     "fg": "rgb(30,30,30)",
+     "ratio": 14.63
+    }
+   }
+  ]
+ },
+ {
+  "step": "app:my-arc",
+  "visible": "page-my-arc",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#myarc-root>div.narc-chips>button.narc-chip.on",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#myarc-root>div.narc-chips>button.narc-chip.on",
+     "fg": "rgb(30,30,30)",
+     "ratio": 14.63
+    }
+   }
+  ]
+ },
+ {
+  "step": "app:room",
+  "visible": "page-room",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "app:water",
+  "visible": "page-water",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "app:eat",
+  "visible": "page-eat",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#eat-send",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#eat-send",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "app:piggy",
+  "visible": "page-piggy",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "app:pomo",
+  "visible": "page-pomodoro",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "app:memo",
+  "visible": "page-memo",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#memo-add-btn",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#memo-add-btn",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "app:market",
+  "visible": "page-market",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#market-cats>button.market-cat.sel>div.market-cat-ico",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#market-cats>button.market-cat.sel>div.market-cat-ico",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "app:giftbox",
+  "visible": "page-giftbox",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#page-giftbox>div.giftbox-tabs>button.gb-tab.sel",
+    "level": "high",
+    "detail": "rgb(245, 245, 245)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#page-giftbox>div.giftbox-tabs>button.gb-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 17.32
+    }
+   }
+  ]
+ },
+ {
+  "step": "app:group-chat",
+  "visible": "page-group-chat",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#gc-send",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#gc-send",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-phone",
+  "visible": "page-phone",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#desktop-pages>div.page-slide>div.checkin.glass>span.ck-heart",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#desktop-pages>div.page-slide>div.checkin.glass>span.ck-heart",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#desktop-pages>div.page-slide>div.checkin.glass>span.ck-btn",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#desktop-pages>div.page-slide>div.checkin.glass>span.ck-btn",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#week-days>div.week-day.today",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#week-days>div.week-day.today",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#weekend-fish",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#weekend-fish",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-chatcard",
+  "visible": "page-chatcard",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#page-chatcard>div.card-tabs.cc-top-tabs>button.cc-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#page-chatcard>div.card-tabs.cc-top-tabs>button.cc-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-ta-ask",
+  "visible": "page-ta-ask",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#ta-ask-now",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#ta-ask-now",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#ta-ask-survey-open",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#ta-ask-survey-open",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "div.set-group.glass>div.gs-row>label.toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "div.set-group.glass>div.gs-row>label.toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#ta-ask-tabs>button.cc-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#ta-ask-tabs>button.cc-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-ta-ask-survey",
+  "visible": "page-ta-ask-survey",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#ta-survey-send",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#ta-survey-send",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#ta-survey-reset",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#ta-survey-reset",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-ta-choose",
+  "visible": "page-ta-choose",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#tc-now",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#tc-now",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "div.set-group.glass>div.gs-row>label.toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "div.set-group.glass>div.gs-row>label.toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#tc-tabs>button.cc-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#tc-tabs>button.cc-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-ta-curious",
+  "visible": "page-ta-curious",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#tcu-now",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#tcu-now",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "div.set-group.glass>div.gs-row>label.toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "div.set-group.glass>div.gs-row>label.toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#tcu-tabs>button.cc-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#tcu-tabs>button.cc-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-ta-roast",
+  "visible": "page-ta-roast",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#tr-now",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#tr-now",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "div.set-group.glass>div.gs-row>label.toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "div.set-group.glass>div.gs-row>label.toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#tr-tabs>button.cc-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#tr-tabs>button.cc-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-ta-checkin",
+  "visible": "page-ta-checkin",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#ckq-now",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#ckq-now",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "div.set-group.glass>div.gs-row>label.toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "div.set-group.glass>div.gs-row>label.toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#ckq-tabs>button.cc-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#ckq-tabs>button.cc-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-ta-invite",
+  "visible": "page-ta-invite",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#ti-now",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#ti-now",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "div.set-group.glass>div.gs-row>label.toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "div.set-group.glass>div.gs-row>label.toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#ti-tabs>button.cc-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#ti-tabs>button.cc-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-checkin-cards",
+  "visible": "page-checkin-cards",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "div.set-group.glass>div.gs-row>label.toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "div.set-group.glass>div.gs-row>label.toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#page-checkin-cards>div.gs-scroll>div.fav-tabs>button.fav-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#page-checkin-cards>div.gs-scroll>div.fav-tabs>button.fav-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#ck-tabs>button.cc-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#ck-tabs>button.cc-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#cck-sys-list>div.tc-qrow>label.toggle.ccard-toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#cck-sys-list>div.tc-qrow>label.toggle.ccard-toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-quote-cards",
+  "visible": "page-quote-cards",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#cq-tabs>button.cc-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#cq-tabs>button.cc-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#cq-sys-panel>div.gs-row>label.toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#cq-sys-panel>div.gs-row>label.toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#cq-sys-list>div.tc-qrow>label.toggle.ccard-toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#cq-sys-list>div.tc-qrow>label.toggle.ccard-toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-loc-cards",
+  "visible": "page-loc-cards",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "div.set-group.glass>div.gs-row>label.toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "div.set-group.glass>div.gs-row>label.toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#page-loc-cards>div.gs-scroll>div.fav-tabs>button.fav-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#page-loc-cards>div.gs-scroll>div.fav-tabs>button.fav-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#loc-tabs>button.cc-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#loc-tabs>button.cc-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#cloc-sys-list>div.tc-qrow>label.toggle.ccard-toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#cloc-sys-list>div.tc-qrow>label.toggle.ccard-toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-custom-cards",
+  "visible": "page-custom-cards",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#cc-tabs>button.cc-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#cc-tabs>button.cc-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#cc-groups-bar>span.cc-g-chip.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#cc-groups-bar>span.cc-g-chip.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-setting",
+  "visible": "page-setting",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#sf-desk-checkin-row>label.toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#sf-desk-checkin-row>label.toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "div.set-group.glass>div.gs-row>label.toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "div.set-group.glass>div.gs-row>label.toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-storage",
+  "visible": "page-storage",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#st-goto-music",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#st-goto-music",
+     "fg": "rgb(14,14,14)",
+     "ratio": 16.94
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#st-slim-other",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#st-slim-other",
+     "fg": "rgb(14,14,14)",
+     "ratio": 16.94
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#st-clear-err",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#st-clear-err",
+     "fg": "rgb(14,14,14)",
+     "ratio": 16.94
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#st-media-gc",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#st-media-gc",
+     "fg": "rgb(14,14,14)",
+     "ratio": 16.94
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#st-media-cov-btn",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#st-media-cov-btn",
+     "fg": "rgb(14,14,14)",
+     "ratio": 16.94
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#st-media-rebuild-btn",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#st-media-rebuild-btn",
+     "fg": "rgb(14,14,14)",
+     "ratio": 16.94
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#st-persist-btn",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#st-persist-btn",
+     "fg": "rgb(14,14,14)",
+     "ratio": 16.94
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#st-cc-scan",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#st-cc-scan",
+     "fg": "rgb(14,14,14)",
+     "ratio": 16.94
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-theme",
+  "visible": "page-theme",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "div.desk-cp-phone>div.desk-cp-apps>div.desk-cp-app>div.desk-cp-ico",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "div.desk-cp-phone>div.desk-cp-apps>div.desk-cp-app>div.desk-cp-ico",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#desk-color-preview>div.desk-cp-phone>div.desk-cp-card>button.desk-cp-btn",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#desk-color-preview>div.desk-cp-phone>div.desk-cp-card>button.desk-cp-btn",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#desk-color-preview>div.desk-cp-phone>button.desk-cp-theme",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#desk-color-preview>div.desk-cp-phone>button.desk-cp-theme",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-about",
+  "visible": "page-about",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "div.cal-card.glass>div.lic-hero>div.lic-hero-top>span.lic-badge",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "div.cal-card.glass>div.lic-hero>div.lic-hero-top>span.lic-badge",
+     "fg": "rgb(30,30,30)",
+     "ratio": 14.63
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-featurehub",
+  "visible": "page-featurehub",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-reply-settings",
+  "visible": "page-reply-settings",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#page-reply-settings>div.fav-tabs>button.fav-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#page-reply-settings>div.fav-tabs>button.fav-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "div.set-group.glass>div.gs-row>label.toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "div.set-group.glass>div.gs-row>label.toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#reply-save-btn",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#reply-save-btn",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#reply-save-all-btn",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#reply-save-all-btn",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-call-settings",
+  "visible": "page-call-settings",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "div.set-group.glass>div.gs-row>label.toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "div.set-group.glass>div.gs-row>label.toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-sfx-settings",
+  "visible": "page-sfx-settings",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#sfx-ring-presets>button.sfx-preset.on",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#sfx-ring-presets>button.sfx-preset.on",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#sfx-in-presets>button.sfx-preset.on",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#sfx-in-presets>button.sfx-preset.on",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#sfx-out-presets>button.sfx-preset.on",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#sfx-out-presets>button.sfx-preset.on",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-default-cards",
+  "visible": "page-default-cards",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#page-default-cards>div.dc-toggle.glass>label.toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#page-default-cards>div.dc-toggle.glass>label.toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "div.set-group.glass>div.gs-row>label.toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "div.set-group.glass>div.gs-row>label.toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#dc-tabs>button.cc-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#dc-tabs>button.cc-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-dict-cards",
+  "visible": "page-dict-cards",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "div.set-group.glass>div.gs-row>label.toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "div.set-group.glass>div.gs-row>label.toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-fun-cards",
+  "visible": "page-fun-cards",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "div.set-group.glass>div.gs-row>label.toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "div.set-group.glass>div.gs-row>label.toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#fc-tabs>button.cc-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#fc-tabs>button.cc-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-deskcheck",
+  "visible": "page-deskcheck",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#dk-tabs>button.cc-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#dk-tabs>button.cc-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-mood-cards",
+  "visible": "page-mood-cards",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#page-mood-cards>div.dc-toggle.glass>label.toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#page-mood-cards>div.dc-toggle.glass>label.toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#mc-groups-bar>span.cc-g-chip.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#mc-groups-bar>span.cc-g-chip.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#mc-list>div.cc-item.glass>label.toggle.ccard-toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#mc-list>div.cc-item.glass>label.toggle.ccard-toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-ta-mood",
+  "visible": "page-ta-mood",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#page-ta-mood>div.dc-toggle.glass>label.toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#page-ta-mood>div.dc-toggle.glass>label.toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#tm-groups-bar>span.cc-g-chip.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#tm-groups-bar>span.cc-g-chip.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#tm-list>div.cc-item.glass>label.toggle.ccard-toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#tm-list>div.cc-item.glass>label.toggle.ccard-toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-reply-cards",
+  "visible": "page-reply-cards",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#page-reply-cards>div.dc-toggle.glass>label.toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#page-reply-cards>div.dc-toggle.glass>label.toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#rc-groups-bar>span.cc-g-chip.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#rc-groups-bar>span.cc-g-chip.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#rc-list>div.cc-item.glass>label.toggle.ccard-toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#rc-list>div.cc-item.glass>label.toggle.ccard-toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-calendar",
+  "visible": "page-calendar",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#cal-grid>span.cal-cell.today.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#cal-grid>span.cal-cell.today.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#cal-mood-ico",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#cal-mood-ico",
+     "fg": "rgb(30,30,30)",
+     "ratio": 14.63
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-period",
+  "visible": "page-period",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-accounting",
+  "visible": "page-accounting",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#acc-view-tabs>button.acc-view-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#acc-view-tabs>button.acc-view-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#acc-type-tabs>button.acc-type-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#acc-type-tabs>button.acc-type-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#acc-cat-grid>button.acc-cat.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#acc-cat-grid>button.acc-cat.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#acc-save",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#acc-save",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#acc-filter-tabs>button.acc-filter-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#acc-filter-tabs>button.acc-filter-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-garden",
+  "visible": "page-garden",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-divine",
+  "visible": "page-divine",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#div-modes>button.div-mode.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#div-modes>button.div-mode.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#div-counts>button.div-mode.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#div-counts>button.div-mode.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#div-draw",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#div-draw",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-music",
+  "visible": "page-music",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#page-music>div.sm-float-row>label.toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#page-music>div.sm-float-row>label.toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#page-music>div.fav-tabs>button.fav-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#page-music>div.fav-tabs>button.fav-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#music-lib-filter>button.mlf-chip.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#music-lib-filter>button.mlf-chip.sel",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-stats",
+  "visible": "page-stats",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#page-stats>div.fav-tabs>button.fav-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#page-stats>div.fav-tabs>button.fav-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-interact",
+  "visible": "page-interact",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#page-interact>div.fav-tabs>button.fav-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#page-interact>div.fav-tabs>button.fav-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-home",
+  "visible": "page-home",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#page-home>div.fav-tabs>button.fav-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#page-home>div.fav-tabs>button.fav-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-arcade",
+  "visible": "page-arcade",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-mail",
+  "visible": "page-mail",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#page-mail>div.fav-tabs>button.fav-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#page-mail>div.fav-tabs>button.fav-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-mail-write",
+  "visible": "page-mail-write",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#mail-send",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#mail-send",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-mail-reply",
+  "visible": "page-mail-reply",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#mail-reply-send",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#mail-reply-send",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-feed",
+  "visible": "page-feed",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-feed-all",
+  "visible": "page-feed-all",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-feed-friends",
+  "visible": "page-feed-friends",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-checkin",
+  "visible": "page-checkin",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-memory",
+  "visible": "page-memory",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#rel-type-row>button.mem-type-pill.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#rel-type-row>button.mem-type-pill.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-fav",
+  "visible": "page-fav",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#fav-tab-mine",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#fav-tab-mine",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#fav-kind-tabs>button.fav-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#fav-kind-tabs>button.fav-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-fav-settings",
+  "visible": "page-fav-settings",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-chat",
+  "visible": "page-chat",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#chat-send",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#chat-send",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-cjian",
+  "visible": "page-cjian",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#cj-groups>button.cj-gchip.on",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#cj-groups>button.cj-gchip.on",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#cj-list>div.cj-card>div.cj-card-tags>span.cj-tag.cj-tag-p",
+    "level": "high",
+    "detail": "rgb(255, 247, 237)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#cj-list>div.cj-card>div.cj-card-tags>span.cj-tag.cj-tag-p",
+     "fg": "rgb(183,121,31)",
+     "ratio": 3.43
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#cj-list>div.cj-card>button.cj-go",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#cj-list>div.cj-card>button.cj-go",
+     "fg": "rgb(30,30,30)",
+     "ratio": 14.63
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#cj-perceive",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#cj-perceive",
+     "fg": "rgb(30,30,30)",
+     "ratio": 14.63
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-room",
+  "visible": "page-room",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-drift",
+  "visible": "page-drift",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-memo-arc",
+  "visible": "page-memo-arc",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#narc-root>div.narc-chips>button.narc-chip.on",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#narc-root>div.narc-chips>button.narc-chip.on",
+     "fg": "rgb(30,30,30)",
+     "ratio": 14.63
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "button.narc-mrow>span.nm-main>span.nm-title>i.nm-core",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "button.narc-mrow>span.nm-main>span.nm-title>i.nm-core",
+     "fg": "rgb(30,30,30)",
+     "ratio": 14.63
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-mood",
+  "visible": "page-mood",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "low-contrast",
+    "sel": "#mood-prev-m",
+    "level": "mid",
+    "detail": "fg=rgb(255, 255, 255) bg=rgb(164,164,164) ratio=2.48",
+    "verdict": "info"
+   },
+   {
+    "type": "low-contrast",
+    "sel": "#mood-next-m",
+    "level": "mid",
+    "detail": "fg=rgb(255, 255, 255) bg=rgb(164,164,164) ratio=2.48",
+    "verdict": "info"
+   }
+  ]
+ },
+ {
+  "step": "page:page-my-arc",
+  "visible": "page-my-arc",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#myarc-root>div.narc-chips>button.narc-chip.on",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#myarc-root>div.narc-chips>button.narc-chip.on",
+     "fg": "rgb(30,30,30)",
+     "ratio": 14.63
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-group-chat",
+  "visible": "page-group-chat",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#gc-send",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#gc-send",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-chat-settings",
+  "visible": "page-chat-settings",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-tongpin",
+  "visible": "page-tongpin",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-shenshou",
+  "visible": "page-shenshou",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-water",
+  "visible": "page-water",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-eat",
+  "visible": "page-eat",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#eat-send",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#eat-send",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-pomodoro",
+  "visible": "page-pomodoro",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-piggy",
+  "visible": "page-piggy",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-pmp-chat",
+  "visible": "page-pmp-chat",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-memo",
+  "visible": "page-memo",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#memo-add-btn",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#memo-add-btn",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-market",
+  "visible": "page-market",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#market-cats>button.market-cat.sel>div.market-cat-ico",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#market-cats>button.market-cat.sel>div.market-cat-ico",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "page:page-giftbox",
+  "visible": "page-giftbox",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#page-giftbox>div.giftbox-tabs>button.gb-tab.sel",
+    "level": "high",
+    "detail": "rgb(245, 245, 245)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#page-giftbox>div.giftbox-tabs>button.gb-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 17.32
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#poke-card",
+  "visible": "page-chat +#poke-card",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#chat-send",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#chat-send",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#poke-card>div.poke-input-row>button.poke-input-go",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#poke-card>div.poke-input-row>button.poke-input-go",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#emoji-panel",
+  "visible": " +#emoji-panel",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#emoji-panel>div.emoji-head>div.emoji-tabs>button.emoji-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#emoji-panel>div.emoji-head>div.emoji-tabs>button.emoji-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#chat-more-panel",
+  "visible": " +#chat-more-panel",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#more-tabs>button.more-tab.sel",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#more-tabs>button.more-tab.sel",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#chat-search",
+  "visible": " +#chat-search",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#chat-ask-panel",
+  "visible": " +#chat-ask-panel",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#chat-decision-panel",
+  "visible": " +#chat-decision-panel",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#chat-divine-panel",
+  "visible": " +#chat-divine-panel",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#chat-rps-panel",
+  "visible": " +#chat-rps-panel",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#chat-snake-panel",
+  "visible": " +#chat-snake-panel",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#chat-pong-panel",
+  "visible": " +#chat-pong-panel",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#chat-gift-panel",
+  "visible": " +#chat-gift-panel",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#chat-call-panel",
+  "visible": " +#chat-call-panel",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#chat-linkup-panel",
+  "visible": "",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#chat-match3-panel",
+  "visible": "",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#chat-gomoku-panel",
+  "visible": "",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#chat-c4-panel",
+  "visible": "",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#chat-ms-panel",
+  "visible": "",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#chat-auction-panel",
+  "visible": "",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#chat-memory-panel",
+  "visible": "",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#chat-fish-panel",
+  "visible": "",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#avlib-card",
+  "visible": " +#avlib-card",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#avlib-tab-a",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#avlib-tab-a",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#avlib-pane-a>div.avlib-toggle>label.toggle>span.tk",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#avlib-pane-a>div.avlib-toggle>label.toggle>span.tk",
+     "fg": "(no-text/no-svg)",
+     "ratio": null
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#avlib-upload",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#avlib-upload",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#ck-panel",
+  "visible": " +#ck-panel",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#loc-panel",
+  "visible": " +#loc-panel",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#fw-perceive",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#fw-perceive",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#qa-mask",
+  "visible": " +#qa-mask",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#tc-mask",
+  "visible": " +#tc-mask",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#chat-rp-panel",
+  "visible": "",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#batch-panel",
+  "visible": "",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#batch-text-add",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#batch-text-add",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#batch-send-all",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#batch-send-all",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#msg-actions",
+  "visible": " +#msg-actions",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#modal-mask",
+  "visible": " +#modal-mask",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#modal-ok",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#modal-ok",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#cc-export-mask",
+  "visible": "",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#cc-scope-mask",
+  "visible": "",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#call-mask",
+  "visible": " +#call-mask",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#feed-notice-panel",
+  "visible": " +#feed-notice-panel",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#feed-comment-panel",
+  "visible": " +#feed-comment-panel",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "panel:#desk-image-viewer",
+  "visible": "",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "moretab:互动",
+  "visible": "page-chat",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   },
+   {
+    "type": "light-bg",
+    "sel": "#chat-send",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#chat-send",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "moretab:工具",
+  "visible": "",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "moretab:小游戏",
+  "visible": "",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ },
+ {
+  "step": "moretab:TA的提问",
+  "visible": "",
+  "issues": [
+   {
+    "type": "light-bg",
+    "sel": "#splash-enter",
+    "level": "high",
+    "detail": "rgb(240, 240, 240)",
+    "verdict": "info",
+    "triage": {
+     "sel": "#splash-enter",
+     "fg": "rgb(17,17,17)",
+     "ratio": 16.57
+    }
+   }
+  ]
+ }
+]

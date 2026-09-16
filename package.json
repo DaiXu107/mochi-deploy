@@ -1,0 +1,14 @@
+{
+  "name": "mochi",
+  "private": true,
+  "scripts": {
+    "build": "node build.mjs",
+    "verify": "node tools/verify.mjs",
+    "verify:webkit": "node tools/verify-webkit.mjs",
+    "verify:device": "node tools/verify-device-regression.mjs",
+    "verify:all": "node tools/verify-suite.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.62.1"
+  }
+}

@@ -1,0 +1,314 @@
+/* ===== 聊天礼物卡片（简约黑白风 + 分类色 emoji 圆底，其余黑白灰） ===== */
+.msg-gift { align-self: center; width: 100%; display: flex; justify-content: center; margin: 8px 0; }
+.msg-gift-card {
+  width: min(260px, 80vw); padding: 22px 18px 14px; border-radius: 20px; box-sizing: border-box;
+  background: #fff; border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
+  text-align: center;
+}
+.msg-gift-emoji {
+  width: 84px; height: 84px; line-height: 84px; margin: 0 auto; border-radius: 50%;
+  background: #f2f2f5; font-size: 42px;
+}
+.msg-gift-name { font-size: 16px; font-weight: 600; color: #111; letter-spacing: 2px; margin-top: 14px; }
+.msg-gift-divider { width: 46px; height: 1px; background: #e5e5e5; margin: 12px auto 0; }
+.msg-gift-wish { font-size: 13px; color: #8a8a8a; line-height: 1.75; margin-top: 12px; word-break: break-word; }
+.msg-gift-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; }
+.mg-side { font-size: 11px; color: #b5b5b5; letter-spacing: 0.5px; }
+.msg-gift-price { font-size: 11px; color: #c8c8c8; letter-spacing: 0.3px; }
+
+/* ===== 心意市集 hero（黑白简约 · 深炭灰底白字 + 点阵，融入全站简约风） =====
+   v3.10.x：width:100% 必须显式声明——.page 是纵向 flex 容器，块级子元素
+   写 margin:0 auto + max-width 时 auto 边距会让 flex item 按 fit-content
+   收缩（分类行 8 个 flex-shrink:0 圆钮固有宽约 590px），结果整页在 360px
+   手机上被撑到 560px 宽（桌面 390 外壳同样溢出），表现为「UI 太大、右侧
+   被裁掉」。显式 width:100% 后按父宽撑满、再被 max-width 限宽居中 */
+.market-body { width:100%; padding: 0 0 90px; max-width: 560px; margin: 0 auto; box-sizing: border-box; }
+.market-hero {
+  margin: 14px 14px 4px; padding: 26px 22px 22px; border-radius: 22px;
+  background: linear-gradient(135deg, #1f1f1f 0%, #3a3a3a 100%);
+  color: #fff; position: relative; overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+.market-hero::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.06), transparent 55%);
+  pointer-events: none;
+}
+.market-hero::after {
+  content: ''; position: absolute; inset: 0;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.14) 1px, transparent 1.5px);
+  background-size: 22px 22px; opacity: 0.5; pointer-events: none;
+}
+.market-hero-title { font-size: 23px; font-weight: 700; letter-spacing: 2px; position: relative; }
+.market-hero-sub { font-size: 13px; opacity: 0.7; margin-top: 6px; position: relative; letter-spacing: 0.3px; }
+.market-balance { display: inline-block; font-size: 12px; margin-top: 16px; padding: 5px 14px; border-radius: 99px; background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.18); position: relative; font-weight: 500; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; transition: transform 0.15s; }
+.market-balance:active { transform: scale(0.96); opacity: 0.7; }
+
+/* ===== 圆形分类入口（分类淡色底 + 选中深炭灰，融入黑白简约） ===== */
+.market-cats { display: flex; gap: 14px; padding: 18px 14px 10px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.market-cats::-webkit-scrollbar { display: none; }
+.market-cat { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 7px; background: none; border: none; cursor: pointer; padding: 2px; transition: transform 0.15s; }
+.market-cat-ico { width: 54px; height: 54px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 25px; transition: all 0.18s; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06); background: #f2f2f5 !important; }
+.market-cat.sel .market-cat-ico { background: #1f1f1f !important; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); transform: scale(1.06); }
+.market-cat.sel .market-cat-ico::after { content: ''; }
+.market-cat-name { font-size: 11.5px; color: #8a8a8a; white-space: nowrap; }
+.market-cat.sel .market-cat-name { color: #111; font-weight: 600; }
+
+/* ===== 分层商品卡片 ===== */
+.market-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 8px 14px 16px; }
+.gift-item { position: relative; background: #fff; border: none; border-radius: 18px; overflow: hidden; cursor: pointer; transition: transform 0.18s, box-shadow 0.18s; box-shadow: 0 2px 8px rgba(109, 91, 176, 0.06); padding: 0; }
+.gift-item:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(109, 91, 176, 0.15); }
+.gift-item:active { transform: scale(0.97); }
+.gift-item-top { padding: 20px 0 14px; text-align: center; }
+.gift-item-emoji { font-size: 42px; line-height: 1; }
+.gift-item-body { padding: 10px 14px 14px; text-align: center; }
+.gift-item-name { font-size: 14px; font-weight: 600; color: #4a3d6b; }
+.gift-item-price { font-size: 13px; color: #8b7ac8; margin-top: 3px; font-weight: 600; }
+.gift-item.manage { box-shadow: 0 0 0 2px rgba(139, 122, 200, 0.3); }
+.gift-item-edit { position: absolute; top: 8px; left: 8px; width: 20px; height: 20px; line-height: 20px; border-radius: 50%; background: rgba(109, 91, 176, 0.9); color: #fff; font-size: 11px; cursor: pointer; z-index: 2; border: none; text-align: center; }
+.gift-item-del { position: absolute; top: 8px; right: 8px; width: 20px; height: 20px; line-height: 20px; border-radius: 50%; background: rgba(139, 122, 200, 0.9); color: #fff; font-size: 11px; cursor: pointer; z-index: 2; border: none; }
+.gift-empty { grid-column: 1 / -1; text-align: center; color: #b0a8c8; padding: 44px 24px; font-size: 13px; line-height: 1.8; }
+
+/* ===== 市集主页卡片黑白简约覆盖（聊天送礼面板沿用基础 .gift-item，不在此覆盖） ===== */
+#page-market .gift-item { background: #fff; border: 1px solid rgba(0, 0, 0, 0.06); border-radius: 20px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); }
+#page-market .gift-item:hover { transform: translateY(-4px); box-shadow: 0 10px 22px rgba(0, 0, 0, 0.1); }
+#page-market .gift-item-top { padding: 18px 0 12px; background: #fff !important; }
+#page-market .gift-item-emoji { display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 50%; background: #f2f2f5; font-size: 38px; line-height: 1; overflow: hidden; }
+#page-market .gift-item-emoji .gift-item-img { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; margin: 0; }
+#page-market .gift-item-body { padding: 8px 12px 14px; }
+#page-market .gift-item-name { color: #111; }
+#page-market .gift-item-price { display: inline-block; font-size: 12px; color: #8a8a8a; margin-top: 6px; padding: 3px 11px; border-radius: 99px; background: #f2f2f5; font-weight: 500; }
+#page-market .gift-item.manage { box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.12); }
+#page-market .gift-item-edit { background: rgba(0, 0, 0, 0.85); }
+#page-market .gift-item-del { background: rgba(0, 0, 0, 0.55); }
+#page-market .gift-empty { color: #b5b5b5; }
+
+/* ===== 聊天送礼面板（底部半框，加大面板 + 2 列宽松） ===== */
+#chat-gift-panel { max-height: 78%; }
+#chat-gift-panel .poke-card-scroll { max-height: none; }
+.gift-balance { text-align: center; font-size: 12px; color: #8b7ac8; padding: 6px 16px 2px; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; }
+.gift-balance:active { opacity: 0.6; }
+.gift-cats { display: flex; gap: 7px; padding: 8px 14px 4px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.gift-cats::-webkit-scrollbar { display: none; }
+.gift-cat { flex-shrink: 0; padding: 6px 14px; border-radius: 99px; background: rgba(139, 122, 200, 0.08); color: #6d5bb0; font-size: 13px; border: none; cursor: pointer; transition: all 0.15s; }
+.gift-cat.sel { background: linear-gradient(135deg, #8b7ac8, #6d5bb0); color: #fff; box-shadow: 0 2px 8px rgba(109, 91, 176, 0.25); }
+.gift-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 6px 14px 24px; }
+.gift-grid .gift-item { border-radius: 14px; }
+.gift-grid .gift-item-top { padding: 14px 0 8px; }
+.gift-grid .gift-item-emoji { font-size: 34px; }
+.gift-grid .gift-item-body { padding: 8px 6px 12px; }
+.gift-grid .gift-item-name { font-size: 13px; }
+.gift-grid .gift-item-price { font-size: 12px; }
+
+/* ===== 商品图片（自定义上传，无图回退 emoji） ===== */
+.gift-item-img { width: 72px; height: 72px; object-fit: cover; border-radius: 14px; display: block; margin: 0 auto; }
+.gift-grid .gift-item-img { width: 52px; height: 52px; border-radius: 11px; }
+.gb-emoji-img { width: 96px; height: 96px; object-fit: cover; border-radius: 18px; display: block; margin: 0 auto; }
+.giftbox-emoji-img { width: 64px; height: 64px; object-fit: cover; border-radius: 14px; display: block; }
+.gb-detail-emoji-img { width: 110px; height: 110px; object-fit: cover; border-radius: 20px; display: block; margin: 0 auto; }
+.msg-gift-img { width: 84px; height: 84px; object-fit: cover; border-radius: 16px; display: block; margin: 0 auto; }
+
+/* ===== 添加/编辑商品表单：图片选择行 ===== */
+.gm-img-row { display: flex; align-items: center; gap: 10px; }
+.gm-img-prev { width: 64px; height: 64px; border-radius: 14px; background: #f5f3fa; border: 1px dashed rgba(139, 122, 200, 0.35); display: flex; align-items: center; justify-content: center; font-size: 28px; overflow: hidden; box-sizing: border-box; flex-shrink: 0; }
+.gm-img-prev img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gm-img-btn { padding: 9px 16px; border-radius: 99px; border: 1px solid rgba(139, 122, 200, 0.3); background: #fff; color: #6d5bb0; font-size: 13px; cursor: pointer; transition: all 0.15s; }
+.gm-img-btn:active { transform: scale(0.96); background: #f5f3fa; }
+
+/* ===== 心意市集底部工具（黑白简约胶囊） =====
+   v3.26.x：+flex-wrap（新增心愿单/设置后共 5 颗胶囊，360px 窄屏需换行） */
+.market-foot { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 10px; padding: 0 14px; }
+.market-tool { padding: 10px 24px; border-radius: 99px; background: #fff; border: 1px solid rgba(0, 0, 0, 0.1); color: #111; font-size: 13px; cursor: pointer; transition: all 0.15s; font-weight: 500; }
+.market-tool:active { background: #f2f2f5; transform: scale(0.97); }
+
+/* ===== 心意柜 hero + tab（黑白简约，融入整体） ===== */
+.giftbox-hero { margin: 14px; padding: 22px 20px; border-radius: 18px; background: #fff; border: 1px solid rgba(0, 0, 0, 0.06); color: #111; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04); }
+.giftbox-hero-title { font-size: 22px; font-weight: 700; letter-spacing: 1.5px; color: #111; }
+.giftbox-hero-sub { font-size: 13px; color: #8a8a8a; margin-top: 5px; letter-spacing: 0.3px; }
+.giftbox-stat-cards { display: flex; gap: 10px; margin-top: 16px; }
+.giftbox-stat-card { flex: 1; background: #f5f5f5; border-radius: 12px; padding: 11px 12px; box-sizing: border-box; }
+.giftbox-stat-ico { font-size: 17px; line-height: 1; }
+.giftbox-stat-num { font-size: 20px; font-weight: 700; margin-top: 4px; line-height: 1; color: #111; }
+.giftbox-stat-lbl { font-size: 11px; color: #8a8a8a; margin-top: 3px; }
+.giftbox-tabs { display: flex; gap: 8px; padding: 0 14px 4px; width: 100%; max-width: 560px; margin: 0 auto; box-sizing: border-box; }
+.gb-tab { flex: 1; padding: 9px 0; border-radius: 99px; background: #f2f2f5; color: #555; border: none; font-size: 13.5px; cursor: pointer; transition: all 0.15s; font-weight: 500; }
+.gb-tab.sel { background: #111; color: #fff; }
+.giftbox-scroll { padding: 12px 14px 80px; width: 100%; max-width: 560px; margin: 0 auto; box-sizing: border-box; }
+.giftbox-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.giftbox-card { background: #fff; border: 1px solid rgba(0, 0, 0, 0.05); border-radius: 16px; overflow: hidden; cursor: pointer; transition: transform 0.16s, box-shadow 0.16s; padding: 0; }
+.giftbox-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08); }
+.giftbox-card:active { transform: scale(0.98); }
+.giftbox-card-top { padding: 18px 0 12px; text-align: center; }
+.giftbox-emoji { width: 64px; height: 64px; margin: 0 auto; border-radius: 50%; background: #f2f2f5; display: flex; align-items: center; justify-content: center; font-size: 32px; line-height: 1; }
+.giftbox-card-body { padding: 8px 12px 14px; text-align: center; }
+.giftbox-name { font-size: 14px; font-weight: 600; color: #111; letter-spacing: 0.5px; }
+.giftbox-price { font-size: 12px; color: #b5b5b5; margin-top: 3px; }
+.giftbox-wish { font-size: 12px; color: #8a8a8a; margin-top: 6px; line-height: 1.5; word-break: break-word; padding: 0 2px; }
+.giftbox-meta { font-size: 10.5px; color: #c8c8c8; margin-top: 6px; }
+
+/* ===== 购买弹窗 ===== */
+.gb-preview { text-align: center; padding: 18px 0 18px; border-radius: 16px; margin-bottom: 16px; }
+.gb-emoji { font-size: 56px; line-height: 1; }
+.gb-name { font-size: 19px; font-weight: 700; color: #4a3d6b; margin-top: 10px; letter-spacing: 0.5px; }
+.gb-price { font-size: 15px; color: #8b7ac8; margin-top: 4px; font-weight: 600; }
+.gb-desc { font-size: 13px; color: #7a6f9a; margin-top: 12px; padding: 0 12px; line-height: 1.6; }
+.gb-wish-row { margin: 0 0 16px; }
+.gb-wish-label { font-size: 13px; color: #6d5bb0; margin-bottom: 7px; font-weight: 500; }
+.gb-wish { width: 100%; min-height: 66px; padding: 11px 14px; border-radius: 13px; border: 1px solid rgba(139, 122, 200, 0.2); background: #faf9fc; font-size: 14px; resize: none; box-sizing: border-box; font-family: inherit; color: #4a3d6b; transition: border 0.15s; }
+.gb-wish:focus { border-color: #8b7ac8; outline: none; }
+.gb-actions { display: flex; gap: 10px; }
+.gb-cancel, .gb-ok { flex: 1; padding: 12px 0; border-radius: 13px; border: none; font-size: 15px; cursor: pointer; transition: all 0.15s; font-weight: 500; }
+.gb-cancel { background: rgba(139, 122, 200, 0.1); color: #6d5bb0; }
+.gb-ok { background: linear-gradient(135deg, #8b7ac8, #6d5bb0); color: #fff; box-shadow: 0 3px 12px rgba(109, 91, 176, 0.25); }
+.gb-ok:active { transform: scale(0.97); }
+
+/* ===== 添加商品表单 ===== */
+.gm-form { padding: 4px 0; }
+.gm-row { margin-bottom: 13px; }
+.gm-row label { display: block; font-size: 13px; color: #6d5bb0; margin-bottom: 6px; font-weight: 500; }
+.gm-input { width: 100%; padding: 10px 13px; border-radius: 11px; border: 1px solid rgba(139, 122, 200, 0.2); background: #faf9fc; font-size: 14px; box-sizing: border-box; font-family: inherit; color: #4a3d6b; }
+.gm-input:focus { border-color: #8b7ac8; outline: none; }
+textarea.gm-input { min-height: 52px; resize: none; }
+
+/* ===== 礼物详情弹窗（心意柜专属，黑白简约） ===== */
+.gb-detail { text-align: center; padding: 22px 0 20px; border-radius: 16px; }
+.gb-detail-emoji { font-size: 64px; line-height: 1; }
+.gb-detail-name { font-size: 20px; font-weight: 700; color: #111; margin-top: 12px; letter-spacing: 0.5px; }
+.gb-detail-price { font-size: 15px; color: #b5b5b5; margin-top: 4px; font-weight: 500; }
+.gb-detail-wish { font-size: 14px; color: #8a8a8a; margin: 16px 20px 0; line-height: 1.7; }
+.gb-detail-meta { font-size: 12px; color: #c8c8c8; margin-top: 14px; }
+
+/* v3.11.x：深色适配改挂 [data-theme="dark"]（原 @media prefers-color-scheme 只跟系统、
+   不跟应用内两档主题开关——App 深色+系统浅色时整页白底刺眼，系统深色+App 浅色时又错变黑） */
+[data-theme="dark"] .msg-gift-card { background: #1c1c1e; border-color: rgba(255, 255, 255, 0.08); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4); }
+[data-theme="dark"] .msg-gift-name, [data-theme="dark"] .gb-name, [data-theme="dark"] .gb-detail-name, [data-theme="dark"] .giftbox-name { color: #f2f2f2; }
+[data-theme="dark"] .msg-gift-divider { background: rgba(255, 255, 255, 0.12); }
+[data-theme="dark"] .msg-gift-wish { color: #98989e; }
+[data-theme="dark"] .gb-detail-wish { color: #98989e; }
+[data-theme="dark"] .mg-side { color: #6b6b70; }
+[data-theme="dark"] .msg-gift-price { color: #5a5a5f; }
+[data-theme="dark"] .giftbox-meta, [data-theme="dark"] .gb-detail-meta { color: #6b6b70; }
+[data-theme="dark"] .gift-item { background: #2a2638; }
+[data-theme="dark"] .giftbox-card { background: #1c1c1e; border-color: rgba(255, 255, 255, 0.08); }
+[data-theme="dark"] .gift-item-name, [data-theme="dark"] .gb-desc, [data-theme="dark"] .gb-wish-label, [data-theme="dark"] .gm-row label { color: #c9c0d8; }
+[data-theme="dark"] .giftbox-wish { color: #98989e; }
+[data-theme="dark"] .gift-cat, [data-theme="dark"] .gb-cancel { background: rgba(255, 255, 255, 0.08); color: #c9b8e8; }
+[data-theme="dark"] .gb-tab { background: rgba(255, 255, 255, 0.08); color: #c9c9cf; }
+[data-theme="dark"] .gb-tab.sel { background: #f5f5f5; color: #111; }
+[data-theme="dark"] .giftbox-hero { background: #1c1c1e; border-color: rgba(255, 255, 255, 0.08); }
+[data-theme="dark"] .giftbox-hero-title { color: #f2f2f2; }
+[data-theme="dark"] .giftbox-hero-sub { color: #98989e; }
+[data-theme="dark"] .giftbox-stat-card { background: #2a2a2c; }
+[data-theme="dark"] .giftbox-stat-num { color: #f2f2f2; }
+[data-theme="dark"] .giftbox-stat-lbl { color: #98989e; }
+[data-theme="dark"] .giftbox-emoji { background: rgba(255, 255, 255, 0.08); }
+[data-theme="dark"] .gm-input, [data-theme="dark"] .gb-wish { background: #2a2638; border-color: rgba(255, 255, 255, 0.12); color: #e0d8f0; }
+[data-theme="dark"] .market-tool { background: #1c1c1e; border-color: rgba(255, 255, 255, 0.12); color: #f2f2f2; }
+[data-theme="dark"] .gm-img-prev { background: #2a2638; border-color: rgba(255, 255, 255, 0.12); }
+[data-theme="dark"] .gm-img-btn { background: #2a2638; border-color: rgba(139, 122, 200, 0.4); }
+[data-theme="dark"] .gift-empty { color: #6a6280; }
+[data-theme="dark"] .market-cat-name { color: #8a8a8a; }
+/* v3.11.x：选中分类名深底上用纯白加粗，未选中中性灰（黑白简约风） */
+[data-theme="dark"] .market-cat.sel .market-cat-name { color: #f2f2f2; }
+/* 市集主页黑白简约深色覆盖（心意柜 .giftbox-card 暖橘深色见上，不在此重复） */
+[data-theme="dark"] #page-market .gift-item { background: #1c1c1e; border-color: rgba(255, 255, 255, 0.08); }
+[data-theme="dark"] #page-market .gift-item-name { color: #f2f2f2; }
+[data-theme="dark"] #page-market .gift-item-price { background: rgba(255, 255, 255, 0.08); color: #b5b5b5; }
+[data-theme="dark"] #page-market .gift-item-emoji { background: rgba(255, 255, 255, 0.06); }
+[data-theme="dark"] #page-market .gift-empty { color: #6b6b70; }
+
+/* ===== v3.13.x：商品搜索行（心意市集页 + 聊天送礼面板共用，gift-shop.js 注入/渲染） ===== */
+.market-search-row { display: flex; gap: 8px; padding: 8px 14px 2px; align-items: center; }
+.market-search {
+  flex: 1; min-width: 0; height: 36px;
+  border: none; border-radius: 12px;
+  background: #f3f1f8; padding: 0 14px;
+  font-size: 13px; color: #333; outline: none;
+  -webkit-appearance: none; appearance: none;
+}
+.market-search::placeholder { color: #b0a8c8; }
+.market-search:focus { box-shadow: 0 0 0 2px rgba(139, 122, 200, 0.22); }
+.market-search-clear {
+  flex-shrink: 0; width: 36px; height: 36px;
+  border: none; border-radius: 12px;
+  background: #f3f1f8; color: #8b7ac8;
+  font-size: 14px; line-height: 1; text-align: center;
+  cursor: pointer; padding: 0;
+}
+.market-search-clear:active { opacity: 0.6; }
+#chat-gift-panel .market-search-row { padding: 4px 14px 0; }
+#chat-gift-panel .market-search, #chat-gift-panel .market-search-clear { height: 34px; }
+#chat-gift-panel .market-search { font-size: 12.5px; }
+[data-theme="dark"] .market-search, [data-theme="dark"] .market-search-clear { background: #2a2638; }
+[data-theme="dark"] .market-search { color: #e0d8f0; }
+[data-theme="dark"] .market-search::placeholder { color: #6a6280; }
+[data-theme="dark"] .market-search-clear { color: #c9b8e8; }
+
+/* ===== v3.26.x 心愿单 + 心意集市和心意柜设置（gift-shop.js 渲染） ===== */
+/* 购买弹窗：心愿单按钮 + 底部小字提示 */
+.gb-wishbtn { flex: 1; padding: 12px 0; border-radius: 13px; border: none; font-size: 14px; cursor: pointer; transition: all 0.15s; font-weight: 500; background: rgba(139, 122, 200, 0.12); color: #6d5bb0; }
+.gb-wishbtn:active { transform: scale(0.96); }
+.gb-tiny { margin-top: 10px; font-size: 11px; color: #b0aac4; line-height: 1.6; text-align: center; }
+/* 心愿单面板：双 tab + 行列表 */
+.wish-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+.wish-tab { flex: 1; padding: 9px 0; border-radius: 99px; background: #f2f2f5; color: #555; border: none; font-size: 13px; cursor: pointer; transition: all 0.15s; font-weight: 500; white-space: nowrap; }
+.wish-tab.sel { background: linear-gradient(135deg, #8b7ac8, #6d5bb0); color: #fff; box-shadow: 0 2px 8px rgba(109, 91, 176, 0.25); }
+.wish-hint { font-size: 11.5px; color: #a09ab5; line-height: 1.8; margin-bottom: 8px; }
+.wish-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(0, 0, 0, 0.05); }
+.wish-emoji { width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; overflow: hidden; flex-shrink: 0; }
+.wish-emoji .wish-img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+.wish-info { flex: 1; min-width: 0; }
+.wish-name { font-size: 14px; color: #4a3d6b; font-weight: 600; }
+.wish-price { font-size: 12px; color: #8b7ac8; margin-top: 2px; font-weight: 600; }
+.wish-wish { font-size: 11px; color: #b0aac4; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wish-act { padding: 7px 14px; border-radius: 99px; border: none; background: linear-gradient(135deg, #8b7ac8, #6d5bb0); color: #fff; font-size: 12.5px; cursor: pointer; flex-shrink: 0; transition: transform 0.15s; }
+.wish-act:active { transform: scale(0.94); }
+.wish-act.del { background: #f2f2f5; color: #8a8a8a; }
+/* 设置面板：行 + 开关 + 概率输入 + 使用说明小字 */
+.gs-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 2px; border-bottom: 1px solid rgba(0, 0, 0, 0.05); }
+.gs-lab { font-size: 14px; color: #4a3d6b; line-height: 1.5; }
+.gs-sub { display: block; font-size: 11px; color: #a09ab5; margin-top: 2px; font-weight: 400; }
+.gs-numwrap { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+.gs-num { width: 72px; padding: 8px 10px; border-radius: 11px; border: 1px solid rgba(139, 122, 200, 0.2); background: #faf9fc; font-size: 14px; text-align: right; box-sizing: border-box; color: #4a3d6b; -webkit-appearance: none; appearance: none; }
+.gs-num:focus { border-color: #8b7ac8; outline: none; }
+.gs-pct { font-size: 13px; color: #8b7ac8; font-weight: 600; }
+.gs-switch { position: relative; width: 44px; height: 26px; border-radius: 99px; background: #d8d4e4; transition: background 0.15s; cursor: pointer; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
+.gs-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: left 0.15s; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2); }
+.gs-switch.on { background: #8b7ac8; }
+.gs-switch.on::after { left: 21px; }
+.gs-help { margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: #f5f3fa; font-size: 11.5px; color: #8a84a3; line-height: 1.9; word-break: break-word; }
+/* 心意柜 hero 设置入口 */
+.giftbox-set { margin-top: 12px; text-align: center; }
+.giftbox-set button { background: none; border: none; color: #8a8a8a; font-size: 12px; padding: 6px 10px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.giftbox-set button:active { opacity: 0.6; }
+/* 暗色适配 */
+[data-theme="dark"] .gb-wishbtn { background: rgba(255, 255, 255, 0.08); color: #c9b8e8; }
+[data-theme="dark"] .gb-tiny { color: #6a6280; }
+[data-theme="dark"] .wish-tab { background: rgba(255, 255, 255, 0.08); color: #c9c9cf; }
+[data-theme="dark"] .wish-hint, [data-theme="dark"] .wish-wish { color: #6a6280; }
+[data-theme="dark"] .wish-item { border-color: rgba(255, 255, 255, 0.08); }
+[data-theme="dark"] .wish-name { color: #e0d8f0; }
+[data-theme="dark"] .wish-emoji { background: rgba(255, 255, 255, 0.08) !important; }
+[data-theme="dark"] .wish-act.del { background: rgba(255, 255, 255, 0.1); color: #98989e; }
+[data-theme="dark"] .gs-row { border-color: rgba(255, 255, 255, 0.08); }
+[data-theme="dark"] .gs-lab { color: #c9c0d8; }
+[data-theme="dark"] .gs-sub { color: #6a6280; }
+[data-theme="dark"] .gs-num { background: #2a2638; border-color: rgba(255, 255, 255, 0.12); color: #e0d8f0; }
+[data-theme="dark"] .gs-pct { color: #c9b8e8; }
+[data-theme="dark"] .gs-switch { background: #3a3750; }
+[data-theme="dark"] .gs-help { background: #2a2638; color: #8a84a3; }
+[data-theme="dark"] .giftbox-set button { color: #98989e; }
+/* #142 防御：三 tab/三按钮后长名字防溢出（.gb-tab 文本换行把 tab 撑高、按钮文字溢出） */
+.gb-tab { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gb-cancel, .gb-ok, .gb-wishbtn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gb-wishbtn { font-size: 13.5px; }
+/* #142 补：TA 心愿单的可见性——市集商品 ☆ 许愿角标 + 聊天送礼面板直达入口 */
+.gift-item-tawish { position: absolute; top: 8px; left: 8px; z-index: 2; max-width: calc(100% - 16px); box-sizing: border-box; padding: 3px 9px; border-radius: 99px; background: rgba(109, 91, 176, 0.92); color: #fff; font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+#page-market .gift-item-tawish { background: rgba(0, 0, 0, 0.78); }
+.gift-wish-row { padding: 6px 14px 2px; }
+.gift-wish-row button { width: 100%; padding: 10px 0; border-radius: 12px; border: 1px dashed rgba(139, 122, 200, 0.4); background: rgba(139, 122, 200, 0.06); color: #6d5bb0; font-size: 13px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.gift-wish-row button:active { transform: scale(0.98); background: rgba(139, 122, 200, 0.12); }
+[data-theme="dark"] .gift-item-tawish { background: rgba(201, 184, 232, 0.85); color: #1c1c1e; }
+[data-theme="dark"] #page-market .gift-item-tawish { background: rgba(201, 184, 232, 0.85); color: #1c1c1e; }
+[data-theme="dark"] .gift-wish-row button { background: rgba(255, 255, 255, 0.06); border-color: rgba(201, 184, 232, 0.4); color: #c9b8e8; }

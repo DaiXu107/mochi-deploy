@@ -1,0 +1,60 @@
+# 本地工具（MinGit 便携版，不需要提交）
+.mingit/
+
+# ZCode 工具目录
+.zcode/
+
+# AI 助手工作目录
+.workbuddy/
+
+# 本地编辑器/调试工具配置
+.arts/
+
+# 临时探测脚本
+_*.mjs
+probe-*.mjs
+
+# Node 依赖目录（测试工具用）
+node_modules/
+
+# 调试截图/预览图与项目结构快照（不入库）
+tools/*.png
+tools/*.log
+codebase-structure.md
+
+# 临时截图
+*.jpg
+memo-shot-*.png
+
+# 临时诊断脚本（用完即删，防误提交）
+tools/tmp-*.mjs
+tools/smoke-*.mjs
+tools/diag-*.mjs
+
+# 临时诊断遗留物（本地复现目录/本地静态服务器/构建日志/诊断页——
+# 均属「用完即删」，不入公开库；只阻止提交，不删本地文件）
+.tmp-repro/
+_server.js
+build_out.txt
+build_err.txt
+diag-*.html
+
+# 性能基线尺子的机器本地基线（verify-perf.mjs 生成，换机器/换 Chrome 重录，不入库）
+/tools/perf-baseline.local.json
+
+# AI 协作台账/内部文档（仅本地，不入公开库——2026-09-11 起）
+/AGENTS.md
+/AI-RULES.md
+/WORKLOG.md
+/WORKLOG-archive/
+/FIX-REGRESSION.md
+/FIX-REGRESSION-archive.md
+/BUGS.md
+/TASKS.md
+/FILEMAP.md
+/PERF-PLAN.md
+/.trae/
+
+
+# 无头诊断的一次性 Chrome profile（临时，不入库）
+/tools/.diag-*/

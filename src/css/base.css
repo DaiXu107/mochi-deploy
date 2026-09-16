@@ -1,0 +1,1343 @@
+/* ===== 基础：重置 / 变量 / 手机外框 / 通用 ===== */
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+:root {
+  /* v3.26.x：显式声明浅色 color-scheme，主动告知浏览器「本页为浅色设计、深色由
+     data-theme 手动切换管理」。缺失时安卓 Chrome 强制深色(Auto Dark)会在系统深色下
+     无视网页配色把内容整体压黑（实测现象：群聊气泡/字体换色无效、纯黑）。
+     v3.26.x #252：必须带 only 关键字——「only light」才是 Chrome Auto Dark 的文档
+     退出开关（网页自述完全不支持深色=禁止 UA 代客压黑）；裸 light 只是偏好声明，
+     部分安卓 Chromium/WebView 仍在系统深色下压黑（#252 用户报「选浅色颜色依旧不对」
+     ＝ #107 同症状复发，裸 light 拦不住）。深色时下方 [data-theme="dark"] 以
+     更高优先级(更靠后)覆盖回 dark。 */
+  color-scheme:only light;
+  --ink:#111111; --muted:#8a8a8a; --line:#e6e6e6;
+  /* v3.6.x 深色模式语义变量——浅色值（默认），[data-theme="dark"] 覆盖为深色值 */
+  --page-bg:#e9e9e9; --page-bg-grad:#f6f6f6;
+  --phone-bg-a:#ffffff; --phone-bg-b:#f2f2f2; --phone-inset:#e8e8e8;
+  --card-bg:#ffffff; --card-bg-97:rgba(255,255,255,.97); --card-border:rgba(0,0,0,.1); --card-shadow:rgba(0,0,0,.04);
+  --input-bg:#ffffff; --input-border:#e0e0e0; --input-focus-border:#999;
+  --btn-bg:#111111; --btn-ink:#ffffff; --btn-cancel-bg:#eeeeee; --btn-cancel-ink:#555555;
+  --overlay-bg:rgba(0,0,0,.35); --static-bg:rgba(0,0,0,.04); --track-bg:#e0e0e0;
+  --hint-ink:#b5b5b5; --soft-ink:#555555; --pill-border:#ddd;
+  --danger-soft:#fff5f5; --danger-ink:#a32d2d;
+  --glass-bg:rgba(255,255,255,.92);
+  /* v3.6.x：--bg-b 由 #f2f2f2 改为 #ffffff——.phone 背景渐变底部原为淡灰，
+     白色 tabbar 悬浮卡片四周（上/下/左右留白 + 圆角外）透出它形成"灰色条/灰角"；
+     改纯白后页面背景干净，tabbar 恢复圆角悬浮形状也再无灰（用户反馈形状回归 +
+     去灰双诉求）。深色模式 --bg-b 仍为 #0e0e0e，不受影响 */
+  --bg-a:#ffffff; --bg-b:#ffffff;
+  --shadow-strong:rgba(0,0,0,.12);
+  --desk-font-scale:1;
+  --desk-card-scale:1;
+}
+/* v3.6.x 深色模式——两档手动开关（浅色/深色），不跟随系统 */
+[data-theme="dark"] {
+  /* 深色时把 color-scheme 切回 dark（优先级覆盖上面 :root 的 light），
+     原生控件/滚动条随深色、且不与浅色声明冲突 */
+  color-scheme:dark;
+  --ink:#f0f0f0; --muted:#8a8a8a; --line:#333333;
+  --page-bg:#0c0c0c; --page-bg-grad:#1a1a1a;
+  --phone-bg-a:#1c1c1c; --phone-bg-b:#0e0e0e; --phone-inset:rgba(255,255,255,.08);
+  --card-bg:#1e1e1e; --card-bg-97:rgba(30,30,30,.97); --card-border:rgba(255,255,255,.1); --card-shadow:rgba(0,0,0,.4);
+  --input-bg:#2a2a2a; --input-border:#3a3a3a; --input-focus-border:#666;
+  --btn-bg:#f0f0f0; --btn-ink:#111111; --btn-cancel-bg:#2a2a2a; --btn-cancel-ink:#aaaaaa;
+  --overlay-bg:rgba(0,0,0,.6); --static-bg:rgba(255,255,255,.06); --track-bg:#3a3a3a;
+  --hint-ink:#666666; --soft-ink:#aaaaaa; --pill-border:#3a3a3a;
+  --danger-soft:rgba(163,45,45,.18); --danger-ink:#ef9a9a;
+  --glass-bg:rgba(30,30,30,.92);
+  --bg-a:#1c1c1c; --bg-b:#0e0e0e;
+  --shadow-strong:rgba(0,0,0,.5);
+}
+html,body { overflow-x:hidden;
+  min-height:100vh;
+  font-family:'PingFang SC','Microsoft YaHei',-apple-system,sans-serif;
+  background:radial-gradient(80% 60% at 50% 0%, var(--page-bg-grad) 0%, transparent 60%), var(--page-bg);
+  display:flex; align-items:center; justify-content:center;
+  color:var(--ink);
+  /* v3.5.105：iOS 横竖屏切换不放大字号；安卓下拉不整页回弹 */
+  -webkit-text-size-adjust:100%; text-size-adjust:100%;
+  overscroll-behavior:none;
+}
+/* v3.5.139：body 固定视口高度、留白放自身（padding 内含）——
+   原来 html/body 共享 padding:24px 且 body 高度由内容撑开，桌面矮视口下
+   .phone 会超出视口，形成页面级灰色滚动条（html 溢出）。固定后
+   .phone 的 min(844px, calc(100dvh - 48px)) 精确填满 body 内部，永不溢出。
+   100vh 兜底老浏览器（dvh 需 Chrome 108+）；手机端由下方媒体查询覆盖。
+   box-sizing/margin 显式声明：不依赖全局 * 重置（个别环境 * 规则不生效时，
+   缺声明会退回浏览器默认的 content-box + body margin 8px，padding 外扩、
+   margin 撑出页面上下 16px 灰色滚动条） */
+body { height:100vh; height:100dvh; padding:24px; box-sizing:border-box; margin:0; }
+html { margin:0; padding:0; }
+
+/* ===== 开屏加载动画 ===== */
+.splash {
+  position:fixed; inset:0; z-index:999;
+  background:var(--card-bg);
+  /* v3.8.y：整页一体滚动——列布局：.splash-box 占满剩余并自身滚动（顶部+公告一起滚），底部操作区常驻 */
+  display:flex; flex-direction:column; align-items:center;
+  transition:opacity .4s ease;
+}
+.splash.hide { opacity:0; pointer-events:none; display:none; }
+/* FIX 2026-09-15 #541 开屏期遮挡被完全盖住的桌面：WebKit 未按 z 序裁剪被不透明开屏盖住的层——
+   开屏是 position:fixed / z-index:999 / background:var(--card-bg) 的整屏不透明层，视觉上
+   完全盖住 .phone；但实测（WebKit 引擎 DPR3）滚动开屏公告时内核仍在合成其下的 .phone
+   （14k 节点 + 壁纸层 + 各页合成层）：置 .phone 为 visibility:hidden 后开屏滚动帧耗时
+   mean 137→96ms、空闲 p90 122→78ms（WebKit 软渲染实测），而开屏本就不透明、盖满视口，
+   用户零视觉变化（同一环境的引擎对照：等价平凡长列表 60fps，本页是唯一被盖住仍在付费的面）。
+   为什么用兄弟选择器而不是 JS：template 里 .splash（33 行）本就是 .phone（399 行）的同级
+   前序兄弟，`.splash:not(.hide) ~ .phone` 只在「开屏在位且未开始隐藏」时命中——clock.js
+   hide() 一加 .hide（淡出开始）本规则当帧失效、桌面立即恢复可见（淡出过程正常露出桌面），
+   开屏 400ms 后整体移除更不可能残留；也不会引入新的「桌面被永久隐藏」态（开屏若不隐藏，
+   用户本就被开屏挡住，无新增风险）。visibility 不参与布局，启动期 mobile-adapt/fullscreen
+   对 .phone 的尺寸测量（getBoundingClientRect/offsetHeight）全部照常；全站无
+   visibility:visible 显式覆写，子元素不会把继承的 hidden 顶掉。零机型分支：任何内核都只是
+   少画一层被完全盖住的内容，安卓/桌面浏览器行为一致，不认这条选择器的老内核退回现状。 */
+.splash:not(.hide) ~ .phone { visibility:hidden; }
+/* v3.8.x：开屏即公告1页。v3.8.y：整页一体滚动——logo/标题/署名/原作信息+公告全部在此容器内滚动 */
+.splash-box {
+  flex:1; min-height:0; width:100%; overflow-y:auto;
+  display:flex; flex-direction:column; align-items:center;
+  box-sizing:border-box; text-align:center; padding:26px 20px 12px;
+  scrollbar-width:none; -ms-overflow-style:none;
+}
+.splash-box::-webkit-scrollbar { display:none; }
+/* v3.8.y：顶部品牌区卡片框——logo/标题/署名/原作信息统一装进一个精致白卡片 */
+.splash-brandcard {
+  width:min(322px, 100%); box-sizing:border-box;
+  padding:24px 20px 20px;
+  background:var(--card-bg); border:1px solid rgba(0,0,0,.07);
+  border-radius:20px;
+  display:flex; flex-direction:column; align-items:center;
+  animation:splash-fade-up .6s ease .04s backwards;
+}
+.splash-brandcard .splash-logo {
+  width:74px; height:74px; margin:0 auto 16px;
+  /* v3.8.y：正方形里显示爱心——圆角收紧为小圆角(18%)，避免此前大圆角(32%)略显圆/近圆 */
+  border-radius:18px;
+  background:var(--card-bg); border:1px solid rgba(0,0,0,.08);
+  display:flex; align-items:center; justify-content:center;
+  animation:splash-pop .7s ease .1s backwards;
+}
+.splash-logo svg { width:38px; height:38px; }
+.splash-title { font-size:18px; font-weight:800; letter-spacing:2px; color:var(--ink); }
+/* v3.8.y：署名移到顶部，紧跟标题下方的小字 */
+.splash-brand { margin-top:8px; font-size:11px; color:var(--muted); letter-spacing:1px; }
+/* v3.8.y：原作/部署信息（署名下方）——小灰字低调展示使用网站/GitHub 库 */
+.splash-source { margin-top:12px; padding-top:12px; border-top:1px dashed var(--line); text-align:center; width:100%; }
+.splash-source-line { font-size:9px; color:var(--hint-ink); line-height:1.8; letter-spacing:0; white-space:nowrap; }
+/* v3.26.x：置顶澄清行可换行——nowrap 仅供单行网址/署名，长句澄清不换行会超出手机屏幕 */
+.splash-source-line.splash-clarify { white-space:normal; padding:0 10px; }
+.splash-source-url { color:var(--ink); font-weight:600; }
+/* v3.8.y：底部统一卡片框——版本/加载/提示/按钮装进一个白卡片，与顶部品牌卡片呼应 */
+.splash-footcard {
+  width:min(322px, 100%); box-sizing:border-box;
+  padding:14px 18px calc(14px + var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px)));
+  background:var(--card-bg); border:1px solid rgba(0,0,0,.07);
+  border-radius:20px;
+  display:flex; flex-direction:column; align-items:center;
+  margin-bottom:calc(var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px)) + 18px);
+  animation:splash-fade-up .6s ease .4s backwards;
+}
+/* v3.8.y：底部版本块——两行：名称+版本(加粗) / 部署时间+实时秒数，去等宽字体、字号加大适配手机 */
+.splash-ver {
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  line-height:1.5;
+}
+.splash-ver .sv-app { font-size:11.5px; font-weight:700; color:var(--ink); letter-spacing:.5px; }
+.splash-ver .sv-deploy { font-size:10.5px; color:var(--hint-ink); }
+/* #570：开屏新版检测行（ver-check.js）——检测中/失败灰、已是最新绿、有新版红加粗下划线可点 */
+.splash-ver .sv-check { font-size:10.5px; color:var(--hint-ink); }
+.splash-ver .sv-check.ok { color:#1f9d55; }
+.splash-ver .sv-check.stale { color:#e0523c; font-weight:700; }
+.splash-ver .sv-check.warn { opacity:.85; }
+/* v3.5.111：开屏公告卡片（白纸卡片，与全局简约风格一致）；v3.8.y：不再自滚，随 .splash-box 整页滚动 */
+.splash-notice {
+  margin:14px auto 0; width:min(322px, 100%); text-align:left;
+  background:var(--card-bg); border:1px solid rgba(0,0,0,.07);
+  border-radius:20px; padding:18px 18px 20px;
+  animation:splash-fade-up .6s ease .32s backwards;
+}
+.splash-notice-title { font-size:14px; font-weight:800; color:var(--ink); text-align:center; margin-bottom:5px; letter-spacing:1.5px; }
+.splash-notice-sub { font-size:10.5px; font-weight:600; color:var(--muted); text-align:center; margin-bottom:16px; letter-spacing:1.5px; }
+.splash-notice-list p { font-size:11.5px; line-height:1.75; color:var(--soft-ink); }
+/* v3.8.x：公告版式层级——黑白简约语义变量（明/暗主题分别取值）：
+   章节标题(黑竖条+加粗) > 子标题 > 编号条目(浅灰圆标) > 子列表项(·前缀) */
+.splash { --sp-ink:#111111; --sp-soft:rgba(17,17,17,.07); }
+[data-theme="dark"] .splash { --sp-ink:#e8e8e8; --sp-soft:rgba(255,255,255,.09); }
+/* 顶部提示块（App 说明 / 系统预设字卡等引导内容） */
+.splash-tip {
+  margin:0 0 12px; padding:10px 14px 11px 16px;
+  background:var(--sp-soft); border-left:3px solid var(--sp-ink); border-radius:8px;
+}
+.splash-tip p { color:var(--soft-ink); line-height:1.75; }
+.splash-tip p + p { margin-top:6px; }
+.splash-tip .splash-tip-h { color:var(--ink); font-weight:800; font-size:12px; }
+/* v3.8.z：必读摘要——深色卡片置顶，承载必读内容，视觉上最醒目 */
+.splash-summary {
+  margin:0 0 14px; padding:12px 14px 13px 14px;
+  background:var(--sp-soft); border-left:3px solid var(--sp-ink); border-radius:8px;
+}
+.splash-summary-title { font-size:12px; font-weight:800; color:var(--ink); margin-bottom:7px; letter-spacing:.6px; }
+.splash-summary p { font-size:11.5px; line-height:1.75; color:var(--soft-ink); }
+.splash-summary p + p { margin-top:6px; }
+/* v3.26.x #575（用户 2026-09-16 反馈）：开屏「新手上路 3 步」蓝色引导卡已整块删除（DOM 在 template.html
+   同批撤除），此处 .splash-onboard* 样式一并清掉。新手引导改由 onboarding.js 弹层承担，勿再补回。 */
+/* v3.27.x：防骗置顶声明——固定在公告最顶部，防收费诈骗醒目提示 */
+.splash-alert {
+  margin:0 0 14px; padding:10px 14px 11px 14px;
+  background:var(--sp-soft); border:1.5px solid var(--sp-ink); border-radius:8px;
+}
+.splash-alert .splash-alert-t {
+  font-size:12px; font-weight:800; color:var(--sp-ink); letter-spacing:.5px; margin-bottom:5px;
+}
+.splash-alert .splash-alert-t::before { content:"!"; display:inline-block; width:15px; height:15px; line-height:15px; text-align:center; margin-right:5px; border-radius:50%; background:var(--sp-ink); color:#fff; font-size:11px; font-weight:800; vertical-align:-2px; }
+.splash-alert p { font-size:12px; line-height:1.7; color:var(--soft-ink); }
+.splash-alert strong { color:var(--ink); font-weight:800; }
+/* v3.27.x #315b：免责声明——红色警示形态，比防骗/署名卡更醒目（未成年人禁止使用） */
+.splash-alert.splash-disclaimer {
+  padding:12px 14px 13px;
+  background:#fdecec; border:2px solid #d23430; border-radius:10px;
+  box-shadow:0 2px 8px rgba(210,52,48,.18);
+}
+.splash-alert.splash-disclaimer .splash-alert-t { color:#c22b27; font-size:13.5px; letter-spacing:1px; }
+.splash-alert.splash-disclaimer .splash-alert-t::before { background:#c22b27; }
+.splash-alert.splash-disclaimer p { color:#7a1d1a; font-size:13px; font-weight:700; line-height:1.75; }
+.splash-alert.splash-disclaimer strong { color:#c22b27; font-weight:900; }
+[data-theme="dark"] .splash-alert.splash-disclaimer { background:rgba(210,52,48,.16); border-color:#e05555; box-shadow:none; }
+[data-theme="dark"] .splash-alert.splash-disclaimer .splash-alert-t { color:#ff8080; }
+[data-theme="dark"] .splash-alert.splash-disclaimer .splash-alert-t::before { background:#ff8080; color:#3a0d0d; }
+[data-theme="dark"] .splash-alert.splash-disclaimer p { color:#f0c6c6; }
+[data-theme="dark"] .splash-alert.splash-disclaimer strong { color:#ff8080; }
+/* v3.26.x：开屏最顶·使用前提卡——蓝色警示形态（字卡传讯/纯代码/无 AI/不是小手机，先了解再用） */
+.splash-alert.splash-what { background:#e8f0fc; border:2px solid #3a6fc4; border-radius:10px; }
+.splash-alert.splash-what .splash-alert-t { color:#27538f; }
+.splash-alert.splash-what .splash-alert-t::before { background:#3a6fc4; }
+.splash-alert.splash-what p { color:#1e3a5f; font-size:13px; font-weight:700; line-height:1.75; }
+.splash-alert.splash-what strong { color:#27538f; font-weight:900; }
+[data-theme="dark"] .splash-alert.splash-what { background:rgba(58,111,196,.16); border-color:#6f9bde; }
+[data-theme="dark"] .splash-alert.splash-what .splash-alert-t { color:#a8c6f0; }
+[data-theme="dark"] .splash-alert.splash-what .splash-alert-t::before { background:#a8c6f0; color:#0e2240; }
+[data-theme="dark"] .splash-alert.splash-what p { color:#c8daf4; }
+[data-theme="dark"] .splash-alert.splash-what strong { color:#a8c6f0; }
+/* v3.33.x：开屏最顶·禁带「小手机 tag」恶意扩圈——红色强警示形态，比免责卡更醒目（置 #splash-notice 首位） */
+.splash-alert.splash-tagban {
+  padding:13px 15px 14px;
+  background:#fdeaea; border:2.5px solid #d23430; border-radius:10px;
+  box-shadow:0 3px 10px rgba(210,52,48,.22);
+}
+.splash-alert.splash-tagban .splash-alert-t { color:#c22b27; font-size:14px; letter-spacing:1px; }
+.splash-alert.splash-tagban .splash-alert-t::before { background:#c22b27; }
+.splash-alert.splash-tagban p { color:#7a1d1a; font-size:13px; font-weight:700; line-height:1.75; }
+.splash-alert.splash-tagban strong { color:#c22b27; font-weight:900; }
+[data-theme="dark"] .splash-alert.splash-tagban { background:rgba(210,52,48,.18); border-color:#ff6b66; box-shadow:none; }
+[data-theme="dark"] .splash-alert.splash-tagban .splash-alert-t { color:#ff9090; }
+[data-theme="dark"] .splash-alert.splash-tagban .splash-alert-t::before { background:#ff6b66; color:#3a0d0d; }
+[data-theme="dark"] .splash-alert.splash-tagban p { color:#f4cccc; }
+[data-theme="dark"] .splash-alert.splash-tagban strong { color:#ff9090; }
+/* v3.27.x #319：防未成年人·系统内置字卡锁卡——琥珀警示形态 + 解锁动作按钮 */
+.splash-alert.splash-cardlock { background:#fdf3e0; border:2px solid #c07f1f; }
+.splash-alert.splash-cardlock .splash-alert-t { color:#9a6410; }
+.splash-alert.splash-cardlock .splash-alert-t::before { background:#9a6410; }
+.splash-alert.splash-cardlock p { color:#6b4a0e; }
+.cardlock-actions { margin-top:9px; display:flex; gap:8px; flex-wrap:wrap; }
+.cardlock-btn {
+  appearance:none; border:1.5px solid #9a6410; background:#9a6410; color:#fff;
+  font-size:12.5px; font-weight:800; padding:7px 14px; border-radius:8px; letter-spacing:.5px;
+}
+.cardlock-btn.cardlock-btn-ghost { background:transparent; color:#9a6410; }
+.cardlock-state { font-size:12px; font-weight:700; color:#9a6410; margin-top:8px; min-height:1em; }
+[data-theme="dark"] .splash-alert.splash-cardlock { background:rgba(192,127,31,.15); border-color:#d99a3a; }
+[data-theme="dark"] .splash-alert.splash-cardlock .splash-alert-t { color:#eebb60; }
+[data-theme="dark"] .splash-alert.splash-cardlock .splash-alert-t::before { background:#eebb60; color:#3a2504; }
+[data-theme="dark"] .splash-alert.splash-cardlock p { color:#ecd9b0; }
+[data-theme="dark"] .cardlock-btn { background:#d99a3a; border-color:#d99a3a; color:#3a2504; }
+[data-theme="dark"] .cardlock-btn.cardlock-btn-ghost { background:transparent; color:#eebb60; }
+[data-theme="dark"] .cardlock-state { color:#eebb60; }
+/* #319：开屏期间弹解锁弹窗——modal-mask(90) 低于 splash(999) 会被盖，弹窗期间给 splash
+   加 .under-modal 压到 80（personalize close() 不挂钩子，由 clock.js 在打开时加、
+   MutationObserver 监听 mask[hidden] 恢复） */
+.splash.under-modal { z-index:80; }
+/* 章节容器：编号在章节内重新从 1 开始；章节间拉开间距；折叠章节样式 */
+.splash-sec-wrap { counter-reset: notice; }
+.splash-sec-wrap + .splash-sec-wrap { margin-top:12px; }
+/* v3.8.y：开屏公告「书签目录」——可折叠入口：默认收起，点头展开竖排章节索引 */
+.splash-toc {
+  margin:0 0 14px;
+  border:1px solid var(--line); border-radius:12px; overflow:hidden;
+  background:var(--card-bg);
+}
+.splash-toc-head {
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  width:100%; padding:12px 14px;
+  font-size:13px; font-weight:800; letter-spacing:.5px;
+  color:var(--ink); background:transparent; border:0; text-align:left;
+  cursor:pointer; user-select:none; -webkit-tap-highlight-color:transparent;
+  transition:background .2s ease;
+}
+.splash-toc-head:active { background:var(--sp-soft); }
+.splash-toc-chev {
+  display:inline-block; width:auto; padding:2px 2px 0; text-align:center;
+  font-size:11px; line-height:1; color:var(--muted); transition:transform .25s ease;
+}
+.splash-toc.open .splash-toc-chev { transform:rotate(180deg); }
+.splash-toc-body { display:none; border-top:1px solid var(--line); counter-reset: toc; }
+.splash-toc.open .splash-toc-body { display:block; }
+.splash-toc-chip {
+  display:flex; align-items:center; gap:10px;
+  width:100%; padding:11px 14px;
+  font-size:12px; font-weight:700; line-height:1.2; letter-spacing:.4px;
+  color:var(--muted); background:transparent; border:0; border-bottom:1px solid var(--line);
+  text-align:left; cursor:pointer; user-select:none; -webkit-tap-highlight-color:transparent;
+  transition:color .2s ease, background .2s ease;
+}
+.splash-toc-chip::before {
+  counter-increment:toc; content:counter(toc, decimal-leading-zero);
+  display:inline-block; min-width:20px;
+  font-size:10px; font-weight:800; letter-spacing:0; color:var(--hint-ink);
+  font-variant-numeric:tabular-nums;
+}
+.splash-toc-chip:last-child { border-bottom:0; }
+.splash-toc-chip:active { background:var(--sp-soft); }
+/* 激活项：加粗高亮 + 淡灰底（明暗主题都清晰） */
+.splash-toc-chip.active { color:var(--ink); font-weight:800; background:var(--sp-soft); }
+.splash-toc-chip.active::before { color:var(--sp-ink); }
+/* v3.8.y：可折叠章节：标题可点击，点击展开/折叠细节内容 */
+.splash-sec-collapsible {
+  border-radius:12px; overflow:hidden;
+  background:var(--sp-soft); border:1px solid rgba(0,0,0,.05);
+  scroll-margin-top:10px; /* 书签跳转时顶部留白，避免贴边 */
+}
+[data-theme="dark"] .splash-sec-collapsible { border-color:rgba(255,255,255,.06); }
+.splash-sec-collapsible .splash-sec {
+  margin:0; padding:13px 14px; cursor:pointer; /* 右侧加内边距，避免折叠箭头贴边被圆角裁切 */
+  user-select:none; -webkit-tap-highlight-color:transparent;
+}
+.splash-sec-collapsible .splash-sec::after {
+  content:""; margin-left:auto;
+  width:7px; height:7px; border-right:1.5px solid var(--sp-ink);
+  border-bottom:1.5px solid var(--sp-ink);
+  transform:rotate(-45deg); transition:transform .2s ease;
+  flex-shrink:0; opacity:.55;
+}
+.splash-sec-collapsible.is-collapsed .splash-sec-content { display:none; }
+.splash-sec-collapsible:not(.is-collapsed) .splash-sec::after { transform:rotate(45deg); }
+.splash-sec-collapsible .splash-sec-content {
+  padding:4px 16px 14px;
+  background:var(--card-bg);
+  border-top:1px solid rgba(127,127,127,.1);
+}
+/* 章节标题：黑色竖条 + 加粗 */
+.splash-sec {
+  display:flex; align-items:center; gap:9px;
+  margin-bottom:9px; font-size:13px; font-weight:800; color:var(--ink); letter-spacing:.5px;
+}
+.splash-sec::before { content:""; width:3px; height:14px; border-radius:2px; background:var(--sp-ink); flex-shrink:0; }
+/* 子标题（如「为什么必须附上型号和浏览器：」） */
+.splash-sub { margin:12px 0 6px; font-size:11.5px; font-weight:800; color:var(--ink); letter-spacing:.5px; }
+/* 编号条目：浅灰圆角数字标 */
+.splash-item { counter-increment:notice; position:relative; padding-left:23px; margin-bottom:9px; line-height:1.75; }
+.splash-item:last-child { margin-bottom:0; }
+.splash-item::before {
+  content:counter(notice);
+  position:absolute; left:0; top:2px;
+  min-width:17px; height:17px; line-height:16px; text-align:center;
+  box-sizing:border-box; padding:0 2px; border-radius:9px;
+  background:var(--sp-soft); color:var(--sp-ink);
+  font-size:10px; font-weight:800;
+}
+/* 高亮条目：关键提醒用显眼橙色加粗标出（如「基础疑问可直接问 AI」）；
+   双选择器压过 .splash-notice-list p / .splash-summary p 的软墨色 */
+.splash-notice-list .splash-hl, .splash-summary .splash-hl { color:#e8590c; font-weight:800; }
+/* 子列表项：黑色 · 前缀，与编号条目文字对齐 */
+.splash-bullet { position:relative; padding-left:23px; margin-bottom:6px; line-height:1.7; }
+.splash-bullet::before {
+  content:"·"; position:absolute; left:8px; top:-1px;
+  font-size:15px; font-weight:800; color:var(--sp-ink); line-height:1.6;
+}
+/* 点击进入按钮
+   v3.5.120：数据加载完成前按钮 hidden 不显示（clock.js 控制），
+   加载期间显示 .splash-loading 提示，就绪后按钮才出现 */
+.splash-enter {
+  display:inline-block; margin-top:14px; padding:11px 40px;
+  background:var(--btn-bg); color:var(--btn-ink); font-size:13px; font-weight:700;
+  border-radius:99px; letter-spacing:2px; cursor:pointer;
+  -webkit-tap-highlight-color:transparent; user-select:none;
+  box-shadow:0 3px 10px rgba(0,0,0,.12);
+  transition:opacity .35s ease, transform .12s ease;
+}
+.splash-enter:active { opacity:.75; transform:scale(.97); }
+/* v3.8.y：未滑到底时进入按钮置灰不可点（无法跳过公告阅读） */
+.splash-enter.is-disabled { opacity:.3; box-shadow:none; pointer-events:none; }
+.splash-enter[hidden] { display:none; }
+/* 未滑到底时的提示文字（按钮置灰 + 提示滑动） */
+.splash-enter-hint {
+  margin-top:16px; font-size:11px; color:var(--hint-ink); letter-spacing:1px;
+}
+.splash-enter-hint[hidden] { display:none; }
+/* #315c：年龄确认勾选行——label 包裹整行可点，checkbox 原生控件保证可访问性与举证形态 */
+.splash-age {
+  display:flex; align-items:flex-start; gap:7px;
+  margin-top:12px; padding:0 6px;
+  font-size:11px; line-height:1.5; color:var(--hint-ink);
+  cursor:pointer; -webkit-tap-highlight-color:transparent; user-select:none;
+}
+.splash-age input[type="checkbox"] {
+  flex:none; width:15px; height:15px; margin:1px 0 0;
+  accent-color:var(--btn-bg); cursor:pointer;
+}
+.splash-age[hidden] { display:none; }
+/* v3.8.y：底部操作区——「点击进入」按钮（居中，间距由卡片 padding 控制） */
+.splash-btns {
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  margin-top:14px;
+}
+.splash-btns .splash-enter { margin-top:0; }
+/* 加载提示（非按钮，不可点） */
+.splash-loading {
+  margin-top:16px; font-size:12px; color:var(--hint-ink); letter-spacing:1px;
+}
+.splash-loading[hidden] { display:none; }
+/* v3.26.x：数据加载较慢时的「仍要进入」逃生口——弱化样式（小字、下划线、次级色），
+   表明是"非推荐、数据可能不全"的非常规入口，与主按钮区分 */
+.splash-force-enter {
+  margin-top:10px; font-size:11px; color:var(--hint-ink); letter-spacing:1px;
+  text-decoration:underline; cursor:pointer; -webkit-tap-highlight-color:transparent;
+}
+.splash-force-enter:active { opacity:.6; }
+.splash-force-enter[hidden] { display:none; }
+/* v3.26.x：点击进入后强制观看公告页——全屏覆盖开屏，每次进入先读作者公告：
+   必须把 .splash-mandatory-scroll 滑到底、点【我已阅读并确认进入】才真正进入
+   （未到底时按钮 is-disabled 置灰不可点，门控在 clock.js，不可删除或绕过） */
+.splash-mandatory {
+  position:absolute; inset:0; z-index:20;
+  background:var(--card-bg);
+  display:flex; flex-direction:column;
+  box-sizing:border-box;
+  padding:22px 18px calc(22px + var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px)));
+}
+.splash-mandatory[hidden] { display:none; }
+.splash-mandatory-scroll {
+  flex:1; min-height:0; width:min(322px, 100%); margin:0 auto;
+  overflow-y:auto; box-sizing:border-box; padding:4px 2px 16px;
+  scrollbar-width:none; -ms-overflow-style:none;
+}
+.splash-mandatory-scroll::-webkit-scrollbar { display:none; }
+.splash-mandatory-head { text-align:center; margin-bottom:16px; }
+.splash-mandatory-title { font-size:15px; font-weight:800; color:var(--ink); letter-spacing:1.5px; }
+.splash-mandatory-sub { margin-top:6px; font-size:10.5px; font-weight:600; color:var(--muted); letter-spacing:1px; line-height:1.6; }
+/* 公告卡片：深色卡片 + 左侧竖条（复用 --sp-ink/--sp-soft 语义变量，明暗主题自适应） */
+.splash-mandatory-card {
+  margin-bottom:14px; padding:13px 15px 14px;
+  background:var(--sp-soft); border-left:3px solid var(--sp-ink); border-radius:10px;
+  animation:splash-fade-up .5s ease backwards;
+}
+.splash-mandatory-date { font-size:10px; font-weight:700; color:var(--hint-ink); letter-spacing:1px; margin-bottom:6px; }
+.splash-mandatory-h { font-size:13.5px; font-weight:800; color:var(--ink); letter-spacing:.5px; margin-bottom:9px; }
+.splash-mandatory-body p { font-size:12px; line-height:1.85; color:var(--soft-ink); }
+.splash-mandatory-body p + p { margin-top:6px; }
+/* 三点要求的条目：左置 · 强调符 */
+.splash-mandatory-body .mnum { padding-left:14px; position:relative; font-weight:700; color:var(--ink); }
+.splash-mandatory-body .mnum::before { content:"·"; position:absolute; left:3px; top:0; color:var(--sp-ink); font-weight:800; }
+/* 落款标签（右对齐小灰字） */
+.splash-mandatory-body .mtag { text-align:right; font-size:10.5px; color:var(--hint-ink); margin-top:10px; }
+.splash-mandatory-end { text-align:center; font-size:11px; color:var(--hint-ink); letter-spacing:2px; padding:2px 0 4px; }
+.splash-mandatory-note { margin-top:14px; padding:10px 12px; font-size:11px; line-height:1.7; color:var(--hint-ink); background:var(--card-soft, rgba(0,0,0,0.03)); border-radius:8px; }
+/* 底部确认区（常驻不随内容滚动）：提示 + 确认按钮 */
+.splash-mandatory-foot {
+  width:min(322px, 100%); margin:0 auto; box-sizing:border-box;
+  display:flex; flex-direction:column; align-items:center;
+  padding:12px 18px 0;
+}
+.splash-mandatory-hint { margin-bottom:12px; font-size:11px; color:var(--hint-ink); letter-spacing:1px; }
+.splash-mandatory-hint[hidden] { display:none; }
+.splash-mandatory-enter {
+  display:inline-block; padding:12px 34px;
+  background:var(--btn-bg); color:var(--btn-ink); font-size:13px; font-weight:700;
+  border-radius:99px; letter-spacing:2px; cursor:pointer;
+  -webkit-tap-highlight-color:transparent; user-select:none;
+  box-shadow:0 3px 10px rgba(0,0,0,.12);
+  transition:opacity .35s ease, transform .12s ease;
+}
+.splash-mandatory-enter:active { opacity:.75; transform:scale(.97); }
+.splash-mandatory-enter.is-disabled { opacity:.3; box-shadow:none; pointer-events:none; }
+@keyframes splash-pop {
+  0% { transform:scale(.8); opacity:0; }
+  100% { transform:scale(1); opacity:1; }
+}
+/* v3.8.y：开屏分段淡入上移动效（标题/署名/原作信息/公告/按钮依序出现）——表意元素级位移+淡化，不用整页缩放 */
+@keyframes splash-fade-up {
+  0% { opacity:0; transform:translateY(14px); }
+  100% { opacity:1; transform:translateY(0); }
+}
+
+/* 手机屏幕 */
+.phone {
+  /* v3.5.139：box-sizing 显式声明——不依赖全局 * 规则（个别渲染引擎对 * 的
+     box-sizing 支持异常时，缺声明会退回 content-box，padding 外扩把 .phone
+     撑得比设定高度高，底部导航栏又被推出屏幕/页面出现灰色滚动条） */
+  box-sizing:border-box;
+  width:390px; max-width:100vw; flex-shrink:0; position:relative;
+  /* v3.5.139：桌面矮视口（浏览器全屏 / 小窗口）时高度自适应收缩——
+     原来固定 844px，视口不足时底部导航栏被 overflow:hidden 推出屏幕截断。
+     48px = body 上下 padding 24×2，保证矮视口下 .phone 完整落在视口内。
+     dvh 后跟 vh 兜底：老浏览器（<Chrome 108）不支持 dvh 时退回 vh，
+     否则 calc(100dvh-48px) 无效、高度回退内容撑开（底部又截断） */
+  height:min(844px, calc(100dvh - 48px));
+  height:min(844px, calc(100vh - 48px));
+  border-radius:44px; padding:16px 18px 18px;
+  display:flex; flex-direction:column;
+  /* v3.26.x #399：整壳是【永不滚动】的裁剪框——overflow:clip 让 .phone 不再是滚动
+     容器，内核「滚进视野」的滚动链到此为止（回信页整壳被内核滚走的根因见 .ce-ghost
+     同编号注释；内容本就不该由 .phone 滚，历史无任何代码读它 scrollTop）。clip 前
+     保留 hidden 作老内核兜底（不认识 clip 的浏览器行为与改动前完全一致）。 */
+  overflow:hidden; overflow:clip;
+  box-shadow:0 30px 70px rgba(0,0,0,.1), inset 0 0 0 1px var(--phone-inset);
+  /* v3.6.x：去掉 radial 微黑晕——原三个 radial-gradient（尤其 30% 90% 处
+     rgba(0,0,0,.05)）叠加在渐变上，页面底部（底部导航栏悬浮卡片左右的
+     .phone padding 区 / 下方）形成淡灰，用户反馈"形状旁边有灰色、滑动遮挡"；
+     去掉后浅色背景纯白（--bg-b 已为 #ffffff），深色模式黑晕本就不可见无影响 */
+  background:
+    linear-gradient(168deg, var(--bg-a, #ffffff) 0%, var(--bg-b, #f2f2f2) 100%);
+}
+
+/* 窄屏（真实手机 / 小窗口 / 折叠屏展开）：去掉模拟器外壳，直接全屏显示
+   v3.5.133：上限 480→768px——折叠屏展开（约 673-717px）和平板竖屏不再显示
+   桌面模拟器外壳（390px 小框 + 两侧灰底），改为手机全屏布局 */
+@media (max-width: 900px) {
+  /* FIX 2026-09-15 #542：手机端 body 底色改用 .phone 的同色变量（--bg-b），不再用
+     --page-bg 灰（桌面模拟器外壳的灰底在真机上永远不该露出）。键盘收缩 .phone 的瞬间
+     （收键盘动画/内核 vv 上报有延迟）露出的那一条由「大片灰底」变成与页面同色，观感
+     不突兀；桌面宽屏外壳不在此媒体查询内，模拟器灰底照旧。零机型分支、纯视觉兜底。 */
+  html, body { padding:0; min-height:100vh; min-height:100svh; min-height:100dvh; background:var(--bg-b, #fff); }
+  .phone {
+    /* v3.5.139：显式声明——padding(0 18px 18px) 必须算进 100dvh 内，
+       否则实际高度超视口、底部导航栏/组件被截 */
+    box-sizing:border-box;
+    width:100vw; height:100vh; height:100svh; height:100dvh;
+    border-radius:0; box-shadow:none;
+    padding:0 18px 18px;
+  }
+  .statusbar {
+    /* v3.5.127：max 兜底——真全屏挖孔屏 env() 返回 0 时保留 14px 最小留白。
+       v3.28.x #114：优先用 JS 实测的 --mochi-safe-top（iOS standalone 下
+       env(safe-area-inset-top) 返回 0 时兜底），未设时回落 env() */
+    padding-top:max(calc(14px + var(--mochi-safe-top, env(safe-area-inset-top, 0px))), 14px);
+    padding-bottom:10px;
+  }
+}
+
+/* v3.9.x：UA 桌面伪装兜底——mobile-adapt.js 检测触摸屏 + 窄 screen.width 判定
+   手机伪装桌面（Edge/Via「桌面站点」模式 UA 改桌面、layout viewport 980px，
+   @media(max-width:900px) 不命中）。改 viewport meta 后仍无法拉回 layout
+   viewport 时加 html.force-mobile 类，复刻上方 @media(max-width:900px) 块的
+   关键规则（.phone 满屏 + body padding + statusbar + 输入框 16px + touch-action
+   + 聊天贴底 + tap-highlight），保证手机物理屏上不显示桌面模拟器外壳。
+   选择器 html.force-mobile 前缀特异性高于 .phone 等，优先于桌面外壳样式生效。 */
+/* #542：同 @media(max-width:900px)——UA 桌面伪装兜底形态 body 底色也跟 .phone（--bg-b），
+   键盘收缩露出的那一条不再是大片灰底 */
+html.force-mobile, html.force-mobile body { padding:0; min-height:100vh; min-height:100svh; min-height:100dvh; background:var(--bg-b, #fff); }
+html.force-mobile .phone {
+  box-sizing:border-box;
+  width:100vw; height:100vh; height:100svh; height:100dvh;
+  border-radius:0; box-shadow:none;
+  padding:0 18px 18px;
+}
+html.force-mobile .statusbar {
+  padding-top:max(calc(14px + var(--mochi-safe-top, env(safe-area-inset-top, 0px))), 14px);
+  padding-bottom:10px;
+}
+html.force-mobile .phone input:not([readonly]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="hidden"]):not([type="date"]):not([type="time"]):not([type="datetime-local"]):not([type="month"]):not([type="week"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
+html.force-mobile .phone textarea:not([readonly]),
+html.force-mobile .phone select,
+html.force-mobile .phone [contenteditable="true"] { font-size:16px; }
+html.force-mobile, html.force-mobile body, html.force-mobile * { touch-action: manipulation; }
+html.force-mobile, html.force-mobile body, html.force-mobile .phone, html.force-mobile img { -webkit-touch-callout:none; }
+html.force-mobile .tabbar { margin-bottom:var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px)); }
+html.force-mobile .phone .page.full .chat-input-row {
+  margin: 0; border-radius: 0;
+  border-left: none; border-right: none; border-bottom: none;
+  padding-left: 12px; padding-right: 12px; padding-top: 10px;
+  padding-bottom: calc(10px + var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px)));
+}
+html.force-mobile .phone .page.full .chat-head { padding-top: calc(10px + var(--mochi-safe-top, env(safe-area-inset-top, 0px))); }
+html.force-mobile .phone .page.full { padding-bottom: 0; }
+html.force-mobile #page-chat { background: var(--page-bg-grad); }
+html.force-mobile button, html.force-mobile .app, html.force-mobile .set-row,
+html.force-mobile .tab, html.force-mobile .msg, html.force-mobile .feed-post,
+html.force-mobile .mail-item { -webkit-tap-highlight-color:transparent; }
+/* v3.9.x：桌面卡片缩放在手机端禁用（同 home.css @media(max-width:900px) 块，
+   force-mobile 下该媒体查询不命中，此处兜底；选择器跨域引用 home.css 类名但不改其逻辑）
+   v3.16.x：选择器随 home.css 同步——三页统一 .page-slide 缩放，兜底也统一 */
+html.force-mobile .page-slide,
+html.force-mobile .deco-widget, html.force-mobile .mini-card, html.force-mobile .checkin,
+html.force-mobile .weekend-box, html.force-mobile .music-widget,
+html.force-mobile .memo-card, html.force-mobile .mood-card, html.force-mobile .week-card,
+html.force-mobile .desk-period, html.force-mobile .app-grid, html.force-mobile .mini-row { zoom:1; }
+
+/* v3.5.139：真全屏（Fullscreen API / PWA display_override 直启）时 .phone 铺满整个窗口——
+   桌面 F11 等全屏由 fullscreen.js 加 .fs-active 类触发；PWA 安装直启走 display-mode 媒体查询。
+   作用：壁纸（.phone 背景图）随之盖满全屏（电脑上包括模拟器两侧灰底），
+   且 .phone 占满 100dvh 后底部导航栏/桌面组件必然完整显示，不再被固定高度推出屏幕。 */
+.fs-active .phone, .fs-css-active .phone {
+  width:100vw; height:100vh; height:100svh; height:100dvh;
+  max-width:none; border-radius:0; box-shadow:none;
+  padding:0 18px 18px;
+}
+@media (display-mode: fullscreen) {
+  .phone {
+    width:100vw; height:100vh; height:100svh; height:100dvh;
+    max-width:none; border-radius:0; box-shadow:none;
+    padding:0 18px 18px;
+  }
+}
+
+/* v3.7.x：iOS PWA standalone（添加到主屏幕）+ black-translucent 下，100dvh 不包含
+   系统状态栏高度——.phone 从 y=0 开始但 height 缺一个状态栏，底部留白、tabbar/
+   输入栏上移点不到（用户反馈"下面有白边、点不动、不是真的全屏"）。改用 100vh
+  （standalone+black-translucent 下 100vh 包含状态栏）占满全屏。键盘弹起由
+   mobile-adapt.js syncIosKb 覆盖为 vv.height，收起清 inline style 回落 100vh。
+   ios-pwa-standalone 类由 fullscreen.js 检测 inIosStandalone 添加；安卓 PWA
+   standalone 不加该类，仍用 100dvh（安卓 standalone 下 100dvh 含状态栏无白边）。
+   v3.7.x：补 html.tablet.ios-pwa-standalone 提特异性到 (0,3,1)——html.tablet .phone
+  （下方第 363 行）特异性 (0,2,1) 会压过单写 .ios-pwa-standalone .phone (0,2,0)，
+    iPad PWA standalone 仍白边；补一条覆盖 iPad
+   v3.15.x：去掉 min-height:100vh——min-height 会把 syncIosKb 键盘期写入的内联
+   height 钳在全屏高（内联样式赢得了 height、赢不了 min-height），standalone 模式
+   下 .phone 键盘期永不收缩 → 键盘整块盖住聊天输入栏无法打字（用户报修：
+   iPhone 主屏幕打开打字看不见输入框；普通 Safari 标签页无此类所以正常，
+   正好解释「只有桌面打开才坏」）。默认态占满由 height:100vh 保证；
+   JS 侧收缩时另写内联 minHeight:'0' 双保险（防其他来源的 min-height 钳制） */
+/* v3.26.x：iOS 浏览器态（含 Edge 桌面快捷方式）高度改由实测视觉视口决定——
+   100dvh 在「布局视口停在浏览器工具条上沿」时本就等于工具条上沿，但部分版本/
+   时机（工具条收起动画中、display-mode 切换）下与可视区不一致，输入栏下方留一条
+   点不到的死带（用户报修：聊天输入栏下面空着一大块）。
+   mobile-adapt.js syncVvFit 用 vv.height*scale 实测写 --mochi-ios-h 并加 ios-vv-fit
+   类；键盘会话期间该属性摘除（那段时间 .phone 高度由 _setPhoneH 的内联值接管）。
+   :not(.ios-pwa-standalone) 是必需的：本选择器特异性 (0,2,1) 高于下方
+   .ios-pwa-standalone .phone 的 (0,2,0)，不加守卫会把 v3.15.x 的 standalone 100vh
+   修复压回去；standalone 没有浏览器工具条，本就不需要这条 */
+html.ios-vv-fit:not(.ios-pwa-standalone) .phone,
+html.tablet.ios-vv-fit:not(.ios-pwa-standalone) .phone { height:min(var(--mochi-ios-h, 100dvh), 100dvh); }
+.ios-pwa-standalone .phone,
+html.tablet.ios-pwa-standalone .phone { height:min(100vh, var(--mochi-ios-h, 100dvh)); }
+/* v3.27.x：iOS PWA standalone + ios-fs-active（已隐藏模拟状态栏）下，视口 innerHeight
+   即完整可视高，100vh 却等于 screen.height（含被隐藏状态栏区）→ .phone 超出视口、
+   body 可滚、桌面顶部/底部各被裁（iPhone17 Edge 反馈"图标按钮显示不全"）。
+   改用 syncVvFit 实测 --mochi-ios-h（=visualViewport.height=可视高）填满可视区不溢出。
+   非 ios-fs-active（状态栏可见）仍用 100vh（视口含状态栏区，另案处理）。
+   键盘期 syncVvFit 摘除 --mochi-ios-h → 回退 100dvh，但键盘期 .phone 高度由
+   _setPhoneH 内联值接管（内联赢选择器），不受影响。 */
+/* v3.28.x #114（复现）：iPhone15 + Safari 主屏幕全屏实测 100dvh=793 而物理屏=852——
+   100dvh 只算系统状态栏下方的可视区，.phone 停在 793 导致：①底部空 59px（用户报
+   "聊天底部输入栏和手机底部空隙太大"）；②.phone 顶 59px 钻进系统状态栏区，且该环境
+   env(safe-area-inset-top) 返回 0 → 桌面状态栏与系统栏重叠、聊天返回键被系统栏吞点。
+   改回 100vh（=screen.height 整块物理屏）+ padding-top 顶部安全区（JS 实测
+   --mochi-safe-top 写值，兜底 env）：内容整体下移到系统状态栏下方、底部贴满物理屏；
+   组件底部各自用 --mochi-safe-bottom 避让 Home 指示条。iPhone17 Edge 的"图标显示不全"
+   根因是缺顶部安全区补偿，本规则补上后不再复发。 */
+.ios-pwa-standalone.ios-fs-active .phone,
+html.tablet.ios-pwa-standalone.ios-fs-active .phone {
+  /* v3.26.x #148：高度改用 --mochi-ios-h（mobile-adapt syncVvFit 写入的 vv 实测可视高，
+     未写入时回落 100vh）——iOS 26.x 独立应用 100vh = 整块物理屏（如 874）而可视高只有
+     812，100vh 会把 .phone 底部 tabbar 裁出屏幕外（实测 底部空隙=-62）。padding-top
+     语义不变：--mochi-safe-top 已改为 env() 探针实测（#148），「系统已避让」形态返回
+     0，不再与系统避让叠加成双倍顶部空白。 */
+  height:var(--mochi-ios-h, 100vh);
+  padding-top:max(var(--mochi-safe-top, env(safe-area-inset-top, 0px)), 12px);
+  padding-bottom:0;
+}
+/* v3.28.x #114：同模式下 html/body 钉到与 .phone 同高（#148 改 --mochi-ios-h，理由同上），
+   避免 .phone 高于 body(100dvh) 造成页面纵向可滚（v3.27.x 记录过"body 可滚"的副作用） */
+html.ios-pwa-standalone.ios-fs-active,
+html.ios-pwa-standalone.ios-fs-active body { height:var(--mochi-ios-h, 100vh); min-height:0; overflow:hidden;
+  /* v3.26.x #185：锁文档滚动——iPad 独立应用全屏态文档可滚时 iOS 橡皮筋把整页
+     来回拽（自愈 pin 对打=「滑动位置会飞、一弹一弹」）。页面内滚动不受影响 */ }
+/* v3.7.x：iPhone 12 mini 实测反馈「桌面底部导航栏下面有灰色图形」——iOS 部分版本
+   standalone + black-translucent 下 100vh 不含底部 home indicator 安全区（约 34px），
+   .phone 底部外露出 html/body 灰底（--page-bg #e9e9e9）形成灰色带；且与顶部
+   全屏按钮无关（点了也一样）。把 iOS PWA standalone 下页面底色改为与 .phone
+   底部同色（浅色白 / 深色深），任何像素级露出都与手机屏幕融为一体，灰带消失 */
+html.ios-pwa-standalone,
+html.ios-pwa-standalone body { background: var(--bg-b); }
+/* v3.26.x #537：iOS 独立应用【普通态·覆盖形态】（ios-cover-top）整页上移——用户报
+   「集体屏幕上移 / 底下有白条 / 底部栏不贴手机底部」（iPhone 17 自带 Safari 主屏幕，
+   诊断 SIG：screen=956 inner/vv=894 env=62、.phone 计算高=956 底边=925 tabbar 底=873）。
+   根因：覆盖形态下判定器期望底边 expBase=envTop+inner=整屏 956，#179 起非全屏
+   standalone 也写 --mochi-ios-h=956，但 html/body 高度停在 100dvh(894)——子元素比容器
+   高 62px，而 html/body 是 display:flex + align-items:center，把 .phone 整块上移
+   (956−894)/2=31px：顶部 Mochi 行钻进系统状态栏（✗顶部重叠）、.phone 底边停在 925
+   露出 31px 底色白带、tabbar 随之上移不贴底。
+   修法同 ios-fs-active（#114 v3.28.x，同一父类 bug）：html/body 钉到与 .phone 同高
+   （var(--mochi-ios-h)）+ 顶对齐 → 容器永不比 .phone 矮，居中位移消失。
+   作用域刻意收在 .ios-cover-top（而非所有 standalone）：只有覆盖形态会 --mochi-ios-h(956)
+   ≠ 100dvh(894)；保留/已避让/iPad 形态两者本就相等、无位移可修，不碰它们＝零回归
+   （横屏独立应用的桌面模拟器外壳也因此不受影响）。
+   兜底用 100dvh 而非 100vh：iOS 上 100vh=整块物理屏(956)、100dvh=可视区(894)，
+   键盘会话期 syncVvFit 摘除该属性（那段时间 .phone 高度由 _setPhoneH 内联值 +
+   align-self:flex-start 接管），回落 100dvh 与改动前 body 高度完全一致=键盘期零变化。
+   min-height:0 必带：上方 html,body{min-height:100vh} 的 100vh 在 iOS=整块物理屏，
+   不归零会把 body 顶高到 956，与 .phone 之间又生出居中位移。 */
+html.ios-pwa-standalone.ios-cover-top,
+html.ios-pwa-standalone.ios-cover-top body { height:var(--mochi-ios-h, 100dvh); min-height:0; align-items:flex-start; }
+/* v3.7.x：display-mode: standalone 媒体查询底色兜底（不依赖 fullscreen.js 加类）——
+   iOS/安卓从主屏幕打开 PWA 时该媒体查询恒为真；若 JS 层 inIosStandalone 检测
+   （navigator.standalone / matchMedia standalone）因任何原因失败、ios-pwa-standalone
+   类未加上，这里仍保证页面底色与 .phone 底部同色，灰带不露出。
+   注意：只改 html/body 底色、不动 .phone 高度——安卓 standalone 靠 100dvh 在
+   键盘弹起时自动收缩（interactive-widget=resizes-content），锁 100vh 会盖输入栏；
+   高度差异留给 .ios-pwa-standalone 类（iOS 专属）处理 */
+@media (display-mode: standalone) {
+  html, body { background: var(--bg-b); }
+}
+
+/* ===== v3.5.105：手机端（安卓 / iOS）适配 =====
+   只影响真实手机窄屏，桌面模拟器外壳不受影响 */
+
+/* iOS Safari：输入框聚焦时不自动放大页面（字号 <16px 会触发自动缩放；
+   这里统一提到 16px，页面本身不放大，输入体验不跳）。
+   v3.6.x：原写法按类名逐个列（.chat-input/.tc-input/.card-search-input/…），
+   但 chat-main/chat-pages 等后加载文件（以及本文件更靠后的 .modal-textarea 等）
+   以相同特异性重新声明了更小字号 → 后加载生效，iOS 聚焦仍整页放大且缩不回去
+   （实测中招：字卡库 4 个搜索框 13px、批量导入/气泡 CSS 弹窗 textarea 13px、
+   聊天记录搜索 14px、气泡框大小/字体链接输入 13px、纪念日/占卜/查岗/写信/
+   朋友圈评论/TA问题输入 13-15px，搜索框还缺 type 属性连 input[type="text"]
+   都匹配不到）。这里改用 .phone 前缀 + :not 过滤的输入框通配把「可编辑文本
+   输入框」统一钉到 16px——特异性 (0,2,1) 高于所有同类类选择器，与加载顺序无关；
+   只改字号、不动其他样式。排除 readonly 步进值 / checkbox / range / file /
+   颜色/日期选择器等，避免误改视觉。 */
+@media (max-width: 900px) {
+  .phone input:not([readonly]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="hidden"]):not([type="date"]):not([type="time"]):not([type="datetime-local"]):not([type="month"]):not([type="week"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
+  .phone textarea:not([readonly]),
+  .phone select,
+  /* v3.6.x：contenteditable div 同样触发 iOS 聚焦缩放——聊天输入框
+     （.chat-input，模板原生 contenteditable）是 15px，此前规则只覆盖
+     input/textarea/select，iOS Safari 点它聚焦时整页自动放大（与双击放大
+     同症状：页面越变越大、功能看不见）。补上可编辑元素规则，特异性
+     (0,2,0) 高于 .chat-input 的 (0,1,0)，与加载顺序无关 */
+  .phone [contenteditable="true"] {
+    font-size:16px;
+  }
+  /* 双击不再触发页面缩放（viewport 已锁，这里再兜一层）。
+     v3.6.x：touch-action 是逐元素属性、不继承——原来只设 html/body/.phone，
+     双击落在子元素（按钮/卡片/文字）上时命中子元素默认的 auto，
+     iOS Safari 依旧双击放大（用户反馈「点几下页面越变越大，功能看不见」）。
+     manipulation = 允许滚动/捏合（捏合另有 gesturestart 兜底），仅禁双击缩放，
+     对 range 滑块、横向滑动、overflow 滚动均无影响 */
+  html, body, * { touch-action: manipulation; }
+  /* v3.6.x：iOS 长按图片/文字不再弹出系统「存储图像/拷贝」菜单——
+     朋友圈九宫格图、聊天表情包等点击都是自定义放大/操作，长按菜单只会误触 */
+  html, body, .phone, img { -webkit-touch-callout:none; }
+}
+
+/* iOS 全面屏底部安全区：底部 tabbar（桌面页）+ 聊天输入栏不被 Home 指示条遮挡 */
+@media (max-width: 900px) {
+  .tabbar {
+    margin-bottom:var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px));
+  }
+  /* v3.5.119：聊天页底部输入栏改通栏贴底（微信式）——不再悬浮留白：
+     去 margin/圆角/侧底边框，底部只留系统安全区；顶部栏同步收紧。
+     选择器加 .phone 前缀提高特异性，压过后加载的 chat-main.css 悬浮样式 */
+  .phone .page.full .chat-input-row {
+    margin: 0;
+    border-radius: 0;
+    border-left: none; border-right: none; border-bottom: none;
+    padding-left: 12px; padding-right: 12px;
+    padding-top: 10px;
+    padding-bottom: calc(10px + var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px)));
+  }
+  .phone .page.full .chat-head { padding-top: calc(10px + var(--mochi-safe-top, env(safe-area-inset-top, 0px))); }
+  .phone .page.full { padding-bottom: 0; }
+  /* v3.6.x：聊天页背景统一为页面渐变底色（浅色 #f6f6f6 / 深色 #1a1a1a）——
+     原 #page-chat 背景透明，透出 .phone 渐变灰底（#f2f2f2 叠加 body #e9e9e9），
+     输入栏（手机通栏贴底 / 桌面悬浮圆角）四周出现突兀灰条灰角（用户反馈
+     "聊天页底部栏之外还有灰色，滑动遮挡消息"）；统一背景后输入栏四周与
+     消息区同色，灰条消失，消息气泡（白/深色）对比正常。全局生效（两种模式） */
+  #page-chat { background: var(--page-bg-grad); }
+  /* v3.26.x：聊天输入栏聚焦时给一个独立合成层（同款手法见 chat-pages.css
+     .ta-add .ce-box:focus）——修「红米 K60 至尊版 + Edge：聊天输入栏打字不显示，
+     空白到发不出去」。#chat-input / #gc-input 是模板原生 contenteditable div
+     （不经 mobile-adapt ceConvert，所以拿不到 .ce-box 那套 will-change/translateZ
+     保护），而键盘期 .phone 会被 _aPanComp 写 position:relative+top、height 跟随
+     visualViewport 逐帧重算；安卓 Chromium/WebKit 已知缺陷会让文本继续画在旧的
+     合成层位子上＝框内空白（同「文字与框分离/字出界」那一族症状，当年 .ta-add
+     半框就是靠这一条治好的）。只提升合成层、不位移，布局零变化。
+     不用 JS toggle transform：正在键入的元素被强制重建合成层会丢字（摩托罗拉 G100
+     实测，见 mobile-adapt.js _aRefreshCe 的 _aUserTypos 闸门），纯 CSS 提升无此风险。
+     will-change 常驻 + :focus 叠 translateZ 两条一起写，与 chat-pages.css 里治好
+     「文字与框分离」的 .ta-add .ce-box 完全同款：前者让合成层在键盘平移开始前就
+     已存在（不依赖聚焦时机、也不受「文档未获得焦点时 :focus 不匹配」影响），
+     后者在真正输入的那段时间把层钉住。全站只有聊天/群聊两个输入栏命中，层开销可忽略。 */
+  .phone .chat-input { will-change:transform; }
+  .phone .chat-input:focus { transform: translateZ(0); }
+  /* v3.5.116：键盘弹起适配改由 mobile-adapt.js 统一处理——
+     interactive-widget 只在根元素生效，写在 .phone 上无效（死代码）；
+     JS 用 visualViewport 锁定 .phone 到可视高度并 fixed 顶对齐，跨设备统一。 */
+}
+
+/* v3.5.11x：display_override fullscreen 真全屏时，安卓挖孔屏顶部没有安全区
+   （env(safe-area-inset-top) 在安卓返回 0）——顶部固定留出挖孔安全区，
+   防止顶部栏/返回按钮被摄像头挖孔遮挡。
+   v3.5.122：选择器提权 .phone 前缀——否则被上面 max-width:480px 的
+   .phone .page.full .chat-head（10px）按特异性压过，20px 挖孔区变死代码
+   v3.5.126：去掉 20px 硬编码——非挖孔屏/全屏隐藏状态栏的设备上它变成
+   顶部栏上方的大片空白（用户实测）。改用 env(safe-area-inset-top) 真实值：
+   有挖孔 → 自动避让；无挖孔 → 返回 0，顶部栏贴顶零空白
+   v3.5.127：max(env, 12px) 兜底——安卓挖孔屏 env() 返回 0 会贴顶进挖孔，
+   保留 12px 最小留白（避开挖孔且不产生大空白） */
+@media (display-mode: fullscreen) {
+  .phone .page.full .chat-head { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
+  .phone .page.full .gs-title, .phone .page.full .card-tabs,
+  .phone .page.full .div-h-title, .phone .page.full .stats-top-name { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
+}
+
+/* Fullscreen API 激活（fs-active 类，由 fullscreen.js 控制）时同样挖孔安全区 */
+.fs-active .phone .page.full .chat-head { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
+.fs-active .phone .page.full .gs-title, .fs-active .phone .page.full .card-tabs,
+.fs-active .phone .page.full .div-h-title, .fs-active .phone .page.full .stats-top-name { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
+
+/* v3.26.x：iOS 真全屏（浏览器原生全屏 .ios-native-fs / 桌面全屏 .ios-fs-active）下
+   收紧顶部栏贴顶—— iOS 系统状态栏（含灵动岛）始终由系统占据在内容上方、网页内容
+   不会钻进状态栏区，CSS 再给顶部栏加 env(safe-area-inset-top) 只会算出一条多余白带
+   （用户实测：苹果17 自带浏览器 + 全屏模式下聊天顶部栏上方一大块白色空白）。
+   Android 挖孔屏仍靠上面 max(env,12px) 规则避让，不受影响（ios-* 类只在 iOS 加）。
+   特异性压过 .fs-active max(env,12px)：(0,5,1) > (0,5,0)。 */
+html.ios-native-fs .phone .page.full .chat-head,
+html.ios-native-fs .phone .page.full .gs-title,
+html.ios-native-fs .phone .page.full .card-tabs,
+html.ios-native-fs .phone .page.full .div-h-title,
+html.ios-native-fs .phone .page.full .stats-top-name { padding-top: 10px; }
+/* iOS 桌面（添加到主屏幕）全屏：.phone 已由 .ios-fs-active .phone 补
+   padding-top:max(env,12px) 顶格到系统状态栏下方，顶部栏不得再重复加 env——否则与
+   下方 @media(max-width:900px) 的 calc(10px+env) 叠加成双倍安全区白带 */
+.ios-fs-active .phone .page.full .chat-head,
+.ios-fs-active .phone .page.full .gs-title,
+.ios-fs-active .phone .page.full .card-tabs,
+.ios-fs-active .phone .page.full .div-h-title,
+.ios-fs-active .phone .page.full .stats-top-name { padding-top: 10px; }
+/* v3.26.x #114：iOS 全屏态（standalone + ios-fs-active）下模拟状态栏与系统状态栏重叠。
+   窄屏 @media 的 .statusbar safe-area 顶部留白（0,1,0）被全局 .statusbar 的
+   padding:4px 4px 12px（同特异性、源顺序靠后）覆盖失效，模拟状态栏内容顶到 y=0，
+   与系统时间/电量重叠（用户实测「mochi 时间 电量这一行和手机自己的顶部栏重叠」）。
+   v3.28.x #114（复现）：安全区避让改由上方 .ios-pwa-standalone.ios-fs-active .phone
+   的 padding-top 统一承担（.phone 整体下移到系统状态栏下方），这里只留 14px 常态
+   留白，不再重复加 env/safe-area——否则与 .phone 顶部内边距叠加成双倍白带。 */
+html.ios-fs-active .phone .statusbar { padding-top:14px; }
+/* FIX 2026-09-05 #189：iPad（tablet）主屏幕全屏需要可见效果——#111 为修 iPhone16
+   「全屏后桌面顶部一行不见了、被遮挡」改为全屏态保留模拟状态栏，但 iPad 无灵动岛、
+   系统状态栏独立成条、网页本来就盖不上去，保留后【全屏模式】开关在 iPad 上毫无
+   视觉变化（#144 修好判定后用户仍报「没有生效」）。平板恢复 v3.6.x 原设计：全屏态
+   隐藏模拟状态栏，内容由下方 html.tablet.ios-fs-active .phone 的 padding-top
+   max(env,12px) 垫到系统状态栏下方；手机侧 #111 行为不变。
+   注意：#111 哨兵（absent 检查无作用域的整类隐藏选择器+display:none 组合）
+   只拦无作用域的整类隐藏，本条按 tablet+standalone 限定作用域，属有意例外，勿改回。 */
+html.tablet.ios-pwa-standalone.ios-fs-active .phone .statusbar { display:none; }
+
+/* v3.6.x→v3.28.x：iOS 独立应用「全屏模式」（ios-fs-active 类，由 fullscreen.js 控制）——
+   iOS 无 Fullscreen API、系统状态栏永远无法隐藏，应用内模拟状态栏（Mochi/时间/电量那行）
+   原设计在全屏时隐藏以免与系统栏重复。但桌面顶部那一行是全站品牌信息，隐藏后用户反馈
+   「桌面顶部 Mochi/时间/电量不见了」→ 改为全屏时也保留状态栏。状态栏自身已带
+   env(safe-area-inset-top) 安全区留白（见上方手机端 .statusbar 规则），故不再给 .phone
+   额外加顶部 padding（否则安全区双倍、顶部多一条白带）。
+   只影响真实手机窄屏，桌面模拟器外壳不受影响 */
+
+/* v3.6.x：Via 等浏览器「网页全屏」强制转横屏时的 CSS 兜底全屏
+   （fs-css-active 类，由 fullscreen.js 控制）——原生全屏被浏览器转成横屏时
+   自动退出并改走此模式：保持竖屏布局 + 顶部安全区，观感与原生全屏一致。
+   仅真实手机窄屏生效，桌面模拟器外壳不受影响。 */
+@media (max-width: 900px) {
+  .fs-css-active .phone { padding-top: max(env(safe-area-inset-top, 0px), 12px); }
+}
+
+/* ===== v3.7.x：平板（iPad）适配 =====
+   iPad 竖屏（768-834px CSS 视口）原命中上方 max-width:900px 手机全屏布局——
+   内容被整屏拉宽（桌面图标间距巨大、聊天气泡过宽）；iPad 横屏（≥1024px）
+   走桌面模拟器外壳（390px 小框 + 两侧灰底）。两者都不适合平板。
+   平板统一为「大屏手机」布局：全高 + 内容限宽居中 + 无模拟器外壳。
+   v3.7.x：竖横屏分开限宽——竖屏 640px（原 560px 偏窄，768px 视口两侧留白
+   仅 64px 显挤）、横屏 820px（原 560px 两侧留白 232-403px 浪费严重）。
+   .tablet 类由 mobile-adapt.js 检测 iPad 加在 <html> 上（含 iPadOS 13+
+   Macintosh 伪装 UA），本区块选择器以 html.tablet 前缀提权，优先于手机媒体
+   查询与桌面外壳样式。 */
+html.tablet body { padding:0; }
+html.tablet .phone {
+  /* v3.26.x #186：平板默认观感改全宽铺满（用户决策 2026-09-05，替代 v3.7.x 的
+     640/820 限宽居中——多台 iPad 用户反馈「四边不贴合」；横屏同改见下方媒体查询。
+     内容阅读宽度由内部组件自行约束（横屏气泡 460px 封顶规则保留） */
+  width:100vw; max-width:none; flex-shrink:0;
+  height:100vh; height:100svh; height:100dvh;
+  border-radius:0; box-shadow:none;
+  padding:0 18px 18px;
+}
+html.tablet .phone.no-statusbar { padding:0; }
+html.tablet .statusbar {
+  padding-top:max(calc(14px + var(--mochi-safe-top, env(safe-area-inset-top, 0px))), 14px);
+  padding-bottom:10px;
+}
+/* 平板真全屏（Fullscreen API / display_override）：仍是整屏铺满（与手机端一致） */
+html.tablet.fs-active .phone, html.tablet.fs-css-active .phone { width:100vw; max-width:none; }
+/* v3.26.x #185：平板 iOS 全屏模式（ios-fs-active）全宽铺满——原 640px 限宽居中在
+   全屏下左右各露 ~90px 底色（用户报「全屏模式有白边」）；浏览器/非全屏保持限宽居中 */
+html.tablet.ios-fs-active .phone { width:100vw; max-width:none; }
+@media (display-mode: fullscreen) { html.tablet .phone { width:100vw; max-width:none; } }
+/* 平板 iOS「全屏模式」（隐藏应用内模拟状态栏）：顶部安全区兜底（同手机端规则） */
+html.tablet.ios-fs-active .phone { padding-top:max(env(safe-area-inset-top, 0px), 12px); }
+/* 聊天页通栏输入栏贴底（与手机端一致，横屏不再悬浮圆角卡片） */
+html.tablet .phone .page.full .chat-input-row {
+  margin:0; border-radius:0;
+  border-left:none; border-right:none; border-bottom:none;
+  padding-left:12px; padding-right:12px;
+  padding-top:10px;
+  padding-bottom:calc(10px + var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px)));
+}
+html.tablet .phone .page.full .chat-head { padding-top:calc(10px + var(--mochi-safe-top, env(safe-area-inset-top, 0px))); }
+html.tablet .phone .page.full { padding-bottom:0; }
+html.tablet #page-chat { background:var(--page-bg-grad); }
+html.tablet .tabbar { margin-bottom:var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px)); }
+/* 平板不应用桌面缩放（zoom 是 iOS 卡顿红线；平板按手机端体验处理，与竖屏一致） */
+html.tablet .page-slide { zoom:1; }
+html.tablet .deco-widget, html.tablet .mini-card, html.tablet .checkin,
+html.tablet .weekend-box, html.tablet .music-widget, html.tablet .memo-card,
+html.tablet .mood-card, html.tablet .week-card, html.tablet .desk-period, html.tablet .app-grid, html.tablet .mini-row { zoom:1; }
+/* 平板大屏：桌面图标放大、消息气泡限宽（避免整行过长） */
+html.tablet .app .app-ico { width:64px; height:64px; }
+html.tablet .app .app-name { font-size:12px; }
+html.tablet .msg:not(.msg-ask):not(.msg-center) { max-width:70%; }
+/* 弹窗略宽（平板空间充裕，272px 偏小） */
+html.tablet .modal { width:min(320px, 82vw); }
+/* 输入框字号钉 16px：iOS 聚焦 <16px 输入框会自动放大整页——iPad 横屏（>900px）
+   不命中上方手机媒体查询，需单独覆盖，行为与手机端一致 */
+html.tablet .phone input:not([readonly]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="hidden"]):not([type="date"]):not([type="time"]):not([type="datetime-local"]):not([type="month"]):not([type="week"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
+html.tablet .phone textarea:not([readonly]),
+html.tablet .phone select,
+html.tablet .phone [contenteditable="true"] { font-size:16px; }
+/* 平板手势：禁止双击缩放（iPad Safari 双击放大整页是常见误触），长按不弹系统菜单 */
+html.tablet, html.tablet * { touch-action:manipulation; }
+html.tablet body, html.tablet .phone, html.tablet img { -webkit-touch-callout:none; }
+
+/* v3.7.x：iPad 横屏（≥1024px CSS 视口）——内容区放宽到 820px，
+   更好利用横屏空间（原 560px 两侧留白 232-403px 浪费严重）。
+   竖屏保持 640px（上方默认规则）。iPad mini/普通 iPad 横屏 1024-1080px
+   命中，两侧留白 102-130px，观感与原生 iPad 应用限宽居中一致。
+   iPad Air/Pro 横屏 1180-1366px 同命中，两侧留白 180-273px，不过窄。 */
+@media (orientation: landscape) and (min-width: 1024px) {
+  html.tablet .phone { width:100vw; } /* #186：横屏同样全宽铺满 */
+  /* 消息气泡封顶 460px：820px 下 70%=574px 过宽难读，封顶后接近手机阅读宽度 */
+  html.tablet .msg:not(.msg-ask):not(.msg-center) { max-width:min(70%, 460px); }
+  /* 弹窗稍宽（横屏空间充裕，360px 比 320px 更舒展） */
+  html.tablet .modal { width:min(360px, 82vw); }
+}
+
+/* v3.6.x：输入法弹出适配已改为「最小干预」——mobile-adapt.js 不再锁定 .phone 高度、
+   不再写 --ime-h、不再加 ime-open（此前这套机制在部分安卓机引发输入法截断/闪屏）。
+   viewport meta 的 interactive-widget=resizes-content 会让布局视口随键盘收缩，
+   .phone 的 100dvh 随之重算，输入栏天然停靠键盘上方；以下规则已删除。 */
+
+/* v3.5.113：导入数据进度缓冲——读取/解析大备份与逐条写入需要时间，
+   用全屏遮罩 + 进度条明确显示进度，避免误以为卡死/没反应 */
+.cc-import-progress {
+  position:fixed; inset:0; z-index:99999;
+  background:rgba(0,0,0,.45);
+  display:flex; align-items:center; justify-content:center;
+}
+.cc-import-progress[hidden] { display:none; }
+.cc-ip-box {
+  width:min(280px, 84vw); background:var(--card-bg); border-radius:18px;
+  padding:22px 20px 18px; text-align:center;
+  box-shadow:0 20px 50px rgba(0,0,0,.18);
+}
+.cc-ip-title { font-size:15px; font-weight:700; margin-bottom:12px; }
+.cc-ip-bar {
+  height:8px; border-radius:99px; background:var(--track-bg); overflow:hidden; margin:14px 0 10px;
+}
+.cc-ip-fill {
+  height:100%; width:0%; border-radius:99px; background:var(--btn-bg);
+  transition:width .25s ease;
+}
+.cc-ip-sub { font-size:12px; color:var(--muted); min-height:16px; }
+
+/* 安卓：轻点涟漪/选择高亮统一为无，避免闪烁 */
+@media (max-width: 900px) {
+  button, .app, .set-row, .tab, .msg, .feed-post, .mail-item {
+    -webkit-tap-highlight-color:transparent;
+  }
+}
+
+/* v3.5.107：弹层打开时锁背景滚动（body.scroll-lock 由 mobile-adapt.js 控制） */
+body.scroll-lock { overflow:hidden; }
+/* v3.5.127：手机端实际滚动发生在 .phone 内的 .page——body 锁不住它，
+   弹层打开时把 .page 一起锁（滚动穿透锁的完整实现） */
+body.scroll-lock .page { overflow:hidden; }
+
+/* v3.5.128：contenteditable 输入框转换器（mobile-adapt.js 手机端启用）——
+   Chrome 移动端对 <input>/<textarea> 聚焦会弹「自动填充」条（autocomplete=off、
+   readonly 均被该版本无视）。原 input 保留作数据锚点（.ce-ghost 退场不可交互），
+   显示与输入由 .ce-box div 接管；placeholder 用 :empty::before 显示 */
+.ce-box {
+  white-space:pre-wrap; word-break:break-word; outline:none;
+  caret-color:var(--ink); line-height:1.5;
+}
+.ce-box:empty::before {
+  content:attr(data-ph); color:var(--hint-ink); pointer-events:none;
+}
+/* v3.26.x #399：幽灵锚点必须【零布局足迹】。原规则只钳 width/height，两个洞：
+   ①页面级 min-height 反压——.mail-compose-input{min-height:220px} 胜过
+     height:1px!important（min-height 与 height 是两个属性），退场锚点实际是 220px 高；
+   ②position:absolute 未给定位 → 沿用流内静态位置。回信页原信很长时，锚点落到
+   .cal-scroll 滚动内容深处，而它的包含块是 .phone（position:relative）＝逃出滚动容器
+   裁剪，把 .phone 的可滚动溢出撑到 1317px（随原信长度线性增长；写信页/聊天页原信短
+   或无原信＝幻影 0，所以只有回信页中招）。内核「把聚焦元素滚进视野」（光标显露 /
+   scrollIntoView）的滚动链会一路滚到 .phone，整壳上移且无处复位＝用户所见
+   「回信页滑不动、一直弹来弹去」。改：min/max-height 一并钳死 + top/left 钉到包含块
+   角上，任何祖先的可滚动溢出都不再被它撑大。 */
+input.ce-ghost, textarea.ce-ghost {
+  position:absolute; top:0; left:0; width:1px !important; height:1px !important;
+  min-height:0 !important; max-height:none !important;
+  overflow:hidden; opacity:0; pointer-events:none; padding:0; border:0;
+}
+/* 浮层内部滚动不穿透到背景（滚到底/到顶不再带动底层页面） */
+#tc-mask, #call-mask, #feed-notice-panel, #poke-card, #emoji-panel, #chat-ask-panel, #qa-mask {
+  overscroll-behavior:contain;
+}
+
+/* 白色纸张卡片（替代原毛玻璃）：白纸质感 + 虚线边框，与情绪字卡的虚线风格统一 */
+.glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 2px 8px var(--card-shadow);
+}
+
+/* 全局线条图标跟随字体颜色（覆盖 svg 上的 stroke 属性） */
+.app-ico svg, .deco-avatar .ring svg, .chat-item .av svg, .chat-search svg,
+.ch-back svg, .set-row .ico svg, .set-row .arrow svg, .msg-av svg,
+.mw-btn, .mw-heart {
+  stroke: var(--ink);
+}
+.mw-bars { fill: var(--ink); }
+
+.statusbar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:4px 4px 12px; font-size:13px; font-weight:600; z-index:2;
+}
+/* v3.26.x #199：浏览器覆盖形态（雨见/Via 等沉浸式安卓壳：页面顶到系统状态栏下，
+   screen==inner、standalone=false）——mobile-adapt.js syncVvFit 实测 env 写
+   --mochi-safe-top 并挂 mochi-cover-top 类；此处以更高特异性夺回被本文件上方
+   .statusbar{padding:4px…}（同特异性后加载）压死的顶部避让（#114 同根因，
+   该形态无 .phone padding 兜底链，必须由状态栏自身抬升）。iOS standalone 不挂
+   类、规则不生效，既有避让链（.phone padding-top / ios-fs-active）不受影响。 */
+html.mochi-cover-top .phone .statusbar {
+  padding-top:max(calc(14px + var(--mochi-safe-top, 0px)), 14px);
+}
+/* v3.26.x #537：iOS 独立应用【普通态·覆盖形态】（ios-cover-top 类由 mobile-adapt.js
+   syncVvFit 按共享判定器 iosCover 挂/摘）——该形态 .phone 铺满整块物理屏、页面顶到
+   屏幕最顶（系统状态栏悬浮其上，env-top=62），模拟状态栏必须自身抬升到系统状态栏下方：
+   此前只有 ios-fs-active（全屏模式）链有 .phone padding 兜底，普通态既无 .phone 顶部
+   padding、窄屏 @media 的安全区留白（0,1,0）又被后加载的同特异性全局
+   .statusbar{padding:4px…} 压死（#114 同根因）→ Mochi/时间/电量那一行常驻钻在系统
+   栏里、聊天返回键被吞点（用户报「整页上移」时诊断同步报 ✗顶部重叠）。
+   留白只加在状态栏自身（同 #199/#236 浏览器覆盖壳手法，不动 .phone）：full 页
+   （聊天等）本就把状态栏 display:none，其头部各自用 var(--mochi-safe-top) 避让，不双倍。
+   padding-bottom 归零：.phone 已顶到物理屏底，底部只留 tabbar 自身的
+   --mochi-safe-bottom（Home 指示条 34px）避让——与 ios-fs-active 链同款处理，修
+   「底部栏不贴手机底部」（原来 .phone 的 18px 内边距与 34px 避让叠成 52px 空档）。 */
+html.ios-cover-top .phone { padding-bottom:0; }
+html.ios-cover-top .phone .statusbar {
+  padding-top:max(calc(14px + var(--mochi-safe-top, 0px)), 14px);
+}
+/* v3.26.x #199：Gecko 系（Firefox/雨见等）滚动锚定会在删除/新增消息改动上方
+   内容时自行调整 chat-body 的 scrollTop，与 chat.js #162 贴底钉住逻辑对打
+   （荣耀50se+雨见：删消息/对方回消息屏幕往上移）——聊天页滚动权已完全由
+   JS 显式管理，关掉浏览器自动锚定（跨内核安全：Chromium 同属性可解析）。 */
+.chat-body { overflow-anchor: none; }
+/* v3.31.x #316（跨域改动，AI-A 会话；理由见 WORKLOG）：#199 的 none 同时关掉了
+   Chromium 原生滚动锚定——浏览图片较多的历史时，视口上方图片异步解码撑高无人补偿
+   =「聊天记录一直跳、一直闪」（红米 K80 Chrome 等多机型）。chat.js 解钉（用户手动
+   滚动）时挂本类开回锚定、回钉贴底时摘除——#199 防对打只涉及钉住态，语义不变。 */
+.chat-body.scroll-anchor-auto { overflow-anchor: auto; }
+.statusbar .brand { font-weight:800; letter-spacing:.5px; }
+.statusbar .sb-right { display:flex; align-items:center; gap:8px; }
+.statusbar .icons { display:flex; gap:6px; align-items:center; }
+
+/* 页面容器 */
+.page { flex:1; display:flex; flex-direction:column; overflow-y:auto; z-index:2; padding-bottom:4px; }
+.page[hidden] { display:none; }
+/* v3.7.x：.app 默认 display:flex 会覆盖 HTML hidden 属性——正在开发的功能
+   （如群聊锚点 data-app="group-chat" 先占位 hidden）若不加兜底会在桌面意外显示，
+   点击又无逻辑（桌面 app 各自绑事件，无统一分发）。补 [hidden] 兜底（同
+   .poke-tools[hidden] 的教训） */
+.app[hidden] { display:none !important; }
+
+/* 通用弹层（替代 prompt/confirm，IAB 不支持原生弹窗）
+   层级最高，确保任何面板/浮层之上都能弹出
+   v3.6.x：去掉 backdrop-filter blur——iOS Safari 全屏模糊每次弹窗打开都做一次
+   整屏栅格化（弹窗是最高频操作），纯 rgba 遮罩视觉几乎无差，性能收益大
+   v3.12.x：fixed → absolute——手机端键盘弹出时 mobile-adapt.js 会把 .phone 收缩
+   停靠在键盘上方（align-self:flex-start + height=可视高度），fixed 元素仍相对
+   整屏布局视口定位 → 弹窗中心落在停靠后的输入栏下方、下半截被键盘盖住
+   （用户反馈：我的表情包「链接导入」弹窗跑到聊天输入栏下面）。改 absolute 锚定
+   .phone（本就 position:relative），随 .phone 停靠，弹窗始终在可视区内居中；
+   .modal 的 max-height min(78vh, calc(100% - 24px)) 中 calc 项保证键盘弹出后的
+   小可视区里弹窗内部可滚动。桌面外壳/平板下 .phone 即整屏，视觉与层级不变
+   （.phone 无 z-index 不产生堆叠上下文，z 90 与 call-mask 95 等相对次序照旧）。 */
+.modal-mask {
+  position:absolute; inset:0; z-index:90;
+  background:var(--overlay-bg);
+  display:flex; align-items:center; justify-content:center;
+}
+.modal-mask[hidden] { display:none; }
+.modal {
+  width:min(272px, 82vw);
+  max-height: min(78vh, calc(100% - 24px));
+  overflow-y:auto;
+  background:var(--card-bg-97);
+  border:1px solid var(--card-border);
+  border-radius:22px; padding:18px 18px 16px;
+  box-shadow:0 20px 50px var(--shadow-strong);
+}
+.modal-title { font-size:15px; font-weight:700; margin-bottom:12px; }
+.modal-input {
+  width:100%; border:1px solid var(--input-border); border-radius:12px;
+  padding:10px 12px; font-size:14px; font-family:inherit;
+  outline:none; background:var(--input-bg); color:var(--ink);
+}
+.modal-input:focus { border-color:var(--input-focus-border); }
+.modal-input[hidden] { display:none; }
+.modal-textarea {
+  width:100%; border:1px solid var(--input-border); border-radius:12px;
+  padding:10px 12px; font-size:13px; font-family:inherit;
+  outline:none; background:var(--input-bg); color:var(--ink);
+  resize:vertical; min-height:64px; line-height:1.6;
+}
+.modal-textarea[hidden] { display:none; }
+.modal-textarea:focus { border-color:var(--input-focus-border); }
+/* v3.23.x：多行弹窗输入框（批量导入/链接导入等）安卓被转成 .ce-box 后随内容无限增高，
+   弹窗被撑满后触摸手势被 contenteditable 吃掉、内容多时无法上滑查看（vivo 自带/雨见
+   用户反馈）。同 #chat-decision-body dec-opts 的成熟做法：高度上限 + 框内滚动，
+   标题/按钮始终可见，内容在框内上滑查看 */
+/* FIX 2026-09-16 #612：框内滚到底后手势必须能链式传给外层 .modal——原沿用的
+   overscroll-behavior:contain 会把「框内已滚到边界」的滚动链一并拦断，手指落在
+   框上时整个弹窗滚不动（vivo V2528A / Edge 等多机型报「字卡库·表情包·链接导入
+   弹窗没法下滑导入」，用户明说其他机型也有；无头实证：框内到底 + contain →
+   外层 .modal.scrollTop 恒 0，仅把本行 contain 改 auto 后同一手势即滚到 102/103）。
+   contain→auto 不回退 v3.23.x 的框内滚动（溢出时仍先框内滚），只在边界放行给
+   .modal——同族第 4 次（v3.23 modal-textarea → v3.25 选项框 → #295 dec-opts/gd-opts
+   → 本次），dec-opts/gd-opts 早已是 auto，本处与下方 .modal-group-chips 是漏网的两处 */
+.modal-textarea.ce-box {
+  max-height:38vh;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:auto;
+}
+/* v3.25.x：长文只读弹窗（诊断信息）——宽版 + 放大多行框，避免窄小而难核对；
+   同时隐藏滚动条（与 .page 隐藏灰色滚动条的用户偏好一致，诊断长文仍可滑动查看） */
+.modal, .modal-textarea.ce-box {
+  scrollbar-width:none; -ms-overflow-style:none;
+}
+.modal::-webkit-scrollbar, .modal-textarea.ce-box::-webkit-scrollbar { display:none; }
+.modal.modal--big { width:min(420px, 94vw); }
+.modal.modal--big .modal-textarea,
+.modal.modal--big .modal-textarea.ce-box { max-height:52vh; }
+/* FIX 2026-09-07 #255 iOS 键盘期弹窗顶对齐（mobile-adapt 键盘会话开关 modal-kb-dock，
+   安卓/桌面不挂类不受影响）：键盘期 .phone 高度变化时居中弹窗反复重新取中，
+   输入框视觉上「往上滑」（iPhone16P/iOS26 Safari 批量导入弹窗报障）。顶对齐后
+   弹窗位置锚定顶部（安全区上边距兜底），高度变化只影响底边，输入区不再移动 */
+.modal-mask.modal-kb-dock { align-items: flex-start; }
+.modal-mask.modal-kb-dock .modal { margin-top: max(10px, env(safe-area-inset-top)); }
+.modal-swatches { display:flex; flex-wrap:wrap; gap:12px; margin-top:4px; }
+.modal-swatches[hidden] { display:none; }
+.modal-pills { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+.modal-pills[hidden] { display:none; }
+/* v3.28.x：批量导入弹窗目标分组——自定义胶囊行（替代原原生 <select>「导入到现有
+   分组」，用户反馈弹的是浏览器自带下拉框、不网站内样式）。默认新建 + 现有分组各一个
+   胶囊点选；分组多时横向滑动，选中态高亮，语义与旧 select 首个空值项一致。 */
+/* FIX 2026-09-16 #612：同 .modal-textarea.ce-box——胶囊行也是 .modal 内的子滚动容器，
+   contain 会在「已滚到边界」时拦断滚动链，手指落在胶囊行上时弹窗同样滚不动
+   （链接导入弹窗分组多时胶囊行占 36vh，是最容易被手指命中的区域之一）。改 auto：
+   胶囊行溢出仍先在行内滚，到边界放行给 .modal */
+.modal-group-chips {
+  display:flex; flex-wrap:wrap; gap:8px; margin-top:4px;
+  max-height:36vh; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  overscroll-behavior:auto;
+}
+.modal-group-chips[hidden] { display:none; }
+.modal-group-chips .pill { flex:0 0 auto; }
+/* v3.6.x：滑块（图标圆角等数值调整）——含实时值 + 图标形状预览 */
+.modal-slider { margin-top:6px; }
+.modal-slider[hidden] { display:none; }
+.ms-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:2px; }
+.ms-label { font-size:12px; color:var(--muted); }
+.ms-val { font-size:13px; font-weight:700; color:var(--ink); min-width:40px; text-align:right; }
+.ms-range {
+  width:100%; margin:6px 0; -webkit-appearance:none; appearance:none;
+  height:4px; border-radius:99px; background:var(--track-bg); outline:none;
+}
+.ms-range::-webkit-slider-thumb {
+  -webkit-appearance:none; appearance:none; width:22px; height:22px; border-radius:50%;
+  background:var(--btn-bg); border:3px solid var(--card-bg); box-shadow:0 1px 5px rgba(0,0,0,.3); cursor:pointer;
+}
+.ms-range::-moz-range-thumb {
+  width:16px; height:16px; border-radius:50%; background:var(--btn-bg);
+  border:3px solid var(--card-bg); box-shadow:0 1px 5px rgba(0,0,0,.3); cursor:pointer;
+}
+.ms-preview {
+  display:flex; align-items:center; gap:12px; margin-top:10px;
+  padding:10px 14px; background:var(--static-bg); border-radius:14px;
+}
+.ms-preview[hidden] { display:none; }
+.ms-ico {
+  width:52px; height:52px; flex-shrink:0;
+  background:var(--glass-bg); border:1px solid var(--card-border);
+  box-shadow:0 3px 8px rgba(0,0,0,.08);
+}
+.ms-preview-txt { font-size:12px; color:var(--muted); }
+.pill {
+  padding:8px 16px; font-size:13px; border-radius:99px;
+  border:1px solid var(--pill-border); background:var(--card-bg); color:var(--soft-ink);
+  cursor:pointer; font-family:inherit; font-weight:600;
+}
+.pill.on { background:var(--card-bg); color:var(--ink); border-color:var(--btn-bg); }
+.sw {
+  width:42px; height:42px; border-radius:50%; cursor:pointer;
+  border:2px solid transparent; box-shadow:0 2px 6px rgba(0,0,0,.1);
+}
+.sw:hover { transform:scale(1.1); }
+.sw.on { border-color:var(--ink); }
+.modal-custom {
+  display:block; margin:12px auto 0; padding:6px 18px;
+  font-size:12px; color:var(--muted); background:transparent;
+  border:1px solid var(--pill-border); border-radius:99px; cursor:pointer; font-family:inherit;
+}
+.modal-custom:hover { color:var(--ink); border-color:#bbb; }
+.modal-custom.on { color:var(--ink); border-color:var(--ink); }
+.modal-custom[hidden] { display:none; }
+.modal-btns { display:flex; gap:10px; margin-top:16px; }
+.modal-btn {
+  flex:1; border:none; border-radius:12px; padding:11px;
+  font-size:14px; font-family:inherit; cursor:pointer;
+}
+.modal-btn.cancel { background:var(--btn-cancel-bg); color:var(--btn-cancel-ink); }
+.modal-btn.ok { background:var(--btn-bg); color:var(--btn-ink); font-weight:600; }
+/* v3.16.x：弹窗内「复制」按钮——诊断信息等只读展示场景，点它重新复制内容（主操作色） */
+.modal-btn.copy { background:var(--btn-bg); color:var(--btn-ink); font-weight:600; }
+.modal-btn[hidden] { display:none; }
+
+/* v3.6.69：页面滚动条恢复隐藏——之前 17:16 改成 4px 细显示想让用户看到
+   "可滚动"信号，但用户反馈"右边有灰色的滑动栏滚动条，删掉"——不想要滚动条。
+   最终方案：滚动条保持隐藏（scrollbar-width:none），"遮挡/白条"问题由
+   tabbar.css 的 #page-chatcard/#page-setting 修复解决（padding-bottom:0 +
+   background:var(--card-bg) + last-child margin-bottom:20px）——
+   页面底部不再有空白长方形，滚动到底内容完整且不贴底。 */
+.page { scrollbar-width:none; -ms-overflow-style:none; }
+.page::-webkit-scrollbar { display:none; }
+
+.modal-select {
+  width:100%; border:1px solid var(--input-border); border-radius:12px;
+  padding:11px 13px; font-size:13px; font-family:inherit; background:var(--input-bg); color:var(--ink);
+  outline:none; margin-top:4px;
+}
+.modal-select[hidden] { display:none; }
+.modal-select:focus { border-color:var(--input-focus-border); }
+.modal-file {
+  display:block; margin:10px auto 0; padding:6px 16px;
+  font-size:12px; color:var(--soft-ink); background:transparent;
+  border:1px solid var(--pill-border); border-radius:10px; cursor:pointer; font-family:inherit;
+}
+.modal-file:hover { border-color:#999; color:var(--ink); }
+.modal-file[hidden] { display:none; }
+
+.modal-static {
+  font-size:14px; line-height:1.7; color:var(--ink);
+  background:var(--static-bg); border-radius:12px; padding:12px 14px;
+  margin-bottom:14px; white-space:pre-wrap; word-break:break-word;
+}
+.modal-static[hidden] { display:none; }
+
+/* ===== PWA 安装按钮 / iOS 提示 ===== */
+.pwa-install {
+  position:fixed; right:16px; bottom:calc(16px + var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px))); z-index:900;
+  display:flex; align-items:center; gap:6px;
+  background:var(--btn-bg); color:var(--btn-ink); border:none; border-radius:99px;
+  padding:11px 18px; font-size:13px; font-family:inherit; font-weight:600;
+  cursor:pointer; box-shadow:0 6px 20px rgba(0,0,0,.25);
+}
+.pwa-install svg { width:16px; height:16px; }
+.pwa-install[hidden] { display:none; }
+.pwa-ios-hint {
+  position:fixed; right:16px; bottom:calc(16px + var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px))); z-index:900;
+  background:rgba(17,17,17,.92); color:#fff; border-radius:14px;
+  padding:12px 16px; font-size:12px; line-height:1.5; max-width:240px;
+  box-shadow:0 6px 20px rgba(0,0,0,.25); cursor:pointer;
+}
+.pwa-ios-hint[hidden] { display:none; }
+
+/* v3.6.x：检测到新版本提示条——固定在顶部醒目显示，点击「刷新使用新版」立即刷新。
+   长期驻留直到刷新或手动关闭，避免 toast 一闪而过看不到 */
+.ver-update-bar {
+  position:fixed; top:0; left:0; right:0; z-index:998;
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  padding:10px 14px;
+  padding-top:calc(10px + var(--mochi-safe-top, env(safe-area-inset-top, 0px)));
+  background:rgba(17,17,17,.94); color:#fff; font-size:13px;
+  box-shadow:0 4px 16px rgba(0,0,0,.25);
+}
+.ver-update-bar[hidden] { display:none; }
+.ver-update-bar .vub-txt { font-weight:600; }
+.ver-update-bar .vub-act {
+  flex-shrink:0; padding:5px 14px; border-radius:99px;
+  background:var(--card-bg); color:var(--ink); font-weight:700; cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.ver-update-bar .vub-act:active { opacity:.8; }
+
+/* ===== 手机端：弹层/半框内部滚动到边界不再穿透滚动下层页面（安卓/iOS 常见问题） ===== */
+.poke-card-scroll, .tc-body, .mg-list, .emoji-groups,
+.card-list, .mem-scroll, .cal-scroll, .div-scroll, .gs-scroll,
+.chat-search, .fav-list, .feed-list, .mail-list, .qa-body,
+.sm-list, .music-list, .feed-notice-panel, .feed-comment-panel,
+.emoji-panel, #com-sticker-list, .chat-draft-items {
+  overscroll-behavior: contain;
+}
+
+/* v3.5.127：用户输入的长串（英文/数字/URL）不换行会横向溢出卡片/面板——
+   聊天卡片/问答/日历/备忘等文字容器统一允许任意位置断行 */
+.tc-hint, .tc-q, .tc-opt, .qa-q, .cal-message, .mem-next,
+.div-card-meaning, .msg-bubble, .feed-content, .feed-comment,
+.mail-body, .tc-li-q, .modal-static {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* ===== v3.7.x：音效设置——内置音效预设胶囊 ===== */
+/* v3.26.x：UI 重设计——每类音效一张卡片：头部行 + 胶囊区 + 底部操作行 */
+.sfx-card .set-row { border-bottom:none; padding-bottom:6px; }
+.sfx-presets { display:flex; flex-wrap:wrap; gap:8px; padding:6px 16px 12px; }
+.sfx-preset {
+  padding:6px 13px; border-radius:99px; font-size:12px; font-weight:600;
+  border:1px solid rgba(0,0,0,.12); background:#fff; color:#444;
+  font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent;
+  transition:background .15s ease, color .15s ease, border-color .15s ease;
+}
+.sfx-preset:active { background:rgba(0,0,0,.07); }
+.sfx-preset.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+/* 卡片底部操作行：无自定义只显示上传，有自定义显示试听/清除 */
+.sfx-tools { display:flex; gap:8px; flex-wrap:wrap; padding:0 16px 14px; }
+
+/* ===== v3.27.x #218 互动频率引导提示条 ===== */
+/* TA 主动消息/连发多条/互动邀请随机触发时，提醒用户可自行调低或关闭（入口：设置 → 回复设置）；
+   纯提醒、不改任何默认值。定位/配色对齐 #cc-toast（bottom 120px + safe-area、z-index 同层），
+   元素由 reply-settings.js 按需创建 */
+#reply-guide-hint {
+  position:fixed; left:50%; bottom:calc(120px + var(--mochi-safe-bottom, env(safe-area-inset-bottom, 0px))); transform:translate(-50%, 10px);
+  background:rgba(17,17,17,.92); color:#fff; font-size:12.5px; line-height:1.5;
+  padding:10px 14px; border-radius:14px; z-index:99;
+  opacity:0; pointer-events:none; transition:opacity .25s ease, transform .25s ease;
+  max-width:82vw; display:flex; align-items:center; gap:10px; text-align:left;
+  box-shadow:0 4px 16px rgba(0,0,0,.18);
+}
+#reply-guide-hint.show { opacity:1; transform:translate(-50%, 0); pointer-events:auto; }
+#reply-guide-hint .rgh-go { flex:none; font-weight:700; color:#f5c452; white-space:nowrap; }
+/* 回复设置页顶部「这些都是概率、可自行调」说明行（template.html 静态） */
+.reply-guide-note { padding:10px 14px 2px; }
+
+/* FIX 2026-09-13 #387 媒体池令牌缺数据占位（media-pool 观察器打标）——公用库跨设备共享
+   不带池键时令牌解不出图，纯白不可辨；置灰+占位尺寸诚实可见，导入完整备份后自动恢复 */
+img.media-tok-missing { background: rgba(0,0,0,.06); min-width: 48px; min-height: 48px; object-fit: contain; opacity: .5; }

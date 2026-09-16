@@ -1,0 +1,46 @@
+name: verify
+
+# 每次 push / PR 自动跑构建 + 三套验证（Chrome 布局 / WebKit 引擎 / 设备伪装回归）
+# 防止「改完就发、发完才发现坏」——失败会标红，构建者提交前就能看到。
+# 注意：本工作流只验证产物正确性，不构建、不部署（部署仍是构建者手动 node build.mjs）。
+# v3.27.x：新增 verify:all 套件步骤——此前 CI 只跑 3 个脚本，tools/verify-*.mjs 行为类
+# 回归脚本（verify-jsonpack / verify-fishing-keep / verify-snake-fs-result 等 190 个）在
+# CI 上无人值守，本地 npm run verify:all 全绿 ≠ CI 全绿。套件默认非 strict（失败仅做
+# 可见性报告，不卡 CI；现存脚本含需真机/网络/环境缺口的项，一上来当门禁会被整体跳过），
+# 等清单清干净后把 run 改为 `node tools/verify-suite.mjs --strict --tail 12` 当门禁。
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 安装 WebKit 引擎（Playwright）
+        run: npx playwright install --with-deps webkit
+
+      - name: 构建
+        run: node build.mjs
+
+      - name: Chrome 布局验证
+        run: node tools/verify.mjs
+
+      - name: WebKit 引擎验证
+        run: node tools/verify-webkit.mjs
+
+      - name: 设备伪装场景回归
+        run: node tools/verify-device-regression.mjs
+
+      - name: 全部回归脚本（verify:all 套件，失败可见性报告）
+        run: node tools/verify-suite.mjs --tail 12

@@ -1,0 +1,37 @@
+/* ===== 应用锁（隐私防护，applock.js）=====
+   全屏遮罩 + 数字密码面板。配色全部走 base.css 变量 → 深浅主题自动适配。 */
+.applock-mask { position: fixed; inset: 0; z-index: 999999; display: flex; align-items: center; justify-content: center; padding: 24px; background: var(--overlay-bg, rgba(0, 0, 0, .45)); }
+.applock-mask.hide { display: none; }
+.applock-box { width: min(320px, 88vw); max-height: 88vh; overflow-y: auto; background: var(--card-bg, #fff); border: 1px solid var(--card-border, rgba(0, 0, 0, .1)); border-radius: 20px; padding: 24px 18px 18px; text-align: center; box-shadow: 0 12px 32px var(--shadow-strong, rgba(0, 0, 0, .2)); }
+.applock-ico { margin: 0 auto 10px; width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--static-bg, rgba(0, 0, 0, .05)); }
+.applock-ico svg { width: 26px; height: 26px; stroke: var(--ink, #111); }
+.applock-title { font-size: 17px; font-weight: 700; color: var(--ink, #111); margin: 2px 0 4px; }
+.applock-sub { font-size: 12px; line-height: 1.55; color: var(--muted, #8a8a8a); margin-bottom: 6px; white-space: normal; word-break: break-word; }
+.applock-dots { display: flex; gap: 10px; justify-content: center; margin: 14px 0 14px; min-height: 14px; }
+.applock-dots i { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--line, #ddd); background: transparent; transition: background .12s, border-color .12s; }
+.applock-dots i.on { background: var(--ink, #111); border-color: var(--ink, #111); }
+.applock-dots i.err { background: var(--danger-ink, #a32d2d); border-color: var(--danger-ink, #a32d2d); }
+.applock-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 8px; max-width: 236px; margin: 0 auto; }
+.applock-key { height: 52px; border-radius: 14px; border: none; background: var(--btn-cancel-bg, #eee); color: var(--ink, #111); font-size: 20px; font-weight: 600; display: flex; align-items: center; justify-content: center; cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none; transition: transform .06s, opacity .12s; }
+.applock-key:active { transform: scale(.92); }
+.applock-key.dim { color: var(--muted, #999); font-weight: 400; }
+.applock-key:disabled { opacity: .4; }
+.applock-shake { animation: applockShake .4s; }
+@keyframes applockShake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-8px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-6px); } 80% { transform: translateX(6px); } }
+.applock-err { margin: 0 0 8px; font-size: 12px; color: var(--danger-ink, #a32d2d); min-height: 17px; line-height: 1.4; white-space: normal; }
+.applock-links { margin-top: 14px; font-size: 12px; display: flex; justify-content: center; gap: 20px; }
+.applock-links button { background: none; border: none; color: var(--soft-ink, #555); font-size: 12px; padding: 4px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.applock-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.applock-ok { margin-top: 12px; width: 100%; padding: 10px; border: none; border-radius: 12px; background: var(--btn-bg, #111); color: var(--btn-ink, #fff); font-size: 15px; font-weight: 600; cursor: pointer; }
+.applock-ok:disabled { opacity: .35; }
+.applock-ok:active { transform: scale(.98); }
+.applock-acts button { flex: 1; min-width: 88px; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--card-border, rgba(0, 0, 0, .1)); background: var(--card-bg-97, #fff); color: var(--soft-ink, #555); font-size: 12px; cursor: pointer; }
+.applock-acts button:active { background: var(--static-bg, rgba(0, 0, 0, .06)); }
+.applock-mask[hidden] { display: none; }
+.applock-txt { width: 100%; box-sizing: border-box; padding: 11px 13px; margin-top: 4px; border-radius: 12px; border: 1px solid var(--input-border, #e0e0e0); background: var(--input-bg, #fff); color: var(--ink, #111); font-size: 14px; outline: none; text-align: left; }
+.applock-txt:focus { border-color: var(--input-focus-border, #999); }
+.applock-btns { display: flex; gap: 10px; margin-top: 14px; }
+.applock-btns button { flex: 1; padding: 11px 10px; border-radius: 12px; font-size: 14px; cursor: pointer; }
+.applock-btns .al-primary { border: none; background: var(--btn-bg, #111); color: var(--btn-ink, #fff); font-weight: 600; }
+.applock-btns .al-primary:active { transform: scale(.98); }
+.applock-btns .al-ghost { border: 1px solid var(--card-border, rgba(0, 0, 0, .1)); background: var(--card-bg-97, #fff); color: var(--soft-ink, #555); }
