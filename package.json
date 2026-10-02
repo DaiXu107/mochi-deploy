@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "build": "node build.mjs",
+    "check:revert": "node tools/verify-worktree-revert.mjs",
     "verify": "node tools/verify.mjs",
     "verify:webkit": "node tools/verify-webkit.mjs",
     "verify:device": "node tools/verify-device-regression.mjs",

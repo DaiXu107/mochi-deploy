@@ -1,0 +1,36 @@
+import puppeteer from 'puppeteer-core';
+import { createServer } from 'http';
+import { readFileSync, statSync } from 'fs';
+import { join, extname } from 'path';
+const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+const ROOT = 'C:/Users/Administrator/Desktop/mochi';
+const MIME = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css', '.json':'application/json', '.png':'image/png', '.svg':'image/svg+xml' };
+const server = createServer((req, res) => { let p = decodeURIComponent(req.url.split('?')[0]); if (p === '/') p = '/index.html'; const f = join(ROOT, p); try { statSync(f); } catch(e) { res.writeHead(404); res.end('404'); return; } res.writeHead(200, { 'Content-Type': MIME[extname(f)] || 'application/octet-stream' }); res.end(readFileSync(f)); });
+await new Promise(r => server.listen(8206, r));
+const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new', args: ['--no-sandbox', '--user-agent=Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'] });
+const page = await browser.newPage();
+await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
+page.on('pageerror', err => console.log('[PAGEERR]', err.message));
+page.on('console', msg => { if (msg.type() === 'error') console.log('[CONSOLE-ERR]', msg.text().slice(0, 200)); });
+await page.evaluateOnNewDocument(() => { localStorage.setItem('xy-home-v2:default:lbl-partner', '二宝'); localStorage.setItem('xy-home-v2:default:lbl-user', '我'); });
+await page.goto('http://localhost:8206/index.html', { waitUntil: 'networkidle2', timeout: 30000 }).catch(()=>{});
+await new Promise(r => setTimeout(r, 2500));
+await page.evaluate(() => { document.querySelectorAll('#splash, #splash-confirm, [id*=confirm]').forEach(el => { if (el && el.style) { el.hidden = true; el.style.display = 'none'; } }); document.body.classList.remove('splash-active'); document.body.classList.remove('lock'); });
+await new Promise(r => setTimeout(r, 500));
+await page.evaluate(() => document.querySelector('.app[data-app="chat"]').click());
+await new Promise(r => setTimeout(r, 1000));
+await page.evaluate(() => document.getElementById('chat-more-btn').click());
+await new Promise(r => setTimeout(r, 400));
+await page.evaluate(() => document.getElementById('more-poke').click());
+await new Promise(r => setTimeout(r, 500));
+console.log('tabs-row 数量:', await page.evaluate(() => document.querySelectorAll('.poke-tabs-row').length));
+console.log('poke-card 数量:', await page.evaluate(() => document.querySelectorAll('#poke-card').length));
+// 手动触发 renderPokeCard 不可行（内部），改为点击 tab 后直接检查类
+await page.evaluate(() => { const btns = Array.from(document.querySelectorAll('#poke-card .poke-tabs-row .emoji-tab')); btns[1].click(); });
+await new Promise(r => setTimeout(r, 200));
+console.log('点击后:', JSON.stringify(await page.evaluate(() => Array.from(document.querySelectorAll('#poke-card .poke-tabs-row .emoji-tab')).map(b => b.className))));
+// 再点回 ta
+await page.evaluate(() => { const btns = Array.from(document.querySelectorAll('#poke-card .poke-tabs-row .emoji-tab')); btns[0].click(); });
+await new Promise(r => setTimeout(r, 200));
+console.log('点回ta后:', JSON.stringify(await page.evaluate(() => Array.from(document.querySelectorAll('#poke-card .poke-tabs-row .emoji-tab')).map(b => b.className))));
+await browser.close(); server.close();

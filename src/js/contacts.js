@@ -12,6 +12,12 @@
     // 旧值（用户反馈：玩 4 天桌面「已摸鱼」显示第 2 天）。fish-log-global-migrated 为
     // 合并幂等标记键，同为全局根键。二者都不随联系人隔离，绝不能迁移。
     'fish-log', 'fish-log-global-migrated',
+    // #1541：开屏/系统标记键出生即根域全局键，读取方都只认根键——此前漏排除，每次刷新
+    // 被 migrateLegacy 当旧顶层业务键迁进 default 并删根键：① age-confirmed（#1475 版本化
+    // 年龄确认）每次开屏都要重新勾；② storage-guide-shown（#1250 存储修复引导已送达标记，
+    // LS 快路径每启必 miss，全靠 markShown 写的 IDB 那份兜底才没反复重弹）；③ splash-seen:*
+    // （每日首开强读标记，见 isExcluded 前缀挡）天天失效。
+    'age-confirmed', 'storage-guide-shown',
     // v3.17.x：跨桌面「来消息」全局根键——incoming-requests（申请队列）、
     // desk-checkin-en（桌面查岗全局开关）与 desk-call-en（跨桌面来电全局开关）都存
     // 根命名空间、全桌面通，绝不随联系人隔离，防 migrateLegacy 每次刷新搬进 default
@@ -23,6 +29,9 @@
     // 同 bg-* 道理是全局根键，绝不随联系人隔离，防 migrateLegacy 搬进 default 并删根键
     // （挂起键丢了=用户回来接不到重响的来电）。
     'incoming-requests', 'desk-checkin-en', 'desk-call-en', 'desk-freq-mode', 'call-hold',
+    // v3.27.x：night-mode-en（夜间免打扰模式总开关）同为全局根键，全桌面通、不随联系人隔离。
+    // 漏排除会被 migrateLegacy 每次刷新搬进 default 并删根键 → 开关自己关掉、夜间静默失效。
+    'night-mode-en',
     // v3.12.x：group-chat-msgs（群聊消息，v3.8 起全局存储于根命名空间）——同 bg-* 道理，
     // 不是旧顶层业务键。此前漏排除导致每次刷新 migrateLegacy 把群聊记录搬进 default:
     // 并删根键，群聊页读根键为空 → 历史看似清空（数据滞留 default: 副本）+ 迁移循环空转。
@@ -33,7 +42,7 @@
     // 不是旧顶层业务键，绝不能迁移进 default 桌面。此前漏排除导致每次刷新
     // migrateLegacy 把 bg-keepalive/bg-notify 迁进 default 并删全局键，非 default
     // 桌面刷新后开关读不到全局值自动变关（用户反馈「后台保活/后台弹窗自己关了」）。
-    'bg-keepalive', 'bg-notify',
+    'bg-keepalive', 'bg-notify', 'bg-notify-nodedup',
     // v3.15.x：心意币全局一本账（根键 gift-wallet）与其一次性迁移标记——
     // 红包/市集/游戏/花园共用，跨桌面不隔离；漏排除会被 migrateLegacy 搬进 default 并删根键
     'gift-wallet', 'wallet-global-migrated',
@@ -53,7 +62,9 @@
     // 共用的自定义字卡（chatcard.js），cc-scope-migrated 为存量归属迁移幂等标记。
     // v3.30.x：cc-groups-public-off 为公用字卡「分组停用开关」全局根键，同列排除。
     // 都是根命名空间键，绝不能被 migrateLegacy 迁进 default 桌面（否则公用字卡"消失"）
-    'cc-groups-public', 'cc-groups-public-off', 'cc-scope-migrated',
+    // #680：cc-media-names-public 为公用字卡「图片/表情包名称」全局根键（chatcard.js），
+    // 同列排除——否则被迁进 default 后其他桌面的图片名称全部读不到。
+    'cc-groups-public', 'cc-groups-public-off', 'cc-scope-migrated', 'cc-media-names-public',
     // v3.11.x：字卡库公用/专属变动一次性提醒的已读标记（chatcard.js 弹窗），同为全局根键
     'cc-scope-notice-done',
     // v3.12.x：我的表情包改全局共享（chat.js）——键 xy-home-v2:my-emoji-groups 走根命名
@@ -66,6 +77,10 @@
     // <100 字符的小 JSON），全局根键跨桌面共享（同 my-emoji-groups 口径）。漏排除会被
     // migrateLegacy 当旧顶层业务键迁进 default 并删根键（最近区非 default 桌面清空）。
     'emoji-recent',
+    // #842（2026-09-19）：颜文字/emoji 两个文字分类各自的「最近使用」（chat.js
+    // emojiRecordRecentText/textRecentResolved）——同为全局根键（面板跨桌面共用一份），
+    // 漏排除会被迁进 default 并删根键＝非 default 桌面这两类的最近区清空。
+    'emoji-recent-kaomoji', 'emoji-recent-emoji',
     // #572（2026-09-16，AI-A page-coach.js 会话跨域登记 WORKLOG）：页面内「先做这个」提示的
     // 已看页标记（__coach-seen 存已提示过的页 id 数组）——全局根键，漏排除会被 migrateLegacy
     // 当旧顶层业务键迁进 default 并删根键，提示在非 default 桌面反复弹。
@@ -133,6 +148,15 @@
     // 共用）都是全局根键。此前漏排除，被 migrateLegacy 迁进 default 桌面并删 LS 根键 →
     // IDB 不可用场景下方案列表/开关刷新后消失。
     'beauty-schemes', 'chat-beauty-schemes', 'hide-ta-sticker',
+    // v3.26.x #636：表情包面板「隐藏颜文字 / 隐藏emoji」开关（chat-settings.js 注入行，聊天/群聊/
+    // 写信共用同一面板）同为全局根键——出生即进 EXCLUDE，不会产生需要回收的 default 副本。
+    'hide-tab-kaomoji', 'hide-tab-emoji',
+    // v3.26.x #691：表情包面板「颜文字/emoji 点击直接发送」模式开关（chat-settings.js 注入行，
+    // 聊天/群聊共用同一面板）同为全局根键——出生即进 EXCLUDE，不被 migrateLegacy 迁进 default 桌面。
+    'chat-textcard-direct',
+    // v3.26.x #907：表情包面板/头像互动「打开面板前提前加载图片」开关（chat-settings.js 注入行，
+    // chat.js 空闲预热调度读）同为全局根键——出生即进 EXCLUDE，不被 migrateLegacy 迁进 default 桌面。
+    'chat-panel-prewarm',
     // #231：完整外观方案（personalize.js full-beauty-schemes，v3.27.x 桌面+聊天合并方案的
     // 方案列表）、美化撤销栈（personalize.js beauty-undo-stack）、更新条一版一弹记忆
     // （pwa.js ver-update-ack-ts / ver-update-notify，#225v2）都是全局根键——此前漏排除，
@@ -162,7 +186,44 @@
     // #319 防未成年人锁解锁状态（card-lock.js）：全局根键（不随联系人隔离），闸门
     // isOpen 只读根键——此前漏排除，解锁后刷新被 migrateLegacy 当旧顶层业务键迁进
     // default 并删根键 → 永远读不到 'open'，闸门全锁（用户：输对密码刷新后毫无变化）
-    'cardlock-state'];
+    'cardlock-state',
+    // v3.26.x #628：全局字体仍按桌面各存各的（cs-font，per-cid —— 每个联系人可各自排版），
+    // 跨桌面由面板里的「同步到全部桌面」按钮显式推过去。这里排除的是【根键同名的中间版残留】：
+    // 本号初版曾把字体改成根键 xy-home-v2:cs-font（所有桌面共用一个值），那版用户升级到现版后，
+    // chat-settings.js 的 demoteFontGlobal() 会把根键值回填给各桌面再删根键；在它删掉之前，
+    // 若漏排除，migrateLegacy 会把根键当旧顶层业务键迁进 default 并删根键 → 只剩 default 桌面可见。
+    'cs-font',
+    // v3.26.x #643：音效作用范围开关（sfx.js）——全局根键（共/分是全局偏好，不随联系人隔离）
+    'sfx-unified',
+    // #646：打开应用的入口行为（打开时先进入此间 / 默认进入的桌面）——全局根键，不随联系人隔离，
+    // 漏排除会被 migrateLegacy 当旧顶层业务键迁进 default 并删根键（非 default 桌面读不到＝开关自己关）
+    'entry-cjian-first', 'entry-default-contact', 'entry-show-list',
+    // FIX 2026-09-16 #629 开屏「刷了还是旧版」指引：ver-check.js 的「本机已尝试过更新但没
+    // 换上」标记（记 线上ts|次数|时刻）是全局根键——不随联系人隔离，且必须跨会话留存才认得出
+    // 「这台设备更新失败过」（与 pwa.js 的 ver-update-ack-ts / ver-update-notify 同族，见上方
+    // #231）。漏排除＝migrateLegacy 每次刷新把它当旧顶层业务键迁进 default 并删根键，标记写一次
+    // 就没了 → 开屏永远只出「点此更新」、等 3~5 分钟/换流量的指引不再出现（实测：写入后 navigate
+    // 2.2s 读回即 null）。
+    // #935（2026-09-20）：电量/发烫自测的记录（energy-check.js）——battery-check-run 为
+    // 进行中的分段计时（刷新/杀进程重开要续测），battery-check-last / heat-check-last 为
+    // 「上次结果」回显与跑完时的挂起报告。都是全局根键、不随联系人隔离，漏排除会被
+    // migrateLegacy 每次刷新迁进 default 并删根键（长窗口自测跑到一半记录就没了）。
+    'battery-check-run', 'battery-check-last', 'heat-check-last',
+    // #946：闪屏自测（flash-check.js）只存「最后一次报告」一份，同是全局根键、不随联系人隔离；
+    // 漏排除＝每次刷新被 migrateLegacy 迁进 default 并删根键（报障时回看的那份报告没了）。
+    'flash-check-last',
+    'ver-retry',
+    // #937：功能大全统计键——fhub-freq（常用直达点击计数）与 fhub-seen（条目到达标记）都是
+    // 全局根键（feature-hub.js 用 xyStore(G) 语义直写根命名空间，目录与跳转目标全桌面共用）。
+    // fhub-freq 系补登：此前一直不在 EXCLUDE，每次刷新被 migrateLegacy 当旧顶层业务键迁进
+    // default 并删根键 → 非 default 桌面「常用」行常空（原注释「全局键不区分联系人」与实现不符）。
+    'fhub-freq', 'fhub-seen',
+    // #1475（2026-09-30）：免责声明同意记录（clock.js 开屏年龄闸门）——裸键 xy-home-v2:age-confirmed
+    // 走根命名空间（相对键名无冒号，吃不到「含冒号保守视为命名空间键」那条守卫），出生即不在
+    // EXCLUDE ⇒ migrateLegacy 每次数据就绪把它当旧顶层业务键迁进 default 并删根键＝#315c 的
+    // 「确认一次永久记住」自上线起就被每次启动吃掉（用户每次开屏都要重新勾选）。#1475 起该键
+    // 存「时间戳＋声明版本」JSON（改版自动重确认），是同意举证链的本体，必须留在根命名空间。
+    'age-confirmed'];
   function isExcluded(k) {
     const r = k.slice(G.length + 1);
     // #233：__ 前缀＝系统键（idb.js 根命名空间专用：__wr-journal 写日志＝LS 回滚自愈
@@ -171,14 +232,29 @@
     // 每刷新清空、大键/脏键索引反复丢失，LS 回滚家族（#82/#88/#226/#229）自愈被持续削弱。
     if (r.indexOf('__') === 0) return true;
     if (EXCLUDE.indexOf(r) >= 0) return true;
+    // #1541：每日首开已读标记 splash-seen:<日期>——键名带日期后缀，EXCLUDE 精确名单盖不住，
+    // 按前缀挡迁移（clock.js 每日写当日新键，昨天的自然过期，无需回收）。
+    if (r.indexOf('splash-seen:') === 0) return true;
     // v3.9.x：reply-gc-* 群聊全局设置键同样不能迁移（无冒号，原逻辑会误判为旧业务键）
     if (r.indexOf('reply-gc-') === 0) return true;
     if (r.indexOf('music-file:') === 0) return true;
+    // #642：字体去重的全局唯一下载键 font-blob-<hash>（chat-settings.js / personalize.js
+    // 写入端）走根命名空间——内容哈希后缀可变，EXCLUDE 精确名单盖不住，按前缀挡迁移。
+    // 漏挡会被 migrateLegacy 当旧顶层业务键迁进 default 并删根键 → 所有桌面字体丢。
+    if (r.indexOf('font-blob-') === 0) return true;
     // 梦角档案：narc-* 走根命名空间（全局共享，memo-arc.js），绝不能当旧顶层业务键迁移
     // （否则切换桌面后档案/当前梦角读全局键读不到，"消失"）。narc-cur 亦不例外。
     if (r.indexOf('narc-') === 0) return true;
     // 我的档案：myarc 根键（全局唯一 JSON，my-arc.js）同理不可迁移
     if (r.indexOf('myarc') === 0) return true;
+    // FIX 2026-09-25 #1293：屏幕适配微调七轴（mobile-adapt.js #707/#764/#794）出生即根命名空间
+    // ——屏幕是设备属性、跨桌面共用，读取方 loadAdj 只认 xy-home-v2:screen-adj-<axis>。此前整族
+    // 既不在 EXCLUDE 也没有前缀守卫 → migrateLegacy 每次启动把根键当旧顶层业务键迁进 default 桌面
+    // 并删根键：第一次刷新「刚调的值」照常生效（mobile-adapt 在迁移之前就读完落层），**下一次冷启
+    // 归零**（实测探针：T2 desk=12 / padding-top 12px → T3 desk=0 / 0px，default 副本无人读）。
+    // 用户所见＝「调了当时有效，回头又偏回去了」，且「屏幕适配诊断→一键修正」写进去的值同样蒸发。
+    // 后缀是轴名（top/bottom/h/desk/shift/text/side，将来还会加轴），按前缀挡，同 #642 口径。
+    if (r.indexOf('screen-adj-') === 0) return true;
     // v3.6.x：命名空间键（default:* / <cid>:*）不是"旧顶层键"，绝不能迁移——
     // 否则会把 xy-home-v2:default:avatar-user 再迁成 xy-home-v2:default:default:avatar-user
     // 并删除原键（刷新后头像/壁纸/聊天壁纸丢失 + default:default: 双重前缀垃圾键）。
@@ -228,6 +304,41 @@
         // 写入后彻底清掉旧顶层键（含内存缓存）——否则 get 回退路径会读到残留旧值
         try { window.xyStore(G).remove(k); } catch (e) {}
       },
+      // FIX 2026-09-28 #1358j：数据层那三句问话（#1342 的 awaitingBigKey／requestBigKey 与
+      //   #1358d 的 whenBigKeyBack）必须从这份门面也够得着。各页顶上的 store 都是 defaultStore()/
+      //   activeStore()，门面原样只转 get/set/remove ⇒ 「这一格现在读不到、而名册说库里本该有」
+      //   这把尺对走门面的消费方结构性失明——信箱就是这一型：尺子写得对，调用方拿到的是 undefined，
+      //   于是冷读那一发照旧把「没读到」画成「没有」。判据取「命名空间键与旧顶层键都空」这一个事实，
+      //   与上面 get 的回退链同口径，零机型／零 UA 分支。
+      awaitingBigKey(k) {
+        // FIX 2026-09-30 #1469：这句问话的语义＝「这一格（新命名空间键与旧顶层键两个候选）都读不出值，
+        //   而证据说库里本该有一份」。旧写法把两格的 awaitingBigKey 直接相或：在 LS 整域坏掉的机器上
+        //   （报障件：整域 192 键≈10.0MB、本项目只剩 1 键、写入被拒 3531 次），根键那一发的
+        //   localStorage.getItem 自己就抛，而数据层对「连读都读不出」刻意判成 unconfirmed（#1309 家族定的），
+        //   于是命名空间那一格明明读得好好的，门面照样回答「不许整包写回」——信箱的删除/清空在这一型
+        //   机器上被永久按住（新尺 C3 实测：八轮重试全是那句提示，库里一封没少也一封没删）。
+        //   现在先问「两个候选里有没有任何一个读得出值」：读得出＝这一格有答案，不再谈「没读到」。
+        //   零机型／零 UA 分支，判据仍是当场事实。
+        try { if (window.xyStore(ns).get(k) !== null) return false; } catch (e3) {}
+        try { if (window.xyStore(G).get(k) !== null) return false; } catch (e4) {}
+        // 两格候选都读不出值时，只认「命名空间那一格」的库里证据（信箱／字卡库这些账就住在那儿）。
+        //   旧顶层键那一格不参与举证：LS 整域坏掉的机器上它对任何键都自证「连读都读不出」（数据层对
+        //   #1309 那一族刻意定的判法），拿它当证据＝每一格都被说成「不许整包写回」，用户亲手清空被
+        //   永久挡死（违 #1309 C2「主动清空必须真落空」契约，新尺丁4/丁5 当场逮到）。
+        try { return window.xyStore(ns).awaitingBigKey(k); } catch (e) { return false; }
+      },
+      requestBigKey(k) {
+        try { window.xyStore(ns).requestBigKey(k); } catch (e) {}
+        try { window.xyStore(G).requestBigKey(k); } catch (e2) {}
+      },
+      whenBigKeyBack(k, cb) {
+        try {
+          const s = window.xyStore(ns);
+          if (s && s.whenBigKeyBack) { s.whenBigKeyBack(k, cb); return; }
+        } catch (e) {}
+        try { const r = window.xyStore(G); if (r && r.whenBigKeyBack) { r.whenBigKeyBack(k, cb); return; } } catch (e2) {}
+        try { if (cb) cb(); } catch (e3) {}
+      },
       remove(k) {
         window.xyStore(ns).remove(k);
         // 旧顶层键同样彻底清（memoryCache + LS + IDB 三处）——
@@ -252,12 +363,28 @@
     return {
       get: (k) => dyn().get(k),
       set: (k, v) => dyn().set(k, v),
-      remove: (k) => dyn().remove(k)
+      remove: (k) => dyn().remove(k),
+      // FIX 2026-09-28 #1358j：那三句问话一并从门面转出（dyn() 动态绑定当前桌面，与 get/set 同规格）——
+      //   缺了它们，各页顶上的 store 就够不到数据层那把「这一格读空而库里本该有」的尺。
+      //   够不到的那一页不许被当成「库里没有」：回调照叫一次，让调用方按自己那条链正常画。
+      awaitingBigKey: (k) => { const d = dyn(); return !!(d.awaitingBigKey && d.awaitingBigKey(k)); },
+      requestBigKey: (k) => { const d = dyn(); try { if (d.requestBigKey) d.requestBigKey(k); } catch (e) {} },
+      whenBigKeyBack: (k, cb) => {
+        const d = dyn();
+        if (d.whenBigKeyBack) { d.whenBigKeyBack(k, cb); return; }
+        try { if (cb) cb(); } catch (e2) {}
+      }
     };
   };
 
   // 任意联系人的存储（供朋友圈后台遍历各联系人生成 TA 动态/评论）
   window.storeFor = function (cid) { return window.xyStore(G + ':' + cid); };
+  // FIX 2026-09-29 #1416：按 cid 取存储必须和 activeStore 用同一口径分叉——default 桌面要走
+  //   defaultStore()（先读新命名空间、没有再回退旧顶层键），而上面那个 storeFor('default') 只读新命名空间。
+  //   漏这一层已经咬到 #1394 那一族的另一半：通话归属 default、而用户当前正看着别的联系人桌面时，
+  //   replyCfgFor('default') 用 storeFor 读不到未迁移的老「禁止对方挂断」/自定义挂断概率＝判成没设过、
+  //   回落默认 2% ⇒ 对方照样把电话挂了，而设置页明明显示着用户当初设的值（静默失效，与 #1056 同形）。
+  window.storeForCid = function (cid) { return cid === 'default' ? defaultStore() : window.xyStore(G + ':' + cid); };
 
   // ---- 联系人性别 / TA 称呼跟随 ----
   // 存储键：<cid>:partner-gender = 'he' | 'she' | ''（未设置 → 默认「TA」），随联系人命名空间隔离。
@@ -323,8 +450,14 @@
   window.createContact = function (name) {
     const list = getContacts();
     const id = 'c' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
-    list.push({ id: id, name: name || ('联系人' + (list.length)) });
+    const nm = name || ('联系人' + (list.length));
+    list.push({ id: id, name: nm });
     regStore().set('contacts', JSON.stringify(list));
+    // #1541c：新建即写该桌面 lbl-partner＝联系人名——桌面「TA/我」圆签（personalize
+    // paintDeskNames 读它）切过去当场显示名字，与 renameContact 改名同步 lbl-partner
+    // 的既有行为对齐；不写则新桌面回退 taWord() 恒显「TA」，与默认桌面视觉无差＝
+    // 「切了等于没切」（用户口径「添加联系人桌面无反应」的观感之一）。
+    try { window.xyStore(G + ':' + id).set('lbl-partner', nm); } catch (e) {}
     return id;
   };
   window.renameContact = function (id, name) {
@@ -344,9 +477,15 @@
         //   立即清扫+重渲染（chat.js chatSysNickChanged）；非当前桌面只记 hist，等该桌面
         //   下次 loadMsgs 惰性补扫。
         const csLbl = s.get('cs-lbl-partner');
-        const oldEff = csLbl || cur || 'TA';
+        // FIX 2026-09-18 #775f：有效名基线改按聊天里的实际显示链取——
+        // cs-lbl-partner → 联系人名片名 → 称呼词（chat.js chatPartnerName），不再掺桌面键
+        // lbl-partner：聊天里从来不看那个键（v3.26.x 解耦），掺进来会两头错位——用户只改
+        // 名片名时聊天显示名跟着变，这里却按桌面旧名判定「没变」，既不记 hist 也不清扫，
+        // 历史拍一拍里的旧名片名永远留在屏幕上。
+        const taWordId = window.taWordFor ? window.taWordFor(id) : 'TA';
+        const oldEff = csLbl || oldName || taWordId;
         if (!cur || cur === oldName) s.set('lbl-partner', c.name);
-        const newEff = csLbl || s.get('lbl-partner') || 'TA';
+        const newEff = csLbl || c.name || taWordId;
         if (newEff !== oldEff) {
           if (id === (window.__activeCid || 'default') && window.chatSysNickChanged) {
             try { window.chatSysNickChanged(oldEff); } catch (e) {}
@@ -535,7 +674,7 @@
     // 桌面刷新后开关读不到全局值自动变关。这里检测 default 桌面的这些键，写回根
     // 命名空间并删除 default 副本，一次性修复存量坏数据（幂等：根键已有则不覆盖）。
     try {
-      ['bg-keepalive', 'bg-notify', 'group-chat-enabled'].forEach(function (k) {
+      ['bg-keepalive', 'bg-notify', 'bg-notify-nodedup', 'group-chat-enabled'].forEach(function (k) {
         const v = def.get(k);
         if (v !== null && v !== undefined && v !== '') {
           try { if (root.get(k) === null || root.get(k) === undefined) root.set(k, v); } catch (e) {}
@@ -568,7 +707,14 @@
     ['pomo-cfg', 'pomo-today', 'pomo-total', 'pomo-msgs', 'pomo-send-chat', 'pomo-bell',
       'pomo-companion', 'pomo-companion-log', 'pomo-cmp-usecards',
       'beauty-schemes', 'chat-beauty-schemes', 'hide-ta-sticker', 'desk-freq-mode',
-      'full-beauty-schemes'].forEach(function (k) {
+      // #937：fhub-freq 此前一直漏排除，被每次刷新迁进 default——把滞留副本写回根键找回
+      // （fhub-seen 出生即排除，无存量可回收，列入只为口径一致）。
+      'full-beauty-schemes', 'fhub-freq', 'fhub-seen',
+      // #1293：屏幕适配微调七轴的存量——被旧 migrateLegacy 迁进 default 的副本写回根键找回
+      // （根键已有值时只删副本不覆盖，与 pomo-*/fhub-* 同一处理）；配合上面的前缀守卫，
+      // 找回后不会再被迁走。用户下一次冷启即恢复自己调过的偏移。
+      'screen-adj-top', 'screen-adj-bottom', 'screen-adj-h', 'screen-adj-desk',
+      'screen-adj-shift', 'screen-adj-text', 'screen-adj-side'].forEach(function (k) {
       // FIX 2026-09-15 #527：beauty-undo-stack 已自本回收列表移除（改 per-cid 存储）——
       // 若继续把 default 副本写回根键并删副本，会让新的按桌面隔离存储每次启动被搬空，
       // 撤销栈重新变回「跨桌面共用」（=本修复被这条逻辑反向回滚）。
@@ -579,6 +725,25 @@
         try { def.remove(k); } catch (e) {}
       }
     });
+    // #1541：上面三键（age-confirmed / storage-guide-shown）与 splash-seen:* 的存量副本回收
+    // ——修复前已被误迁进 default 的那份写回根键找回（根键已有值只删副本，pomo-* 同款）：
+    // 不找回＝已确认过年龄的存量用户每次开屏仍要重新勾、引导标记仍缺。splash-seen 副本
+    // 是过期日期标记，只删不回（当日根键由 clock.js 自己重写）。
+    ['age-confirmed', 'storage-guide-shown'].forEach(function (k) {
+      const v = def.get(k);
+      if (v !== null && v !== undefined && v !== '') {
+        try { if (root.get(k) === null || root.get(k) === undefined) root.set(k, v); } catch (e) {}
+        try { def.remove(k); } catch (e) {}
+      }
+    });
+    try {
+      const stale = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const kk = localStorage.key(i);
+        if (kk && kk.indexOf(G + ':default:splash-seen:') === 0) stale.push(kk);
+      }
+      stale.forEach(function (kk) { try { localStorage.removeItem(kk); } catch (e2) {} });
+    } catch (e) {}
     const old = [];
     // v3.6.x：顺带清理存量双重前缀垃圾键（default:default:*）——旧版迁移误把命名空间键
     // 再迁一层产生，读取不命中但占存储，安全删除
@@ -669,6 +834,23 @@
         try { localStorage.removeItem(k); } catch (e) {}
         if (isChat && window.idbDelete) { try { window.idbDelete(k); } catch (e) {} }
       };
+      // #1210：旧键只有在【新键确认落了盘】之后才删。xyStore.set 里 LS 写失败只打脏标记、
+      // IDB 写是 fire-and-forget，而 xyStore.get 优先读内存缓存（刚 set 完必然读得到）＝证不了
+      // 落盘。原实现 set 之后无条件 cleanupOld（聊天还要连 IDB 根键一起删）＝「新键没落成、
+      // 两份旧键已删」的空窗，正是「没删没清却整段聊天记录消失」的出口。证不到就保留旧键、
+      // 下次启动重试（本迁移幂等），宁可重复搬一次也不留下空窗。
+      const settle = function (payload) {
+        try { window.xyStore(G + ':default').set(rest, payload); } catch (e) {}
+        const landed = function (durable) { if (durable) cleanupOld(); next(); };
+        // 小键 LS 有副本即算落盘；大键（chat-msgs 等）按设计不进 LS，只认 IDB 三态探测：
+        // true＝库里确有，false＝没有 / null＝这次读不到（存储繁忙）都不删旧键。
+        try { if (localStorage.getItem(newKey) !== null) { landed(true); return; } } catch (e) {}
+        if (window.idbHasKey) {
+          Promise.resolve(window.idbHasKey(newKey)).then(function (has) {
+            landed(has === true);
+          }).catch(function () { landed(false); });
+        } else landed(false);
+      };
       let v = null; try { v = localStorage.getItem(k); } catch (e) {}
       if (v !== null) {
         // 幂等：default 命名空间已有此键（LS/memoryCache/IDB）则不重复写
@@ -676,15 +858,10 @@
         if (hasNew) { cleanupOld(); next(); return; }
         if (window.idbGet) {
           window.idbGet(newKey).then(function (existing) {
-            if (!existing) { try { window.xyStore(G + ':default').set(rest, v); } catch (e) {} }
-            cleanupOld();
-            next();
-          }).catch(function () { try { window.xyStore(G + ':default').set(rest, v); } catch (e) {} cleanupOld(); next(); });
-        } else {
-          try { window.xyStore(G + ':default').set(rest, v); } catch (e) {}
-          cleanupOld();
-          next();
-        }
+            if (existing) { cleanupOld(); next(); return; }
+            settle(v);
+          }).catch(function () { settle(v); });
+        } else settle(v);
       } else if (window.idbGet) {
         window.idbGet(k).then(r => {
           if (r !== undefined && r !== null) {
@@ -692,10 +869,9 @@
             const hasNew = window.xyStore(G + ':default').get(rest);
             if (hasNew) { cleanupOld(); next(); return; }
             window.idbGet(newKey).then(function (existing) {
-              if (!existing) { try { window.xyStore(G + ':default').set(rest, r); } catch (e) {} }
-              cleanupOld();
-              next();
-            }).catch(function () { try { window.xyStore(G + ':default').set(rest, r); } catch (e) {} cleanupOld(); next(); });
+              if (existing) { cleanupOld(); next(); return; }
+              settle(r);
+            }).catch(function () { settle(r); });
           } else {
             cleanupOld();
             next();
@@ -767,7 +943,7 @@
     // v3.11.x：颜色改主题变量（内联硬编码浅色在深色模式下白底白字不可见）
     box.style.cssText = 'width:min(92vw,420px);max-height:80vh;display:flex;flex-direction:column;background:var(--card-bg,#fff);color:var(--ink,#111);border-radius:16px;padding:18px;box-shadow:0 8px 30px rgba(0,0,0,.2)';
     box.appendChild(el('div', '', '<div style="font-size:16px;font-weight:600;margin-bottom:4px">联系人 / 桌面</div><div style="font-size:12px;color:var(--muted,#888);margin-bottom:12px">每个联系人数据独立；除朋友圈外，还有部分功能数据在所有桌面共用。<b id="cm-fn-explain">【功能说明】</b><br>「称呼」可设置消息里 TA 的性别叫法（他 / 她 / 不设置）</div>'));
-    const list = el('div', 'cm-list'); list.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin-bottom:12px;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;flex:1;min-height:0';
+    const list = el('div', 'cm-list'); list.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin-bottom:12px;overflow-y:auto;overflow-x:hidden;flex:1;min-height:0';
     getContacts().forEach(c => {
       const row = el('div');
       row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--card-border,#eee);border-radius:10px';
@@ -794,7 +970,11 @@
       ren.style.cssText = 'font-size:12px;padding:4px 8px;border:1px solid var(--pill-border,#ddd);border-radius:8px;background:var(--static-bg,#fafafa);color:var(--ink,#111)';
       ren.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (window.openModal) window.openModal('改名', c.name || '', (v) => { if (v && v.trim()) { window.renameContact(c.id, v.trim()); window.openContactManager(); } });
+        // #1541 续：同「新建联系人」——空值可见化（不再静默 return＝「确认了没反应」无从排查）
+        if (window.openModal) window.openModal('改名', c.name || '', (v) => {
+          if (v && v.trim()) { window.renameContact(c.id, v.trim()); window.openContactManager(); }
+          else { try { if (window.toast) window.toast('没有读到名字——请再试一次；反复出现请到设置→关于/诊断导出诊断单报障'); } catch (e0) {} }
+        });
       });
       acts.appendChild(ren);
       if (c.id !== 'default') {
@@ -811,8 +991,15 @@
     add.style.cssText = 'width:100%;padding:12px;border:none;border-radius:10px;background:var(--ink,#111);color:var(--bg-b,#fff);font-size:14px;font-weight:600';
     add.addEventListener('click', () => {
       if (window.openModal) window.openModal('新建联系人', '', (v) => {
-        const name = (v || '').trim(); if (!name) return;
+        const name = (v || '').trim();
+        // #1541 续：空值不再静默 return——红米 K80 Chrome 实报「确认了没反应」无法远程
+        // 复现（无头全绿），静默失败让用户与排查方都拿不到任何线索；可见化后：
+        // 弹这条＝读值链真收到空（输入法组合/代理断），一条 toast 直接定位方向。
+        if (!name) { try { if (window.toast) window.toast('还没有输入名字——先点输入框打一个名字'); } catch (e0) {} return; }
         const id = window.createContact(name); window.setActiveContact(id); hideContactModal(m);
+        // #1541c：即时反馈——新桌面未设壁纸/头像时与默认桌面视觉相同，无反馈＝
+        // 「点了没反应」错觉；toast 点名已切换＋桌面圆签当场显示新名双保险。
+        try { if (window.toast) window.toast('已创建「' + name + '」的桌面，已为你切换'); } catch (e) {}
       });
     });
     box.appendChild(add);
@@ -831,7 +1018,7 @@
     const m = ensureModal();
     m.innerHTML = '';
     const box = el('div');
-    box.style.cssText = 'width:min(92vw,420px);max-height:80vh;display:flex;flex-direction:column;background:var(--card-bg,#fff);color:var(--ink,#111);border-radius:16px;padding:18px;box-shadow:0 8px 30px rgba(0,0,0,.2);overflow-y:auto;-webkit-overflow-scrolling:touch';
+    box.style.cssText = 'width:min(92vw,420px);max-height:80vh;display:flex;flex-direction:column;background:var(--card-bg,#fff);color:var(--ink,#111);border-radius:16px;padding:18px;box-shadow:0 8px 30px rgba(0,0,0,.2);overflow-y:auto';;
     const txt =
       '<div style="font-size:16px;font-weight:600;margin-bottom:8px">数据互通说明</div>' +
       '<div style="font-size:13px;font-weight:600;color:var(--danger-ink,#a32d2d);margin-bottom:6px">所有桌面共用的数据</div>' +
@@ -905,6 +1092,266 @@
     row.appendChild(ok); row.appendChild(no); box.appendChild(row);
     m2.appendChild(box); showContactModal(m2);
   }
+
+  // ===== #646：进入桌面入口流程（打开时先进入此间 / 默认进入的桌面）=====
+  // 三个设置都存全局根键（EXCLUDE 已登记），默认关闭：
+  //   entry-cjian-first      '1'=每次打开应用先进入此间，看完返回时弹出「选择本次进入的桌面」
+  //   entry-show-list        '1'=每次打开应用直接弹出全部联系人列表，点一个进入其桌面
+  //   entry-default-contact  联系人 id；设置后每次打开应用直接进入该桌面（空=关闭）
+  // 优先级：默认桌面已设时取代「先进入此间」与「显示联系人列表」（两者强制关闭并置灰）；
+  //         先进入此间 开启时走此间→选择桌面，未开则「显示联系人列表」直接弹列表。
+  function entryCjianFirstOn() {
+    try { return regStore().get('entry-cjian-first') === '1'; } catch (e) { return false; }
+  }
+  function entryShowListOn() {
+    try { return regStore().get('entry-show-list') === '1'; } catch (e) { return false; }
+  }
+  function entryDefaultCid() {
+    let id = '';
+    try { id = regStore().get('entry-default-contact') || ''; } catch (e) {}
+    if (!id) return '';
+    try { return getContacts().some(c => c && c.id === id) ? id : ''; } catch (e) { return ''; }
+  }
+  function closeEntryPicker() {
+    const ov = document.getElementById('entry-picker');
+    if (ov) { ov.style.display = 'none'; ov.hidden = true; }
+  }
+  function ensureEntryPicker() {
+    let ov = document.getElementById('entry-picker');
+    if (!ov) {
+      ov = el('div'); ov.id = 'entry-picker'; ov.hidden = true;
+      ov.style.cssText = 'position:fixed;inset:0;z-index:10060;display:none;flex-direction:column;background:var(--bg-b,#fff);color:var(--ink,#111)';
+      document.body.appendChild(ov);
+    }
+    return ov;
+  }
+  // 选择桌面「页」：mode='entry' 本次进入（选中即切换桌面）；mode='setDefault' 设置默认（选中写设置键、不切桌面）
+  function openContactPicker(opts) {
+    opts = opts || {};
+    const mode = opts.mode === 'setDefault' ? 'setDefault' : 'entry';
+    const ov = ensureEntryPicker();
+    const curDef = entryDefaultCid();
+    ov.innerHTML = '';
+    const head = el('div'); head.style.cssText = 'padding:22px 20px 6px;font-size:20px;font-weight:700';
+    head.textContent = mode === 'entry' ? '选择本次进入的桌面' : '默认进入的桌面';
+    ov.appendChild(head);
+    const sub = el('div'); sub.style.cssText = 'padding:0 20px 14px;font-size:12px;color:var(--muted,#888);line-height:1.6';
+    sub.textContent = mode === 'entry'
+      ? (opts.sub || '看完此间了，选一个联系人桌面进入吧。')
+      : '开启后，每次打开应用直接进入所选桌面；选「关闭」即不设置。';
+    ov.appendChild(sub);
+    const wrap = el('div'); wrap.style.cssText = 'flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:2px 16px 18px;display:flex;flex-direction:column;gap:10px';
+    const mkCard = function (title, tagText, isCurrent, tagOn) {
+      const card = el('div');
+      card.style.cssText = 'display:flex;align-items:center;gap:10px;padding:14px;border:1px solid var(--card-border,#eee);border-radius:14px;background:var(--card-bg,#fff);cursor:pointer';
+      const nm = el('div', '', '<div style="font-size:15px;font-weight:600">' + title + '</div>' +
+        (isCurrent ? '<div style="font-size:11px;color:var(--muted,#999)">当前桌面</div>' : ''));
+      nm.style.flex = '1';
+      card.appendChild(nm);
+      if (tagText) {
+        const tag = el('div', '', tagText);
+        tag.style.cssText = 'font-size:11px;padding:2px 9px;border-radius:9px;border:1px solid ' +
+          (tagOn ? 'rgba(26,138,95,.4);color:#1a8a5f;background:rgba(26,138,95,.08)' : 'rgba(0,0,0,.08);color:var(--muted,#888)');
+        card.appendChild(tag);
+      }
+      return card;
+    };
+    if (mode === 'setDefault') {
+      const off = mkCard('关闭（不设置）', '', false, false);
+      off.addEventListener('click', function () {
+        try { regStore().set('entry-default-contact', ''); } catch (e) {}
+        closeEntryPicker();
+        if (opts.onDone) opts.onDone();
+      });
+      wrap.appendChild(off);
+    }
+    getContacts().forEach(function (c) {
+      const isCurrent = c.id === (window.__activeCid || 'default');
+      const isDef = c.id === curDef;
+      const card = mkCard(c.name || c.id, (mode === 'entry' && isDef) ? '默认' : '', isCurrent, false);
+      card.addEventListener('click', function () {
+        if (mode === 'setDefault') {
+          try { regStore().set('entry-default-contact', c.id); } catch (e) {}
+          closeEntryPicker();
+          if (opts.onDone) opts.onDone();
+        } else {
+          closeEntryPicker();
+          try { if (c.id !== (window.__activeCid || 'default')) window.setActiveContact(c.id); } catch (e) {}
+        }
+      });
+      wrap.appendChild(card);
+    });
+    ov.appendChild(wrap);
+    if (mode === 'setDefault') {
+      const cancel = el('button', '', '取消');
+      cancel.style.cssText = 'margin:0 16px 18px;padding:11px;border:1px solid var(--card-border,#eee);border-radius:12px;background:var(--btn-cancel-bg,#fafafa);color:var(--btn-cancel-ink,#555);font-size:14px';
+      cancel.addEventListener('click', function () { closeEntryPicker(); if (opts.onDone) opts.onDone(); });
+      ov.appendChild(cancel);
+    }
+    ov.hidden = false; ov.style.display = 'flex';
+  }
+  window.__openContactPicker = openContactPicker;
+
+  // 开屏进入此间时注入的引导条（不侵入 cjian.js：作为 #page-cjian 的直接子节点插在顶栏下）
+  function removeCjianHint() {
+    const h = document.getElementById('entry-cjian-hint');
+    if (h && h.parentNode) h.parentNode.removeChild(h);
+  }
+  function showCjianHint() {
+    removeCjianHint();
+    const page = document.getElementById('page-cjian');
+    if (!page) return;
+    const hint = el('div', '', '点每位梦角的【去找TA】直接进入 TA 的桌面；点左上角返回，则选择本次进入哪个桌面。若某位梦角没有状态显示，点下方【感知此间】看看 TA 此刻在哪、在做什么。');
+    hint.id = 'entry-cjian-hint';
+    hint.style.cssText = 'margin:8px 12px 0;padding:9px 12px;border-radius:10px;font-size:12px;line-height:1.6;color:var(--muted,#666);background:rgba(127,106,216,.08);border:1px solid rgba(127,106,216,.2)';
+    const head = page.querySelector('.chat-head');
+    if (head && head.parentNode === page) page.insertBefore(hint, head.nextSibling);
+    else page.insertBefore(hint, page.firstChild);
+  }
+
+  // 打开应用进入后调用（clock.js finishEnter 接线）：应用默认桌面 / 先进入此间
+  window.mochiContactEntryFlow = function () {
+    if (window.__mochiEntryFlowDone) return;
+    window.__mochiEntryFlowDone = true;
+    const def = entryDefaultCid();
+    if (def && def !== (window.__activeCid || 'default')) {
+      try { window.setActiveContact(def); } catch (e) {}
+    }
+    if (!entryCjianFirstOn()) {
+      // 「打开时显示联系人列表」：不在此间停留，直接弹出全部联系人列表，点一个进入其桌面
+      if (entryShowListOn()) openContactPicker({ mode: 'entry', sub: '选一个联系人桌面进入吧。' });
+      return;
+    }
+    if (!window.openCjian) { openContactPicker({ mode: 'entry' }); return; }
+    let page = null;
+    try { page = document.getElementById('page-cjian'); } catch (e) {}
+    if (!page) { openContactPicker({ mode: 'entry' }); return; }
+    let fired = false;
+    // 不侵入 cjian.js：观察 #page-cjian 的 hidden 变化，用户离开此间时决定去向
+    const obs = new MutationObserver(function () {
+      if (!page.hidden || fired) return;
+      fired = true;
+      try { obs.disconnect(); } catch (e) {}
+      removeCjianHint();
+      // 点【去找TA】＝用户已显式选定目标（此间会切到该联系人并打开聊天页）→ 直接进入，不再弹选择桌面页；
+      // 只有点左上角返回（回桌面主页 #page-phone）才弹「选择本次进入的桌面」
+      const chat = document.getElementById('page-chat');
+      if (chat && !chat.hidden) return;
+      setTimeout(function () { openContactPicker({ mode: 'entry' }); }, 0);
+    });
+    try { obs.observe(page, { attributes: true, attributeFilter: ['hidden'] }); } catch (e) {}
+    try {
+      window.__cjianFrom = '';
+      window.openCjian();
+      showCjianHint();
+      // 开屏进入此间时默认停在「全部」总览（openCjian 内部默认回到当前桌面，这里点选「全部」chip 切过去；
+      // 不侵入 cjian.js——setView(ALL) 只改视图、不持久化、不影响之后从桌面正常进入）
+      const chips = document.querySelectorAll('#cj-groups .cj-gchip');
+      for (let i = 0; i < chips.length; i++) {
+        if (chips[i].textContent === '全部') { chips[i].click(); break; }
+      }
+    } catch (e) {
+      try { obs.disconnect(); } catch (e2) {}
+      removeCjianHint();
+      openContactPicker({ mode: 'entry' });
+    }
+  };
+
+  // #646：设置页「打开时先进入此间」开关 + 「打开时显示联系人列表」开关 + 「默认进入的桌面」入口
+  // 「默认进入的桌面」开启时取代前面两个入口选择：二者强制关闭且置灰不可改（关掉默认桌面后恢复）
+  function syncEntryModes() {
+    const hasDef = !!entryDefaultCid();
+    const cbC = document.getElementById('entry-cjian-first');
+    const cbL = document.getElementById('entry-show-list');
+    if (hasDef) {
+      try {
+        if (regStore().get('entry-cjian-first') === '1') regStore().set('entry-cjian-first', '0');
+        if (regStore().get('entry-show-list') === '1') regStore().set('entry-show-list', '0');
+      } catch (e) {}
+      if (cbC) cbC.checked = false;
+      if (cbL) cbL.checked = false;
+    }
+    if (cbC) cbC.disabled = hasDef;
+    if (cbL) cbL.disabled = hasDef;
+    const rowC = document.getElementById('row-entry-cjian-first');
+    const rowL = document.getElementById('row-entry-show-list');
+    if (rowC) rowC.style.opacity = hasDef ? '.5' : '';
+    if (rowL) rowL.style.opacity = hasDef ? '.5' : '';
+    let tip = document.getElementById('entry-cjian-first-tip');
+    if (hasDef) {
+      if (!tip && rowC && rowC.parentNode) {
+        tip = el('div', 'gs-sub', '已由「默认进入的桌面」取代：每次打开直接进入所选桌面，不再先进入此间或显示联系人列表。要恢复，请把上面的默认桌面设为「关闭」。');
+        tip.id = 'entry-cjian-first-tip';
+        rowC.parentNode.insertBefore(tip, rowC.nextSibling);
+      }
+    } else if (tip && tip.parentNode) {
+      tip.parentNode.removeChild(tip);
+    }
+  }
+  const efCjian = document.getElementById('entry-cjian-first');
+  if (efCjian) {
+    try { efCjian.checked = entryCjianFirstOn(); } catch (e) {}
+    efCjian.addEventListener('change', function () {
+      const on = efCjian.checked;
+      try { regStore().set('entry-cjian-first', on ? '1' : '0'); }
+      catch (e) { efCjian.checked = !on; toastEntry('设置没能保存，请重试'); return; }
+      toastEntry(on ? '打开时先进入此间 已开启：下次打开应用先进此间'
+                    : '打开时先进入此间 已关闭：下次打开应用不再先进此间');
+    });
+  }
+  const efList = document.getElementById('entry-show-list');
+  if (efList) {
+    try { efList.checked = entryShowListOn(); } catch (e) {}
+    efList.addEventListener('change', function () {
+      const on = efList.checked;
+      try { regStore().set('entry-show-list', on ? '1' : '0'); }
+      catch (e) { efList.checked = !on; toastEntry('设置没能保存，请重试'); return; }
+      toastEntry(on ? '打开时显示联系人列表 已开启：下次打开应用先列出全部联系人'
+                    : '打开时显示联系人列表 已关闭：下次打开应用不再列出联系人');
+    });
+  }
+  const efDefRow = document.getElementById('row-entry-default-contact');
+  // 「默认进入的桌面」行的回显文案（刷新后 / 选择后都要按存储值重算）
+  function refreshEntryDefVal() {
+    const val = document.getElementById('entry-default-contact-val');
+    if (!val) return;
+    const id = entryDefaultCid();
+    const c = id ? getContacts().find(x => x.id === id) : null;
+    val.textContent = c ? (c.name || c.id) : '关闭';
+  }
+  if (efDefRow) {
+    refreshEntryDefVal();
+    efDefRow.addEventListener('click', function () {
+      openContactPicker({ mode: 'setDefault', onDone: function () { refreshEntryDefVal(); syncEntryModes(); } });
+    });
+  }
+  // 入口三行的通用轻提示（window.toast 由 device.js 提供；缺失时静默，不阻断开关）
+  function toastEntry(msg) { try { if (typeof window.toast === 'function') window.toast(msg); } catch (e) {} }
+  // v3.27.x 修复（用户：设置里「打开时先进入此间」我并没有开启，但每次打开 App 都会先进此间）：
+  //   三个开关 / 回显都只在脚本解析时读一次存储，而数据是【异步】从 IndexedDB 回填的
+  //   （idb.js 的 idbRestore → mochi-restore-done）。localStorage 副本丢失而 IDB 仍持有新值时
+  //   （LS 配额满导致 setItem 静默失败被标 ls-dirty、浏览器清存储、iOS 常见），解析时读到的是
+  //   旧值/空值 → 开关显示「关」，被标脏的键在回填后才把真实值写回来 → 入口流程按真实值
+  //   执行（每次打开都先进此间），开关却永远停在「关」，用户看到的就是「没开却每次都进」。
+  //   实测时间线（产物 + 剥掉 LS 值的重载）：226ms 开关读到空值＝未勾选 → 803ms
+  //   __mochiDataReady 且 LS 恢复为 '1' → 开关仍为未勾选，入口流程照常进此间。
+  //   修法与 incoming-requests.js 的 addSettingToggle 同款：数据回填完成 / 切桌面时按存储值
+  //   重同步三行 UI（存储值恒为权威，UI 不再说谎；勾选项也就真的能一键关掉）。
+  function syncEntryToggles() {
+    const cbC = document.getElementById('entry-cjian-first');
+    // 被「默认进入的桌面」取代而置灰的两项：勾选态由 syncEntryModes 强制关闭，这里不抢改
+    if (cbC && !cbC.disabled) cbC.checked = entryCjianFirstOn();
+    const cbL = document.getElementById('entry-show-list');
+    if (cbL && !cbL.disabled) cbL.checked = entryShowListOn();
+  }
+  function syncEntryUI() {
+    try { syncEntryModes(); } catch (e) {}
+    try { syncEntryToggles(); } catch (e) {}
+    try { refreshEntryDefVal(); } catch (e) {}
+  }
+  document.addEventListener('mochi-restore-done', syncEntryUI);
+  syncEntryModes();
+  document.addEventListener('contact-switched', syncEntryUI);
 
   // 设置页入口
   const row = document.getElementById('row-contacts');

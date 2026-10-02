@@ -70,6 +70,13 @@
   // 固定 2 道题，不可被别人编辑（无增删改入口，也不读任何已存储的自定义题目列表）。
   // 可独立于数字密码锁开关（应用锁可不设）；本机输暗号 QA_SKIP_CODE 后 qaskip=1 永久跳过问答层。
   const QA_SKIP_CODE = '990815';
+  // #1495 全角/夹空白归一化（与 card-lock.js 同判据）：部分输入法/内核把数字打成全角
+  //   （９９０８１５）或夹空白，原样比对必败＝暗号「输对了却过不了」的多机型直因。零机型分支。
+  function normCode(v) {
+    return String(v == null ? '' : v)
+      .replace(/\s+/g, '')
+      .replace(/[０-９]/g, function (d) { return String.fromCharCode(d.charCodeAt(0) - 65248); });
+  }
   // 开屏问答门固定 2 道题，不可被别人编辑（无增删改入口，也不读任何已存储的自定义题目列表）
   const DEFAULT_QA = [
     { q: 'mj 是什么意思？（提示：答案为【两个字】）', a: '梦角' },
@@ -371,14 +378,16 @@
       }
     });
   }
+  // #998 暗号口径：答案在第一页公告的章节里（第一页顶部「目录」可逐章翻），不是第二页
+  //   「进入前 · 作者必读公告」上的两个日期。
   // 机主逃生通道：未设安全问题、密码又忘了时，输暗号（QA_SKIP_CODE，机主专属）直接关闭应用锁。
   // after=关锁成功回调；onBack=暗号屏取消回调（回到上一屏）
   function ownerDisableByCode(after, onBack) {
     textAsk({
-      title: '输暗号关闭应用锁', sub: '本机未设安全问题，无法用问答重置。机主可输入暗号直接关闭应用锁。暗号一共 6 位数字：前两位是 99，后 4 位是 mochi 字卡生日的字面数字（把生日日期原样写成 4 位数），生日写在开屏公告的目录里，不是开屏最底下的部署时间：',
+      title: '输暗号关闭应用锁', sub: '本机未设安全问题，无法用问答重置。机主可输入暗号直接关闭应用锁。暗号一共 6 位数字：前两位是 99，后 4 位是 mochi 字卡生日的字面数字（把生日日期原样写成 4 位数），生日就在开屏第一页的章节目录里（点开第一页顶部的「目录」，逐章翻一下就能找到）；第一页的章节目录里和第二页最顶那张时间线卡都写着——日期一直是很简单的字面意思，不是隐藏答案；开屏最底下的部署时间不算：',
       placeholder: '暗号', maxlen: 12, okLabel: '关闭应用锁', cancelLabel: '返回',
       onSubmit: function (v) {
-        if (String(v || '').trim() === QA_SKIP_CODE) { setEn(false); sessMark(); toast('应用锁已关闭'); maskEl().hidden = true; if (after) after(); }
+        if (normCode(v) === QA_SKIP_CODE) { setEn(false); sessMark(); toast('应用锁已关闭'); maskEl().hidden = true; if (after) after(); }
         else { const inp = document.getElementById('applock-txt'); if (inp) inp.value = ''; showErr('暗号不对'); }
       },
       onCancel: onBack
@@ -469,28 +478,69 @@
   }
   function qaAsk(items, i, afterAll) {
     if (i >= items.length) { if (afterAll) afterAll(); return; }
-    const it = items[i];
-    textAsk({
-      title: '开屏问答 ' + (i + 1) + '/' + items.length,
-      sub: it.q,
-      placeholder: '输入答案', okLabel: (i + 1 >= items.length ? '进入' : '下一题'), cancel: false,
-      links: [{ act: 'skipqa', label: '输暗号跳过问答（本机永久）' }],
-      onSubmit: function (v) {
-        if (qaAnswerOk(v, it.h)) { qaAsk(items, i + 1, afterAll); }
-        else {
-          const inp = document.getElementById('applock-txt'); if (inp) inp.value = '';
-          showErr('答案不对，再想想～');
-        }
-      },
-      onLink: function (act) { if (act === 'skipqa') qaSkipAsk(items, i, afterAll); }
+    // #1503（作者口径「问答弹窗 2 个问题显得弹窗太多……做成公告的第三页内容」）：问答渲染从
+    //   两连弹窗改为一页公告式问答页——复用 .splash-mandatory 公告视觉（铺在 applock 遮罩里，
+    //   即「公告第三页」的观感），两题同页、一次提交、答错点名哪题；「输暗号跳过」仍在页上
+    //   （自愿点开才弹暗号输入）。门槛语义零变化：每次加载都问、答对/输暗号才放行。
+    const mask = maskEl();
+    mask.hidden = false;
+    let rows = '';
+    items.forEach(function (it, idx) {
+      rows += '<div style="margin:14px 0 0;text-align:left">' +
+        '<div class="splash-mandatory-sub" style="margin:0 0 6px;text-align:left;letter-spacing:0">' + (idx + 1) + '、' + it.q + '</div>' +
+        '<input class="applock-txt" type="text" id="qa-ans-' + idx + '" maxlength="60" placeholder="输入答案（原样输入，区分大小写）" autocomplete="off" style="width:100%">' +
+        '</div>';
     });
+    mask.innerHTML = '<div class="splash-mandatory">' +
+      '<div class="splash-mandatory-scroll">' +
+      '<div class="splash-mandatory-head">' +
+      '<div class="splash-mandatory-title">开屏问答 · 进入前请作答</div>' +
+      '<div class="splash-mandatory-sub">本站禁止未满 18 周岁的未成年人使用；两题都答对才能进入。答对一次，本机以后不再问答；也可输暗号直接跳过。</div>' +
+      '</div>' + rows +
+      '<div class="applock-err" id="applock-err" style="text-align:left;margin-top:10px"></div>' +
+      '<div style="margin-top:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
+      '<button class="applock-ok" id="qa-page-ok" type="button" data-submit="1">提交答案</button>' +
+      '<button type="button" data-link="skipqa" id="qa-skip-link" style="background:transparent;border:none;color:var(--muted,#999);font-size:11px;text-decoration:underline;padding:6px;cursor:pointer">输暗号跳过问答（本机永久）</button>' +
+      '</div>' +
+      '</div></div>';
+    const submit = function () {
+      let firstBad = -1;
+      items.forEach(function (it, idx) {
+        const inp = document.getElementById('qa-ans-' + idx);
+        const v = inp ? inp.value : '';
+        if (!qaAnswerOk(v, it.h)) { if (firstBad < 0) firstBad = idx; if (inp) inp.value = ''; }
+      });
+      const errEl = document.getElementById('applock-err');
+      if (firstBad >= 0) {
+        if (errEl) errEl.textContent = '第 ' + (firstBad + 1) + ' 题答案不对，再想想～（两题都要答对才能进入）';
+        return;
+      }
+      if (errEl) errEl.textContent = '';
+      // #1511 答对一次＝本机永久放行（作者口径「已经解锁了暗号……每次刷新总是让我重新解锁」）：
+      //   答对与输暗号等效，落 qaskip=1，之后本机不再问答。
+      qaSkipSet(true);
+      try { if (window.toast) window.toast('已解锁：本机以后不再问答'); } catch (e) {}
+      if (afterAll) afterAll();
+    };
+    const okBtn = document.getElementById('qa-page-ok');
+    if (okBtn) okBtn.addEventListener('click', submit);
+    items.forEach(function (it, idx) {
+      const inp = document.getElementById('qa-ans-' + idx);
+      if (inp) inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); submit(); } });
+    });
+    const skip = document.getElementById('qa-skip-link');
+    if (skip) skip.addEventListener('click', function () { qaSkipAsk(items, 0, afterAll); });
   }
+  // #998 跳过开屏问答的暗号口径同前（第一页章节指路＋不是第二页日期）。
+  // #812：sub 末尾补「与锁卡二级验证密码同码」互指说明——本暗号与 card-lock 解锁码同为 990815，
+  // 此前两边只讲公式互不通气＝用户在两个入口各自猜码。#1497：作者拍板维持同码（「输两次」＝
+  // 两把锁各自当场输一次，见 card-lock.js 会话闸）；normCode 归一化保留（全角/夹空白容错）。
   function qaSkipAsk(items, i, afterAll) {
     textAsk({
-      title: '跳过开屏问答', sub: '暗号一共 6 位数字：前两位是 99，后 4 位是 mochi 字卡生日的字面数字（把生日日期原样写成 4 位数）。mochi 字卡的生日写在开屏公告的目录里，仔细找能找到——注意不是开屏最底下的部署时间，部署时间只是用来判断是否更新到了新版本。输入暗号后，这台设备以后每次打开都不再问答（不再显示问答层）。警告：一旦有人把密码二传（告诉别人），发现后密码就会被重新设置，请不要外传。不输入暗号也不影响正常使用。',
+      title: '跳过开屏问答', sub: '暗号一共 6 位数字：前两位是 99，后 4 位是 mochi 字卡生日的字面数字（把生日日期原样写成 4 位数）。mochi 字卡的生日写在开屏第一页的章节目录里（点开第一页顶部的「目录」逐章翻一下就能找到）——第一页的章节目录里和第二页最顶那张时间线卡都写着——日期一直是很简单的字面意思，不是隐藏答案；开屏最底下的部署时间不算（那只是用来判断有没有更新到新版本）。输入暗号后，这台设备以后每次打开都不再问答（不再显示问答层）。警告：一旦有人把密码二传（告诉别人），发现后密码就会被重新设置，请不要外传。不输入暗号也不影响正常使用。这个暗号与开屏公告区「防未成年人·内置字卡锁定」卡的二级验证密码是同一个（同一串 6 位数字）：在那张卡点「输入密码解锁」用的也是它。',
       placeholder: '输暗号', maxlen: 12, okLabel: '确定', cancelLabel: '返回',
       onSubmit: function (v) {
-        if (String(v || '').trim() === QA_SKIP_CODE) {
+        if (normCode(v) === QA_SKIP_CODE) {
           qaSkipSet(true);
           toast('已跳过：本机以后不再问答');
           qaAsk(items, items.length, afterAll);   // 直接进下一层（密码锁 或 解锁完成）
@@ -626,10 +676,11 @@
       return;
     }
     textAsk({
-      title: '验证身份', sub: '本机未设数字密码，请输入开屏问答的暗号继续。暗号一共 6 位数字：前两位是 99，后 4 位是 mochi 字卡生日的字面数字（把生日日期原样写成 4 位数），生日写在开屏公告的目录里，不是开屏最底下的部署时间：',
+      // #998 验证身份的暗号口径同上。
+      title: '验证身份', sub: '本机未设数字密码，请输入开屏问答的暗号继续。暗号一共 6 位数字：前两位是 99，后 4 位是 mochi 字卡生日的字面数字（把生日日期原样写成 4 位数），生日就在开屏第一页的章节目录里（点开第一页顶部的「目录」，逐章翻一下就能找到）；第一页的章节目录里和第二页最顶那张时间线卡都写着——日期一直是很简单的字面意思，不是隐藏答案；开屏最底下的部署时间不算：',
       placeholder: '暗号', maxlen: 12, okLabel: '确定', cancelLabel: '取消',
       onSubmit: function (v) {
-        if (String(v || '').trim() === QA_SKIP_CODE) { next(); }
+        if (normCode(v) === QA_SKIP_CODE) { next(); }
         else {
           const inp = document.getElementById('applock-txt'); if (inp) inp.value = '';
           showErr('暗号不对');
@@ -648,12 +699,12 @@
     let html;
     if (on) {
       const acts = qaSkipped() ? [{ act: 'qa-unskip', label: '恢复本机问答' }] : [];
-      html = '<span>已开启：每次打开本站需先答对 <b>' + n + '</b> 道固定问答题' +
+      html = '<span>已开启：首次进入时答对 <b>' + n + '</b> 道固定问答题，本机即永久放行（不再重复问答）' +
         (enabled() && !!pinHash() ? '，再输入数字密码' : '') + '。' +
-        (qaSkipped() ? '本机已输暗号跳过问答（当前不再询问）。' : '锁屏时点「输暗号」可让本机永久跳过问答层。') +
+        (qaSkipped() ? '本机已输暗号跳过问答（当前不再询问）。' : '答对一次后本机即永久放行；也可点「输暗号」直接跳过。') +
         '</span>' + actsHtml(acts);
     } else {
-      html = '<span>未开启。开启后每次打开本站需先答对固定问答题才放行；可不设上方数字密码锁单独使用。锁屏时可输暗号让本机永久跳过问答层。</span>';
+      html = '<span>未开启。首次答对固定问答题后本机永久放行（不再重复询问）；可不设上方数字密码锁单独使用。也可输暗号直接永久跳过问答层。</span>';
     }
     s.innerHTML = html;
     Array.prototype.forEach.call(s.querySelectorAll('[data-aa]'), function (b) {

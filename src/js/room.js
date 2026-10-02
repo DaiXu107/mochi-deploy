@@ -20,7 +20,7 @@
   // ---- 基础工具 ----
   function S() { try { return window.activeStore(); } catch (e) { return null; } }
   function pn() {
-    try { const s = S(); return (s && (s.get('cs-lbl-partner') || s.get('lbl-partner'))) || 'TA'; } catch (e) { return 'TA'; }
+    try { const s = S(); return (s && (s.get('lbl-partner') || s.get('cs-lbl-partner'))) || 'TA'; } catch (e) { return 'TA'; }
   }
   function rnd(a) { return a[Math.floor(Math.random() * a.length)]; }
   function ri(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
@@ -33,7 +33,7 @@
     // 与机型无关、只与时段和是否点灯有关）。「夜晚更暗」由既有 .night 分层调暗
     // （.r-wall .52 / .r-floor .55）表达；场景层只承担点灯增亮：每盏亮灯 +0.12，封顶 1.3。
     let v = 1;
-    Object.keys(d.lit).forEach(k => { if (d.lit[k]) v += 0.12; });
+    d.fx.forEach(it => { if (d.lit[it.i]) v += 0.12; });
     return Math.min(1.3, v);
   }
   let toastT = null;
@@ -65,15 +65,29 @@
     senseFar: ['好像有一点熟悉的感觉。', '说不上来。……但在。', '很远。但没有离开。'],
     senseNone: ['没有人。', '感觉不到。', '……很安静。']
   };
+  // FIX 2026-09-18 #759：字卡库【房间】tab 的分组名是中文（DEFAULT_CARD_DATA.room），FB 的键是
+  // 英文。此前 sayLine 把 CAT[*].grp（='beside'/'furnuse'/'water'…）直接当分组名传给
+  // getLibPool('room', 分组)，库里查无此组 ⇒ 家具类话术从头到尾只落到 FB 那 3~5 句内置短句，
+  // 库内 60+ 句一次没出现过，且用户逐张开关（dc-off-room:*，键是库内文案）对家具完全无效。
+  // 现在统一经这张表换算；已是中文分组名的调用方原样透传（表里没有对应英文键）。
+  const GRP = {
+    enter: '进门', greet: '打招呼', near: '靠近', beside: '坐到旁边', look: '看TA',
+    occupied: 'TA的反应', comeover: 'TA的反应', lamp: '家具互动', furnuse: '家具互动',
+    windowl: '窗边', night: '夜晚', water: '浇水', wish: '许愿', music: '音乐', tea: '热茶',
+    senseNear: '方位感知', senseFar: '方位感知', senseNone: '方位感知'
+  };
   function sayLine(group, fallbackKey, noFit) {
     // v3.32.x #132：房间字卡概率接 dcf-room（默认 100=点击必有回应，0=点击不出字卡）
     try { if (window.dcfGet && !(Math.random() * 100 < window.dcfGet('room'))) return ''; } catch (e) {}
     let arr = null;
-    try { arr = window.getLibPool ? window.getLibPool('room', group, FB[fallbackKey] || []) : null; } catch (e) {}
-    if (!arr || !arr.length) arr = FB[fallbackKey] || [];
-    else {
-      try { if (window.isDefaultCardOff) { const f = arr.filter(c => !window.isDefaultCardOff('room', c)); if (f.length) arr = f; } } catch (e) {}
-    }
+    try { arr = window.getLibPool ? window.getLibPool('room', GRP[group] || group, FB[fallbackKey] || []) : null; } catch (e) {}
+    // FIX 2026-09-30 #1498：①数据文件缺该分组时才用内置兜底，且兜底同样过闸；
+    //   ②原写法「过滤后非空才采用」（if (f.length) arr = f）在全关时会把未过滤的池整个留下
+    //   ＝逐张关光/整组停用对房间话术完全无效（实测过闸后 0 条、实际仍用 11 条）。
+    if (!arr || !arr.length) arr = (window.gateCardFallback ? window.gateCardFallback('room', FB[fallbackKey] || []) : (FB[fallbackKey] || []));
+    try { if (window.isDefaultCardOff) arr = arr.filter(c => !window.isDefaultCardOff('room', c)); } catch (e) {}
+    // 池与兜底同时为空（分组不存在 + FB 无该键）时不出声：rnd([]) 会把字面量 "undefined" 吐进气泡
+    if (!arr.length) return '';
     let t = String(rnd(arr)).replace(/\{n\}/g, pn());
     if (!noFit) { try { if (window.taFit) t = window.taFit(t); } catch (e) {} }
     return t;
@@ -149,6 +163,16 @@
     o.fx = o.fx.filter(it => it && it.i && CAT[it.t] && it.x >= 0 && it.x < COLS && it.y >= 0 && it.y < ROWS);
     const seen = {};
     o.fx = o.fx.filter(it => { if (seen[it.i]) return false; seen[it.i] = 1; return true; });
+    // FIX 2026-09-18 #759：旧档灯光迁移——d.lit 曾按「家具类型」记（desklamp/candle…），现按
+    // 「在场实例 id」记（同种两盏可一开一关、收回即清）。键不是任何实例 id ⇒ 判定为旧档类型键：
+    // 亮着则搬到该类型第一件在场家具上，场上已无该类型家具的残键直接丢弃（原本就该丢）。
+    Object.keys(o.lit).forEach(k => {
+      if (o.fx.some(f => f.i === k)) return;
+      const wasOn = o.lit[k];
+      delete o.lit[k];
+      const first = wasOn && o.fx.find(f => f.t === k);
+      if (first) o.lit[first.i] = true;
+    });
   }
   function load() {
     try {
@@ -199,11 +223,17 @@
   function capOf() { return LV_CAP[Math.min(d.lv, LV_CAP.length - 1)]; }
   function itemAt(x, y) { return d.fx.find(f => f.x === x && f.y === y) || null; }
   function ownedCount(t) { return (d.inv[t] || 0) + d.fx.filter(x => x.t === t).length; }
+  // #766 每日互动点数上限（判定与提示文案同源；改数值只改这里）
+  const EARN_CAP = { ta: { cap: 5, name: '陪 TA 互动' }, n: { cap: 10, name: '家具互动' } };
   function gainPts(n, kind) {
     const tk = todayKey();
     if (d.earn.day !== tk) d.earn = { day: tk, n: 0, ta: 0 };
-    if (kind === 'ta') { if (d.earn.ta >= 5) return false; d.earn.ta++; }
-    else if (kind === 'n') { if (d.earn.n >= 10) return false; d.earn.n++; }
+    const lim = EARN_CAP[kind];
+    if (lim) {
+      // 原为静默 return false：调用方全都不看返回值 ⇒ 撞限后字卡照播、点数不加、零解释
+      if (d.earn[kind] >= lim.cap) { toast('今天「' + lim.name + '」的小屋点数到上限啦（' + lim.cap + '/' + lim.cap + '），明天再来'); return false; }
+      d.earn[kind]++;
+    }
     d.pts += n; updHud(); floatPts('+' + n + '🏠'); return true;
   }
   function checkLevel() {
@@ -233,6 +263,69 @@
   const sceneEl = $id('room-scene'), wallEl = $id('room-wall'), floorEl = $id('room-floor');
   const taEl = $id('room-ta'), bubbleEl = $id('room-bubble'), statusEl = $id('room-status');
 
+  function manualBrightness() {
+    const s = S(), raw = s && s.get('room-brightness');
+    if (raw == null || raw === '') return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? Math.max(50, Math.min(150, n)) : null;
+  }
+  function applyBrightness(value) {
+    if (value === undefined) value = manualBrightness();
+    sceneEl.classList.toggle('r-manual-light', value !== null);
+    sceneEl.style.setProperty('--room-bright', String(value === null ? lum() : value / 100));
+    const slider = $id('room-brightness');
+    if (slider) {
+      slider.value = String(value === null ? 100 : value);
+      $id('room-brightness-value').textContent = value === null ? '自动' : value + '%';
+      $id('room-brightness-auto').disabled = value === null;
+    }
+  }
+  // #766 亮度落盘节流：xyStore.set 每次都是同步 localStorage + 一个 IDB 写事务，
+  // 拖动 range 一步一发（50→150 step5＝21 事务）。生效走内存，落盘 300ms 合并，
+  // change 离手与切后台各补一次——丢的只是合并窗口内那一步，不是整条偏好。
+  let brightWriteT = null, brightLastAt = 0;
+  function writeBright(v) {
+    const s = S(); if (!s) return;
+    if (brightWriteT) { clearTimeout(brightWriteT); brightWriteT = null; }
+    const now = Date.now();
+    if (now - brightLastAt >= 300) { brightLastAt = now; s.set('room-brightness', v); return; }
+    brightWriteT = setTimeout(function () {
+      brightWriteT = null; brightLastAt = Date.now();
+      s.set('room-brightness', v);
+    }, 320);
+  }
+  function flushBright(v) {
+    if (brightWriteT) { clearTimeout(brightWriteT); brightWriteT = null; }
+    brightLastAt = 0;
+    writeBright(v);
+  }
+  function bindBrightness() {
+    const controls = document.createElement('div');
+    controls.className = 'r-brightness';
+    controls.innerHTML = '<label for="room-brightness">亮度 <output id="room-brightness-value" for="room-brightness">自动</output></label>' +
+      '<input id="room-brightness" type="range" min="50" max="150" step="5" value="100" aria-label="房间亮度">' +
+      '<button id="room-brightness-auto" type="button">自动</button>';
+    sceneEl.parentNode.insertBefore(controls, sceneEl);
+    $id('room-brightness').addEventListener('input', function () {
+      const v = Number(this.value);
+      applyBrightness(v); // 即时生效不回读存储（存储此刻可能还压在合并窗口里）
+      writeBright(v);
+    });
+    $id('room-brightness').addEventListener('change', function () {
+      flushBright(Number(this.value));
+    });
+    $id('room-brightness-auto').addEventListener('click', function () {
+      const s = S(); if (!s) return;
+      if (brightWriteT) { clearTimeout(brightWriteT); brightWriteT = null; } // 迟到写回会复活刚删的键
+      s.remove('room-brightness');
+      applyBrightness();
+    });
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden || !brightWriteT) return;
+      flushBright(Number($id('room-brightness').value));
+    });
+  }
+
   function buildCells() {
     if (!floorEl || floorEl.dataset.cells) return;
     floorEl.dataset.cells = '1';
@@ -256,7 +349,7 @@
     const night = isNight(), w = weather();
     sceneEl.classList.toggle('night', night);
     sceneEl.classList.toggle('raining', !night && w.t === '小雨');
-    sceneEl.style.setProperty('--room-bright', String(lum()));
+    applyBrightness();
     wallEl.className = 'r-wall wall-' + d.wall;
     floorEl.className = 'r-floor floor-' + d.floor;
     $id('room-win-a').className = 'r-window wa' + (night ? ' nw' : '');
@@ -267,7 +360,7 @@
     d.fx.forEach(it => {
       const c = CAT[it.t]; if (!c) return;
       const el = document.createElement('div');
-      el.className = 'r-furn' + (it.r ? ' r-flip' : '') + (d.lit[it.t] ? ' r-lit' : '') + (c.flk ? ' r-flkc' : '');
+      el.className = 'r-furn' + (it.r ? ' r-flip' : '') + (d.lit[it.i] ? ' r-lit' : '') + (c.flk ? ' r-flkc' : '');
       const p = pctPos(it.x, it.y);
       el.style.left = p.l + '%'; el.style.top = p.t + '%';
       if (it.t === 'vase' && d.vaseFlower) el.innerHTML = c.e + '<u class="r-bloom">🌸</u>';
@@ -275,7 +368,7 @@
       el.dataset.i = it.i;
       floorEl.appendChild(el);
       // 点亮的灯在地板投一滩暖光（蜡烛/星星灯带火苗闪烁）
-      if (d.lit[it.t]) {
+      if (d.lit[it.i]) {
         const pool = document.createElement('div');
         pool.className = 'r-pool' + (c.flk ? ' r-pool-f' : '');
         pool.style.left = p.l + '%'; pool.style.top = (p.t + 4.2) + '%';
@@ -329,12 +422,16 @@
       : (pn() + ' 正在' + actLabel() + '。');
   }
   let bubT = null;
-  function bubble(t) {
+  // FIX 2026-09-18 #759：双段话术的时序常量。首条气泡原为固定 3800ms，而补话都排在 900~1300ms
+  // 且带「上一条还挂着就让路」的守卫 ⇒ 守卫必命中，点灯/关灯/夜里点窗的第二句从未播出过。
+  // 现在首条短驻留（BUB_SHORT），补话时刻排在其后（BUB_AGAIN），守卫恢复成有意义的让路判断。
+  const BUB_SHORT = 2100, BUB_AGAIN = 2250;
+  function bubble(t, ms) {
     if (!t) return; // v3.32.x #132：sayLine 概率门控关断时返回空串，不出空气泡
     bubbleEl.textContent = t;
     bubbleEl.hidden = false;
     bubbleEl.classList.remove('pop'); void bubbleEl.offsetWidth; bubbleEl.classList.add('pop');
-    clearTimeout(bubT); bubT = setTimeout(() => { bubbleEl.hidden = true; }, 3800);
+    clearTimeout(bubT); bubT = setTimeout(() => { bubbleEl.hidden = true; }, ms || 3800);
   }
   function updHud() {
     $id('room-chip-lv').textContent = '🏡 Lv.' + d.lv;
@@ -427,7 +524,12 @@
     renderTa();
   }
   function tick() {
-    if (page.hidden || document.hidden) return;
+    if (page.hidden || document.hidden) {
+      // #766 离房/后台必须停已建的步进计时器：本函数只挡「新建」，早退后 780ms 的
+      // stepTimer 仍在跑（stepOnce 挪 TA + renderTa），切桌面/挂后台白烧 CPU。
+      if (stepTimer) { clearInterval(stepTimer); stepTimer = null; }
+      return;
+    }
     const moving = d.ta.x !== d.ta.tx || d.ta.y !== d.ta.ty;
     if (moving && !stepTimer) stepTimer = setInterval(stepOnce, 780);
     if (!moving && stepTimer) { clearInterval(stepTimer); stepTimer = null; }
@@ -461,9 +563,10 @@
   function useFurniture(inst) {
     const c = CAT[inst.t];
     if (c.lamp) {
-      const on = !d.lit[inst.t];
-      d.lit[inst.t] = on; save(); renderScene();
-      bubble(on ? (isNight() ? '灯亮起来了，房间一下子软了。' : '亮着也很好看。') : '关掉灯，安静了一会儿。');
+      const on = !d.lit[inst.i];
+      if (on) d.lit[inst.i] = true; else delete d.lit[inst.i]; // 关灯即删键：lit 表里只留在场且亮着的灯
+      save(); renderScene();
+      bubble(on ? (isNight() ? '灯亮起来了，房间一下子软了。' : '亮着也很好看。') : '关掉灯，安静了一会儿。', BUB_SHORT);
       gainPts(1, 'n'); vib(15);
       if (on) lampFeedback(inst, on); else lampOffFeedback(inst);
       return;
@@ -475,9 +578,9 @@
       return;
     }
     const taHere = d.ta.x === inst.x && d.ta.y === inst.y;
-    bubble(sayLine(c.grp, c.grp));
-    if (taHere && !d.ta.faint) setTimeout(() => bubble(sayLine(c.grp, 'occupied')), 1100);
-    else if (Math.hypot(d.ta.x - inst.x, d.ta.y - inst.y) <= 1.6 && Math.random() < 0.45) setTimeout(() => bubble(sayLine(c.grp, 'comeover')), 1100);
+    bubble(sayLine(c.grp, c.grp), BUB_SHORT);
+    if (taHere && !d.ta.faint) setTimeout(() => { if (!bubbleEl.hidden) return; bubble(sayLine('occupied', 'occupied')); }, BUB_AGAIN);
+    else if (Math.hypot(d.ta.x - inst.x, d.ta.y - inst.y) <= 1.6 && Math.random() < 0.45) setTimeout(() => { if (!bubbleEl.hidden) return; bubble(sayLine('comeover', 'comeover')); }, BUB_AGAIN);
     if (inst.t === 'kettle' && Math.random() < 0.5) { d.ta.tx = inst.x; d.ta.ty = Math.min(ROWS - 1, inst.y + 1); }
     gainPts(1, 'n'); vib(12);
   }
@@ -485,8 +588,8 @@
   function lampFeedback(inst, on) {
     if (!on) return;
     const c = CAT[inst.t];
-    const g = c.grp === 'night' ? '夜晚' : (c.grp === 'wish' ? '许愿' : '灯亮');
-    const line = sayLine(g, '灯亮');
+    const g = c.grp === 'night' ? 'night' : (c.grp === 'wish' ? 'wish' : 'lamp');
+    const line = sayLine(g, g);
     const dist = Math.hypot(d.ta.x - inst.x, d.ta.y - inst.y);
     const near = dist <= 1.6, chance = near ? 0.8 : 0.45;
     if (Math.random() < chance && line) {
@@ -496,15 +599,15 @@
         d.ta.nextAt = Date.now() + ri(22, 40) * 1000;
         save(); renderTa(); renderStatus();
       }
-      setTimeout(() => { if (!bubbleEl.hidden) return; bubble(line); }, near ? 900 : 1300);
+      setTimeout(() => { if (!bubbleEl.hidden) return; bubble(line); }, near ? BUB_AGAIN : BUB_AGAIN + 400);
     }
   }
   // 关灯反馈：TA 已在屋内有小概率回应一句
   function lampOffFeedback(inst) {
     const c = CAT[inst.t];
     if (c.grp === 'wish' || isNight() || Math.random() >= 0.35) return;
-    const line = sayLine('灯亮', '灯亮');
-    if (line) setTimeout(() => { if (!bubbleEl.hidden) return; bubble(line); }, 1100);
+    const line = sayLine('lamp', 'lamp');
+    if (line) setTimeout(() => { if (!bubbleEl.hidden) return; bubble(line); }, BUB_AGAIN);
   }
   function furnMenu(inst) {
     const c = CAT[inst.t];
@@ -522,6 +625,7 @@
       else if (v === 'back') {
         d.fx = d.fx.filter(x => x.i !== inst.i);
         d.inv[inst.t] = (d.inv[inst.t] || 0) + 1;
+        delete d.lit[inst.i]; // 收回即清灯光态：残键会让 lum() 按「不存在的灯」继续增亮
         if (d.ta.x === inst.x && d.ta.y === inst.y) { d.ta.tx = ri(0, COLS - 1); d.ta.ty = ri(0, ROWS - 1); }
         checkLevel(); save(); renderScene(); updHud();
         toast('已收回仓库：' + c.n);
@@ -612,10 +716,16 @@
       const c = CAT[t];
       if (ownedCount(t) >= MAX_PER_TYPE) return;
       const lock = c.lv > d.lv;
-      pills.push({ label: c.e + ' ' + c.n + ' · ' + c.cost + '🏠' + (lock ? ' 🔒Lv' + c.lv : ''), value: lock ? '' : 'b:' + t });
+      pills.push({ label: c.e + ' ' + c.n + ' · ' + c.cost + '🏠' + (lock ? ' 🔒Lv' + c.lv : (d.pts < c.cost ? '（还差 ' + (c.cost - d.pts) + '）' : '')), value: lock ? 'lock:' + t : 'b:' + t });
     });
     window.openModal('兑换家具（有 🏠' + d.pts + '）', '', function (v) {
       if (!v) return;
+      // #766 锁定项原以 value:'' 入列＝点确定后回调早退、零反馈；现给明确去向
+      if (v.indexOf('lock:') === 0) {
+        const lc = CAT[v.slice(5)];
+        if (lc) toast('🔒 ' + lc.n + '：小屋 Lv.' + lc.lv + ' 解锁（现在 Lv.' + d.lv + '），多互动攒舒适度就会升');
+        return;
+      }
       const t = v.slice(2), c = CAT[t];
       if (d.pts < c.cost) { toast('点数还不够，多进来待一会儿就有了'); return; }
       d.pts -= c.cost; d.inv[t] = (d.inv[t] || 0) + 1;
@@ -626,10 +736,17 @@
   }
 
   // ---- 装扮（墙纸 → 地板 两段弹窗） ----
+  // FIX 2026-09-21 #966：锁定项原以 value:'' 入列＝标签上有 🔒Lv、点确定后回调早退零反馈
+  //（#766 给家具同款缺陷补了 toast，墙纸/地板两类当时漏网）。现锁定项带 lockw:/lockf: 前缀，
+  // 回调按前缀分派说明解锁条件；其余流程不动（墙纸步仍照常衔接地板步）。
+  function decoLockTxt(o) { return '🔒 ' + o.n + '：小屋 Lv.' + o.lv + ' 解锁（现在 Lv.' + d.lv + '）'; }
   function decoFlow() {
-    const wp = WALLS.map(w => ({ label: (d.wall === w.id ? '✅ ' : '') + w.n + (w.lv > d.lv ? ' 🔒Lv' + w.lv : ''), value: w.lv <= d.lv ? 'w:' + w.id : '' }));
+    const wp = WALLS.map(w => ({ label: (d.wall === w.id ? '✅ ' : '') + w.n + (w.lv > d.lv ? ' 🔒Lv' + w.lv : ''), value: w.lv <= d.lv ? 'w:' + w.id : 'lockw:' + w.id }));
     window.openModal('装扮 · 墙纸', '', function (v) {
-      if (v && v.indexOf('w:') === 0) { d.wall = v.slice(2); save(); renderScene(); }
+      if (v && v.indexOf('lockw:') === 0) {
+        const lw = WALLS.filter(function (x) { return x.id === v.slice(6); })[0];
+        if (lw) toast(decoLockTxt(lw));
+      } else if (v && v.indexOf('w:') === 0) { d.wall = v.slice(2); save(); renderScene(); }
       setTimeout(floorPick, 0); // 嵌套 openModal 延后到外层 close 之后
     }, { noInput: true, pills: wp });
   }
@@ -638,9 +755,12 @@
   // 装扮第二步选地板从未实现。补齐：与墙纸同款 pills 弹窗，选中写 d.floor
   //（renderScene 以 floor-<id> 类消费）。
   function floorPick() {
-    const fp = FLOORS.map(f => ({ label: (d.floor === f.id ? '✅ ' : '') + f.n + (f.lv > d.lv ? ' 🔒Lv' + f.lv : ''), value: f.lv <= d.lv ? 'f:' + f.id : '' }));
+    const fp = FLOORS.map(f => ({ label: (d.floor === f.id ? '✅ ' : '') + f.n + (f.lv > d.lv ? ' 🔒Lv' + f.lv : ''), value: f.lv <= d.lv ? 'f:' + f.id : 'lockf:' + f.id }));
     window.openModal('装扮 · 地板', '', function (v) {
-      if (v && v.indexOf('f:') === 0) { d.floor = v.slice(2); save(); renderScene(); }
+      if (v && v.indexOf('lockf:') === 0) {
+        const lf = FLOORS.filter(function (x) { return x.id === v.slice(6); })[0];
+        if (lf) toast(decoLockTxt(lf));
+      } else if (v && v.indexOf('f:') === 0) { d.floor = v.slice(2); save(); renderScene(); }
     }, { noInput: true, pills: fp });
   }
 
@@ -656,6 +776,7 @@
         '摆着的家具：' + placedCount() + '/' + capOf() + ' · 仓库还有 ' + invN + ' 件\n' +
         '小屋点数：🏠 ' + d.pts + '\n' +
         nextTxt + '\n\n' +
+        '场景上方可调亮度（50%–150%），按联系人桌面保存；手动模式不再叠加夜间压暗，点「自动」恢复昼夜和灯光。只影响屋内画面，不改变设备屏幕亮度。\n\n' +
         '这不是一个任务游戏。想进来的时候进来看看，\n摸摸植物，看看窗外，坐一会儿，就好了。'
     });
   }
@@ -762,8 +883,9 @@
       if (e.target.closest('#room-ta')) { taMenu(); return; }
       if (e.target.closest('.r-window')) {
         const w = weather();
-        bubble((isNight() ? '🌙 ' : w.i + ' ') + sayLine('窗边', 'windowl'));
-        if (isNight()) setTimeout(() => { if (!bubbleEl.hidden) return; bubble(sayLine('夜晚', 'night')); }, 1200);
+        const wl = sayLine('窗边', 'windowl');
+        if (wl) bubble((isNight() ? '🌙 ' : w.i + ' ') + wl, BUB_SHORT);
+        if (isNight()) setTimeout(() => { if (!bubbleEl.hidden) return; bubble(sayLine('夜晚', 'night')); }, BUB_AGAIN);
         gainPts(1, 'n'); vib(10);
         return;
       }
@@ -851,8 +973,12 @@
       if (page.hidden) return;
       if (e.target && e.target.closest && e.target.closest('#room-banner-cancel')) { try { banner(null); } catch (er) {} }
     }, true);
+    bindBrightness();
     bindScene();
     bindDrag();
+    document.addEventListener('mochi-restore-done', function () {
+      if (!page.hidden) applyBrightness();
+    });
     setInterval(tick, 1000);
     document.addEventListener('visibilitychange', function () {
       if (!document.hidden && !page.hidden) { renderScene(); renderStatus(); }

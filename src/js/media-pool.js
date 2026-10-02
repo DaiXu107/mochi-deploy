@@ -28,6 +28,53 @@
   // #283 音频令牌异步取回（禁用态恒 null，调用方按缺失占位）
   window.mochiMediaExpandAsync = function (s, cb) { try { cb(null); } catch (e) {} };
   window.mochiMediaIsToken = function (s) { return typeof s === 'string' && TOKEN_RE.test(s); };
+  // FIX 2026-09-20 #948 载荷形态判定（'image'/'audio'/''）——大小写与前导空白都不敏感，且
+  // 「图片候选」不等于「显式 image/*」：文件读取器给不出类型时发的是 data:application/
+  // octet-stream;base64,…（Chromium 家族实测按图片嗅探解码成功），旧精确前缀判定把它判成非媒体
+  // ＝既不进池也不升级，载荷于是整串 base64 留在消息里被当正文铺出＝用户所见乱码。
+  // 优先借用 chat.js 导出的同一口径（chat.js 在本文件之后加载，故只在调用时取，绝不判空指针），
+  // 拿不到时退到本地同义正则＝本模块单独加载也不改变行为；两处判据语义严格一致（禁第二份口径）。
+  var KIND_HEAD_RE = /^data:([a-z0-9.+-]+)\/([a-z0-9.+-]+)[;,]/i;
+  // FIX 2026-09-20 #948h 无 MIME 载荷（File.type 为空时 FileReader 产出 "data:;base64,…"）：
+  // 上面那条 MIME 正则漏过它，而它是媒体不是正文。本地兜底与 chat.js 的 chatB64ImgMime 严格
+  // 同义（同一份魔数表、同一条「认不出＝非图」口径，禁第二份漂移）；chat.js 在场时优先借它的。
+  var NOMIME_RE = /^data:;base64,/i;
+  var B64A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  function noMimeImgMime(t) {
+    const comma = t.indexOf(',');
+    const b64 = comma >= 0 ? t.slice(comma + 1, comma + 1 + 48) : '';
+    const out = [];
+    for (let i = 0; i + 3 < b64.length && out.length < 12; i += 4) {
+      const a = B64A.indexOf(b64.charAt(i)), b2 = B64A.indexOf(b64.charAt(i + 1));
+      const c = B64A.indexOf(b64.charAt(i + 2)), d = B64A.indexOf(b64.charAt(i + 3));
+      if (a < 0 || b2 < 0 || c < 0 || d < 0) break;
+      out.push((a << 2) | (b2 >> 4), ((b2 & 15) << 4) | (c >> 2), ((c & 3) << 6) | d);
+    }
+    if (out.length >= 3 && out[0] === 0xFF && out[1] === 0xD8) return 'image/jpeg';
+    if (out.length >= 4 && out[0] === 0x89 && out[1] === 0x50 && out[2] === 0x4E && out[3] === 0x47) return 'image/png';
+    if (out.length >= 3 && out[0] === 0x47 && out[1] === 0x49 && out[2] === 0x46) return 'image/gif';
+    if (out.length >= 12 && out[0] === 0x52 && out[1] === 0x49 && out[2] === 0x46 && out[3] === 0x46 && out[8] === 0x57 && out[9] === 0x45 && out[10] === 0x42 && out[11] === 0x50) return 'image/webp';
+    if (out.length >= 2 && out[0] === 0x42 && out[1] === 0x4D) return 'image/bmp';
+    return '';
+  }
+  function mediaPayloadKind(s) {
+    if (typeof s !== 'string' || !s) return '';
+    if (window.chatIsDataImgLikeSrc) {
+      if (window.chatIsDataAudioSrc && window.chatIsDataAudioSrc(s)) return 'audio';
+      return window.chatIsDataImgLikeSrc(s) ? 'image' : '';
+    }
+    let t = s;
+    for (let i = 0; i < t.length; i++) {
+      const ch = t.charAt(i);
+      if (ch !== ' ' && ch !== '\t' && ch !== '\n' && ch !== '\r' && ch !== '\f') { t = t.slice(i); break; }
+    }
+    const head = t.length > 64 ? t.slice(0, 64) : t;
+    if (NOMIME_RE.test(head)) return (window.chatB64ImgMime ? window.chatB64ImgMime(s) : noMimeImgMime(head)) ? 'image' : '';
+    const m = KIND_HEAD_RE.exec(head);
+    if (!m) return '';
+    const k = m[1].toLowerCase();
+    return k === 'audio' ? 'audio' : (k === 'video' ? '' : 'image');
+  }
   if (!OK) return;
 
   const map = new Map();            // hash -> dataURL（已解析/已落池内容，渲染热缓存）
@@ -80,7 +127,12 @@
   function flushMissingMarks() {
     markT = null;
     if (!markQueue.size) return;
-    const list = Array.prototype.slice.call(markQueue); markQueue.clear();
+    // FIX 2026-09-17 #665e 确认缺失的「图片缺失」占位自 #397 攒批改造起从未生效：
+    // Array.prototype.slice.call(Set) 恒为空数组（Set 不是 array-like，没有 length/下标），
+    // 于是下面 list.indexOf(...) 永远 < 0、每张图都提前 return——占位打不上，img 仍保留
+    // @@m: 令牌 src，浏览器把它当相对 URL 请求 404（正是 #402 要消除的裂图/黑块），
+    // 用户侧表现即「贴纸加载不出来、且没有任何缺失提示」。改 Array.from 让攒批真正落地。
+    const list = Array.from(markQueue); markQueue.clear();
     let nodes;
     try { nodes = document.querySelectorAll('img[src^="' + TOK + '"]'); } catch (e) { nodes = []; }
     Array.prototype.forEach.call(nodes, function (el) {
@@ -107,7 +159,7 @@
   };
   window.mochiMediaPhRestore = function (h, v) {
     const list = phReg.get(h);
-    if (!list || typeof v !== 'string' || v.indexOf('data:image/') !== 0) return;
+    if (!list || typeof v !== 'string' || mediaPayloadKind(v) !== 'image') return; // FIX #948 判据大小写/空白不敏感
     phReg.delete(h);
     list.forEach(function (ph) {
       try {
@@ -122,6 +174,54 @@
     });
   };
   const inflight = {};              // hash -> true（渲染侧单飞取回）
+  // FIX 2026-09-17 #665d 读失败（超时/连接丢失）≠「池里没有」——旧实现把两者一律当确认缺失：
+  //   ①已渲染的那张图不再重试、直接留成坏图；②mochiMediaTokenMissing 置位后 isMediaImg 把该
+  //   令牌字卡整条剔出 getMediaGroups → 朋友圈「贴纸」面板里这张直接消失（用户报「朋友圈贴纸
+  //   有时能看到有时看不到、很随机」，多机型同现）。而 idbGet 的 undefined 有两种来源（键真
+  //   不存在 / 事务挂起超时或连接丢失，#665a），设备 IO 越慢越容易撞上＝机型相关、会话随机。
+  //   修法：只有「确认不存在」才拉黑；读失败走「软占位」——照常显示图片缺失占位（不发无效
+  //   请求，#402 语义不变）、但不进 missing（字卡/贴纸列表不掉项），并按有界预算自行重读，
+  //   读到真身即原位换回。有界是关键：不无限重试，防 #450 读槽被饿死型死循环。
+  const phImgs = new Map();         // hash -> Set<img>（正显示软占位、待池读回后原位换回）
+  const softTry = new Map();        // hash -> 已用重试次数
+  const SOFT_RETRY_MS = [1200, 4000, 10000];
+  function restorePhImgs(h, v) {
+    const set = phImgs.get(h);
+    if (!set) return;
+    phImgs.delete(h);
+    set.forEach(function (el) {
+      try { el.classList.remove('media-tok-missing'); el.removeAttribute('alt'); el.src = v; } catch (e) {}
+    });
+  }
+  function softMissImg(img, h) {
+    if (img) {
+      try { img.classList.add('media-tok-missing'); img.alt = '图片缺失'; img.src = MISS_PLACEHOLDER; } catch (e) {}
+      let set = phImgs.get(h);
+      if (!set) { set = new Set(); phImgs.set(h, set); }
+      set.add(img);
+    }
+    const n = softTry.get(h) || 0;
+    if (n >= SOFT_RETRY_MS.length) return;   // 预算用尽：保持占位，等重渲染/下次会话再试
+    softTry.set(h, n + 1);
+    setTimeout(function () {
+      const info = {};
+      let p;
+      try { p = window.idbGet(FULL + h, info); } catch (e) { p = null; }
+      if (!p || !p.then) return;
+      p.then(function (v) {
+        if (typeof v === 'string' && mediaPayloadKind(v) === 'image') { // FIX #948
+          softTry.delete(h);
+          missing.delete(h);
+          if (!map.has(h)) map.set(h, v);
+          restorePhImgs(h, v);
+          return;
+        }
+        if (info.ambiguous) { softMissImg(null, h); return; }   // 仍是读失败：预算内再试
+        missing.add(h);                                        // 这回读到了「确实没有」→ 原缺失语义
+        markMissing(h);
+      }).catch(function () {});
+    }, SOFT_RETRY_MS[n]);
+  }
   let writeBuf = [];                // 待落池 [{k,v}]
   let flushT = null;
   // 真实现（OK 路径）：令牌→池内容；未知哈希/非令牌→null（调用方按 null 回退原值）
@@ -155,6 +255,111 @@
     }).catch(function () { return null; });
   };
 
+  // ===== FIX 2026-09-26 #1314「这一格要显示池载荷」的唯一正道：载荷一次写进 src，令牌本身永不上屏 =====
+  // （红米 K80/Chrome 实报「点击表情包打开的页面，每次打开图片都会闪烁和重新加载」，用户明说其他
+  //  设备型号也有、要求不要覆盖式修补；同族 #457/#508/#509/#547/#617/#662/#692/#704/#716/#907/#1011
+  //  十一轮后仍复报＝用户看的问题根本没解决。零机型／零 UA 分支＝判据只取「这一格现在要显示的是不
+  //  是池载荷」这一个事实。）
+  // 取证（无头 390×844 真跑纯 HEAD 产物，见 tools/verify-1314-panel-single-paint.mjs 的读数）：表情面板首屏 10 个格子＝
+  //  20 次 src 赋值，其中 10 次写的就是 @@m:<hash> 那 44 个字符——内核把它当**相对 URL** 真发一次
+  //  请求（必 404；#1011 台账自己写着「7 次请求＋7 次 404」），第 2 次才是池写回的真载荷。于是每一格
+  //  都「先坏一次、再从零解一次」＝用户所见闪一下重新加载；#1011 的
+  //  `#emoji-list img[src^="@@m:"]{opacity:0}` 只把坏帧藏起来，那发多余请求与第二次解码一直留着。
+  // 为什么旧写法非把令牌塞进 src：池的自愈通路只按 `img[src^="@@m:"]` 找到在等的节点（观察器＋#435
+  //  批量预热），节点不写令牌就捞不到。收口＝池自己记下「哪些节点在等哪个哈希」（paintWait），载荷
+  //  一到手就按登记处一次写成载荷；只有池**确实**回答没有这个哈希，才把令牌交回 src，让观察器＋#397
+  //  缺失占位那一路照原样接手＝缺数据语义一字不改。
+  // 三条纪律：①落笔前复核「src 仍是空的」＝期间节点被重建或已被别人上好图一律不碰（#169/#228 同族
+  //  「旧句柄不许偷走新数据」）；②等待有上限（PAINT_WAIT_MS），到点按旧语义交回令牌，绝不因为这一批
+  //  登记把格子挂空（池慢≠池没有）；③不新增任何一次 IDB 读——去重／在飞／批量读全交回 #435 那把
+  //  尺子，本块只多一张登记表。
+  const paintWait = new Map();          // hash -> [{ el, done }]
+  const PAINT_WAIT_MS = 1200;
+  // 在飞标记（__moPaint）由池自己管，不给每个写入方各摆一次：①面板里落 src 的入口不止一处
+  // （首屏 kick、懒加载泵、后台预热），标记只由池摆/只由池收才不会漏；②#662 的节点回收池会把
+  // 带着旧标记的节点复活，所以每一次落地都显式清，不能只依赖调用方的回调。
+  function paintFinish(el, done, ok) {
+    try { el.__moPaint = 0; } catch (eC) {}
+    try { if (done) done(ok); } catch (eD) {}
+  }
+  function paintDeliver(h, payload) {
+    const list = paintWait.get(h);
+    if (!list) return;
+    paintWait.delete(h);
+    for (let i = 0; i < list.length; i++) {
+      const it = list[i], el = it.el;
+      let cur = '';
+      try { cur = el.getAttribute('src') || ''; } catch (eG) {}
+      if (cur) { paintFinish(el, it.done, false); continue; } // 已被上好图/已被换掉：不插手
+      try { el.setAttribute('src', payload || (TOK + h)); } catch (eS) {} // 有载荷写真载荷，确缺才写令牌
+      paintFinish(el, it.done, !!payload);
+    }
+  }
+  // 把「这一格该显示什么」交给池：非令牌＝逐字同旧写法一次赋值；令牌＝map 命中一发上屏（零请求），
+  // 没命中就登记等池回话，池确缺才落令牌。done(是否拿到载荷) 可选，只给调用方挂自己的后续（如预热解码）。
+  window.mochiMediaPaint = function (el, val, done) {
+    const v = String(val || '');
+    if (!el || !v) { try { if (done) done(false); } catch (e0) {} return; }
+    const m = TOKEN_RE.exec(v);
+    if (!m) {
+      try { el.setAttribute('src', v); } catch (e1) {}
+      paintFinish(el, done, true);
+      return;
+    }
+    const h = m[1];
+    const c = map.get(h);
+    if (typeof c === 'string' && c) { // 热缓存命中（本会话刚落过池/已预热）＝一次赋值、一发请求都不发
+      try { el.setAttribute('src', c); } catch (e3) {}
+      paintFinish(el, done, true);
+      return;
+    }
+    if (missing.has(h)) { // 本会话已确认缺失：当场交回令牌，#397 占位那一路立刻接手（旧语义）
+      try { el.setAttribute('src', v); } catch (e5) {}
+      paintFinish(el, done, false);
+      return;
+    }
+    let list = paintWait.get(h);
+    if (!list) {
+      list = [];
+      paintWait.set(h, list);
+      setTimeout(function () { paintDeliver(h, map.get(h) || null); }, PAINT_WAIT_MS); // 纪律②上限兜底
+    }
+    try { el.__moPaint = 1; } catch (eF) {} // 在飞＝这一格此刻既没载荷也没令牌，面板「等图 ready」闸读它
+    list.push({ el: el, done: done });
+    if (window.mochiMediaWarmTokens) { try { window.mochiMediaWarmTokens([h]); } catch (eW) {} } // 纪律③
+  };
+
+  // FIX 2026-09-17 #633 池条目同键换值（压缩图片功能 img-compress.js 调用）：字卡库内联大图
+  // 经 #554「自动去重缩库」令牌化后真身在池里（库键只剩 @@m:<hash>），要减小字卡库占用就只能
+  // 落在这个池值上。池是内容寻址（键 = SHA-256(值) 前缀），这里**只换值、不动键**——所有
+  // 消费方（渲染观察器 / 字卡库导出还原 mochiMediaResolve / GC 引用面 / Coverage 体检 /
+  // Rebuild 自愈）都按令牌查键，键不变就全部照常命中；Rebuild 只补「缺失/空串」条目，
+  // 不会把压缩后的值当坏值覆盖回去。
+  // 三处会话状态必须一起收口，否则留坑：
+  //   · map 热缓存 → 不换则本会话继续渲染旧大图，且令牌化命中 map 直接返回＝内存里又把
+  //     压缩省下的那份吃回来；
+  //   · writeBuf 待落盘 → 同哈希还在 300ms 防抖缓冲里时，flush 会用旧值把压缩结果盖回去；
+  //   · missing / tokTried 占位 → 换成有效值后要解除，否则已渲染的「图片缺失」占位与
+  //     dataset.tokTried 标记会挡住重扫，图不恢复。
+  // 只由调用方在「新值确实更小」时调用；本函数不校验体积、不改任何业务数据，失败返回 false。
+  window.mochiMediaReplace = function (hash, dataUrl) {
+    const h = String(hash || '');
+    if (!TOKEN_RE.test(TOK + h)) return Promise.resolve(false);
+    if (typeof dataUrl !== 'string' || dataUrl.indexOf('data:') !== 0) return Promise.resolve(false);
+    try { writeBuf = writeBuf.filter(function (p) { return !(p && p.k === FULL + h); }); } catch (e0) {}
+    return window.idbSet(FULL + h, dataUrl).then(function (ok) {
+      if (!ok) return false;
+      map.set(h, dataUrl);
+      paintDeliver(h, dataUrl); // #1314 在等这一哈希的格子当场拿新载荷（不经令牌那一趟）
+      missing.delete(h);
+      try { window.mochiMediaPhRestore(h, dataUrl); } catch (ePH) {} // #439 原位换回自愈
+      let nodes;
+      try { nodes = document.querySelectorAll('img[src="' + TOK + h + '"]'); } catch (e2) { nodes = []; }
+      Array.prototype.forEach.call(nodes, function (el) { el.src = dataUrl; });
+      return true;
+    }).catch(function () { return false; });
+  };
+
   async function sha256Hex(str) {
     const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
     const arr = new Uint8Array(buf);
@@ -184,12 +389,18 @@
   window.mochiMediaTokenize = function (dataUrl, opts) {
     return new Promise(function (resolve) {
       // FIX 2026-09-10 #283 放行 data:audio/（语音令牌化）；<1024 小载荷不进池
-      if (typeof dataUrl !== 'string' || dataUrl.length < 1024 ||
-          (dataUrl.indexOf('data:image/') !== 0 && dataUrl.indexOf('data:audio/') !== 0)) { resolve(null); return; }
-      sha256Hex(dataUrl).then(function (h) {
+      // FIX 2026-09-20 #948 闸门改大小写/前导空白不敏感，并按 trim 后的规范形态入池：
+      // 旧写法 `indexOf('data:image/') !== 0` 精确匹配，内核（相册/文件管理器/解码失败按原图
+      // 入库那条腿）给出大写 MIME 或串首空白时令牌化整块跳过＝载荷永久内联在聊天记录里，
+      // 一旦漏进文字通道就是用户所见「图片变成长乱码」，且大库瘦身（#283/#377）也随之失效。
+      if (typeof dataUrl !== 'string') { resolve(null); return; }
+      var payload = dataUrl.trim();
+      if (payload.length < 1024) { resolve(null); return; }
+      if (!mediaPayloadKind(payload)) { resolve(null); return; }
+      sha256Hex(payload).then(function (h) {
         if (map.has(h)) { resolve(TOK + h); return; }
         let q = lookupQueue.get(h);
-        if (!q) { q = { data: dataUrl, cbs: [], nc: !!(opts && opts.noCache) }; lookupQueue.set(h, q); }
+        if (!q) { q = { data: payload, cbs: [], nc: !!(opts && opts.noCache) }; lookupQueue.set(h, q); }
         q.cbs.push(resolve);
         if (!lookupT) lookupT = setTimeout(runLookups, 60);
       }).catch(function () { resolve(null); });
@@ -211,7 +422,7 @@
         // 可达几十 MB），缓存=把令牌化省下的内存原样吃回，只写池/查池不缓存
         // #377 noCache 选项：字卡库大库内存瘦身令牌化用——池命中/新写都不进 map 热缓存，
         // 渲染时走下方 resolveImg 懒解析按需进 map（只驻留真正显示过的图）
-        const isImg = e[1].data.indexOf('data:image/') === 0;
+        const isImg = mediaPayloadKind(e[1].data) === 'image';
         const nc = !!e[1].nc;
         if (typeof v === 'string') { if (isImg && !nc) map.set(e[0], v); }          // 池里已有（跨会话/桌面重复）→ 不重写
         else { if (isImg && !nc) map.set(e[0], e[1].data); writeBuf.push({ k: FULL + e[0], v: e[1].data }); dirty = true; }
@@ -250,7 +461,8 @@
       missRetryPump();
     };
     const __tokWatch = setTimeout(function () { __tokSettle(); }, TOK_WATCH_MS);
-    window.idbGet(FULL + h).then(function (v2) {
+    const info = {};                 // #665d：idbGet 读失败（超时/连接丢失）→ info.ambiguous
+    window.idbGet(FULL + h, info).then(function (v2) {
       __tokSettle();
       // FIX 2026-09-10 #275 池值体检：池里只可能存 data:image/ 字符串（tokenize 入口已保证）。
       // 读到空串/脏值（旧「只备份文字」备份把池 dataURL 剥成 "" 再导入所致）绝不能当有效数据：
@@ -263,7 +475,7 @@
       // 变少」+ 签名数量骤变 → 整面板重建＝「每次打开都重新加载」复发）。改为：不标缺失、
       // 清 tokTried 放行本图重试，交给 missRetryPump 在落池后补扫自愈；flush 真失败/被丢时
       // writeBuf 已清，下轮读仍 miss 才走原缺失占位路径（真缺数据设备行为不变）。
-      if (typeof v2 !== 'string' || v2.indexOf('data:image/') !== 0) {
+      if (typeof v2 !== 'string' || mediaPayloadKind(v2) !== 'image') {
         let pending = false;
         for (let wi = 0; wi < writeBuf.length; wi++) { if (writeBuf[wi] && writeBuf[wi].k === FULL + h) { pending = true; break; } }
         if (pending) {
@@ -271,14 +483,21 @@
           missRetryPump();
           return;
         }
+        // FIX 2026-09-17 #665d 读失败（超时/连接丢失，idbGet 的 undefined 与「键不存在」不可分）：
+        // 不当确认缺失——不拉黑（贴纸/字卡列表不掉项），软占位 + 有界重读自愈。
+        if (info.ambiguous) { softMissImg(img, h); return; }
+        paintDeliver(h, null); // #1314 确缺＝把令牌交回在等的格子，让观察器＋#397 占位那一路接手（下一行 #387 的语义一字未动）
         missing.add(h); markMissing(h); return;
       }
       missing.delete(h); // 后续读到有效值＝池已补回（导入完整备份等），解除剔除/占位
       map.set(h, v2);
       try { window.mochiMediaPhRestore(h, v2); } catch (ePH) {} // #439 已换文字占位的原位换回自愈
+      restorePhImgs(h, v2); // #665d 软占位（读失败）的 img 原位换回真图
+      softTry.delete(h);
       let nodes;
       try { nodes = document.querySelectorAll('img[src="' + TOK + h + '"]'); } catch (e) { nodes = []; }
       Array.prototype.forEach.call(nodes, function (el) { el.src = v2; });
+      paintDeliver(h, v2); // #1314 同哈希在登记的格子（src 还空着）一并上好图
     }).catch(function () { __tokSettle(); });
   }
   function scanRoot(root) {
@@ -331,12 +550,13 @@
       batch.forEach(function (h) {
         delete inflight[h];
         const v = vals[FULL + h];
-        if (typeof v !== 'string' || v.indexOf('data:image/') !== 0) return; // 脏值/缺失：不进 map 不占位
+        if (typeof v !== 'string' || mediaPayloadKind(v) !== 'image') return; // 脏值/缺失：不进 map 不占位（FIX #948 判据大小写/空白不敏感）
         missing.delete(h);
         if (!map.has(h)) map.set(h, v);
         let nodes;
         try { nodes = document.querySelectorAll('img[src="' + TOK + h + '"]'); } catch (e) { nodes = []; }
         Array.prototype.forEach.call(nodes, function (el) { el.src = v; });
+        paintDeliver(h, v); // #1314 同上：预热回来先喂登记处，别让格子靠「src 里躺着令牌」才被捞到
       });
       if (warmQueue.length) warmT = setTimeout(warmPump, 0);
     }).catch(function () {
@@ -386,10 +606,16 @@
       // → 这些引用的表情/图片令牌被误判孤儿删除 = 单发表情包/图片变空白气泡且不可逆。
       // 修复：REFS 扩到群聊+尾巴键；并追加扫描 localStorage 同名键（读到的令牌全部进 keep，
       // 宁可漏删绝不误删；LS 读异常时放弃本次清理）。
-      const REFS = /(?:^|:)(?:chat-msgs|fav-msgs|group-chat-msgs|gc-msgs-[0-9A-Za-z_-]+|chat-tail|cc-groups(?:-public)?)$/;
+      // #722：分块基准包（chat-blk-*）也引用令牌，进 keep 面
+      const REFS = /(?:^|:)(?:chat-msgs|chat-blk-idx|chat-blk-[0-9]+|fav-msgs|group-chat-msgs|gc-msgs-[0-9A-Za-z_-]+|chat-tail|cc-groups(?:-public)?|feed-posts(?:-snap)?|chat-arch)$/;
       // FIX 2026-09-15 #506 引用面补字卡库两键：#387 修复前写回泄漏/旧备份导入会把 @@m: 令牌
       // 留在 cc-groups / cc-groups-public 里，同样引用池条目——不进 keep 会被误判孤儿删除
       // ＝字卡库图片（含导出还原源）永久丢失。GC 与 Coverage 两处同批。
+      // FIX 2026-09-17 #665f 引用面再补朋友圈两键：贴纸/配图写进动态时存的就是 @@m: 令牌
+      //（字卡库 ≥64KB 表情包经池视图令牌化），只被朋友圈引用的池条目若不在 keep 里，
+      // 清理孤儿会把它们删掉＝照片上的贴纸永久变「图片缺失」（宁可漏删绝不误删，此处只加不减）。
+      // FIX 2026-09-17 #127 引用面再补聊天增量日志键 chat-arch：分片后「基准包之后的新消息」
+      // 只存在这个键里——不进 keep 会把最新几条消息引用的图片/语音当孤儿删掉（永久坏图）。
       const refKeys = keys.filter(function (k) { return REFS.test(String(k)); });
       try {
         for (let li = 0; li < localStorage.length; li++) {
@@ -475,7 +701,8 @@
     return (async function () {
       const out = { ok: false, reason: '', referenced: 0, inPool: 0, missing: 0, missingSamples: [] };
       if (!window.idbListKeys || !window.idbGet || !window.idbGetMany) { out.reason = '接口不可用（需安全上下文/IDB）'; return out; }
-      const REFS = /(?:^|:)(?:chat-msgs|fav-msgs|group-chat-msgs|gc-msgs-[0-9A-Za-z_-]+|chat-tail|cc-groups(?:-public)?)$/;
+      // #722：分块基准包（chat-blk-*）也引用令牌，进 keep 面
+      const REFS = /(?:^|:)(?:chat-msgs|chat-blk-idx|chat-blk-[0-9]+|fav-msgs|group-chat-msgs|gc-msgs-[0-9A-Za-z_-]+|chat-tail|cc-groups(?:-public)?|feed-posts(?:-snap)?|chat-arch)$/;
       const SCAN_RE = /@@m:([0-9a-f]{32})/g;
       let keys;
       try { keys = await window.idbListKeys(); } catch (e) { out.reason = '键清单读取失败'; return out; }
@@ -562,7 +789,7 @@
         try { vals = (await window.idbGetMany(batch)) || {}; } catch (e) { vals = {}; }
         batch.forEach(function (k) {
           const v = vals[k];
-          if (typeof v === 'string' && (v.indexOf('data:image/') === 0 || v.indexOf('data:audio/') === 0)) valid.add(String(k).slice(FULL.length));
+          if (typeof v === 'string' && mediaPayloadKind(v)) valid.add(String(k).slice(FULL.length)); // FIX #948 同口径
         });
         try { if (prog) prog(Math.min(poolKeys.length, i + 40), poolKeys.length, '核对池内条目'); } catch (eP3) {}
         await yieldUI(); // #441 批间让出主线程（池 741+ 条×大值，连读会冻结 UI）
@@ -650,7 +877,7 @@
       function heal(p) {
         const h = String(p.k).slice(FULL.length);
         valid.add(h);
-        if (p.v.indexOf('data:image/') === 0) { map.set(h, p.v); try { window.mochiMediaPhRestore(h, p.v); } catch (ePH2) {} } // 音频不进热缓存（#283 内存纪律）；#439 占位原位换回
+        if (mediaPayloadKind(p.v) === 'image') { map.set(h, p.v); try { window.mochiMediaPhRestore(h, p.v); } catch (ePH2) {} } // 音频不进热缓存（#283 内存纪律）；#439 占位原位换回
         missing.delete(h);
         out.written++;
       }

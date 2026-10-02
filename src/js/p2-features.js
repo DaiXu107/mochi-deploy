@@ -95,16 +95,26 @@
       return max;
   }
   // v3.15.x：聊天记录 tab 新增「联系人发红包 / 申请心意币」流水区块（rows: {main, sub}）
-  // 全量展示不截断——流水本身低频（红包≤5/日、申请≤2/日），按时间倒序最新在上
-  function coinRecordSection(icon, title, unit, rows, emptyText) {
-    let html = '<div class="stats-sec">' +
-      '<div class="stats-sec-head"><span class="stats-sec-title">' + icon + title + '</span>' +
-      '<span class="stats-sec-count">' + rows.length + ' 笔</span></div>';
-    if (!rows.length) {
+  // #993：不再默认全量铺开——这一族是「流水」，行数随使用无上限累计（申请卡每触发一次一条、
+  //   小游戏每局一条），攒几个月就是几十上百行，默认全展把「聊天记录」tab 拉得很长（用户实报）。
+  //   开关态收在模块级 map：进统计页每次都重设 innerHTML，挂在 DOM 上的折叠态活不过一次渲染。
+  const statsFoldOpen = { askcoin: false, games: false };
+  function statsFoldSection(icon, title, unit, rows, emptyText, key) {
+    const n = rows.length;
+    const open = n > 0 && !!statsFoldOpen[key];
+    let html = '<div class="stats-sec stats-fold' + (open ? ' open' : '') + '"' +
+      (n ? ' data-stats-fold="' + key + '"' : '') + '>' +
+      '<div class="stats-sec-head stats-fold-head"' + (n ? ' role="button" tabindex="0"' : '') +
+      ' aria-expanded="' + (open ? 'true' : 'false') + '">' +
+      '<span class="stats-sec-title">' + icon + title + '</span>' +
+      '<span class="stats-fold-right"><span class="stats-sec-count">' + n + ' ' + unit + '</span>' +
+      (n ? '<span class="stats-fold-caret">▾</span>' : '') + '</span></div>' +
+      '<div class="stats-fold-body">';
+    if (!n) {
       html += '<div class="ta-empty">' + emptyText + '</div>';
     } else {
       html += '<div class="stats-list">';
-      for (let i = rows.length - 1; i >= 0; i--) {
+      for (let i = n - 1; i >= 0; i--) {
         const r = rows[i];
         html += '<div class="stats-item">' +
           '<span class="stats-item-name">' + r.main + '</span>' +
@@ -112,8 +122,33 @@
       }
       html += '</div>';
     }
-    return html + '</div>';
+    return html + '</div></div>';
   }
+  // #993：折叠开关——点区块头整行（caret 也在头内），键盘 Enter/Space 同效。事件委托只注册一次，
+  //   重渲染出来的新区块自动生效；只在头内命中才切换，展开后点列表行不会把它误收回去。
+  function statsFoldToggle(sec) {
+    if (!sec) return;
+    const key = sec.getAttribute('data-stats-fold');
+    const head = sec.querySelector('.stats-fold-head');
+    const open = !statsFoldOpen[key];
+    statsFoldOpen[key] = open;
+    sec.classList.toggle('open', open);
+    if (head) head.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+  document.addEventListener('click', function (e) {
+    const sec = e.target && e.target.closest ? e.target.closest('.stats-sec[data-stats-fold]') : null;
+    if (!sec) return;
+    const head = sec.querySelector('.stats-fold-head');
+    if (!head || !head.contains(e.target)) return;
+    statsFoldToggle(sec);
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+    const head = e.target && e.target.closest ? e.target.closest('.stats-fold-head') : null;
+    if (!head) return;
+    e.preventDefault();
+    statsFoldToggle(head.parentNode);
+  });
   function fmtMDHM(ts) {
     if (!ts) return '';
     const t = new Date(ts);
@@ -162,7 +197,9 @@
         const g = JSON.parse(raw);
         if (!g || !g.text) return;
         (g.text || []).forEach(([gname, arr]) => (arr || []).forEach(c => {
-          if (typeof c === 'string' && c.indexOf('|||') < 0 && c.indexOf('data:') !== 0 && !(window.mochiMediaIsToken && window.mochiMediaIsToken(c))) set[c] = 1; // FIX 2026-09-13 #394 令牌卡不入统计卡集
+          // FIX 2026-09-13 #394 令牌卡不入统计卡集；FIX 2026-09-17 #648 补嵌套令牌（indexOf 口径，
+          // 全串锚定测不出混排）与 #533 裸图链——否则榜上直出令牌串/整段 URL
+          if (typeof c === 'string' && c.indexOf('|||') < 0 && c.indexOf('data:') !== 0 && c.indexOf('@@m:') < 0 && !/^https?:\/\//i.test(c) && !(window.mochiMediaIsToken && window.mochiMediaIsToken(c))) set[c] = 1;
         }));
       });
     } catch (e) {}
@@ -231,6 +268,7 @@
       if (!m || typeof m.text !== 'string' || !m.side) return;
       if (m.special || m.retracted) return;
       if (m.text.indexOf('data:') === 0 || m.text.indexOf('http') === 0) return;
+      if (m.text.indexOf('@@m:') >= 0) return; // FIX 2026-09-17 #648 混排令牌的消息也不入「常用文字字卡」榜（榜面文本会直出令牌串）
       if (window.mochiMediaIsToken && window.mochiMediaIsToken(m.text)) return; // FIX 2026-09-13 #394 存量乱码消息不入「常用文字字卡」榜
       const core = m.text.replace(EXPR_CORE_RE, '');
       if (!core) return;
@@ -342,13 +380,13 @@
             return rpSec(myName + ' 发红包', msgs.filter(m => m && m.special === 'redpacket' && m.side === 'out'), '我还没有发过红包（红包也是心意币，去发一个试试）') +
               rpSec(escH(name) + ' 发红包', msgs.filter(m => m && m.special === 'redpacket' && m.side === 'in'), '还没有 ' + escH(name) + ' 发的红包');
           })() +
-          // v3.15.x：联系人申请心意币记录（askcoin 卡片）
-          coinRecordSection('🪙', name + '申请心意币记录', '笔',
+          // v3.15.x：联系人申请心意币记录（askcoin 卡片）；#993 与下方小游戏记录共用折叠渲染件
+          statsFoldSection('🪙', name + '申请心意币记录', '笔',
             msgs.filter(m => m && m.special === 'askcoin').map(m => ({
               main: '+¥' + (Number(m.askFen || 0) / 100).toFixed(2),
               sub: fmtMDHM(m.askTs || m.ts)
             })),
-            escH(name) + ' 还没有向 Mochi 申请过') +
+            escH(name) + ' 还没有向 Mochi 申请过', 'askcoin') +
           // v3.16.x：小游戏记录（更多功能→小游戏 7 款对局 + 联系人主动邀请玩游戏，全部汇总）
           (function () {
             const GAME_SPECIAL = { brick: '双人打砖块', pong: '乒乓', snake: '贪吃蛇', memory: '记忆翻牌', rps: '猜拳', c4: '四子棋', ms: '合作扫雷' };
@@ -372,23 +410,11 @@
               if (m.gInv) return;
               push(m, m.text, '🎮');
             });
-            // 去重 + 时间倒序
+            // 去重 + 时间正序（statsFoldSection 从尾渲染＝最新在上），与申请心意币记录同一渲染件
             const seen = new Set();
             const uniq = rows.filter(r => { const k = r.main + '|' + r.sub; if (seen.has(k)) return false; seen.add(k); return true; });
-            uniq.sort((a, b) => (b.ts || 0) - (a.ts || 0));
-            let html = '<div class="stats-sec"><div class="stats-sec-head"><span class="stats-sec-title">🎮 小游戏记录</span>' +
-              '<span class="stats-sec-count">' + uniq.length + ' 条</span></div>';
-            if (!uniq.length) {
-              html += '<div class="ta-empty">还没有小游戏记录（更多功能 → 小游戏，和 TA 玩一局试试）</div>';
-            } else {
-              html += '<div class="stats-list">';
-              uniq.forEach(r => {
-                html += '<div class="stats-item"><span class="stats-item-name">' + r.main + '</span>' +
-                  '<span class="stats-item-num dt">' + r.sub + '</span></div>';
-              });
-              html += '</div>';
-            }
-            return html + '</div>';
+            uniq.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+            return statsFoldSection('🎮', '小游戏记录', '条', uniq, '还没有小游戏记录（更多功能 → 小游戏，和 TA 玩一局试试）', 'games');
           })();
         }
     }
@@ -485,7 +511,15 @@ function ckList(k, def) {
   } catch (e) {}
   return def.slice();
 }
-  function ckSaveList(k, list) { store.set('checkin-cards-' + k, JSON.stringify(list)); }
+  // #1520：寻踪三类字卡库的整包写（批量添加/删除/编辑/移组/删分组都经这里）＝读-改-写。#1513 只给
+  //   读侧（生成）接了闸，写侧这三条一直在裸写——大键盲窗里 ckItems() 读到空数组，整本自建卡被这
+  //   一发顶掉（批量添加＝只写进新的一条；删除按钮＝splice(NaN) 后写回空表）。判据与 ta-ask 同款：
+  //   数据层那把唯一的尺 xyBigWriteBlocked，拦下照实 toast、绝不落笔，等库回填后再点一次即可。
+  function ckSaveList(k, list) {
+    if (window.xyBigWriteBlocked && window.xyBigWriteBlocked(store, 'checkin-cards-' + k, '寻踪字卡库')) return false;
+    store.set('checkin-cards-' + k, JSON.stringify(list));
+    return true;
+  }
   // v3.6.x：纯自定义库读取（不 fallback 到默认）——批量添加/我的添加列表用这个，
   //   避免原 ckList() 在无自定义时返回默认库导致系统预设被"转正"存进自定义库
   function ckCustomList(k) {
@@ -504,7 +538,11 @@ function ckList(k, def) {
     return [];
   }
   // v3.7.x：寻踪字卡保存（统一对象数组）
-  function ckSaveItems(k, items) { store.set('checkin-cards-' + k, JSON.stringify(items)); }
+  function ckSaveItems(k, items) {
+    if (window.xyBigWriteBlocked && window.xyBigWriteBlocked(store, 'checkin-cards-' + k, '寻踪字卡库')) return false;
+    store.set('checkin-cards-' + k, JSON.stringify(items));
+    return true;
+  }
   // v3.7.x：寻踪自定义分组（按 地点/在做什么/说的话 分类各自独立）——只用于管理页整理，抽取不分组
   function ckGroups(k) {
     try {
@@ -513,10 +551,59 @@ function ckList(k, def) {
     } catch (e) {}
     return [];
   }
-  function ckSaveGroups(k, groups) { store.set('checkin-cards-groups-' + k, JSON.stringify(groups)); }
+  function ckSaveGroups(k, groups) {
+    if (window.xyBigWriteBlocked && window.xyBigWriteBlocked(store, 'checkin-cards-groups-' + k, '寻踪字卡分组')) return false;
+    store.set('checkin-cards-groups-' + k, JSON.stringify(groups));
+    return true;
+  }
 // v3.6.x：寻踪系统预设字卡单卡开关——逐张开启/关闭（关闭后寻踪不再抽取该条）
-function isCkCardOff(k, x) { return store.get('ck-off-' + k + ':' + x) === '1'; }
+// #1315：整类停用叠在同一出口上（共用件 window.presetGroup，键 pg-groups-off；本页三类 place/action/msg
+//   就是三个「分组」）——genCheckin 与页面列表都走这个判据，无需逐处加分支；逐张开关存值一字不动。
+// #1519：这两个开关（逐张 ck-off-*／整组停用 cck）都只在**系统预设**列表里写，判据却原样作用在
+//   抽取时的整个池上——于是「整组停用『地点』」把用户自己添加的地点/做的事/说的话一起关光
+//   （作者实报「关闭系统预设字卡的某个分组会把自建字卡也关掉」，多机型同现＝纯行为口径）；
+//   逐张那条按文案存键，连同文的自建卡也被顺手关掉。口径收口＝**预设开关只管预设卡**：判据先问
+//   「这张是不是预设卡」（DEF 文本命中），自建卡只由它自己的分组与删除管，与预设开关互不相干。
+const CK_DEF_LIST = { place: DEF_PLACES, action: DEF_ACTIONS, msg: DEF_CHECK_MSGS };
+function isCkCardOff(k, x) {
+  if (!CK_DEF_LIST[k]) return false; // #1520：k 不属于三类（防御：旧写法会静默拼出 ck-off-undefined 键）
+  if (CK_DEF_LIST[k].indexOf(x) < 0) return false; // #1519a：不是预设卡 ⇒ 预设开关一律不认
+  return store.get('ck-off-' + k + ':' + x) === '1' || !!(window.presetGroup && window.presetGroup.isOff('cck', k));
+}
 function setCkCardOff(k, x, off) { store.set('ck-off-' + k + ':' + x, off ? '1' : '0'); }
+// v3.27.x #823：寻踪总开关（per-cid 键 checkin-en，从未写过＝默认开启）。关闭＝日常侧全静：
+// 不自动生成日常、不往聊天推任何寻踪消息、不落新记录，聊天「更多功能」寻踪／点 TA 头像的寻踪
+// 半框两个入口一并收起；已有日常与寻踪记录原样保留，重新开启即恢复。
+// 与「寻踪日常发送到聊天」概率（dcf-checkin）是两层东西：概率调 0% 只停聊天推送，
+// 寻踪页与记录照旧生成；本开关是连生成带记录一起停用。
+// #1403 口径改版（用户直派）：桌面【寻踪】图标**不再**随总开关收起、寻踪页**照常可进**——
+// 位置面板（「TA在身边 · 位置感知」）的唯一入口就住在这页里（#875），把图标一起收掉＝连带关掉
+// 一个独立功能。关闭态改成进页可见「已禁用：联系人无法再触发更新日常」，停的是生成/推送/记录，
+// 不是入口本身。
+const CK_EN_KEY = 'checkin-en';
+function ckEn() {
+  try {
+    const v = store.get(CK_EN_KEY);
+    return v === null ? true : v === '1';
+  } catch (e) { return true; }
+}
+window.checkinEnabled = ckEn;
+// personalize.js 的 applyHiddenIcons 会把「不在隐藏名单里的图标」display 复位成 ''，
+// 它按这个口径判定寻踪图标是否该收起（否则用户从装修里恢复图标/切桌面就把入口放回来了）。
+// #1403：总开关不再收起桌面图标——寻踪页里住着「TA在身边 · 位置感知」（#875：位置面板唯一入口
+// 就在这页与聊天半框），收图标等于连带关掉一个独立功能。口径保留、恒判「不收」，
+// applyHiddenIcons 那条并集于是只剩装修里手动隐藏的名单生效。
+window.checkinDeskOff = function () { return false; };
+// #855：「使用系统预设」开启＝系统预设＋我的添加合并抽取（预设在前、按原文去重，同名自定义
+// 不重复计概率）。原写法预设只在自定义库为空时兜底，用户加过一张自定义字卡后整库地点/动作/
+// 话术预设全部退场＝各设备必现、与机型无关。单卡开关（ck-off-*）按原文记键，合并后照常生效。
+function ckMergeDef(custom, def) {
+  const seen = {};
+  return def.map(function (t) { return { t: t }; }).concat(custom).filter(function (x) {
+    if (x && x.t != null && !seen[x.t]) { seen[x.t] = 1; return true; }
+    return false;
+  });
+}
 function genCheckin() {
   const useDefault = getCkDefault();
   // v3.7.x：字卡可为 {t, grp} 对象——统一用 ckItems 取 .t
@@ -529,6 +616,12 @@ function genCheckin() {
   if (!places.length) places = DEF_PLACES.map(t => ({ t }));
   if (!actions.length) actions = DEF_ACTIONS.map(t => ({ t }));
   if (!msgs.length) msgs = DEF_CHECK_MSGS.map(t => ({ t }));
+  // #855：开关开启时合并系统预设（自定义空时上面已补预设，合并去重后不重复；关闭开关不走此支＝口径不变）
+  if (useDefault) {
+    places = ckMergeDef(places, DEF_PLACES);
+    actions = ckMergeDef(actions, DEF_ACTIONS);
+    msgs = ckMergeDef(msgs, DEF_CHECK_MSGS);
+  }
   const out = {};
   // 关闭「使用系统预设」时：只从用户添加的字卡里抽；某分类没有用户自定义则跳过该字段
   // v3.6.x：单卡开关过滤——用户关闭的字卡（ck-off-*）不参与抽取
@@ -536,13 +629,25 @@ function genCheckin() {
   let action = useDefault ? actions.filter(a => !isCkCardOff('action', a.t)) : actions.filter(a => DEF_ACTIONS.indexOf(a.t) < 0 && !isCkCardOff('action', a.t));
   let msg = useDefault ? msgs.filter(m => !isCkCardOff('msg', m.t)) : msgs.filter(m => DEF_CHECK_MSGS.indexOf(m.t) < 0 && !isCkCardOff('msg', m.t));
   // 兜底：关闭预设且完全没有用户自定义时回退使用系统预设（避免寻踪空白/undefined）
+  // #1315：这条兜底治的是「没有数据」，不是「用户关掉了」——旧写法直接塞回未过滤的整表，
+  //   于是把三类逐张关光或整类停用后照样生成日常＝页面上的开关是装饰。重新过一次同一判据。
   if (!place.length && !action.length && !msg.length) {
-    place = places; action = actions; msg = msgs;
+    place = places.filter(p => !isCkCardOff('place', p.t));
+    action = actions.filter(a => !isCkCardOff('action', a.t));
+    msg = msgs.filter(m => !isCkCardOff('msg', m.t));
   }
   if (place.length) out.place = place[Math.floor(Math.random() * place.length)].t;
   if (action.length) out.action = action[Math.floor(Math.random() * action.length)].t;
   if (msg.length) out.msg = msg[Math.floor(Math.random() * msg.length)].t;
   return out;
+}
+// #1403：寻踪记录的折叠口径＝「当天直显、更早按月折叠」，实现交回站内唯一那把尺子 window.mochiHistFold
+// （定义在 idb.js，接 #1053 帮我决定记录那套 .dc-h-* 皮）。旧写法是整条历史平铺进一张卡（日常每
+// 1~8 小时生成一条＝一天最多十几条，几周后这一卡比整页还长＝作者报的「记录很长」）。
+// 这里只负责把一条记录画成什么样，不裁条目、不分页——作者明确要求「不要封顶，我都要保存历史记录」。
+function ckHistRow(x, i) {
+  const parts = [x.t, x.place, x.action].filter(Boolean);
+  return '<div class="ck-location"><div class="ck-value" style="font-size:13px">' + window.mochiHistDel('i' + i, parts.join(' · ')) + parts.join(' · ') + '</div><div class="ck-label">' + (x.msg || '') + '</div></div>';
 }
 function renderCheckinHistory() {
   const histEl = document.getElementById('ck-history');
@@ -550,16 +655,33 @@ function renderCheckinHistory() {
     try {
       let h = [];
       try { h = JSON.parse(store.get('checkin-history') || '[]'); } catch (e) { h = []; }
-      // 过滤无有效内容的记录（不渲染 "-- · -- · --" 占位），只显示实际存在的字段
-      const valid = (Array.isArray(h) ? h : []).filter(x => x && (x.place || x.action));
-      histEl.innerHTML = valid.length
-        ? valid.slice().reverse().map(x => {
-            const parts = [x.t, x.place, x.action].filter(Boolean);
-            return '<div class="ck-location"><div class="ck-value" style="font-size:13px">' + parts.join(' · ') + '</div><div class="ck-label">' + (x.msg || '') + '</div></div>';
-          }).join('')
-        : '<div class="div-result-empty">暂无寻踪记录</div>';
+      // 过滤无有效内容的记录（不渲染 "-- · -- · --" 占位），只显示实际存在的字段；
+      // 下标按**原始数组**取（key＝'i'+n），删完立刻重画，键在两次渲染之间不需要稳定
+      const valid = (Array.isArray(h) ? h : []).map((x, i) => ({ x, i })).filter(o => o.x && (o.x.place || o.x.action));
+      histEl.innerHTML = window.mochiHistFold(valid.map(o => ({ ts: Number(o.x.ts) || 0, html: ckHistRow(o.x, o.i) })), {
+        key: 'checkin-hist',
+        empty: '<div class="div-result-empty">暂无寻踪记录</div>',
+        todayEmpty: '<div class="dc-h-day-empty">今天暂无寻踪记录</div>'
+      });
     } catch (e) {}
   }
+  // #1403：作者「用户又不一定要保存那么多记录」——折叠之外还要能按条删。只删选中那一条，
+  // 不做整表清空、也不靠封顶裁条；写回与新增同一条路（store.set ＋ idbSet 双写当前桌面键）
+  function delCheckinHistory(key) { if (window.xyBigWriteBlocked && window.xyBigWriteBlocked(store, 'checkin-history', '寻踪记录')) return; // #1493 删除也是读改写：读不全先按住
+
+    let h = [];
+    try { h = JSON.parse(store.get('checkin-history') || '[]'); } catch (e) { return; }
+    const i = parseInt(String(key).replace(/^i/, ''), 10);
+    if (!(i >= 0) || !(i < h.length)) return;
+    h.splice(i, 1);
+    try {
+      store.set('checkin-history', JSON.stringify(h));
+      if (window.idbSet) window.idbSet(window.activePrefix() + ':checkin-history', JSON.stringify(h));
+    } catch (e) {}
+    renderCheckinHistory();
+    if (typeof window.toast === 'function') window.toast('已删除这条寻踪记录');
+  }
+  window.mochiHistDelBind(document.getElementById('ck-history'), { onDel: delCheckinHistory, title: '删除这条寻踪记录？' });
   // 初始化：从 IndexedDB 恢复全部寻踪记录
   (function () {
     if (window.idbGet) {
@@ -578,6 +700,101 @@ function renderCheckinHistory() {
   })();
   const checkinApp = document.querySelector('.app[data-app="checkin"]');
   const checkinPage = document.getElementById('page-checkin');
+  // ---- #823 总开关：入口显隐收口 + 两处开关 UI（设置→工具 / 字卡库→寻踪日常字卡页）----
+  // 桌面图标此前也走这条轴（总开关关闭即与装修手动隐藏同轴收起）；#1403 起图标不再跟随收起，
+  // 本函数只复位装修名单的结果，personalize.js 的 applyHiddenIcons 仍按 window.checkinDeskOff()
+  // 那条口径合并（现恒判不收＝名单外图标照常显示）。
+  function applyCkDeskIcon() {
+    try {
+      if (!checkinApp) return;
+      // 装修里「隐藏图标」名单（hidden-icons 存的是 dataset.app 值 'checkin'）——#1403 起这是
+      // 桌面图标唯一的收起理由，总开关不再参与（原因见 window.checkinDeskOff 那段）
+      let man = false;
+      try { man = (JSON.parse(store.get('hidden-icons') || '[]')).indexOf('checkin') >= 0; } catch (e) {}
+      checkinApp.style.display = man ? 'none' : '';
+    } catch (e) {}
+  }
+  // #1403：关闭态在寻踪页顶挂一条说明，让「下面的日常为什么不再变」在页面里就地交代
+  //（旧写法是整页打不开＋一句 toast，而页里住着位置感知——toast 一闪即过，用户只看到进不去）。
+  function ckDisabledBanner() {
+    const card = document.getElementById('ck-card');
+    if (!card) return;
+    let el = document.getElementById('ck-off-tip');
+    if (!ckEn()) {
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'ck-off-tip';
+        el.setAttribute('style', 'margin:0 0 10px;padding:8px 10px;border-radius:10px;font-size:12.5px;line-height:1.55;border:1px solid rgba(128,128,128,.34);opacity:.82');
+        card.insertBefore(el, card.firstChild);
+      }
+      el.textContent = '已禁用：联系人无法再触发更新日常。下面是关闭前的最后一次日常；「TA在身边 · 位置感知」不受影响，照常可用。重新开启：设置 → 工具 → 寻踪（TA 的日常）。';
+    } else if (el) el.remove();
+  }
+  function syncCkSwitchUI() {
+    const on = ckEn();
+    const a = document.getElementById('sf-checkin-en');
+    if (a && a.checked !== on) a.checked = on;
+    const b = document.getElementById('ck-fe-en');
+    if (b && b.checked !== on) b.checked = on;
+    const sub = document.getElementById('sf-checkin-sub');
+    if (sub) sub.textContent = on ? 'TA 的日常随机刷新，桌面/聊天里都能寻踪' : '已禁用：联系人无法再触发更新日常（桌面【寻踪】仍可进入，页内「TA在身边 · 位置感知」照常用）';
+    ckDisabledBanner();
+  }
+  function ckToast(on) {
+    if (typeof window.toast !== 'function') return;
+    window.toast(on ? '寻踪已开启：日常继续更新、聊天入口恢复' : '已禁用：联系人无法再触发更新日常（桌面【寻踪】仍可进入，「TA在身边 · 位置感知」照常用）');
+  }
+  window.setCheckinEnabled = function (on) {
+    try { store.set(CK_EN_KEY, on ? '1' : '0'); } catch (e) {}
+    syncCkSwitchUI();
+    applyCkDeskIcon();
+  };
+  function bindCkSwitch(input) {
+    input.checked = ckEn();
+    input.addEventListener('change', function () {
+      window.setCheckinEnabled(input.checked);
+      ckToast(input.checked);
+    });
+  }
+  // 设置 → 工具：开关行插在「占卜」入口行之前（样式复用 .set-row/.toggle，不改动 template.html；
+  // 行名的「功能说明」胶囊与设置页搜索素材由 settings-help.js 按 #sf-checkin-row 登记注入）
+  (function () {
+    if (document.getElementById('sf-checkin-row')) return;
+    const anchor = document.getElementById('row-open-divination');
+    if (!anchor || !anchor.parentNode) return;
+    const row = document.createElement('div');
+    row.className = 'set-row';
+    row.id = 'sf-checkin-row';
+    row.innerHTML =
+      '<div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/><path d="M11 8v3.4l2.4 1.4"/></svg></div>' +
+      '<div class="txt">寻踪（TA 的日常）<span class="sub" id="sf-checkin-sub"></span></div>' +
+      '<label class="toggle"><input type="checkbox" id="sf-checkin-en"><span class="tk"></span></label>';
+    anchor.parentNode.insertBefore(row, anchor);
+    bindCkSwitch(row.querySelector('#sf-checkin-en'));
+  })();
+  // 字卡库 → 寻踪日常字卡页：概率框上方同一开关（同一个键 checkin-en，两处实时同步）——
+  // 用户改寻踪内容时就想顺手关掉它，不必绕去设置页
+  (function () {
+    if (document.getElementById('ck-fe-en')) return;
+    const box = document.getElementById('ck-prob-box');
+    if (!box || !box.parentNode) return;
+    const grp = document.createElement('div');
+    grp.className = 'set-group glass';
+    grp.setAttribute('style', 'margin:10px 12px 0');
+    grp.innerHTML =
+      '<div class="gs-row"><span>启用寻踪（TA 的日常）</span><label class="toggle"><input type="checkbox" id="ck-fe-en"><span class="tk"></span></label></div>' +
+      '<div class="gs-sub">关闭后日常不再自动更新、不再推送到聊天、不再写新记录，聊天「更多功能」里的寻踪与点 TA 头像的寻踪半框一并收起。桌面【寻踪】图标仍在（点进去看得到「已禁用」说明，页里的「TA在身边 · 位置感知」是独立功能、照常可用）。下面那个「发送到聊天」概率与已有寻踪记录都不受影响，重新开启即恢复。设置 → 工具 里有同一个开关。</div>';
+    box.parentNode.insertBefore(grp, box);
+    bindCkSwitch(document.getElementById('ck-fe-en'));
+  })();
+  applyCkDeskIcon();
+  syncCkSwitchUI();
+  document.addEventListener('contact-switched', function () { applyCkDeskIcon(); syncCkSwitchUI(); });
+  // checkin-en 是小键、正常同步写 localStorage；但存储被系统清理后该键可能只在 IndexedDB，
+  // 回填完成前读到空＝按默认开启算，故回填后再重算一次（与 applyGroupChatMode 同口径）
+  if (window.__mochiDataReady) { applyCkDeskIcon(); syncCkSwitchUI(); }
+  else document.addEventListener('mochi-restore-done', function () { applyCkDeskIcon(); syncCkSwitchUI(); });
+  document.addEventListener('decor-exited', applyCkDeskIcon);
   // ---- 星言顶部栏字卡/随机换头像同款刷新机制 ----
   // 上次/下次更新时间戳持久化：首次启动立即生成一条，之后每 1-8 小时更新一次；
   // 每 60 秒轮询检查，刷新页面周期不重置
@@ -595,7 +812,8 @@ function renderCheckinHistory() {
     if (msg) msg.textContent = ck.msg || '';
     if (status) status.textContent = name + ' 的日常';
   }
-  function recordCheckin(ck) {
+  function recordCheckin(ck) { if (window.xyBigWriteHold && window.xyBigWriteHold(store, 'checkin-history')) return; // #1493 读不全先让路（#1403 已给这页折叠＋单删，这里补大键化后的顶库闸）
+
     // v3.6.x：undefined 字段不写入记录（JSON.stringify 自动丢弃 undefined 键）
     const entry = { t: fmtTime(Date.now()), place: ck.place, action: ck.action, msg: ck.msg, ts: Date.now() };
     try {
@@ -607,7 +825,54 @@ function renderCheckinHistory() {
     renderCheckinHistory();
   }
   // 生成新日常：渲染 + 推聊天消息（更新提示 + 概率提醒）+ 记录 + 重置计时
+  // #1513：三类自定义库（checkin-cards-place/action/msg）被批量添加/整包导入撑过 200KB 后＝IDB-only
+  // 大键（xyStore.set 对 >LS_BIG_LIMIT 的值主动 removeItem LS 副本）。此后切一次后台（#1195e 按体积
+  // 放掉 memoryCache 大键副本）或冷启回填未轮到（#785）时，store.get 同步读空被 genCheckin 当「没有」：
+  // 「使用系统预设」开着＝整库退回系统预设（我的字卡全都不参与），关了＝该分类被 DEF 过滤器清空、
+  // 字段直接生成空——作者实报「关了预设后 TA在哪里/TA在做什么调不到我加的字卡，只剩想对你说」，
+  // 多设备型号同现＝数据形状问题，零机型分支（#1485 feed 池/#1488 market-custom 同族第三例）。
+  // 修＝生成前先问数据层那把唯一的尺 awaitingBigKey（#1342d；defaultStore 门面 #1358j 已透传）：
+  // 读不全就让路——这一发不生成、不推聊天、不落残缺记录、不重置节奏（#823a 唯一收口点的意义），
+  // 顺手请库取回（requestBigKey #1342r 单次飞行闸），回来再跑一次（whenBigKeyBack #1358d）；
+  // 等 4 秒还没回来就按此刻读得到的照旧生成（让路一时不让路一世，不把闸变成新的「不更新」#1342）。
+  let ckBigPending = 0, ckBigSeq = 0, ckBigBypass = false;
   function doCheckin() {
+    // #823 总开关关闭＝整条链一步都不做：不生成、不推聊天、不落记录、不重置计时
+    //（唯一收口点——手动刷新 / 半框 / 寻踪页 / 自动轮询全部经由本函数）
+    if (!ckEn()) return; // #823a 关闭即全静默：生成/推送/记录/重置计时一并停
+    // #1513a：三类自定义库任一「读空但库里本该有」＝大键没读全，先取回再抽
+    const blind = ['place', 'action', 'msg'].filter(function (k) {
+      try { return typeof store.awaitingBigKey === 'function' && store.awaitingBigKey('checkin-cards-' + k); } catch (e) { return false; }
+    });
+    if (blind.length && !ckBigBypass) {
+      if (ckBigPending) return; // 已在等库：60 秒轮询/连点刷新不叠加第二发
+      ckBigPending = blind.length;
+      const seq = ++ckBigSeq;
+      blind.forEach(function (k) { try { store.requestBigKey('checkin-cards-' + k); } catch (e2) {} });
+      blind.forEach(function (k) {
+        let done = false;
+        try {
+          store.whenBigKeyBack('checkin-cards-' + k, function () {
+            if (seq !== ckBigSeq || done) return;
+            done = true;
+            if (--ckBigPending > 0) return;
+            doCheckin(); // 取齐了＝用完整池子生成（含开关开启时的合并与关闭时的只抽自定义）
+          });
+        } catch (e3) { if (!done) { done = true; ckBigPending--; } }
+      });
+      setTimeout(function () {
+        if (seq !== ckBigSeq || !ckBigPending) return;
+        ckBigSeq++; // 作废在途回调＝保底路径后不会再触发第二次生成
+        ckBigPending = 0;
+        ckBigBypass = true; // #1520：这一发按可读到的生成，且**不再重新武装一轮闸**——原先保底后
+        //   doCheckin() 又进闸，慢设备（取回首窗 6s > 4s 保底）必然「残缺一发 + 取回后完整一发」
+        //   ＝聊天多一条「更新了一条日常」＋记录多一条（复审 A-1 实锤）。bypass 只放行这一次，
+        //   取回落地后由下一次轮询/刷新正常生成，不产生双发。
+        doCheckin(); // 4 秒保底：IDB 挂死也照旧按可读到的生成（宁可残缺不可静默停更）
+      }, 4000);
+      return;
+    }
+    ckBigBypass = false; // #1520：保底放行的这一发用掉即清，下一发觉回填落地后照常走闸
     const ck = genCheckin();
     store.set('checkin-current', JSON.stringify(ck));
     renderCheckinUI(ck);
@@ -648,6 +913,7 @@ function renderCheckinHistory() {
   }
   // 供聊天页「点联系人头像打开寻踪半框」使用
   window.openCkPanel = function () {
+    if (!ckEn()) return; // #823b 关闭后点顶部 TA 头像不再弹寻踪半框（toggleCkPanel 同源）
     // 关闭其他底部半框（拍一拍/表情包/头像互动）
     const pc = document.getElementById('poke-card');
     if (pc) pc.hidden = true;
@@ -734,7 +1000,7 @@ function renderCheckinHistory() {
       doCheckin();
     } catch (e) {}
   }
-  setInterval(checkAutoCheckin, 60000);
+  setInterval(function () { try { if (window.__mochiPhase) window.__mochiPhase('fish-tick'); } catch (e0) {} checkAutoCheckin(); }, 60000);
   function bootCheckin() {
     // v3.5.129：数据未就绪不启动——3s 兜底在慢设备（分批恢复 >3s）上会
     // 绕过门控提前生成日常，导致导入后首启多出一条"日常更新"且寻踪节奏被重置
@@ -748,13 +1014,17 @@ function renderCheckinHistory() {
   // 全屏打开寻踪页：渲染当前日常（或生成一条）+ 记录；供桌面/聊天「更多功能」共用
   window.openCheckinPage = function () {
     if (!checkinPage) return;
+    // #823c 旧口径＝关闭后整页打不开＋一句 toast。#1403 改掉：位置面板（「TA在身边 · 位置感知」）
+    // 唯一入口就在这页里，关掉页面＝连带关掉一个独立功能。停生成侧的闸门仍在 doCheckin（#823a），
+    // 页面照进，页顶写明「已禁用」（ckDisabledBanner）。
     document.querySelectorAll('.page').forEach(p => p.hidden = true);
     checkinPage.hidden = false;
-    // 显示当前日常；从未生成过则立即生成一条
+    // 显示当前日常；从未生成过则立即生成一条（关闭态不生成，免得空转被读成「点了没反应」）
     let cur = null;
     try { cur = JSON.parse(store.get('checkin-current') || 'null'); } catch (e) {}
     if (cur && cur.place) renderCheckinUI(cur);
-    else doCheckin();
+    else if (ckEn()) doCheckin();
+    ckDisabledBanner();
     renderCheckinHistory();
   };
   if (checkinApp && checkinPage) {
@@ -789,6 +1059,9 @@ if (ckRefresh) {
     const now = Date.now();
     if (now - ckLastRefresh < 5000) { toast('刷新太频繁，稍后再试'); return; }
     ckLastRefresh = now;
+    // #1403：关闭态下这颗按钮原本会空转（doCheckin 首行闸门直接 return＝点了什么反应都没有＝
+    // 站内最常见那一型「静默失败」）。页面现在可进，故就地给一句能执行的说明。
+    if (!ckEn()) { toast('寻踪已禁用：设置 → 工具 → 寻踪 重新开启后才能刷新日常'); return; }
     doCheckin();
   });
 }
@@ -849,6 +1122,16 @@ if (ckRefresh) {
       listEl.appendChild(tip);
       return;
     }
+    // #1315：整类停用条——本页三类（地点/做的事/说的话）各是一个「分组」，旧版只能一条条点掉
+    if (window.presetGroup) {
+      const barBox = document.createElement('div');
+      barBox.innerHTML = window.presetGroup.catBar('cck', ckTab, CK_LABEL[ckTab] || ckTab);
+      const bar = barBox.firstElementChild;
+      if (bar) {
+        listEl.appendChild(bar);
+        window.presetGroup.bindBar(bar, 'cck', ckTab, function () { renderCkSysList(); updateCkCount(); });
+      }
+    }
     def.forEach(x => {
       const off = isCkCardOff(ckTab, x);
       const row = document.createElement('div');
@@ -878,6 +1161,17 @@ if (ckRefresh) {
     let html = '';
     html += '<div class="mg-grp-row"><button class="cc-tool mg-grp-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>新建分组</button></div>';
     if (!custom.length && !groups.length) {
+      // #1513b：读空但库里本该有＝大键没读全（「没读到」不是「没有」，#1349 口径）——
+      // 不谎报「暂未添加」，请库取回、回来重画一次；小键或真没有＝原文案不变
+      let blindTab = false;
+      try { blindTab = typeof store.awaitingBigKey === 'function' && store.awaitingBigKey('checkin-cards-' + ckTab); } catch (e0) {}
+      if (blindTab) {
+        try { store.requestBigKey('checkin-cards-' + ckTab); } catch (e1) {}
+        try { store.whenBigKeyBack('checkin-cards-' + ckTab, function () { renderCheckinCards(); }); } catch (e2) {}
+        listEl.innerHTML = html + '<div class="ta-empty">字卡库正在取回（内容较多，几秒内自动出现）…</div>';
+        bindCkGroupOps();
+        return;
+      }
       listEl.innerHTML = html + '<div class="ta-empty">暂未添加自定义字卡，可在上方批量输入（每行一个）。</div>';
       bindCkGroupOps();
       return;
@@ -902,7 +1196,7 @@ if (ckRefresh) {
       b.addEventListener('click', () => {
         const l = ckItems(ckTab);
         l.splice(Number(b.dataset.idx), 1);
-        ckSaveItems(ckTab, l);
+        if (ckSaveItems(ckTab, l) === false) return; // #1520：没读全＝这一发没落笔，别报成功
         renderCkMineList();
         updateCkCount();
         toast('已删除');
@@ -921,7 +1215,7 @@ if (ckRefresh) {
           if (val === item.t) return;
           if (l.some((x, xi) => xi !== idx && x.t === val)) { toast('已有相同内容'); return; }
           l[idx].t = val;
-          ckSaveItems(ckTab, l);
+          if (ckSaveItems(ckTab, l) === false) return; // #1520：同上
           renderCkMineList();
           toast('已更新');
         });
@@ -939,7 +1233,7 @@ if (ckRefresh) {
         window.openModal('移动到分组', '', (v) => {
           if (v == null) return;
           l[idx].grp = v || '';
-          ckSaveItems(ckTab, l);
+          if (ckSaveItems(ckTab, l) === false) return; // #1520：同上
           renderCkMineList();
           const tgt = v ? (groups.find(g => g.id === v) || {}).name : '未分组';
           toast('已移动到「' + tgt + '」');
@@ -1160,7 +1454,7 @@ if (ckRefresh) {
         if (parsed.grp) x.grp = parsed.grp;
         list.push(x);
       });
-      ckSaveItems(ckTab, list);
+      if (ckSaveItems(ckTab, list) === false) return; // #1520：拦下＝输入框原样保留，等库回填后再点一次
       if (ta) ta.value = '';
       renderCkMineList();
       updateCkCount();
@@ -1444,7 +1738,8 @@ if (ckRefresh) {
   function saveCur(v) { store.set('loc-current', v ? JSON.stringify(v) : ''); }
 
   function loadHist() { try { return JSON.parse(store.get('loc-history') || '[]'); } catch (e) { return []; } }
-  function saveHist(list) {
+  function saveHist(list) { if (window.xyBigWriteHold && window.xyBigWriteHold(store, 'loc-history')) return; // #1493 读不全先让路：这一格大键化后冷读空＝拿空账追加＝顶掉整本位置历史
+
     const s = JSON.stringify(list);
     store.set('loc-history', s);
     try { if (window.idbSet) window.idbSet(window.activePrefix() + ':loc-history', s); } catch (e) {}
@@ -1513,7 +1808,7 @@ if (ckRefresh) {
       toast('彩蛋「在你心里」一周只能用一次');
       return;
     }
-    if (window.chatAddIn) window.chatAddIn(text);
+    if (window.chatAddIn) window.chatAddIn(text, { rateAllow: true });
     saveCur({ text: text, type: type, ts: ts });
     const hist = loadHist();
     hist.unshift({ text: text, type: type, ts: ts });
@@ -1550,7 +1845,7 @@ if (ckRefresh) {
   function sendComboCard(dirText, distText) {
     const ts = Date.now();
     const text = dirText + ' ' + distText;
-    if (window.chatAddIn) window.chatAddIn(text);
+    if (window.chatAddIn) window.chatAddIn(text, { rateAllow: true });
     saveCur({ text: text, type: 'combo', ts: ts });
     const hist = loadHist();
     hist.unshift({ text: text, type: 'combo', ts: ts });
@@ -1574,11 +1869,25 @@ if (ckRefresh) {
     } catch (e) {}
     return [];
   }
+  // FIX 2026-09-16 #620：问完 TA 落回聊天页——「你在哪？」与 TA 随后回的位置卡都在聊天里，
+  // 旧实现只发消息 + toast，全屏位置面板不退（桌面寻踪页进入时 #page-chat 还隐藏着），
+  // 用户看不到任何结果＝「点了没反应」。已在聊天页则只收面板 + 贴底，不重进页（避免整窗重渲）。
+  function backToChatAfterAsk() {
+    closeLocPanel();
+    if (window.closeCkPanel) window.closeCkPanel();
+    const chatPage = document.getElementById('page-chat');
+    if (!chatPage) return;
+    if (chatPage.hidden) { if (window.enterChat) window.enterChat(); return; }
+    const body = document.getElementById('chat-body');
+    if (body) body.scrollTop = body.scrollHeight;
+  }
   function askWhere() {
     if (asking) return;
     asking = true;
     if (window.chatSendMsg) window.chatSendMsg('你在哪？');
     toast(window.taFit ? window.taFit('已问 TA 一声，等 TA 回位置…') : '已问 TA 一声，等 TA 回位置…');
+    // FIX 2026-09-16 #620：发完立刻回聊天页（面板收起也在这里面做）
+    backToChatAfterAsk();
     setTimeout(() => {
       asking = false;
       // v3.13.x：词源 = 字卡库；方位/距离组空（被全关）时回退内置默认词兜底
@@ -1593,6 +1902,7 @@ if (ckRefresh) {
 
   // ---- 位置变化提醒气泡（TA 主动换位置时顶部轻提示） ----
   function showLocChangeBubble(text) {
+    if (store.get('loc-bubble') === '0') return; // 设置「换位提醒弹窗」关：TA 换位置不再弹黑色轻提示
     let bub = document.getElementById('loc-change-bubble');
     if (!bub) {
       bub = document.createElement('div');
@@ -1645,7 +1955,7 @@ if (ckRefresh) {
       html += '<div class="loc-timeline">' + dayHist.map(h => {
         const tag = LOC_LABEL[h.type] || '';
         const auto = h.auto ? '<span class="loc-tl-auto">TA</span>' : '';
-        return '<div class="loc-tl-item"><span class="loc-tl-time">' + fmtT(h.ts) + '</span><span class="loc-tl-text">' + esc(h.text) + '</span><span class="loc-tl-tag">' + esc(tag) + '</span>' + auto + '</div>';
+        return '<div class="loc-tl-item"><span class="loc-tl-time">' + fmtT(h.ts) + '</span><span class="loc-tl-text">' + esc(h.text) + '</span><span class="loc-tl-tag">' + esc(tag) + '</span>' + auto + window.mochiHistDel('k|' + (Number(h.ts) || 0) + '|' + esc(h.text), (LOC_LABEL[h.type] || '位置卡') + ' · ' + esc(h.text)) + '</div>'; // #1493 单条删除
       }).join('') + '</div>';
       html += '<div class="loc-day-count">共 ' + dayHist.length + ' 条</div>';
     } else {
@@ -1654,13 +1964,51 @@ if (ckRefresh) {
     html += '</div>';
     // #558 功能说明补全：光点落点规则原先只在代码注释里（用户问「再远一点会不会跑到屏幕右侧」）
     html += '<div class="loc-sec-sub" style="padding:10px 2px 0;line-height:1.7">光点落在哪儿，就是 TA 在哪儿：方位卡落在画面对应方向；距离卡、状态卡跟着最近一张方位卡的方位走——「再近一点」朝屏幕中心靠、「再远一点」朝屏幕边缘退开（上一张说的是「在你右边」时，光点贴屏幕右侧属正常）。</div>';
+    // 换位提醒设置组：TA 自动换位总开关 / 换位提醒弹窗 / 换位发到聊天（只管「TA 自动」这条路，手动发的位置卡不受限）
+    // ＋ #1436 续（作者 2026-09-29 复核直派「我是要我自己主动点击【感知一下】才变」＝按钮即开关）：方位感知的
+    //   【感知一下】点了就先让 TA 当场换一次位置、再按新位置报方位，不另设开关（多一枚默认关的开关＝作者说的「乱加设置」）。
+    html += '<div class="set-group glass" style="margin:14px 2px 0">'
+      + '<div class="gs-row"><span>TA 自动换位</span><label class="toggle"><input type="checkbox" id="loc-auto-tg"' + (store.get('loc-auto') === '0' ? '' : ' checked') + '><span class="tk"></span></label></div>'
+      + '<div class="gs-row"><span>换位提醒弹窗</span><label class="toggle"><input type="checkbox" id="loc-bubble-tg"' + (store.get('loc-bubble') === '0' ? '' : ' checked') + '><span class="tk"></span></label></div>'
+      + '<div class="gs-row"><span>换位发到聊天</span><label class="toggle"><input type="checkbox" id="loc-chat-tg"' + (store.get('loc-chat') === '0' ? '' : ' checked') + '><span class="tk"></span></label></div>'
+      + '</div>'
+      // #902：换位机制的触发间隔与概率写进设置说明（用户反馈「概率和触发时间要写清楚」）
+      + '<div class="gs-sub" style="padding:0 2px 10px">TA 自动换位：开启后每 2～6 小时随机换一次位置（关掉后到点也不换；「问 TA 一声」不受影响）。换位内容 70% 是陪伴卡（在你身边／一直没走远等），30% 从字卡库启用的位置卡里随机；每次换位都会记进「位置时间线」，换位内容与上一次不同时才算「换了位置」才弹提醒。<br>换位提醒弹窗：TA 自动换位置时顶部弹的黑色轻提示。<br>换位发到聊天：关掉后 TA 自动换位只记进「位置时间线」，不再发进聊天记录。<br>方位感知的【感知一下】：点了就先让 TA 当场换一次位置、再按新位置报方位，不用等那发 2～6 小时（不用打开任何开关，点了就是换）；它不受「TA 自动换位」总开关与夜间静默管（那两枚管的是 TA 自己到点来打扰），发进聊天与弹提醒仍照上面两枚开关。</div>';
     // 问 TA 一声
     html += '<button class="loc-ask-btn" id="loc-ask-btn">问 TA 一声「你在哪？」</button>';
 
     body.innerHTML = html;
+    // #1493：时间线单条删除（身份＝ts+原文，写回按值认；认不到就如实说没删，宁可不删不删错）
+    window.mochiHistDelBind(body, {
+      title: '删除这条位置记录？',
+      onDel: function (k) {
+        const p = String(k).split('|');
+        const ts = Number(p[1]) || 0, tx = p.slice(2).join('|');
+        const arr = loadHist();
+        const i = arr.findIndex(function (x) { return x && (Number(x.ts) || 0) === ts && String(x.text || '') === tx; });
+        if (i < 0) { if (typeof window.toast === 'function') window.toast('这条已经变了，没有删掉任何内容'); return; }
+        if (window.xyBigWriteBlocked && window.xyBigWriteBlocked(store, 'loc-history', '位置记录')) return;
+        arr.splice(i, 1);
+        saveHist(arr);
+        renderLocPanel();
+        if (typeof window.toast === 'function') window.toast('已删除这条位置记录');
+      }
+    });
 
     const askBtn = document.getElementById('loc-ask-btn');
     if (askBtn) askBtn.addEventListener('click', askWhere);
+
+    // 换位提醒三开关（写入 per-cid 键，doLocAuto / emitLocChange / showLocChangeBubble 消费；重开「TA 自动换位」立刻重排下一次）
+    const bindLocTg = function (id, key) {
+      const tg = document.getElementById(id);
+      if (tg) tg.addEventListener('change', function () {
+        store.set(key, tg.checked ? '1' : '0');
+        if (key === 'loc-auto' && tg.checked) scheduleLocAuto();
+      });
+    };
+    bindLocTg('loc-auto-tg', 'loc-auto');
+    bindLocTg('loc-bubble-tg', 'loc-bubble');
+    bindLocTg('loc-chat-tg', 'loc-chat');
 
     // 日期切换
     const prevBtn = document.getElementById('loc-day-prev');
@@ -1717,30 +2065,67 @@ if (ckRefresh) {
     return 'custom';
   }
   function doLocAuto() {
+    // #1015 夜间静默：TA 自动换位（含「隔着世界在你身边」等换位消息）夜间不触发；
+    // scheduleLocAuto 循环独立，跳过本次后照常排下一轮，位置时间线零写入。
+    if (window.nightModeActive && window.nightModeActive()) return;
     if (document.hidden || Date.now() < locWakeAt || !window.__mochiDataReady) return;
-    const companion = ['在你身边', '一直没走远', '隔着世界在你身边', '隐约在你身旁', '在你看不到的地方'];
+    if (store.get('loc-auto') === '0') return; // 设置「TA 自动换位」关：到点也不发（拦设置后仍残留的当次定时器）
+    emitLocChange(null);
+  }
+  // #1436：把「换一次位」那一发从定时器里抽出来，供方位感知的【感知一下】复用同一张卡。
+  // 上面三道闸门只管「TA 自己到点来打扰」（夜间静默／页面不可见／自动换位总开关），
+  // 用户主动感知不该被它们拦——与「问 TA 一声」同口径；而「换位发到聊天」「换位提醒弹窗」
+  // 两枚开关与字卡库那道闸照常生效（它们管的是这一发长什么样，不是什么时候发）。
+  // avoidText＝上一张是什么就重抽（最多三发）：同一句再抽一遍＝用户点了半天「此刻的位置」与方位一动不动。
+  function emitLocChange(avoidText) {
+    const companion = ['在你身边', '一直没走远', '隔着世界在你身边', '隐约在你身旁', '在你看不到的地方']
+      // #1315：这五行是「状态/感知」两类位置卡的字面量副本，旧写法从不过闸＝在字卡库里整组停用
+      //   或逐张关掉后，TA 自动换位照发这些话（用户报的「关不掉」）。按所属分类反查一次同一判据。
+      .filter(function (t) { return !(window.locLibTextOff && window.locLibTextOff(t)); });
     let text;
-    if (Math.random() < 0.7) {
-      text = companion[Math.floor(Math.random() * companion.length)];
-    } else {
-      // v3.13.x：词源 = 字卡库全部启用（系统预设 dir/dist/state/sense + 我的添加）
-      const all = (window.locLibAllEnabled ? window.locLibAllEnabled() : []).slice();
-      if (!all.length) all.push('在你身边');
-      text = all[Math.floor(Math.random() * all.length)];
+    for (let retry = 0, tries = avoidText ? 3 : 1; retry < tries; retry++) {
+      if (companion.length && Math.random() < 0.7) {
+        text = companion[Math.floor(Math.random() * companion.length)];
+      } else {
+        // v3.13.x：词源 = 字卡库全部启用（系统预设 dir/dist/state/sense + 我的添加）
+        const all = (window.locLibAllEnabled ? window.locLibAllEnabled() : []).slice();
+        // #1315：旧写法在词源被关空时硬塞「在你身边」——那是用户刚关掉的一句，等于开关归零；
+        //   现在按「全部关光＝这一发不发」处理（自建卡还在时照常抽）。
+        if (!all.length) return false;
+        text = all[Math.floor(Math.random() * all.length)];
+      }
+      if (!avoidText || text !== avoidText) break;
     }
-    if (!text) return;
+    if (!text) return false;
     const type = locTypeOf(text);
     const ts = Date.now();
     const oldCur = loadCur();
-    if (window.chatAddIn) window.chatAddIn(text);
+    // 设置「换位发到聊天」关：只记时间线＋弹提醒，不发进聊天。
+    // #1436：这一发带限流豁免位——作者口径＝「我开了【换位发到聊天】，它就该落」。此前它和 TA 的
+    //   普通消息一起被「TA 消息限流」计数，额度满时 rateBlocksIn 静默 return null＝顶部气泡照弹
+    //   「TA 换了位置」、时间线照记，唯独聊天一条不加（实测：rl-en=1/rl-max=1 时 chatTotal 4→4）。
+    if (store.get('loc-chat') !== '0' && window.chatAddIn) window.chatAddIn(text, { rateAllow: true });
     saveCur({ text: text, type: type, ts: ts, auto: true });
     const hist = loadHist();
     hist.unshift({ text: text, type: type, ts: ts, auto: true });
     saveHist(hist);
     playLocFx(text, type);
+    // #1436：换位落地必须重画面板。上面两条手动路（发位置卡／组合卡）一直是「saveHist →
+    //   renderLocPanel → refreshSense」，唯独自动这一条只写库不重画＝面板开着时用户只看得到顶部
+    //   那枚轻提示，「此刻的位置」与「位置时间线」停在上一张——实测 histLen 2→3 而屏上行数恒 1，
+    //   叫一次重画行数立刻=3、「共 3 条」。作者报的「也没记录在位置时间线里」就是这一发。
+    locViewDate = dayStr(new Date());
+    renderLocPanel(); // #1436 换位落地必重画（旧写法＝只写库不重画，面板开着时「位置时间线」停在上一张＝用户看到「没记录」）
+    if (window.refreshSense) window.refreshSense();
 
     if (oldCur && oldCur.text !== text) showLocChangeBubble(text);
+    return true;
   }
+  // #1436：方位感知【感知一下】那一路的入口（避开上一张，其余与定时器那条完全同一条路）
+  window.locShiftNow = function () {
+    const c = loadCur();
+    return emitLocChange(c && c.text ? c.text : null);
+  };
   function scheduleLocAuto() {
     clearTimeout(locAutoTimer);
     if (store.get('loc-auto') === '0') { locAutoTimer = setTimeout(scheduleLocAuto, 60000); return; }
@@ -1868,7 +2253,9 @@ if (ckRefresh) {
         s.nextDirAt = now + (15 + Math.floor(Math.random() * 31)) * 60000; // 15~45 分钟
         dirty = true;
       }
-    } else if (!s.dir || (s.nextDirAt && now >= s.nextDirAt)) {
+    } else if (!s.dir || (s.nextDirAt && now >= s.nextDirAt) || force) {
+      // #1436 续：`force`（＝点了【感知一下】）不等 15～45 分钟那一发漂移闸到点就重掷方向——
+      //   作者口径「我自己主动点击【感知一下】才变」：这个随机只跟用户主动感知走，面板刷新/被动提示不吃。
       s.dir = rollDir();
       s.nextDirAt = now + (15 + Math.floor(Math.random() * 31)) * 60000; // 15~45 分钟
       dirty = true;
@@ -1954,6 +2341,11 @@ if (ckRefresh) {
     if (now < perceiveCdUntil) return;
     perceiveCdUntil = now + 4000;
     if (btn) { btn.classList.add('busy'); btn.disabled = true; }
+    // #1436 续（作者复核直派「我自己主动点击【感知一下】才变」＝按钮即开关，不设前置）：这一发先催 TA
+    // 当场换一张位置卡（走寻踪那条 emitLocChange，只绕开「每 2～6 小时才轮到一次」这道时间闸，
+    // 字卡库的停用闸／两枚换位开关照常生效），随后 getSense 读的就是这张新卡——「此刻的位置」
+    // 与方位感知同一条，不会一处新的一处老的。
+    if (window.locShiftNow) window.locShiftNow();
     const s = getSense(true);
     const touched = maybeTouch(s);
     const result = document.getElementById('fw-result');
@@ -2132,8 +2524,13 @@ if (ckRefresh) {
   function libPool(cat, group, fallback) {
     let arr = (window.getLibPool ? window.getLibPool(cat, group, fallback) : (fallback || [])).slice();
     if (window.isDefaultCardOff) arr = arr.filter(c => !window.isDefaultCardOff(cat, c));
-    return arr.length ? arr.slice() : (fallback || []).slice();
+    // FIX 2026-09-30 #1515：「过闸后为空 ⇒ 回落内置兜底」把用户刚关掉的句子原样捡回来
+    //   （兜底 DEF_* 与库内分组同源同文＝逐张关光/整组停用等于没关，#1498 在 room/garden/music
+    //   修掉的同一族；用户复报「设置了禁止使用的字卡，联系人还是能使用」多机型同现）。
+    //   兜底统一走 gateCardFallback 同一道闸：全关＝真停用（空池），消费方各自「不出声」。
+    return arr.length ? arr.slice() : (window.gateCardFallback ? window.gateCardFallback(cat, fallback) : (fallback || []).slice());
   }
+  window.__p2LibPoolProbe = libPool; // #1515 只读探针（行为尺用，不参与业务）
   // v3.32.x #132：功能字卡触发概率统一读 dcf-<分类>（字卡库【其他互动功能字卡】页可调，
   // 默认=各分类历史值）——未设置时回退 dcfGet 内置默认，行为不变
   function dcfP(cat, def) { try { if (window.dcfGet) return window.dcfGet(cat); } catch (e) {} return def; }
@@ -2256,9 +2653,9 @@ if (ckRefresh) {
     const s = curStore(); let pool = libPool('sync', 'TA 此刻', DEF_STATUS);
     try { const a = JSON.parse((s && s.get('tongpin-status')) || '[]'); if (Array.isArray(a) && a.length) pool = a.slice(); } catch (e) {}
     try { const a = JSON.parse((s && s.get('checkin-cards-action')) || '[]'); if (Array.isArray(a)) a.forEach(x => { const t = typeof x === 'string' ? x : (x && x.t); if (t && pool.indexOf(t) < 0) pool.push(t); }); } catch (e) {}
-    return pool.length ? pool : DEF_STATUS.slice();
+    return pool.length ? pool : (window.gateCardFallback ? window.gateCardFallback('sync', DEF_STATUS) : DEF_STATUS.slice()); // #1515 尾行裸兜底同收口
   }
-  function tpPick() { const a = tpPool(); const el = document.getElementById('tp-status'); if (el) el.textContent = a[Math.floor(Math.random() * a.length)]; }
+  function tpPick() { const a = tpPool(); const el = document.getElementById('tp-status'); if (el && a.length) el.textContent = a[Math.floor(Math.random() * a.length)]; } // #1515 空池不改字
   let knock = 0, knockTimer = null;
   function tpResetKnock() { knock = 0; document.querySelectorAll('#tp-knock .tp-dot').forEach(d => d.classList.remove('on')); }
   function tpKnock() {
@@ -2277,12 +2674,12 @@ if (ckRefresh) {
       if (area) area.classList.add('flash');
       setTimeout(() => { if (area) area.classList.remove('flash'); }, 700);
       const r = pool[Math.floor(Math.random() * pool.length)];
-      if (hint) hint.textContent = window.taFit ? window.taFit('他回你了 · ' + r) : ('他回你了 · ' + r);
-      if (tpSendOn() && window.chatAddIn) { try { window.chatAddIn(r); } catch (e) {} }
+      if (r && hint) hint.textContent = window.taFit ? window.taFit('他回你了 · ' + r) : ('他回你了 · ' + r); // #1515 空池＝不回话不进聊天
+      if (r && tpSendOn() && window.chatAddIn) { try { window.chatAddIn(r); } catch (e) {} }
     } else {
       if (Math.random() < 0.4) {
         const miss = libPool('sync', '没接住回应', ['…没听到', '没接住', '好像走开了']);
-        if (hint) hint.textContent = miss[Math.floor(Math.random() * miss.length)];
+        if (hint && miss.length) hint.textContent = miss[Math.floor(Math.random() * miss.length)]; // #1515 空池不改字
       } else {
         if (hint) hint.textContent = '没接住 · 过会儿再敲';
       }
@@ -2343,9 +2740,9 @@ if (ckRefresh) {
         vibrate(feel.vib);
         if (glow) { glow.classList.add('on'); glow.classList.add(feel.cls); }
         if (hint) hint.textContent = '摸到了 · ' + feel.label;
-        const res = document.getElementById('ss-result'); if (res) { res.textContent = feel.label + ' · \u201c' + txt + '\u201d'; res.className = 'ss-result reach'; }
+        const res = document.getElementById('ss-result'); if (res && txt != null) { res.textContent = feel.label + ' · \u201c' + txt + '\u201d'; res.className = 'ss-result reach'; } // #1515 空池不出字
         ssSetCount(ssCount() + 1); ssRenderCount();
-        if (ssSendOn() && window.chatAddIn) { try { window.chatAddIn(txt); } catch (e) {} }
+        if (txt != null && ssSendOn() && window.chatAddIn) { try { window.chatAddIn(txt); } catch (e) {} } // #1515 空池不进聊天
         setTimeout(() => { if (glow) { glow.classList.remove('on'); glow.classList.remove(feel.cls); } }, 1400);
       } else {
         if (glow) glow.classList.add('dim');
@@ -2369,7 +2766,7 @@ if (ckRefresh) {
     const area = document.getElementById('ss-area');
     if (area) { const tr = document.createElement('div'); tr.className = 'ss-trace'; area.appendChild(tr); setTimeout(() => { try { tr.remove(); } catch (e) {} }, 1600); }
     const hint = document.getElementById('ss-hint'); if (hint) hint.textContent = window.taFit ? window.taFit('他刚才碰了你一下') : '他刚才碰了你一下';
-    const res = document.getElementById('ss-result'); if (res) { res.textContent = '\u201c' + txt + '\u201d'; res.className = 'ss-result reach'; }
+    const res = document.getElementById('ss-result'); if (res && txt != null) { res.textContent = '\u201c' + txt + '\u201d'; res.className = 'ss-result reach'; } // #1515 空池不出字
   }
   if (ssApp) ssApp.addEventListener('click', () => { if (editingNow()) return; openPage(ssPage); ssRenderCount(); ssMaybePassive(); });
   document.getElementById('ss-back').addEventListener('click', () => backHome(ssPage));
@@ -2506,6 +2903,7 @@ if (ckRefresh) {
     const done = waterChatDone();
     const pool = libPool('water', done ? '喝够夸奖' : '梦角催喝水', done ? DEF_WATER_PRAISE : DEF_WATER_CHAT_REMIND);
     const m = pool[Math.floor(Math.random() * pool.length)];
+    if (!m) return false; // #1515 全关＝不发（真停用，不再回落同文兜底）
     const tail = (!done && g && t.count > 0 && t.count < g) ? '（还差 ' + (g - t.count) + ' 杯）' : '';
     const text = window.taFit ? window.taFit(m + tail) : (m + tail);
     // v3.14.x：带「喝水提醒」标签 chip（addIn opts.tag），来源可辨识
@@ -2542,14 +2940,14 @@ if (ckRefresh) {
     if (t.count < g && Date.now() - last > 2 * 3600000) {
       // 世界观：偶尔他视角浮层（灵体在身边提醒），否则原系统语态
       // v3.32.x #132：喝水字卡概率接 dcf-water（默认 100=原节奏乘法门控，0 即不来）
-      if (window.taChimeAllow && window.taChimeAllow('water-ta', { cooldown: 30 * 60 * 1000, dailyMax: 3 }) && dcfHit('water') && Math.random() < 0.5) {
+      const gentle = libPool('water', 'ta视角温柔提醒', DEF_WATER_TA_GENTLE); // #1515 全关＝不烧冷却不浮层
+      const m = gentle[Math.floor(Math.random() * gentle.length)];
+      if (m && window.taChimeAllow && window.taChimeAllow('water-ta', { cooldown: 30 * 60 * 1000, dailyMax: 3 }) && dcfHit('water') && Math.random() < 0.5) {
         window.taChimeUse('water-ta');
-        const gentle = libPool('water', 'ta视角温柔提醒', DEF_WATER_TA_GENTLE);
-        const m = gentle[Math.floor(Math.random() * gentle.length)];
         const miss = Math.random() < 0.2 ? '（字卡有限，他想说的比这张多）' : null;
         if (window.taChimeShow) window.taChimeShow(m, { miss: miss });
       }
-      const msgs = waterMsgs(); waterShowMsg(msgs[Math.floor(Math.random() * msgs.length)]);
+      const msgs = waterMsgs(); if (msgs.length) waterShowMsg(msgs[Math.floor(Math.random() * msgs.length)]); // #1515 空池不出声
     }
     // v3.14.x v2：进入页面距上次 >2 小时时独立判定一次聊天催水（独立频率键
     // water-chat，与前台定时掷骰共用冷却/每日上限，同一时段不会连发两条）——
@@ -2585,9 +2983,9 @@ if (ckRefresh) {
       vibrate([60, 40, 60]);
       const card = document.querySelector('#page-water .water-card');
       if (card) { card.classList.add('done'); setTimeout(() => card.classList.remove('done'), 900); }
-      const p = libPool('water', '喝够夸奖', DEF_WATER_PRAISE); waterShowMsg(p[Math.floor(Math.random() * p.length)]);
+      const p = libPool('water', '喝够夸奖', DEF_WATER_PRAISE); if (p.length) waterShowMsg(p[Math.floor(Math.random() * p.length)]); // #1515 空池不出声
     }
-    else if (Math.random() < 0.2) { const e = libPool('water', '继续鼓励', DEF_WATER_ENCOURAGE); waterShowMsg(e[Math.floor(Math.random() * e.length)]); }
+    else if (Math.random() < 0.2) { const e = libPool('water', '继续鼓励', DEF_WATER_ENCOURAGE); if (e.length) waterShowMsg(e[Math.floor(Math.random() * e.length)]); } // #1515 空池不出声
   });
   document.getElementById('water-minus').addEventListener('click', () => {
     if (editingNow()) return;
@@ -2597,9 +2995,9 @@ if (ckRefresh) {
     if (editingNow()) return;
     const t = waterToday(); const g = waterGoal(); const sz = waterSize();
     const done = t.count >= g;
-    const base = '我今天喝了 ' + t.count + ' / ' + g + ' 杯（' + (t.count * sz) + 'ml）';
+    const base = '你今天喝了 ' + t.count + ' / ' + g + ' 杯（' + (t.count * sz) + 'ml）';
     const praise = libPool('water', '喝够夸奖', DEF_WATER_PRAISE);
-    const tail = done ? '，' + praise[Math.floor(Math.random() * praise.length)] : '，还差 ' + (g - t.count) + ' 杯';
+    const tail = done ? (praise.length ? '，' + praise[Math.floor(Math.random() * praise.length)] : '') : '，还差 ' + (g - t.count) + ' 杯'; // #1515 全关＝不带夸奖尾（账目照发）
     if (window.chatAddIn) { try { window.chatAddIn(base + tail); } catch (e) {} }
     toast('已发送');
   });
@@ -2608,6 +3006,7 @@ if (ckRefresh) {
     const t = waterToday(); const g = waterGoal();
     const m = waterMsgs()[Math.floor(Math.random() * waterMsgs().length)];
     const taFmt = libPool('water', 'TA 提醒句式', DEF_WATER_TA);
+    if (!taFmt.length || !m) return; // #1515 全关＝不出声（不再回落同文兜底）
     const fmt = taFmt[Math.floor(Math.random() * taFmt.length)].replace('{m}', m);
     const tail = t.count < g ? '（还差 ' + (g - t.count) + ' 杯）' : '（今天喝够啦）';
     const shown = window.taFit ? window.taFit(fmt + tail) : (fmt + tail);
@@ -2704,6 +3103,10 @@ if (ckRefresh) {
     ctx.restore(); ctx.restore();
   }
   function eatDrawWheel(dishes, hlIdx) { const c = document.getElementById('eat-wheel'); if (!c) return; eatDrawWheelCore(c, dishes, hlIdx, eatSpinAngle); }
+  // #876 转盘指针在正上方（.eat-pointer top:-12px，svg 尖(10,18)朝下）＝屏幕 12 点方向＝画布角 3π/2；
+  // 转过 normalized 后指针压住的扇区＝画布角 (3π/2 - normalized) 所在片。旧公式按指针在右侧 0 角
+  // （2π - normalized）算，中奖片恒不在指针下＝高亮片与「今天吃」菜名和指针错开约 1/4 圈。
+  function eatIdxUnderPtr(normalized, n, slice) { return Math.floor((((3 * Math.PI / 2 - normalized) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI)) / slice) % n; }
   function eatSpinWheel(dishes, cb) {
     if (eatSpinning) return;
     if (!dishes.length) { toast('当前菜单是空的，先添加菜名'); return; }
@@ -2731,7 +3134,7 @@ if (ckRefresh) {
       eatSpinTimer = null; clearTimeout(flashTimer);
       const n = dishes.length; const slice = 2 * Math.PI / n;
       const normalized = (totalAngle % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
-      const idx = Math.floor(((2 * Math.PI - normalized + slice / 2) % (2 * Math.PI)) / slice) % n;
+      const idx = eatIdxUnderPtr(normalized, dishes.length, slice);
       var ptr = document.getElementById('eat-pointer'); if (ptr) { ptr.classList.add('pop'); setTimeout(function () { ptr.classList.remove('pop'); }, 500); }
       eatHlIdx = idx; eatDrawWheel(dishes, idx); vibrate([10, 40, 10]);
       eatHlTimer = setTimeout(function () { eatHlIdx = -1; eatDrawWheel(dishes); eatHlTimer = null; eatSpinning = false; eatSetBtns(false); }, 1200);
@@ -2765,8 +3168,8 @@ if (ckRefresh) {
     if (i === eatCurMenuIdx()) { eatSwitchClose(); return; }
     const name = menus[i].name;
     eatSwitchClose();
-    eatSaveCurMenuIdx(i); eatClearSpin(); eatSpinAngle = 0;
-    eatRenderCurName(); eatDrawWheel(eatDishes()); eatLastPick = eatPick(); eatRenderHistory();
+    eatSaveCurMenuIdx(i); eatClearSpin();
+    eatRenderCurName(); eatLastPick = eatPick(); eatRenderHistory();
     toast('已切换到「' + name + '」');
   }
   document.getElementById('eat-switch-chips').addEventListener('click', (e) => {
@@ -2804,18 +3207,27 @@ if (ckRefresh) {
       eatSwTimer = null; clearTimeout(flashTimer);
       const n = names.length; const slice = 2 * Math.PI / n;
       const normalized = (totalAngle % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
-      const idx = Math.floor(((2 * Math.PI - normalized + slice / 2) % (2 * Math.PI)) / slice) % n;
+      const idx = eatIdxUnderPtr(normalized, names.length, slice);
       const ptr = document.getElementById('eat-switch-pointer'); if (ptr) { ptr.classList.add('pop'); setTimeout(() => ptr.classList.remove('pop'), 500); }
       eatSwHlIdx = idx; eatSwitchDraw(names, idx); vibrate([10, 40, 10]);
       if (nameEl) { nameEl.classList.add('fade'); setTimeout(() => { nameEl.textContent = names[idx]; nameEl.classList.remove('fade'); }, 200); }
       eatSwHlTimer = setTimeout(() => {
         eatSwHlIdx = -1; eatSwSpinning = false; eatSwHlTimer = null;
-        eatSaveCurMenuIdx(idx); eatClearSpin(); eatSpinAngle = 0;
-        eatRenderCurName(); eatDrawWheel(eatDishes()); eatLastPick = eatPick(); eatRenderHistory();
+        eatSaveCurMenuIdx(idx); eatClearSpin();
+        eatRenderCurName(); eatLastPick = eatPick(); eatRenderHistory();
         eatSwitchClose(); toast('已切换到「' + names[idx] + '」');
       }, 1200);
     }
     eatSwTimer = requestAnimationFrame(tick);
+  }
+  // #877 指针永远指着显示的菜：把显示菜扇区的中线转到顶部指针下（打开/「换一个」/改菜单重抽都走 eatPick
+  // → 自动对齐；「转盘抽取」本身停在扇区内不需再对齐）。居中放置＝指针两侧各留半格余量，视觉最稳。
+  function eatAlignWheelToDish(dish) {
+    const dishes = eatDishes(); const i = dishes.indexOf(dish);
+    if (i < 0) return;
+    const slice = 2 * Math.PI / dishes.length;
+    eatSpinAngle = ((3 * Math.PI / 2 - (i + 0.5) * slice) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+    eatDrawWheel(dishes);
   }
   function eatPick() {
     const dishes = eatDishes();
@@ -2830,17 +3242,18 @@ if (ckRefresh) {
     const de = document.getElementById('eat-dish'); const ce = document.getElementById('eat-comment');
     if (de) { de.classList.add('fade'); setTimeout(() => { de.textContent = dish; de.classList.remove('fade'); }, 200); }
     if (ce) { ce.classList.add('fade'); setTimeout(() => { ce.textContent = '\u201c' + comment + '\u201d'; ce.classList.remove('fade'); }, 200); }
+    eatAlignWheelToDish(dish);
     return dish + ' · ' + comment;
   }
   let eatLastPick = '';
-  if (eatApp) eatApp.addEventListener('click', () => { if (editingNow()) return; eatClearSpin(); eatInitCanvas(); openPage(eatPage); eatRenderCurName(); eatLastPick = eatPick(); eatRenderHistory(); eatDrawWheel(eatDishes()); eatRenderRemind(); });
+  if (eatApp) eatApp.addEventListener('click', () => { if (editingNow()) return; eatClearSpin(); eatInitCanvas(); openPage(eatPage); eatRenderCurName(); eatLastPick = eatPick(); eatRenderHistory(); eatRenderRemind(); eatRemindSweep(); });
   document.getElementById('eat-back').addEventListener('click', () => { eatClearSpin(); backHome(eatPage); });
   (function () {
     var de = document.getElementById('eat-dish'); if (!de) return;
     var pressTimer = null;
     de.addEventListener('touchstart', function (e) { if (e.touches.length > 1) return; pressTimer = setTimeout(function () { rmDish(); }, 600); }, { passive: true });
     de.addEventListener('touchend', function () { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } });
-    de.addEventListener('touchmove', function () { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } });
+    de.addEventListener('touchmove', function () { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } }, { passive: true }); // #721 同上，被动化
     de.addEventListener('mousedown', function () { pressTimer = setTimeout(function () { rmDish(); }, 600); });
     de.addEventListener('mouseup', function () { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } });
     de.addEventListener('mouseleave', function () { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } });
@@ -2863,7 +3276,7 @@ if (ckRefresh) {
   document.getElementById('eat-send').addEventListener('click', () => { if (editingNow() || eatSpinning) return; if (eatLastPick && window.chatAddIn) { try { window.chatAddIn(eatLastPick); } catch (e) {} toast('已发送'); } });
   document.getElementById('eat-add').addEventListener('click', () => { if (!window.openModal) return; window.openModal('添加菜名', '', (v) => { if (!v) return; const cur = eatCurMenu(); if (cur.menu.dishes.indexOf(v) >= 0) { toast('当前菜单已有「' + v + '」'); return; } cur.menu.dishes.push(v); cur.menus[cur.idx] = cur.menu; eatSaveMenus(cur.menus); eatDrawWheel(eatDishes()); toast('已添加到「' + cur.menu.name + '」'); }); });
   document.getElementById('eat-spin').addEventListener('click', () => { if (editingNow() || eatSpinning) return; const dishes = eatDishes(); eatSpinWheel(dishes, (dish) => { const de = document.getElementById('eat-dish'); if (de) { de.classList.add('fade'); setTimeout(() => { de.textContent = dish; de.classList.remove('fade'); }, 200); } const ce = document.getElementById('eat-comment'); const comments = DEF_EAT_COMMENTS; const comment = comments[Math.floor(Math.random() * comments.length)]; if (ce) { ce.classList.add('fade'); setTimeout(() => { ce.textContent = '\u201c' + comment + '\u201d'; ce.classList.remove('fade'); }, 200); } eatLastPick = dish + ' · ' + comment; eatPushHistory(dish); }); });
-  document.getElementById('eat-askta').addEventListener('click', () => { if (editingNow() || eatSpinning) return; if (!eatLastPick) { eatLastPick = eatPick(); } if (!eatLastPick) { toast('当前菜单是空的，先添加菜名'); return; } const m = eatLastPick.match(/^(.+?) ·/); const dish = m ? m[1] : eatLastPick; const msg = EAT_ASK_MSGS[Math.floor(Math.random() * EAT_ASK_MSGS.length)].replace('{0}', dish); if (window.chatAddIn) { try { window.chatAddIn(msg); } catch (e) {} toast('已发送'); } });
+  document.getElementById('eat-askta').addEventListener('click', () => { if (editingNow() || eatSpinning) return; if (!eatLastPick) { eatLastPick = eatPick(); } if (!eatLastPick) { toast('当前菜单是空的，先添加菜名'); return; } const m = eatLastPick.match(/^(.+?) ·/); const dish = m ? m[1] : eatLastPick; const msg = EAT_ASK_MSGS[Math.floor(Math.random() * EAT_ASK_MSGS.length)].replace('{0}', dish); if (window.chatSendMsg) { try { window.chatSendMsg(msg); } catch (e) {} toast('已发送'); } });
   let eatEditIdx = 0;
   function eatEsc(s) { return String(s).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
   function eatRenderMenuChips() {
@@ -2934,6 +3347,9 @@ if (ckRefresh) {
   document.getElementById('eat-switch-menu').addEventListener('click', () => { if (editingNow() || eatSpinning) return; eatSwitchOpen(); });
   document.getElementById('eat-switch-cancel').addEventListener('click', () => { eatSwitchClose(); });
   document.getElementById('eat-switch-go').addEventListener('click', () => { eatSwitchSpin(); });
+  // #877 切桌面复位：编辑菜单面板/切换菜单浮层是页内常驻节点（.page 整页隐藏时看不见，但重进会带着上一
+  // 桌面的面板状态——编辑面板开着、第一次点「编辑菜单」变关闭）。切桌面时停转＋关浮层＋收面板。
+  document.addEventListener('contact-switched', function () { eatClearSpin(); eatSwitchClose(); const mp = document.getElementById('eat-menu-panel'); if (mp) mp.hidden = true; });
 
   // ---- TA 饭点提醒（v3.14.x）：概率触发梦角发字卡到聊天提醒吃饭 ----
   // 世界观同喝水「他视角温柔提醒」：梦角是灵体，饭点偶尔冒出来催你吃饭。
@@ -2985,8 +3401,23 @@ if (ckRefresh) {
       }, 1400);
     }
   }
+  // #886 清扫历史「今日已提醒」标记键：每天至多 4 键、只留当天（开吃什么页＋eatRemindMaybe 每 4 分钟各扫一次；
+  // 走 xyStore.remove＝内存/LS/IDB 三处同清，删除联系人同款管线）
+  function eatRemindSweep() {
+    try {
+      const pfx = (window.activePrefix ? window.activePrefix() : 'xy-home-v2:default'); // 无尾冒号：xyStore 合键时自己补 ':'
+      const scan = pfx + ':eat-remind-done:';
+      const today = eatDayKey(); const dead = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.indexOf(scan) === 0 && k.slice(-10) !== today) dead.push(k);
+      }
+      dead.forEach(function (k) { try { window.xyStore(pfx).remove(k.slice(pfx.length + 1)); } catch (e) {} });
+    } catch (e) {}
+  }
   function eatRemindMaybe() {
     try {
+      eatRemindSweep();
       if (!window.chatAddIn) return;
       const h = new Date().getHours(); if (h >= 23 || h < 6) return; // v3.26.x：23:00-06:00 静默期，不提醒吃饭（深更半夜吃饭提醒离谱）
       if (!eatRemindEn()) return;
@@ -3471,9 +3902,9 @@ if (ckRefresh) {
           }
         }
       }
-      piggyShowMsg(piggyPick(piggyInPool()));
+      { const _in = piggyInPool(); if (_in.length) piggyShowMsg(piggyPick(_in)); } // #1515 空池不出声
     } else {
-      piggyShowMsg(piggyPick(libPool('piggy', '取款回应', DEF_PIGGY_OUT)));
+      const _out = libPool('piggy', '取款回应', DEF_PIGGY_OUT); if (_out.length) piggyShowMsg(piggyPick(_out)); // #1515 空池不出声
       piggyAskCare();
     }
   }
@@ -3482,7 +3913,7 @@ if (ckRefresh) {
     const box = document.getElementById('piggy-reply');
     if (!box) return;
     const q = document.getElementById('piggy-reply-q');
-    if (q) { var care = libPool('piggy', '取款关心', PIGGY_CARE); var careTxt = 'TA：' + care[Math.floor(Math.random() * care.length)]; q.textContent = window.taFit ? window.taFit(careTxt) : careTxt; }
+    if (q) { var care = libPool('piggy', '取款关心', PIGGY_CARE); if (care.length) { var careTxt = 'TA：' + care[Math.floor(Math.random() * care.length)]; q.textContent = window.taFit ? window.taFit(careTxt) : careTxt; } } // #1515 空池不追问
     const inp = document.getElementById('piggy-reply-in'); if (inp) inp.value = '';
     box.hidden = false;
   }
@@ -3499,41 +3930,43 @@ if (ckRefresh) {
     const amt = PIGGY_TA_COINS[Math.floor(Math.random() * PIGGY_TA_COINS.length)];
     const notes = libPool('piggy', '塞硬币悄悄话', PIGGY_TA_NOTES);
     const note = notes[Math.floor(Math.random() * notes.length)];
+    if (!note) return; // #1515 全关＝彩蛋静默
     vibrate([20, 60, 20]);
     setTimeout(() => { piggyShowMsg(window.taFit ? window.taFit(note + ' ¥' + piggyFmt(amt) + ' · 替TA存进去？') : (note + ' ¥' + piggyFmt(amt) + ' · 替TA存进去？')); }, 400);
   }
-  if (piggyApp) piggyApp.addEventListener('click', () => { if (editingNow()) return; openPage(piggyPage); piggyMaybeTa(); piggyRender(); });
+  // FIX 2026-09-18 #770：心意币页签若停在上次位置，重进 app 不再经过页签 click，TA 塞币/取回
+  // 两条彩蛋就永远没机会跑——app 入口按页签当前状态补触发一次（页签 click 路径保持原样）。
+  if (piggyApp) piggyApp.addEventListener('click', () => {
+    if (editingNow()) return;
+    openPage(piggyPage); piggyMaybeTa(); piggyRender();
+    const coinBox = document.querySelector('.piggy-coin');
+    if (coinBox && !coinBox.hidden) { piggyCoinMaybeTa(); piggyCoinMaybeTaWithdraw(); }
+  });
   document.getElementById('piggy-back').addEventListener('click', () => backHome(piggyPage));
-  // 右上角设置：四步（存钱=TA随机塞 / 取钱=TA余额快没取回 / 申请=联系人向Mochi申请 / 申请每日上限次数）
+  // 右上角设置：两步（存钱=TA随机塞 / 取钱=TA余额快没取回）
+  // v3.29.x：原第 3、4 步「申请概率 / 申请每日上限」已移到聊天页红包半框「设置」，按联系人单独设
   const piggyCoinSetBtn = document.getElementById('piggy-coin-set');
   if (piggyCoinSetBtn) piggyCoinSetBtn.addEventListener('click', function () {
     if (editingNow() || !window.openModal) return;
     const p = piggyCoinProbGet();
-    // v3.28.x：第四步「申请每日上限次数」——根键 piggy-coin-ask-limit（chat.js trySystemAskMochi 读），默认 0=不限
-    const askLimitGet = () => {
-      let v = null; try { v = parseInt(piggyStore().get('piggy-coin-ask-limit'), 10); } catch (e) {}
-      return (v !== null && isFinite(v) && v >= 0) ? v : 0;
-    };
-    const askLimit0 = askLimitGet();
-    const ks = ['deposit', 'withdraw', 'ask'];
-    const def = [Math.round(p.deposit * 100), Math.round(p.withdraw * 100), Math.round(p.ask * 100), askLimit0];
-    const titles = ['设置 · 存钱概率（TA 随机塞心意币）', '设置 · 取钱概率（TA 余额快没时取回）', '设置 · 申请概率（联系人向 Mochi 申请）', '设置 · 申请每日上限（联系人每天最多申请次数）'];
-    const hints = ['0-100 %，默认 ' + def[0], '0-100 %，默认 ' + def[1], '0-100 %，默认 ' + def[2], '0-999 次，0=不限，默认 ' + (askLimit0 === 0 ? '不限' : askLimit0)];
+    const ks = ['deposit', 'withdraw'];
+    const def = [Math.round(p.deposit * 100), Math.round(p.withdraw * 100)];
+    const titles = ['设置 · 存钱概率（TA 随机塞心意币）', '设置 · 取钱概率（TA 余额快没时取回）'];
+    const hints = ['0-100 %，默认 ' + def[0], '0-100 %，默认 ' + def[1]];
     let phase = 0;
     function clampU(x) { const n = parseInt(String(x == null ? '' : x).trim(), 10); return isNaN(n) ? def[phase] : Math.max(0, Math.min(100, n)); }
     const ctl = window.openModal(titles[0], String(def[0]), function (v) {
-      if (phase < 3) {
+      if (phase < 1) {
         const cur = clampU(v); const nv = { deposit: p.deposit, withdraw: p.withdraw, ask: p.ask };
         nv[ks[phase]] = cur / 100; piggyCoinProbSave(nv); Object.assign(p, nv);
         phase++;
         ctl.stay(); ctl.title(titles[phase]); ctl.ph(hints[phase]); ctl.text(String(def[phase])); ctl.maxLen(3); ctl.okText('下一步'); toast('已保存 ' + cur + '%');
         return;
       }
-      const n = parseInt(String(v == null ? '' : v).trim(), 10);
-      const cur = isNaN(n) ? askLimit0 : Math.max(0, Math.min(999, n));
-      try { piggyStore().set('piggy-coin-ask-limit', String(cur)); } catch (e) {}
-      toast(cur === 0 ? '设置已更新：申请次数不限' : '设置已更新：每天最多申请 ' + cur + ' 次');
-    }, { maxlength: 3, inputmode: 'decimal', placeholder: hints[0] });
+      const cur = clampU(v); const nv = { deposit: p.deposit, withdraw: p.withdraw, ask: p.ask };
+      nv[ks[phase]] = cur / 100; piggyCoinProbSave(nv);
+      toast('已保存 ' + cur + '%');
+    }, { maxlength: 3, inputmode: 'decimal', placeholder: hints[0], staticText: '「TA 申请心意币」的概率与每日上限已移到聊天页红包的「设置」里，可按每个联系人单独设置。' + (function () { let g = 100; try { g = window.dcfGet ? window.dcfGet('piggy') : 100; } catch (e) {} return g < 100 ? ' ⚠ 已被「其他互动功能字卡 → 存钱罐」总闸压到 ' + g + '%，低于 100% 时 TA 塞币会被按比例拦截。' : ''; })() });
     ctl.okText('下一步');
   });
   // 存入/取出/小心愿：单弹窗两阶段（ctl.stay 就地切阶段）——取代旧「60ms 再开
@@ -3703,7 +4136,7 @@ if (ckRefresh) {
     if (editingNow()) return;
     const inp = document.getElementById('piggy-reply-in');
     const t = inp ? String(inp.value || '').trim() : '';
-    if (t && window.chatAddIn) { try { window.chatAddIn(t); } catch (e) {} toast('已回复'); }
+    if (t && window.chatSendMsg) { try { window.chatSendMsg(t); } catch (e) {} toast('已回复'); }
     piggyCloseCare();
   });
   document.getElementById('piggy-reply-skip').addEventListener('click', piggyCloseCare);
@@ -3746,7 +4179,7 @@ if (ckRefresh) {
     try { g.set('piggy-coin2-migrated', '1'); } catch (e) {}
   }
   const COIN_TA_COINS = [5.2, 5.21, 6.66, 8.88, 9.99, 13.14, 52, 52.1];
-  const COIN_TA_NOTES = ['偷偷塞了一把心意币', 'TA 的心意币变多了', '帮你多存了一点', '嘿嘿，攒着别乱花'];
+  const COIN_TA_NOTES = ['偷偷塞了一把心意币', '你的心意币变多了', '帮你多存了一点', '嘿嘿，攒着别乱花'];
   const COIN_IN_MSG = ['心意币存进来啦', '又攒下一点，真棒', '小金币替你看管着', '离攒币心愿更近了', '安心，都替你收好'];
   const COIN_FULL_MSG = ['攒够心意币啦！！', '目标达成，想好怎么花了吗'];
   const COIN_OUT_MSG = ['取回心意币啦', '金币不多，省着点哦'];
@@ -3850,7 +4283,7 @@ if (ckRefresh) {
     try { if (window.giftWalletChange) window.giftWalletChange(-fen, 0); } catch (e) {}
     const log = piggyCoinLog(); log.push({ t: Date.now(), type: 'in', amt: amt, note: note || '' });
     piggySaveCoinLog(log); piggyCoinRender();
-    if (piggyCoinIsCurrent()) { try { if (window.chatAddSystem) window.chatAddSystem('我往存钱罐存了 ¥' + piggyFmt(amt), {}); } catch (e) {} }
+    if (piggyCoinIsCurrent()) { try { if (window.chatAddSystem) window.chatAddSystem('我往存钱罐存了 ¥' + piggyFmt(amt), { nightAllow: true, rateAllow: true }); } catch (e) {} }
     const st = piggyCoinGoalState(); const bal = piggyCoinBal(log);
     if (st.act.g && !st.act.g.done) {
       if (bal >= st.act.g.a) {
@@ -3870,7 +4303,7 @@ if (ckRefresh) {
     try { if (window.giftWalletChange) window.giftWalletChange(fen, 0); } catch (e) {}
     const log = piggyCoinLog(); log.push({ t: Date.now(), type: 'out', amt: amt, note: note || '' });
     piggySaveCoinLog(log); piggyCoinRender();
-    if (piggyCoinIsCurrent()) { try { if (window.chatAddSystem) window.chatAddSystem('我从存钱罐取了 ¥' + piggyFmt(amt), {}); } catch (e) {} }
+    if (piggyCoinIsCurrent()) { try { if (window.chatAddSystem) window.chatAddSystem('我从存钱罐取了 ¥' + piggyFmt(amt), { nightAllow: true, rateAllow: true }); } catch (e) {} }
     piggyCoinShowMsg(piggyPick(COIN_OUT_MSG));
   }
   // 心意币概率配置（root 命名空间，供 chat.js 读取申请概率）：{ deposit(塞币/存钱), withdraw(取钱), ask(申请) }，均存 0-1 小数
@@ -3886,15 +4319,19 @@ if (ckRefresh) {
   function piggyCoinProbSave(p) { const s = piggyStore(); if (s) try { s.set('piggy-coin-prob', JSON.stringify(p || {})); } catch (e) {} }
   // TA 不定期塞心意币到共用存钱罐（越久未开概率越高，彩蛋不入 gift-wallet）；只在查看当前联系人时触发
   // v3.42.x #422：塞币彩蛋接入「其他互动功能字卡」的存钱罐概率（dcf-piggy，默认 100%＝原行为，0%＝不塞币也不发系统消息）
+  // FIX 2026-09-18 #770：last-visit 只在彩蛋真正触发时才刷新——旧写法「进页签先盖章再掷骰」，
+  // 用户越勤快看间隔越短、概率被压回裸 12%，体感永远等不到 TA 塞币；改为未触发时 gap 继续累积
+  //（上限仍封顶 0.95），「常来看」与「久没来」都能按时点概率正常出币。
   function piggyCoinMaybeTa() {
     if (!piggyCoinIsCurrent()) return;
     try { if (window.dcfGet && !(Math.random() * 100 < window.dcfGet('piggy'))) return; } catch (e) {}
     const s = piggyCoinStore(); if (!s) return;
     let last = 0; try { last = parseInt(s.get('piggy-coin2-last-visit') || '0', 10) || 0; } catch (e) {}
-    const gap = Date.now() - last; try { s.set('piggy-coin2-last-visit', '' + Date.now()); } catch (e) {}
+    const gap = Date.now() - last;
     const base = piggyCoinProbGet().deposit;
     const prob = gap > 12 * 3600000 ? Math.min(0.95, base + 0.33) : (gap > 3600000 ? Math.min(0.9, base + 0.13) : base);
     if (Math.random() >= prob) return;
+    try { s.set('piggy-coin2-last-visit', '' + Date.now()); } catch (e) {}
     const amt = COIN_TA_COINS[Math.floor(Math.random() * COIN_TA_COINS.length)];
     const note = COIN_TA_NOTES[Math.floor(Math.random() * COIN_TA_NOTES.length)];
     const log = piggyCoinLog(); log.push({ t: Date.now(), type: 'in', amt: amt, note: 'TA 塞进来的' });
@@ -3902,7 +4339,7 @@ if (ckRefresh) {
     vibrate([20, 40, 20]);
     try {
       const who = (window.chatPartnerName ? window.chatPartnerName() : '') || 'TA';
-      if (window.chatAddSystem) window.chatAddSystem(who + ' 往存钱罐存了 ¥' + piggyFmt(amt), {});
+      if (window.chatAddSystem) window.chatAddSystem(who + ' 往存钱罐存了 ¥' + piggyFmt(amt), { nightAllow: true, rateAllow: true });
     } catch (e) {}
     setTimeout(function () { piggyCoinShowMsg((window.taFit ? window.taFit(note) : note) + ' ¥' + piggyFmt(amt)); }, 300);
   }
@@ -4366,10 +4803,12 @@ if (ckRefresh) {
 // TA 摸鱼值由 personalize.js 每 60s 60% 概率自动涨（"他在那边也偷了个懒"的来源）。
 // 这里只做监听：值变化且通过频率控制（冷却 45 分钟 + 每日最多 12 次 + 35% 随机，
 // 让"他一整天都可能摸鱼被看见"，又不至于刷屏）时，桌面浮一行小字。
-// v3.13.x：浮字 6 秒内可点——「抓包成功」：这次涨值翻倍（TA 补一份 + 我得同额），
-//   并触发一条害羞回应进聊天；不点就只是看着 TA 涨（原行为不变）。
+// v3.13.x：浮字 6 秒内可点——「抓包成功」：并触发一条害羞回应进聊天；不点就只是看着 TA 涨（原行为不变）。
+// #844：抓包结算改为「距上次抓包以来 TA 涨的全部」——旧实现只翻倍触发浮字那一个 60 秒窗口的涨幅
+//（平均 +5），浮字有 45 分钟冷却＋35% 概率，冷却期里涨的几十点全被跳过，奖励远小于实际懒账。
 (function () {
   let lastTa = null;
+  let settledTa = null; // 上次抓包结算基线（fish-total-ta）；只随抓包推进，浮字未点不结算
   // v3.13.x：浮字/抓包回应改走系统预设字卡池（DEFAULT_CARD_DATA.fish，字卡库「摸鱼浮字」
   // tab 同源可查看/逐张开关）；过滤用户已关闭的卡片，池缺失时回退内置兜底
   const FISH_NOTE_FALLBACK = ['ta在那边也偷了个懒'];
@@ -4384,31 +4823,65 @@ if (ckRefresh) {
   function fishPool(name, fallback) {
     let arr = (window.getFishPool ? window.getFishPool(name, fallback) : fallback).slice();
     if (window.isDefaultCardOff) arr = arr.filter(c => !window.isDefaultCardOff('fish', c));
-    return arr.length ? arr : fallback.slice();
+    // FIX 2026-09-30 #1515：与 libPool 同一道兜底闸（#1498 同族收口），全关＝真停用
+    return arr.length ? arr : (window.gateCardFallback ? window.gateCardFallback('fish', fallback) : fallback.slice());
   }
+  window.__p2FishPoolProbe = fishPool; // #1515 只读探针（行为尺用，不参与业务）
   function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
   // FIX 2026-09-07 #224 作用域修复：#132 在本 IIFE 的 chk 里引用了上方另一 IIFE（2083-4304）
   // 内的 dcfP，作用域不通必抛 ReferenceError（用户诊断日志每分钟 dcfP is not defined，且
   // chk 中断后 lastTa 不更新、下次继续报）。本作用域自备同语义助手（走 window.dcfGet，
   // 未设置时 dcfGet 内部已回退内置默认表）。
   function dcfPFish(def) { try { if (window.dcfGet) return window.dcfGet('fish'); } catch (e) {} return def; }
+  // FIX 2026-09-16 #604：游戏面板/游戏页开着时不飘「摸鱼浮字」——这条浮字是限时可点的
+  // 「点我抓包」（pointer-events:auto + fixed 居中偏下），正好盖在棋盘与方向键上抢点按，
+  // 用户报「玩游戏的时候还会触发联系人摸鱼抓包弹窗，挡住我玩游戏」。
+  // 判据＝任一游戏面板/游乐室页可见；hidden=false 但零渲染盒（早已切页的残留态）不算，
+  // 与 mobile-adapt floatIsOpen 同口径（#427 踩过零渲染盒误判）。
+  const GAME_PANEL_IDS = ['chat-snake-panel', 'chat-pong-panel', 'chat-brick-panel', 'chat-rps-panel', 'chat-c4-panel',
+    'chat-gomoku-panel', 'chat-linkup-panel', 'chat-match3-panel', 'chat-memory-panel', 'chat-ms-panel',
+    'chat-fish-panel', 'chat-auction-panel', 'chat-gift-panel', 'chat-arcade-panel', 'page-arcade', 'chat-rp-panel'];
+  function gamePanelOpen() {
+    try {
+      for (let i = 0; i < GAME_PANEL_IDS.length; i++) {
+        const el = document.getElementById(GAME_PANEL_IDS[i]);
+        if (el && !el.hidden && el.getClientRects().length > 0) return true;
+      }
+    } catch (e) {}
+    return false;
+  }
   function chk() {
     if (document.hidden) return;
+    // 放在 taChimeAllow/taChimeUse 之前：跳过时不吃 45 分钟冷却与每日 12 次额度，
+    // 出游戏后这次涨值照样能飘（lastTa 不推进，delta 留着）。
+    if (gamePanelOpen()) return;
+    // #791 摸鱼抓包浮字开关（回复设置 →「摸鱼值 / 工作值」组「摸鱼抓包浮字」，存 reply-fish-grab-en，
+    // 默认开）：关＝不飘字也不抓包。放在 taChimeAllow 之前——不吃 45 分钟冷却与每日 12 次额度
+    //（与上面 gamePanelOpen 跳过同口径）；摸鱼值累计本身由 fish-en 管，这里不碰。
+    try {
+      const gv = window.replyCfg ? window.replyCfg()['fish-grab-en'] : undefined;
+      if (gv !== undefined && gv !== 1) return;
+    } catch (e) {}
     const s = window.activeStore && window.activeStore(); if (!s) return;
     let cur = 0; try { cur = parseInt(s.get('fish-total-ta') || '0', 10) || 0; } catch (e) {}
-    if (lastTa === null) { lastTa = cur; return; }
+    if (lastTa === null) { lastTa = cur; settledTa = cur; return; }
     const delta = cur - lastTa;
     // v3.32.x #132：摸鱼字卡概率接 dcf-fish（默认 35%=原值，单值替换非叠加）
     if (delta > 0 && Math.random() * 100 < dcfPFish(35) && window.taChimeAllow && window.taChimeAllow('fish-ta-note', { cooldown: 45 * 60 * 1000, dailyMax: 12 })) {
+      const note = pick(fishPool('摸鱼浮字', FISH_NOTE_FALLBACK));
+      if (!note) { lastTa = cur; return; } // #1515 全关＝不浮字不吃冷却（lastTa 照常推进）
       window.taChimeUse('fish-ta-note');
       if (window.taChimeShow) {
-        const note = pick(fishPool('摸鱼浮字', FISH_NOTE_FALLBACK));
         window.taChimeShow(note, {
           dur: 6000,
           onClick: function () {
             try {
-              // 抓包奖励：本次涨值翻倍——TA 再补一份，我得同额
-              const bonus = Math.max(1, delta);
+              // #844 抓包结算＝距上次抓包以来 TA 涨的全部（触发浮字前的展示时刻值，浮字 6 秒展示期新涨的归入下次结算）：
+              // TA 补一份总账，我得同额。旧实现只补 delta（单个 60s 窗口涨幅），冷却期涨值全被吞
+              const base = settledTa === null ? cur - Math.max(0, delta) : settledTa;
+              const bonus = Math.max(1, cur - base);
+              // 基线含 TA 收到的这份补账：抓包奖励不是 TA 摸出来的，不进下次懒账（防连抓利滚利）
+              settledTa = cur + bonus;
               if (window.addFishPts) window.addFishPts(bonus, bonus);
               let rec = null;
               try { rec = JSON.parse(s.get('fish-catch-day') || 'null'); } catch (e) {}
@@ -4420,10 +4893,10 @@ if (ckRefresh) {
                 try { window.addFishCatchRecord('me', '抓包成功！双方摸鱼值 +' + bonus); } catch (e) {}
               }
               if (window.toast) window.toast(window.taFit ? window.taFit('抓包成功！双方摸鱼值 +' + bonus) : ('抓包成功！双方摸鱼值 +' + bonus));
-              if (window.chatAddIn) {
-                const r = pick(fishPool('抓包回应', CATCH_REPLIES));
-                // v3.14.x：带「摸鱼抓包」标签 chip（addIn opts.tag），用户能看出这是抓包后的回应
-                // v3.15.x：正文已在气泡里，chip 不再重复一遍 label——mood 自定义空 label，只留「摸鱼抓包」标签
+              const r = pick(fishPool('抓包回应', CATCH_REPLIES));
+              // v3.14.x：带「摸鱼抓包」标签 chip（addIn opts.tag），用户能看出这是抓包后的回应
+              // v3.15.x：正文已在气泡里，chip 不再重复一遍 label——mood 自定义空 label，只留「摸鱼抓包」标签
+              if (r && window.chatAddIn) { // #1515 全关＝不接话（抓包结算照常）
                 setTimeout(() => { try { window.chatAddIn(window.taFit ? window.taFit(r) : r, { mood: [{ tag: '摸鱼抓包', label: '' }] }); } catch (e) {} }, 900);
               }
             } catch (e) {}
@@ -4435,5 +4908,5 @@ if (ckRefresh) {
   }
   setInterval(chk, 60 * 1000);
   setTimeout(chk, 5000);
-  document.addEventListener('contact-switched', () => { lastTa = null; });
+  document.addEventListener('contact-switched', () => { lastTa = null; settledTa = null; });
 })();

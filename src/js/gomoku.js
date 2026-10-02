@@ -481,6 +481,7 @@
     // #301：幸运游戏日该游戏奖励 ×2（arcade.js 提供 arcadeMult，缺省恒 1）
     var coinLine = '';
     var dropLine = '';
+    var dropStat = '';   // #891：dropLine 是浮层用的 HTML，聊天卡片要纯文本版
     try {
       var COIN_CAP = 10400;
       // FIX 2026-09-16：封顶键 UTC 日期改本地日期（UTC 口径下北京时间 0-8 点记到前一天）
@@ -505,7 +506,7 @@
     if (winner === 1 && typeof window.arcadeTryDrop === 'function') {
       try {
         var dr = window.arcadeTryDrop('gomoku');
-        if (dr) { dropLine = '<div class="pong-end-stat">🌠 掉落限定摆件「' + dr.ico + ' ' + dr.name + '」！游乐室图鉴 +1</div>'; taSay('哇，掉了「' + dr.name + '」！'); }
+        if (dr) { dropLine = '<div class="pong-end-stat">🌠 掉落限定摆件「' + dr.ico + ' ' + dr.name + '」！游乐室图鉴 +1</div>'; dropStat = '🌠 掉落限定摆件「' + dr.ico + ' ' + dr.name + '」'; taSay('哇，掉了「' + dr.name + '」！'); }
       } catch (e) {}
     }
     const title = winner === 1 ? '🏆 你赢了！' : winner === 2 ? T('TA') + '赢了' : '平局';
@@ -530,14 +531,23 @@
     // 写聊天系统消息 + TA 随机回应（分组语义同四子棋：输的一方视角）
     try {
       const resTxt = winner === 1 ? '你赢' : winner === 2 ? T('TA') + '赢' : '平局';
-      if (window.chatAddSystem) window.chatAddSystem(T('五子棋') + ' · ' + resTxt, { special: 'gomoku' });
+      // #891：带结构化结算负载（chat.js 小游戏卡片渲染；{ta} 由渲染侧按当前昵称展开）
+      const gStats = ['本局共 ' + st.moves + ' 手', '累计战绩 你 ' + s.w + '胜 · {ta} ' + s.l + '胜 · ' + s.d + '平',
+        '下一局 ' + (s.nextFirst === 'you' ? '你' : '{ta}') + '先手'].concat(coinLine ? [coinLine] : []).concat(dropStat ? [dropStat] : []);
+      const gPayload = {
+        name: '五子棋',
+        outcome: winner === 1 ? 'win' : winner === 2 ? 'lose' : 'draw',
+        result: winner === 1 ? '你赢了！' : winner === 2 ? '{ta}赢了' : '平局',
+        stats: gStats
+      };
+      if (window.chatAddSystem) window.chatAddSystem(T('五子棋') + ' · ' + resTxt, { special: 'gomoku', game: gPayload });
       const grp = winner === 1 ? '游戏失败·回应' : winner === 2 ? '游戏胜利·回应' : '游戏平局·回应';
       const fb = winner === 1 ? ['让你赢啦，再来？'] : winner === 2 ? ['五连！我赢啦'] : ['平局，再来一局？'];
       const pool = window.getInteractPool ? window.getInteractPool(grp, fb) : fb;
-      const say = pool[Math.floor(Math.random() * pool.length)] || fb[0];
+      const say = pool.length ? pool[Math.floor(Math.random() * pool.length)] : ''; // #1515 整组停用＝静默（五子棋）
       // FIX 2026-09-16：800ms 内切联系人桌面，TA 回应会发进新桌面的聊天流——回调前校验命名空间未变
       const cidAtEnd = prefix();
-      setTimeout(() => {
+      if (say) setTimeout(() => {
         if (prefix() !== cidAtEnd) return;
         try { if (window.chatAddIn) window.chatAddIn(say, { silent: true }); } catch (e) {}
       }, 800);
@@ -622,7 +632,7 @@
     let name = T('TA');
     try {
       const s = window.activeStore && window.activeStore();
-      name = (s && (s.get('cs-lbl-partner') || s.get('lbl-partner'))) || name;
+      name = (s && (s.get('lbl-partner') || s.get('cs-lbl-partner'))) || name;
     } catch (e) {}
     if (partnerNameEl) partnerNameEl.textContent = name;
     if (sideNameEl) sideNameEl.textContent = name;

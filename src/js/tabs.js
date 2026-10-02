@@ -6,13 +6,90 @@
   // syncChrome 的 blur 会在切页瞬间触发键盘残留自愈（#209 K70 实锤：停靠残留只
   // 存在于切页前最后一帧），必须在 pages hidden 之前同步采集，晚了就是自愈后
   const sdLeaveSnap = () => { try { if (window.__mochiLeaveSnap) window.__mochiLeaveSnap('switch'); } catch (e) {} };
+
+  // ===== FIX 2026-09-19 #815：整屏空白（一个页面都不显示）一帧内自愈 =====
+  // 现象（华为 Nova 12 Pro + QQ 浏览器实报「经常整屏空白、还会闪」，用户明说其他机型也有）：
+  // 本机自带屏幕诊断的历史签名给出实锤——`[switch] ✗底部导航栏悬空 phone=647(底647) tab=106`
+  // 连捕 4 次：.phone 高 647 铺满视口、底部导航却停在 106px，即 flex 列里只剩状态栏＋导航栏，
+  // **一个 .page 都没在显示**（`.page[hidden]{display:none}`）。用户看到的就是整屏空白。
+  // 根因（与机型无关，纯写法）：全项目 30+ 处切页都是「先把所有 .page 打 hidden、再显目标页」
+  // 的非原子链路（本文件下方、chat.js:6905、feature-data.js:597、card-audit.js:962/999/1216、
+  // arcade.js:208、accounting.js:634…），中间任一步落空就永久停在「零可见页」：目标 id 拼错/
+  // 改名（getElementById→null 直接 TypeError）、页面由外置 js/ 提供而那次没拉进来（#802）、
+  // 且多数站点整个函数还包在 try/catch 里＝静默无报错。旧底部 tab 切页正是最典型的一处。
+  // 修法＝把「.phone 内任何时刻恰有一个可见 .page」立成不变量：每次切页记下最后那个可见页，
+  // 扫到零可见时下一帧复查（rAF＝让同任务「先关后开」的正常中间态走完，绝不误伤），仍零可见
+  // 就把最后可见页显回来（兜底 page-phone），并留一笔现场（window.__mochiBlankHeal ＋
+  // __jsErrors，下份诊断报告能直接点出是谁把页关没了）。空白由「永久卡死」变成用户看不见的一帧。
+  let _lastVisId = '', _healAt = 0, _healRaf = 0;
+  // #1445：桌面模糊载体（.phone）的静态锚缓存——与 #338 的 _scPhone 同款假设（.phone 是
+  // template.html 静态锚点），只在第一次真正要用时查一次
+  let _blurPh = null;
+  try { window.__mochiBlankHeal = window.__mochiBlankHeal || { n: 0, at: 0, last: '' }; } catch (e0) {}
+  function liveVisiblePage() {
+    const live = document.querySelectorAll('.page');
+    for (let i = 0; i < live.length; i++) if (!live[i].hidden) return live[i];
+    return null;
+  }
+  function healBlank() {
+    if (_healRaf) return;
+    _healRaf = requestAnimationFrame(() => {
+      _healRaf = 0;
+      try {
+        if (liveVisiblePage()) return; // 正常中间态：已经有人把页显出来了
+        // 开屏未退／数据未回填完＝布局本就还没稳，与屏幕诊断监视器同一套守卫，不做主张
+        const sp = document.getElementById('splash');
+        if (sp && !sp.classList.contains('hide')) return;
+        if (!window.__mochiDataReady) return;
+        const now = Date.now();
+        if (now - _healAt < 800) return;
+        const back = document.getElementById(_lastVisId) || document.getElementById('page-phone');
+        if (!back) return;
+        _healAt = now;
+        back.hidden = false;
+        const h = window.__mochiBlankHeal;
+        h.n++; h.at = now; h.last = back.id;
+        try { if (window.__jsErrors) window.__jsErrors.push('整屏空白自愈 ' + h.n + ' 次：切页后无任何可见页面，已补回 ' + back.id + '（最后可见页 ' + (_lastVisId || '?') + '）'); } catch (e1) {}
+      } catch (e2) {}
+    });
+  }
+  // 切页关页一律走实时清单：本文件顶部的 pages 是 load 期静态快照，而 page-market /
+  // page-giftbox / page-memo / page-tongpin / page-eat / page-pomodoro … 是运行中才建的
+  // （gift-shop.js:1493、p2-features.js:2495 等），快照关不到它们 → 从这些页点底部 tab 会
+  // 两页同显、两个 .page 各 flex:1 平分高度＝下半屏一片空白（多机型同现的另一条空白路）。
+  function hideAllPages() {
+    document.querySelectorAll('.page').forEach(p => { if (!p.hidden) p.hidden = true; }); // 同值不写：#336/#338 不唤醒无关页观察器
+  }
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
       sdLeaveSnap();
+      // FIX #815：先拿目标页再关其它页——旧写法关完才 getElementById，目标取不到就是
+      // TypeError，而此时全部页已 hidden＝整屏空白卡死。取不到目标就一页都不关。
+      const target = document.getElementById(tab.dataset.page || '');
+      if (!target) {
+        try { if (window.__jsErrors) window.__jsErrors.push('底部 tab 目标页缺失（data-page=' + (tab.dataset.page || '?') + '），已放弃本次切页'); } catch (e3) {}
+        return;
+      }
       tabs.forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
-      pages.forEach(p => { if (!p.hidden) p.hidden = true; }); // FIX #338 同值写也发 mutation（Blink 实测同值 3 连写=3 条记录），44 页全扫=唤醒全部页面观察器
-      document.getElementById(tab.dataset.page).hidden = false;
+      hideAllPages();
+      target.hidden = false;
+      // #976：切页瞬间暂停壁纸全屏模糊（真机实测「切页后」单帧 2787ms），400ms 后自动恢复；
+      // 与桌面滑页（desktop-slider #976）共用同一类名与同一个收尾计时，重叠时后者说了算，无副作用
+      // #1445：只在桌面真的开着背景模糊时才切这个类。该类全站唯一消费者是 home.css 的
+      // `html.desk-swiping .phone.desk-blur-on #phone-bg-layer{filter:none}`——而 .desk-blur-on 只在
+      // 「模糊>0 且走 CSS filter 那条载体」时挂（personalize.js applyBgBlur／deskBlurRender 兜底）。
+      // 未开模糊（出厂默认，本次报告现场也是「模糊=关」）时那条规则永不匹配＝零收益；而对 <html>
+      // 增删类名会让整棵文档的样式失效重算（本报告现场 20020 节点 × 5664 条规则），一次切页白付两遍。
+      // 判据只问「模糊载体在不在」这一个内核无关事实，零机型／零 UA 分支。
+      try {
+        const ph = _blurPh || (_blurPh = document.querySelector('.phone'));
+        if (ph && ph.classList.contains('desk-blur-on')) {
+          document.documentElement.classList.add('desk-swiping');
+          clearTimeout(window.__mochiBlurT);
+          window.__mochiBlurT = setTimeout(function () { document.documentElement.classList.remove('desk-swiping'); }, 400);
+        }
+      } catch (e0) {}
     });
   });
 
@@ -30,6 +107,12 @@
     // （p2-features/memo-app 自定义全屏页）依赖的恢复语义不变——它们开页时签名必然变化。
     let visible = null;
     for (let i = 0; i < pages.length; i++) { if (!pages[i].hidden) { visible = pages[i]; break; } }
+    // FIX #815：静态快照扫不到可见页时再用实时清单复查一次——运行中才建的 .page（page-memo
+    // 等）不在快照里，旧代码在这种状态下永远算不出可见页（chrome 判定失效），也就看不见
+    // 「零可见＝整屏空白」这个致命态。稳态切页恒走上面那条缓存扫描，零额外开销。
+    if (!visible) visible = liveVisiblePage();
+    if (visible) _lastVisId = visible.id;
+    else healBlank();
     const isFull = visible ? FULL_PAGES.indexOf(visible.id) >= 0 : false;
     const sig = (visible ? visible.id : '') + '|' + (isFull ? '1' : '0');
     if (sig === _scLastSig) return;
@@ -61,16 +144,17 @@
   if (appearanceRow && themePage) {
     appearanceRow.addEventListener('click', () => {
       sdLeaveSnap();
-      pages.forEach(p => { if (!p.hidden) p.hidden = true; }); // FIX #338 同值写也发 mutation（Blink 实测同值 3 连写=3 条记录），44 页全扫=唤醒全部页面观察器
+      hideAllPages(); // FIX #815：实时清单，运行中才建的 .page 也一并关掉
       themePage.hidden = false;
     });
   }
   if (themeBack) {
     themeBack.addEventListener('click', () => {
       sdLeaveSnap();
-      pages.forEach(p => { if (!p.hidden) p.hidden = true; }); // FIX #338 同值写也发 mutation（Blink 实测同值 3 连写=3 条记录），44 页全扫=唤醒全部页面观察器
       const setPage = document.getElementById('page-setting');
-      if (setPage) setPage.hidden = false;
+      if (!setPage) { hideAllPages(); themePage.hidden = false; return; } // FIX #815：兜底退回主题页，不留零可见页
+      hideAllPages();
+      setPage.hidden = false;
     });
   }
 })();
@@ -105,7 +189,13 @@
     //    微信式交互：按返回先关面板（表情/更多/拍一拍/搜索/半框等），再退页面
     const layers = ['img-view-mask', 'modal-mask', 'qa-mask', 'tc-mask', 'poke-card', 'emoji-panel',
       'chat-more-panel', 'chat-search', 'chat-decision-panel', 'chat-divine-panel', 'chat-snake-panel',
-      'avlib-card', 'ck-panel', 'feed-notice-panel', 'desk-msg', 'chat-ask-panel', 'msg-actions'];
+      'avlib-card', 'ck-panel', 'feed-notice-panel', 'desk-msg', 'chat-ask-panel', 'msg-actions',
+      // FIX 2026-09-16 #640：设置 → 工具 →「使用提示」面板（page-coach.js 动态创建，登记进
+      // mobile-adapt 的 FLOAT_SELECTORS 同族）——返回键先关面板，不直接退页面
+      'pc-sheet-mask',
+      // #764：屏幕适配微调面板（personalize.js 动态创建）——返回键先关面板；
+      // 这里只置 hidden，入口点击侧已做 panel.hidden=false 复活，不会留 zombie
+      'screen-adj-panel'];
     for (const id of layers) {
       const el = document.getElementById(id);
       if (el && !el.hidden) { el.hidden = true; return; }

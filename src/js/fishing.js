@@ -37,10 +37,16 @@
   function pick(arr) { return arr && arr.length ? arr[Math.floor(Math.random() * arr.length)] : ''; }
   function todayKey() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
   function fenToStr(fen) { const y = fen / 100; return y.toFixed(y >= 100 ? 0 : 2); }
-  function pickPool(name, fb) { try { if (window.getInteractPool) { const p = window.getInteractPool(name, fb); if (p && p.length) return p; } } catch (e) {} return fb; }
+  function pickPool(name, fb) { try { if (window.getInteractPool) { const p = window.getInteractPool(name, fb); if (p && p.length) return p; } } catch (e) {} return window.gateCardFallback ? window.gateCardFallback('interact', fb) : fb; } // #1515 兜底也过闸（全关＝空池，消费方不出声）
 
   // ---- 音效（Web Audio 短促音） ----
   let audioCtx = null, soundOn = true;
+  // #763 静音偏好持久化（原每次重开 App 都丢）：按联系人桌面存 fishing-sound，openFishPanel 时回读
+  function setSoundOn(on, persist) {
+    soundOn = !!on;
+    if (soundBtn) { soundBtn.textContent = soundOn ? '🔊' : '🔇'; soundBtn.classList.toggle('off', !soundOn); }
+    if (persist) { try { writeJSON('fishing-sound', { on: soundOn }); } catch (e) {} }
+  }
   function beep(freq, dur, vol, type) {
     if (!soundOn) return;
     try {
@@ -138,12 +144,35 @@
   function giftNoteFor(item) {
     const builtin = GIFT_NOTES[item.giftNote || item.id] || ['这个给你。', '想把这份小惊喜留给你。'];
     const pool = pickPool('游戏胜利·回应', builtin);
-    return pool && pool.length ? pick(pool) : pick(builtin);
+    return pool && pool.length ? pick(pool) : ''; // #1515 全关＝无寄语（不再回落未过闸兜底）
   }
 
   // ---- 存储读写 ----
-  function readJSON(key, fb) { const s = store(); if (!s) return fb; try { const v = JSON.parse(s.get(key) || 'null'); return v == null ? fb : v; } catch (e) { return fb; } }
-  function writeJSON(key, v) { const s = store(); if (s) s.set(key, JSON.stringify(v)); }
+  // #763 读盘记忆化：taStep 心跳每 1.2s 走 renderPage，脏键算一遍、渲染又读同键（厨房页最重＝loadToday+loadCook+loadBox 双读）。
+  // 原始串不变则复用上次解析结果；缓存键带 activePrefix() 命名空间，切联系人绝不串数据。
+  // 约束：命中返回同一引用——本模块所有「读-改」流程随后都经 writeJSON 落盘（即时回写缓存），normalizeToday 归一化幂等，语义不变。
+  const _jsonCache = {};
+  function _cacheNs(key) { try { return (window.activePrefix ? window.activePrefix() : '') + '|' + key; } catch (e) { return '|' + key; } }
+  function readJSON(key, fb) {
+    const s = store(); if (!s) return fb;
+    const ns = _cacheNs(key);
+    try {
+      const raw = s.get(key) || 'null';
+      const c = _jsonCache[ns];
+      if (c && c.raw === raw) return c.val == null ? fb : c.val;
+      const v = JSON.parse(raw);
+      _jsonCache[ns] = { raw: raw, val: v };
+      return v == null ? fb : v;
+    } catch (e) { delete _jsonCache[ns]; return fb; }
+  }
+  function writeJSON(key, v) {
+    const s = store(); if (!s) return;
+    const ns = _cacheNs(key);
+    const raw = JSON.stringify(v);
+    // 写失败（配额满等）时清除缓存条目：调用方可能已就地改过这份缓存引用，失效后下次读从存储重新解析出干净副本
+    try { s.set(key, raw); } catch (e) { delete _jsonCache[ns]; throw e; }
+    _jsonCache[ns] = { raw: raw, val: v };
+  }
 
   function dexKey() { return 'fishing-dex'; }
   function loadDex() { const d = readJSON(dexKey(), {}); return (d && typeof d === 'object') ? d : {}; }
@@ -355,9 +384,11 @@
         else if (r < 0.15) { this.phase = 'daze'; this.until = now + rand(2000, 5000); this.next = now + rand(5000, 9000); }
         else if (r < 0.25) { this.phase = 'shift'; this.until = now + rand(1500, 3500); this.next = now + rand(2500, 4500); }
         else {
-          // 钓鱼：抛竿 → 等待（随机时长）→ 咬钩 → 收竿
-          this.phase = 'casting'; this.until = now + rand(800, 1500);
-          this.castAt = now; this.biteAt = now + rand(3000, 8000);
+          // 抛竿 → 等待（随机时长）→ 咬钩 → 收竿
+          // FIX 2026-09-22 #1031：抛竿分支原先不设 next，它停在上一拍的过去值 ⇒ taStep 守卫「非 rest/waiting/biting
+          // 且 now>=next 即重决策」每拍为真，casting 被反复重 roll（实测 4000 拍 988 拍白抛、链长 21+），TA 进不了
+          // waiting（用户所见＝只有自己在钓）。next 取 biteAt 覆盖抛竿+等待整段；写 next=until 反而更糟——会被同一条守卫抢走。
+          this.phase = 'casting'; this.until = now + rand(800, 1500); this.castAt = now; this.biteAt = now + rand(3000, 8000); this.next = this.biteAt;
         }
       },
       resolve: function (now) {
@@ -390,7 +421,7 @@
       sfxGift();
       const note = giftNoteFor(item);
       statusText(taWord() + ' 钓到了 ' + item.icon + ' ' + item.name + '，并把它送给了你。');
-      sendTaLine(fit('TA：') + note, true);
+      if (note) sendTaLine(fit('TA：') + note, true); // #1515 空寄语＝不发言（赠送照常）
     } else {
       const t = loadToday();
       t.ta[item.id] = (t.ta[item.id] || 0) + 1; saveToday(t);
@@ -400,7 +431,7 @@
       // 漂流花：概率触发赠送互动（花仍可出售）
       if (item.giftNote === 'flower' && Math.random() < 0.5) {
         const note = giftNoteFor(item);
-        setTimeout(function () { sendTaLine(fit('TA：') + note, false); }, 700);
+        setTimeout(function () { if (note) sendTaLine(fit('TA：') + note, false); }, 700); // #1515 空寄语＝不发言
       } else if (item.r >= 4 && Math.random() < 0.5) {
         setTimeout(function () { sendTaLine(fit('TA：') + pick(TA_PROUD), false); }, 600);
       } else if (Math.random() < 0.3) {
@@ -503,8 +534,8 @@
     const now = Math.floor(Date.now() / 1000), elapsed = now - entry.startedAt;
     return { dish: d, done: elapsed >= d.cookSec, progress: Math.min(1, elapsed / d.cookSec), remainSec: Math.max(0, d.cookSec - elapsed), elapsed: elapsed };
   }
-  function loadBox() { const s = store(); if (!s) return []; try { const a = JSON.parse(s.get('giftbox-items') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
-  function saveBox(a) { const s = store(); if (s) s.set('giftbox-items', JSON.stringify(a)); }
+  function loadBox() { const a = readJSON('giftbox-items', null); return Array.isArray(a) ? a : []; }
+  function saveBox(a) { writeJSON('giftbox-items', a); }
   const TA_COOK_WISH = ['给你尝尝。', '刚做好的，趁热吃。', '这道菜想让你试试。', '用心做的，希望你喜欢。'];
   function cookMine(fishId) {
     const d = dishOf(fishId); if (!d) { toast('这种鱼不能烹饪'); return; }
@@ -573,9 +604,11 @@
   }
 
   // ---- 渲染 ----
+  let lastNotice = '';
   function statusText(t) {
     if (!statusEl) return;
     statusEl.textContent = t;
+    lastNotice = t;
     // FIX 2026-09-16：收竿/跑鱼/TA 钓到的结算文案原先被随后的 render() 同帧清空
     // （idle+today 分支），用户根本看不到——设 keep 保留 2.5s 后自动恢复常规提示
     statusEl.dataset.keep = '1';
@@ -615,7 +648,10 @@
     // 默认状态提示
     if (statusEl && !statusEl.dataset.keep) {
       if (mine.phase === 'waiting') statusEl.textContent = '鱼漂已下水，等 TA 咬钩…';
-      else if (mine.phase === 'idle' && curTab === 'today') statusEl.textContent = '';
+      // FIX 2026-09-22 #1031：keep 到期后原来把整行写成空串——TA 的「钓到了…」是随机事件，
+      // 2.5s 窗口基本赶不上（实测 300s 里 93% 的时间这行是空的），改成留在最近一条播报上；
+      // 同值不重写（render 每 1.2s 心跳一次，避免白写 DOM）
+      else if (mine.phase === 'idle' && curTab === 'today') { if (statusEl.textContent !== lastNotice) statusEl.textContent = lastNotice; }
     }
     renderPage();
   }
@@ -633,7 +669,8 @@
   function renderPage() {
     if (!pageEl) return;
     let key;
-    if (curTab === 'today') key = 'today:' + JSON.stringify(loadToday());
+    // #763 today 脏键并入日封顶用量：出售烹饪菜只动 fishing-coin-day 不动 fish-today，不并入则封装配额提示滞留旧值
+    if (curTab === 'today') key = 'today:' + JSON.stringify(loadToday()) + ':' + fishCoinCap();
     else if (curTab === 'dex') key = 'dex:' + JSON.stringify(loadDex()) + ':' + JSON.stringify(loadStats());
     else if (curTab === 'cook') {
       // FIX 2026-09-16：脏键不再含秒级时间戳（原每 1.2s 整页 innerHTML 重建——iOS 周期性强制重排，
@@ -687,11 +724,14 @@
       });
       return html;
     }
+    const capUsed = fishCoinCap();
     const html =
       '<div class="fish-sub">今日收获</div>' +
       '<div class="fish-subhead">你</div>' + rows('mine') +
       '<div class="fish-subhead">' + esc(taWord()) + '</div>' + rows('ta') +
-      '<div class="fish-sellbar">' + (count ? '<span>可出售 ' + count + ' 件 · <b>+' + fenToStr(total) + '</b> 心意币（勾「留」不卖）</span>' : '<span>没有可出售的收获</span>') + '<button class="fish-sell" id="fish-sell-btn"' + (count ? '' : ' disabled') + '>出售</button></div>';
+      '<div class="fish-sellbar">' + (count ? '<span>可出售 ' + count + ' 件 · <b>+' + fenToStr(total) + '</b> 心意币（勾「留」不卖）</span>' : '<span>没有可出售的收获</span>') + '<button class="fish-sell" id="fish-sell-btn"' + (count ? '' : ' disabled') + '>出售</button></div>' +
+      // #763 日封顶用量前置可见（原只在撞限 toast 时才第一次告知，攒一天鱼来卖被截断很挫败）
+      (capUsed > 0 ? '<div class="fish-capnote">今日售出所得 ¥' + fenToStr(capUsed) + ' / 上限 ¥104（出售+烹饪共用，明日重置）</div>' : '');
     return html;
   }
   function renderDex() {
@@ -769,7 +809,7 @@
   // ---- 事件 ----
   if (castBtn) castBtn.addEventListener('click', function (e) { e.stopPropagation(); castMine(); });
   if (reelBtn) reelBtn.addEventListener('click', function (e) { e.stopPropagation(); reelMine(); });
-  if (soundBtn) soundBtn.addEventListener('click', function (e) { e.stopPropagation(); soundOn = !soundOn; soundBtn.textContent = soundOn ? '🔊' : '🔇'; soundBtn.classList.toggle('off', !soundOn); });
+  if (soundBtn) soundBtn.addEventListener('click', function (e) { e.stopPropagation(); setSoundOn(!soundOn, true); });
   if (pageEl) pageEl.addEventListener('click', function (e) {
     const sell = e.target.closest && e.target.closest('#fish-sell-btn');
     if (sell) { e.stopPropagation(); sellAll(); return; }
@@ -836,6 +876,8 @@
     stopTaTimer();
     taTimer = setInterval(taStep, 1200);
     startTogetherTimer();
+    // #763 回读静音偏好（存储此刻必已就绪；读失败保持当前状态）
+    try { const sp = readJSON('fishing-sound', null); if (sp && typeof sp.on === 'boolean') setSoundOn(sp.on, false); } catch (e) {}
     // 停在心跳
     statusEl.dataset.keep = '1';
     statusEl.textContent = '你和 ' + taWord() + ' 在水边坐下，点「抛竿」开始。';

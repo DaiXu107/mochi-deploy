@@ -224,6 +224,14 @@
     const items = memoItems();
     const list = document.getElementById('memo-list');
     if (!list) return;
+    // #797：IDB 回填未完成时不把空值说成「还没有备忘」（用户读成数据丢了）——
+    // 出加载占位；done 后由本文件既有 restore-done 钩子（memoMigrateGlobal + memoRender）补渲
+    if (!items.length && window.mochiDataPending && window.mochiDataPending()) {
+      list.innerHTML = window.mochiLoadingHtml('备忘');
+      const emptyLoading = document.getElementById('memo-empty');
+      if (emptyLoading) emptyLoading.hidden = true;
+      return;
+    }
     list.innerHTML = '';
     const undone = items.filter(x => !x.done).length;
     const cnt = document.getElementById('memo-count');

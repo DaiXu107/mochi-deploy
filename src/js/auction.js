@@ -115,29 +115,48 @@
     try { window.__auDebug.lastBuzz = p; } catch (e) {}
   }
   // ---- #348 落盘双写：localStorage（同步读）+ IndexedDB（防容量/换机），idbSet 可用即写 ----
-  // FIX 2026-09-16：返回 localStorage 侧是否写成功（原静默吞 QuotaExceeded——hammer 用它做原子性判断）
+  // FIX 2026-09-20「拍卖会显示本地存储不可用玩不了」：裸 localStorage.setItem 在配额满/隐私模式
+  // 下一抛异常 hammer 就退款，而钱包（xyStore）同环境照常——落盘/读取统一走 xyStore
+  // （写失败自动落 IDB + 内存缓存并记脏键，读取内存缓存优先），与全站数据层同一条容忍通道；
+  // xyStore 不可用时退回原裸读写。persist 返回 xyStore 在位即成功（写已进内存 + IDB 权威）。
+  function splitKey(key) {
+    const i = key.lastIndexOf(':');
+    return i > 0 ? [key.slice(0, i), key.slice(i + 1)] : ['xy-home-v2', key];
+  }
+  function lsGet(key) {
+    const [p, k] = splitKey(key);
+    if (typeof window.xyStore === 'function') {
+      try { return window.xyStore(p).get(k); } catch (e) {}
+    }
+    try { return localStorage.getItem(key); } catch (e) { return null; }
+  }
   function persist(key, val) {
+    const s = typeof val === 'string' ? val : JSON.stringify(val);
+    const [p, k] = splitKey(key);
+    if (typeof window.xyStore === 'function') {
+      try { window.xyStore(p).set(k, s); return true; } catch (e) {}
+    }
     let ok = false;
-    try { localStorage.setItem(key, typeof val === 'string' ? val : JSON.stringify(val)); ok = true; } catch (e) {}
+    try { localStorage.setItem(key, s); ok = true; } catch (e) {}
     try { if (typeof window.idbSet === 'function') window.idbSet(key, val); } catch (e) {}
     return ok;
   }
   // #348 拍卖记录：每件拍品的成交/流拍明细（最近 60 条）
   function historyKey() { return prefix() + ':auction-history'; }
-  function loadHistory() { try { const a = JSON.parse(localStorage.getItem(historyKey()) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  function loadHistory() { try { const a = JSON.parse(lsGet(historyKey()) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
   function recordHistory(item, price, who) {
     const h = loadHistory();
-    h.unshift({ t: Date.now(), ico: item.ico, name: item.name, price: price, who: who, rarity: rarityOf(item).label });
+    h.unshift({ t: Date.now(), ico: item.ico, img: item.img || '', name: item.name, price: price, who: who, rarity: rarityOf(item).label });
     if (h.length > 60) h.length = 60;
     persist(historyKey(), h);
   }
   // #348 自制拍品（每联系人独立，上限 20；添加弹窗里输入已有名称＝删除）
   function customKey() { return prefix() + ':auction-custom'; }
-  function loadCustom() { try { const a = JSON.parse(localStorage.getItem(customKey()) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
-  function saveCustom(a) { try { if (a.length > 20) a.length = 20; persist(customKey(), a); } catch (e) {} }
-  // #348 自制拍品并入奖池（随机 20% 蒙面登场）
+  function loadCustom() { try { const a = JSON.parse(lsGet(customKey()) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  function saveCustom(a) { try { if (a.length > 20) a.length = 20; return persist(customKey(), a); } catch (e) { return false; } }
+  // #348 自制拍品并入奖池；#1041 蒙面由编辑台显式开关决定（旧库无此字段按 0），img＝商品图（可空）
   function activePool() {
-    return POOL.concat(loadCustom().map((c) => ({ ico: c.ico, name: c.name, desc: c.desc, base: c.base, wish: c.wish, mystery: c.mystery || 0, custom: 1 })));
+    return POOL.concat(loadCustom().map((c) => ({ ico: c.ico, img: c.img || '', name: c.name, desc: c.desc, base: c.base, wish: c.wish, mystery: c.mystery || 0, custom: 1 })));
   }
 
   // ---- 音效 ----
@@ -148,6 +167,9 @@
     if (!soundOn) return;
     try {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      // FIX 2026-09-18 #718：iOS 锁屏/切后台回来 ctx 被系统挂起，不 resume 则整局哑音
+      //（snake-game/connect-four 同款修法；全站音效模块最后一个漏网）
+      if (audioCtx.state === 'suspended' && audioCtx.resume) audioCtx.resume().catch(function () {});
       const o = audioCtx.createOscillator(), g = audioCtx.createGain();
       o.frequency.value = freq; o.type = 'sine';
       g.gain.value = vol || 0.16;
@@ -183,7 +205,7 @@
   function loadStats() {
     const d = { sessions: 0, myWins: 0, taWins: 0, spentFen: 0 };
     try {
-      const raw = localStorage.getItem(statsKey());
+      const raw = lsGet(statsKey());
       if (raw) { const v = JSON.parse(raw); if (v && typeof v === 'object') return Object.assign(d, v); }
     } catch (e) {}
     return d;
@@ -191,14 +213,14 @@
   function saveStats(s) { persist(statsKey(), s); }
   function bagKey() { return prefix() + ':auction-items'; }
   function loadBag() {
-    try { const a = JSON.parse(localStorage.getItem(bagKey()) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+    try { const a = JSON.parse(lsGet(bagKey()) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
   }
   function saveBag(a) { persist(bagKey(), a); }
   // #301 TA 回寄：TA 拍走的拍品 2~4 天后寄回给你（进你的 🎒，附一句留言）
   function giftsKey() { return prefix() + ':au-gifts-pending'; }
   // FIX 2026-09-16：回寄排队原只写 localStorage（不走 persist 双写、不在 idb 回填清单）——
   // 清缓存/换机后「2~4 天寄回」的排队直接丢
-  function loadPending() { try { const a = JSON.parse(localStorage.getItem(giftsKey()) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  function loadPending() { try { const a = JSON.parse(lsGet(giftsKey()) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
   function savePending(a) { persist(giftsKey(), a); }
   let giftTimer = null;
   function checkGifts() {
@@ -210,7 +232,7 @@
     pend.forEach((p) => {
       if (p.due <= now) {
         const bag = loadBag();
-        bag.unshift({ ico: p.ico, name: p.name, fen: 0, ts: Date.now(), from: 'ta' });
+        bag.unshift({ ico: p.ico, img: p.img || '', name: p.name, fen: 0, ts: Date.now(), from: 'ta' });
         saveBag(bag);
         delivered++;
         try { if (window.chatAddIn) window.chatAddIn(T('TA') + ' 把之前拍走的「' + p.name + '」寄给你了，纸条上写：拍品该物归原主呀', {}); } catch (e) {}
@@ -253,8 +275,9 @@
       if (st.leader === 'none') bidTxt = '起拍价 ' + yuan(st.cur);
       else if (st.leader === 'you') bidTxt = '你的出价 ' + yuan(st.cur);
       else bidTxt = esc(T('TA')) + ' 出价 ' + yuan(st.cur);
-      // #301 蒙面拍品：开拍只给描述，落槌才揭晓
-      const showIco = item.mystery ? '🎁' : item.ico;
+      // #301 蒙面拍品：开拍只给描述，落槌才揭晓；#1041 自制拍品有商品图时展示图（dataURL 走白名单正则再入 innerHTML）
+      const auImg = item.mystery ? '' : auSafeImg(item.img);
+      const showIco = item.mystery ? '\u{1F381}' : auImg ? '<img class="au-ico-img" src="' + auImg + '" alt="">' : item.ico;
       const showName = item.mystery ? '神秘拍品' : esc(item.name);
       // #343 领价方着色 + 价格跳动（innerHTML 重建节点即自动重放 aubump）
       const leadCls = st.leader === 'you' ? ' au-lead-you' : st.leader === 'ta' ? ' au-lead-ta' : '';
@@ -368,7 +391,7 @@
     const minFen = st.cur + STEP1;
     const ctl = window.openModal('自定义出价', String(minFen / 100), function (v) {
       const fen = Math.round(parseFloat(String(v).replace(/[^\d.]/g, '')) * 100);
-      if (!fen || fen < minFen) { ctl.stay(); ctl.val(''); ctl.ph('至少要比当前价多 ¥1（≥' + yuanC(minFen) + '）'); return; }
+      if (!fen || fen < minFen) { ctl.stay(); ctl.text(''); ctl.ph('至少要比当前价多 ¥1（≥' + yuanC(minFen) + '）'); return; }
       placeBid(fen);
     }, { inputmode: 'decimal', placeholder: '直接压上这个价（≥' + yuanC(minFen) + '）' });
     try { if (ctl) ctl.okText('压价'); } catch (e) {}
@@ -446,7 +469,7 @@
     // #301 TA 回寄排队：2~4 天后寄回给你
     try {
       const pend = loadPending();
-      pend.push({ ico: item.ico, name: item.name, due: Date.now() + (2 + Math.floor(Math.random() * 3)) * 86400000 });
+      pend.push({ ico: item.ico, img: item.img || '', name: item.name, due: Date.now() + (2 + Math.floor(Math.random() * 3)) * 86400000 });
       savePending(pend);
     } catch (e) {}
     const rt = rarityOf(item);
@@ -459,9 +482,9 @@
     try {
       const fb = ['这件归我啦。', '嘿嘿，到手。', '眼光不错吧。'];
       const pool = window.getInteractPool ? window.getInteractPool('游戏胜利·回应', fb) : fb;
-      const say = pool[Math.floor(Math.random() * pool.length)] || fb[0];
+      const say = pool.length ? pool[Math.floor(Math.random() * pool.length)] : ''; // #1515 整组停用＝静默（TA 抱走）
       const cid1 = prefix();
-      setTimeout(() => {
+      if (say) setTimeout(() => {
         if (prefix() !== cid1) return;
         try { if (window.chatAddIn) window.chatAddIn(say, { silent: true }); } catch (e) {}
       }, 800);
@@ -482,9 +505,9 @@
     try {
       const fb = ['这玩意没人要啊。', '亏本了亏本了。'];
       const pool = window.getInteractPool ? window.getInteractPool('游戏平局·回应', fb) : fb;
-      const say = pool[Math.floor(Math.random() * pool.length)] || fb[0];
+      const say = pool.length ? pool[Math.floor(Math.random() * pool.length)] : ''; // #1515 整组停用＝静默（流拍）
       const cid2 = prefix();
-      setTimeout(() => {
+      if (say) setTimeout(() => {
         if (prefix() !== cid2) return;
         try { if (window.chatAddIn) window.chatAddIn(say, { silent: true }); } catch (e) {}
       }, 800);
@@ -508,7 +531,8 @@
     s.myWins = (s.myWins || 0) + 1;
     s.spentFen = (s.spentFen || 0) + st.cur;
     const bag = loadBag();
-    bag.push({ ico: item.ico, name: item.name, fen: st.cur, ts: Date.now() });
+    // #1032 入库即记成色（旧条目由 bagRarity 反查池/按落槌价档估兜底）
+    bag.push({ ico: item.ico, img: item.img || '', name: item.name, fen: st.cur, ts: Date.now(), rarity: rarityOf(item).label });
     // FIX 2026-09-16：扣款与入库非原子（persist 原先静默吞写失败）——收藏/战绩落盘失败时
     // 退回扣款，杜绝「心意币扣了、收藏没进」
     if (!persist(bagKey(), bag) || !persist(statsKey(), s)) {
@@ -534,10 +558,10 @@
     try {
       const fb = ['被你拍走了…', '亏了亏了。', '那件本来我想要来着。'];
       const pool = window.getInteractPool ? window.getInteractPool('游戏失败·回应', fb) : fb;
-      const say = pool[Math.floor(Math.random() * pool.length)] || fb[0];
+      const say = pool.length ? pool[Math.floor(Math.random() * pool.length)] : ''; // #1515 整组停用＝静默（被拍走）
       // FIX 2026-09-16：800ms 内切联系人桌面，回应会发进新桌面——回调前校验命名空间未变
       const cid0 = prefix();
-      setTimeout(() => {
+      if (say) setTimeout(() => {
         if (prefix() !== cid0) return;
         try { if (window.chatAddIn) window.chatAddIn(say, { silent: true }); } catch (e) {}
       }, 800);
@@ -575,7 +599,14 @@
       if (st.myWins) txt += '拍下 ' + st.myWins + ' 件 ' + yuan(st.spent);
       else txt += '空手而归';
       if (st.taWins) txt += ' · ' + T('TA') + ' 拍走 ' + st.taWins + ' 件';
-      if (window.chatAddSystem) window.chatAddSystem(txt, { special: 'auction' });
+      // #891：带结构化结算负载（chat.js 小游戏卡片渲染；{ta} 由渲染侧按当前昵称展开）
+      const auRes = st.myWins >= st.taWins ? (st.myWins ? '拍下 ' + st.myWins + ' 件！' : '谁也没拍到') : '{ta} 拍走 ' + st.taWins + ' 件';
+      if (window.chatAddSystem) window.chatAddSystem(txt, { special: 'auction', game: {
+        name: '心意币拍卖会',
+        outcome: st.myWins > st.taWins ? 'win' : st.taWins > st.myWins ? 'lose' : 'draw',
+        result: auRes,
+        stats: ['我拍下 ' + st.myWins + ' 件 · 花了 ' + yuan(st.spent), '{ta} 拍走 ' + st.taWins + ' 件', '本场 ' + st.lots.length + ' 件拍品 · 累计 ' + s.sessions + ' 场']
+      } });
     } catch (e) {}
   }
   // #346 结算汇总单独成函数：背包「返回」也要能回到这一屏（原先被背包覆盖后回不去）
@@ -592,14 +623,48 @@
   }
 
   // ---- 🎒 小收藏（#301 支持转赠心意柜） ----
+  // #1032 藏品页改版（方案 A 卡片网格）：原 showBag 是一行行 pong-end-stat 裸文本（用户实报
+  // 「拍卖藏品功能页面没有设计ui」）→ 两列卡片（成色描边/徽章 + 展台区 + 名称 + 落槌价/来源 + 送TA），
+  // 空态给「开始拍卖」直达。转赠沿用 .au-send-btn + data-i（事件委托与 verify-auction-overlay G3 同口径）。
+  function bagRarity(it) {
+    if (it.rarity) return { label: it.rarity, cls: it.rarity === 'SSR' ? 'au-r2' : it.rarity === '稀有' ? 'au-r1' : 'au-r0' };
+    // 旧库没存成色：按拍品池反查底价，查不到按落槌价档估（与 rarityOf 同档）
+    let src = null;
+    try { src = POOL.concat(loadCustom()).find((c) => c.name === it.name) || null; } catch (e) {}
+    const r = rarityOf(src || { base: it.fen || 0 });
+    return { label: r.label, cls: r.cls };
+  }
+  function bagDate(ts) { try { const d = new Date(ts); return (d.getMonth() + 1) + '月' + d.getDate() + '日'; } catch (e) { return ''; } }
   function showBag() {
     bagOpen = true;
     const bag = loadBag();
-    const body = bag.length
-      ? bag.map((it, i) =>
-          '<div class="pong-end-stat au-bag-row">' + it.ico + ' ' + esc(it.name) + ' · ' + (it.from === 'ta' ? esc(T('TA')) + ' 寄来的' : yuan(it.fen)) +
-          (it.from === 'ta' ? '' : ' <button class="pong-overlay-btn au-send-btn" data-i="' + i + '" type="button">送' + esc(T('TA')) + '</button>') + '</div>').join('')
-      : '<div class="pong-end-stat">还什么都没拍到</div>';
+    let body;
+    if (!bag.length) {
+      body = '<div class="au-bag-empty">' +
+        '<div class="au-bag-empty-ico">🎒</div>' +
+        '<div class="au-bag-empty-t">还什么都没拍到</div>' +
+        '<div class="au-bag-empty-s">开一场拍卖会，把第一件宝贝抱回来</div>' +
+        '<button class="pong-overlay-btn au-bag-empty-btn" type="button">开始拍卖</button></div>';
+    } else {
+      const s = loadStats();
+      let taCnt = 0;
+      bag.forEach((it) => { if (it.from === 'ta') taCnt++; });
+      const stat = '共 <b>' + bag.length + '</b> 件 · 累计花费 <b>' + yuan(s.spentFen || 0) + '</b>' +
+        (taCnt ? ' · ' + esc(T('TA')) + ' 寄回 <b>' + taCnt + '</b> 件' : '');
+      body = '<div class="au-bag-stat">' + stat + '</div><div class="au-bag-grid">' +
+        bag.map((it, i) => {
+          const rt = bagRarity(it);
+          const frame = rt.cls === 'au-r2' ? ' au-bag-ssr' : rt.cls === 'au-r1' ? ' au-bag-rare' : '';
+          const foot = it.from === 'ta'
+            ? '<div class="au-bag-meta au-bag-from-ta">📬 ' + esc(T('TA')) + ' 寄来的</div>'
+            : '<div class="au-bag-meta">' + yuan(it.fen) + ' 拍下 · ' + bagDate(it.ts) + '</div>' +
+              '<button class="pong-overlay-btn au-send-btn au-bag-send" data-i="' + i + '" type="button">送' + esc(T('TA')) + '</button>';
+          return '<div class="au-bag-card' + frame + '">' +
+            '<span class="au-rare ' + rt.cls + ' au-bag-badge">' + rt.label + '</span>' +
+            '<div class="au-bag-tile">' + (auSafeImg(it.img) ? '<img class="au-bag-img" src="' + auSafeImg(it.img) + '" alt="">' : it.ico) + '</div>' +
+            '<div class="au-bag-name">' + esc(it.name) + '</div>' + foot + '</div>';
+        }).join('') + '</div>';
+    }
     showOverlay('🎒 拍品收藏（' + bag.length + '）', body, '返回', '', true);
     if (startBtn) startBtn.textContent = '返回'; // #346 统一返回语义：场次中回竞价、结算后回本场汇总
     if (endBtn) endBtn.hidden = !(st && st.started && !st.over);
@@ -611,47 +676,194 @@
     const whoTxt = { you: '你拍得', ta: T('TA') + '拍走', pass: '流拍' };
     const cls = (r) => r === 'SSR' ? 'au-r2' : r === '稀有' ? 'au-r1' : 'au-r0';
     const body = h.length
-      ? h.map((it) => '<div class="pong-end-stat au-hist-row"><span class="au-rare ' + cls(it.rarity) + '">' + (it.rarity || '普通') + '</span> ' + it.ico + ' ' + esc(it.name) + ' · ' + (it.who === 'pass' ? '流拍' : yuan(it.price)) + ' · ' + (whoTxt[it.who] || '') + ' · ' + fmt(it.t) + '</div>').join('')
+      ? h.map((it) => '<div class="pong-end-stat au-hist-row"><span class="au-rare ' + cls(it.rarity) + '">' + (it.rarity || '普通') + '</span> ' + (auSafeImg(it.img) ? '<img class="au-hist-img" src="' + auSafeImg(it.img) + '" alt="">' : it.ico) + ' ' + esc(it.name) + ' · ' + (it.who === 'pass' ? '流拍' : yuan(it.price)) + ' · ' + (whoTxt[it.who] || '') + ' · ' + fmt(it.t) + '</div>').join('')
       : '<div class="pong-end-stat">还没拍过任何东西</div>';
     showOverlay('📜 拍卖记录（' + h.length + '）', body, '返回', '', true);
     if (startBtn) startBtn.textContent = '返回';
     if (endBtn) endBtn.hidden = !(st && st.started && !st.over);
   }
-  // #348 自制拍品三段式添加（名称→底价→彩蛋）；名称输入已有自制拍品＝删除
-  function addCustomModal() {
-    if (typeof window.openModal !== 'function') return;
-    let stage = 1, pendingName = null;
-    const list = () => { const a = loadCustom(); return a.length ? '已有 ' + a.length + '/20：' + a.map((c) => c.name).join('、') : '还没有自制拍品（上限 20 个）'; };
-    const ctl = window.openModal('自制拍品', '', function (v) {
-      const s = String(v || '').trim();
-      if (stage === 1) {
-        if (!s) return;
-        const cur = loadCustom();
-        const idx = cur.findIndex((c) => c.name === s);
-        if (idx >= 0) { cur.splice(idx, 1); saveCustom(cur); taSay(pick(['这件……不拍了？', '行吧，收回仓库'])); return; }
-        if (cur.length >= 20) { ctl.stay(); ctl.val(''); ctl.ph('自制拍品已满 20 个，先删再加'); return; }
-        pendingName = s; stage = 2;
-        ctl.stay(); ctl.val(''); ctl.ph('底价（元，如 20）'); ctl.okText('下一步');
-        return;
-      }
-      if (stage === 2) {
-        const yuanV = parseFloat(s.replace(/[^\d.]/g, ''));
-        if (!yuanV || yuanV <= 0) { ctl.stay(); ctl.val(''); ctl.ph('请输入大于 0 的金额'); return; }
-        pendingName = { name: pendingName, base: Math.max(100, Math.round(yuanV * 100)) };
-        stage = 3;
-        ctl.stay(); ctl.val(''); ctl.ph('拍下后的一句话彩蛋（可空）'); ctl.okText('完成');
-        return;
-      }
-      const a = loadCustom();
-      a.push({
-        ico: pick(['🎁', '💎', '🧸', '🌈', '⭐', '🍰', '🎧', '🧿', '🌙', '🎀']) || '🎁',
-        name: pendingName.name, desc: '我们自己才懂的小玩意', base: pendingName.base,
-        wish: s || '是心意呀。', mystery: Math.random() < 0.2 ? 1 : 0
-      });
-      saveCustom(a);
-      taSay(pick(['又上新拍品啦？', '你出的题我接了']));
-    }, { maxlength: 24, placeholder: '名称（输入已有名称＝删除）', staticText: list() });
+  // ---- #1041 自制拍品全屏编辑台（方案 A，用户选定；替代 #348 三步纯文字弹窗）----
+  // 需求（用户直派「这个功能没有设计和自定义商品图片或emoji」）：旧流程 emoji 是系统随机抽、
+  // 不能传图、改/删只能靠「输同名＝删」的暗手势。编辑台＝所见即所得：顶部实时预览拍品卡
+  // （蒙面开即演示 🎁 效果），emoji 24 款自选，商品图片可选（480px JPEG 内嵌，同心意集市
+  // compressGiftImg 口径、不产外链），名称/介绍/底价/彩蛋一次填完一次保存，蒙面开关显式化
+  // （旧为存盘时随机 20%）。底部库条点选即改，删除明面化（openModal 二次确认）。
+  // 值读写一律走 input.value（安卓 ce-box 已代理）；确认弹窗一律 openModal（ctl 只有 text()，见 #1033）。
+  const ED_ICOS = ['🎁', '💎', '🧸', '🌈', '🏮', '⭐', '🎧', '🎀', '🧿', '🌙', '✈️', '🎫', '🍰', '🕯️', '🎮', '⚽', '🎨', '🍫', '🧶', '🔮', '🍵', '🪁', '🐚', '🌻'];
+  const edEl = document.getElementById('au-editor');
+  const edTitleEl = document.getElementById('au-ed-title');
+  const edPreviewEl = document.getElementById('au-ed-preview');
+  const edGridEl = document.getElementById('au-ed-grid');
+  const edImgPrevEl = document.getElementById('au-ed-imgprev');
+  const edImgBtn = document.getElementById('au-ed-imgbtn');
+  const edImgClearBtn = document.getElementById('au-ed-imgclear');
+  const edNameEl = document.getElementById('au-ed-name');
+  const edDescEl = document.getElementById('au-ed-desc');
+  const edBaseEl = document.getElementById('au-ed-base');
+  const edWishEl = document.getElementById('au-ed-wish');
+  const edMysteryEl = document.getElementById('au-ed-mystery');
+  const edHintEl = document.getElementById('au-ed-hint');
+  const edLibEl = document.getElementById('au-ed-lib');
+  const edDelBtn = document.getElementById('au-ed-del');
+  const edCancelBtn = document.getElementById('au-ed-cancel');
+  const edSaveBtn = document.getElementById('au-ed-save');
+  const edCloseBtn = document.getElementById('au-ed-close');
+  let ed = null; // { idx:null|number, ico, img, mysteryOn }——文本字段以 DOM 为准，这里只存非文本态
+  // 图片只收本地压缩内嵌图（同 gift-shop GOODS_IMG_MAX 口径：外链/超大一律丢）；
+  // dataURL 进 innerHTML 前必须过这个白名单正则，杜绝把任意串塞进 src 属性。
+  function auSafeImg(s) {
+    return typeof s === 'string' && s.length <= 1200000 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(s) ? s : '';
   }
+  // 图片入口压缩（480px JPEG 白底；同 gift-shop 口径）
+  // FIX 2026-09-25 #1270：原「base64 超 8MB 先拒 ＋ 解码后超 2600 万像素再拒」＝手机拍的照片
+  // 一律「图片处理失败，换一张试试」，而放行时那次整幅解码（48MP＝192MB 位图）又是白屏大退来源。
+  function compressAuImg(src) {
+    if (!window.mochiImgCompressTo) return Promise.resolve(null);
+    return window.mochiImgCompressTo(src, { maxSide: 480, quality: 0.85, mime: 'image/jpeg', opaque: true, tag: 'au-img' });
+  }
+  function edHint(msg) {
+    if (!edHintEl) return;
+    edHintEl.textContent = msg || '';
+    edHintEl.hidden = !msg;
+  }
+  function edVal(el) { return el ? String(el.value || '').trim() : ''; }
+  function edPreviewHtml() {
+    const name = edVal(edNameEl) || '拍品名称';
+    const desc = edVal(edDescEl) || '我们自己才懂的小玩意';
+    const yuanV = parseFloat(edVal(edBaseEl).replace(/[^\d.]/g, ''));
+    const img = ed && auSafeImg(ed.img);
+    const face = !ed ? '🎁' : ed.mysteryOn ? '🎁' : img ? '<img class="au-ed-pimg" src="' + img + '" alt="">' : ed.ico;
+    return '<div class="au-ed-pface">' + face + '</div>' +
+      '<div class="au-ed-pinfo"><div class="au-ed-pname">' + esc(ed && ed.mysteryOn ? '神秘拍品' : name) + '</div>' +
+      '<div class="au-ed-pdesc">' + esc(desc) + '</div>' +
+      '<div class="au-ed-pbase">起拍 ' + (yuanV > 0 ? '¥' + yuanV : '—') + '</div></div>';
+  }
+  function renderEdPreview() { if (edPreviewEl) edPreviewEl.innerHTML = edPreviewHtml(); }
+  function renderEdGrid() {
+    if (!edGridEl || !ed) return;
+    const imgOn = !!auSafeImg(ed.img);
+    edGridEl.innerHTML = ED_ICOS.map((e) => '<button type="button" class="au-ed-ico' + (e === ed.ico && !imgOn ? ' on' : '') + '" data-ico="' + e + '">' + e + '</button>').join('');
+  }
+  function renderEdImg() {
+    if (!edImgPrevEl || !ed) return;
+    const img = auSafeImg(ed.img);
+    edImgPrevEl.innerHTML = img ? '<img src="' + img + '" alt="">' : '🖼️';
+    if (edImgBtn) edImgBtn.textContent = img ? '换一张' : '上传图片';
+    if (edImgClearBtn) edImgClearBtn.hidden = !img;
+  }
+  function renderEdLib() {
+    if (!edLibEl) return;
+    const a = loadCustom();
+    if (!a.length) { edLibEl.innerHTML = ''; return; }
+    edLibEl.innerHTML = '<div class="au-ed-lib-t">已有 ' + a.length + '/20 · 点选即改</div>' +
+      a.map((c, i) => {
+        const img = auSafeImg(c.img);
+        return '<button type="button" class="au-ed-chip' + (ed && ed.idx === i ? ' on' : '') + '" data-i="' + i + '">' +
+          (img ? '<img src="' + img + '" alt="">' : esc(c.ico || '🎁')) + esc(c.name) + '</button>';
+      }).join('');
+  }
+  function openEditor(idx) {
+    if (!edEl) return;
+    const a = loadCustom();
+    if (idx != null && !a[idx]) idx = null;
+    const c = idx == null ? null : a[idx];
+    ed = { idx: idx, ico: c ? (c.ico || '🎁') : ED_ICOS[0], img: c ? auSafeImg(c.img) : '', mysteryOn: c ? !!c.mystery : false };
+    if (edTitleEl) edTitleEl.textContent = c ? '✏️ 编辑「' + c.name + '」' : '✏️ 自制新拍品';
+    if (edNameEl) edNameEl.value = c ? c.name : '';
+    if (edDescEl) edDescEl.value = c ? (c.desc || '') : '';
+    if (edBaseEl) edBaseEl.value = c ? String(c.base / 100) : '';
+    if (edWishEl) edWishEl.value = c ? (c.wish || '') : '';
+    if (edMysteryEl) edMysteryEl.checked = !!c && !!c.mystery;
+    if (edDelBtn) edDelBtn.hidden = idx == null;
+    edHint('');
+    renderEdGrid(); renderEdImg(); renderEdLib(); renderEdPreview();
+    edEl.hidden = false;
+  }
+  function closeEditor() { ed = null; if (edEl) edEl.hidden = true; }
+  function edSave() {
+    if (!ed) return;
+    const name = edVal(edNameEl);
+    if (!name) { edHint('先给拍品起个名称'); return; }
+    const yuanV = parseFloat(edVal(edBaseEl).replace(/[^\d.]/g, ''));
+    if (!yuanV || yuanV <= 0) { edHint('底价要大于 0（例：20 或 9.9）'); return; }
+    const a = loadCustom();
+    if (a.some((c, i) => i !== ed.idx && c.name === name)) { edHint('已有同名拍品，换个名称（想改它就点下面的库条）'); return; }
+    if (ed.idx == null && a.length >= 20) { edHint('自制拍品已满 20 个，先删一个再加'); return; }
+    const item = {
+      ico: ed.ico, img: auSafeImg(ed.img), name: name,
+      desc: edVal(edDescEl) || '我们自己才懂的小玩意',
+      base: Math.max(100, Math.round(yuanV * 100)),
+      wish: edVal(edWishEl) || '是心意呀。',
+      mystery: edMysteryEl && edMysteryEl.checked ? 1 : 0
+    };
+    if (ed.idx == null) a.push(item); else a[ed.idx] = item;
+    if (!saveCustom(a)) { edHint('本地存储写不进去（图片太大？），移除图片或少留几件再试'); return; }
+    taSay(ed.idx == null ? pick(['又上新拍品啦？', '你出的题我接了']) : pick(['这件还改了配方？更期待了']));
+    closeEditor();
+  }
+  function edDelete() {
+    if (!ed || ed.idx == null) return;
+    if (typeof window.openModal !== 'function') { closeEditor(); return; }
+    const a = loadCustom();
+    const name = a[ed.idx] ? a[ed.idx].name : '';
+    const target = ed.idx;
+    const delCtl = window.openModal('删除自制拍品', '', function () {
+      const cur = loadCustom();
+      cur.splice(target, 1);
+      saveCustom(cur);
+      taSay(pick(['这件……不拍了？', '行吧，收回仓库']));
+      closeEditor();
+    }, { staticText: '「' + name + '」将从自制库移除（已拍进 🎒 的不受影响）', noInput: true });
+    // opts.okText 不参与开窗（确定按钮开窗即复位「确定」，见 personalize.js 注释），文案走 ctl 就地覆盖
+    if (delCtl && delCtl.okText) delCtl.okText('删除');
+  }
+  // 编辑台接线（一次性；库条/emoji 格事件委托，内容重渲染不掉监听）
+  if (edGridEl) edGridEl.addEventListener('click', (e) => {
+    const b = e.target.closest('.au-ed-ico');
+    if (!b || !ed) return;
+    e.stopPropagation();
+    ed.ico = b.getAttribute('data-ico') || '🎁';
+    ed.img = ''; // 选 emoji 即弃图（图片盖过 emoji，留残图会所见非所得）
+    renderEdGrid(); renderEdImg(); renderEdPreview();
+  });
+  if (edLibEl) edLibEl.addEventListener('click', (e) => {
+    const b = e.target.closest('.au-ed-chip');
+    if (!b) return;
+    e.stopPropagation();
+    openEditor(parseInt(b.getAttribute('data-i'), 10) || 0);
+  });
+  if (edImgClearBtn) edImgClearBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!ed) return;
+    ed.img = '';
+    renderEdImg(); renderEdGrid(); renderEdPreview();
+  });
+  // 图片入口走 device.js 真·可点 surface 层（#677~#1040 族：程序化 click 会被内核静默吞）
+  if (edImgBtn && typeof window.mochiFilePickSurface === 'function') {
+    window.mochiFilePickSurface(edImgBtn, {
+      id: 'au-ed-img-surf', accept: 'image/*', entry: 'au-ed-img',
+      onFiles: function (files) {
+        const f = files && files[0];
+        if (!f || !/^image\//i.test(f.type || '')) return;
+        if (!window.mochiImgCompressTo) { edHint('图片处理组件没加载上（缓存过旧或离线），请重新打开页面再试'); return; }
+        // FIX 2026-09-25 #1270：File 直接进闸，不再 readAsDataURL 造多 MB base64 字符串
+        compressAuImg(f).then(function (data) {
+          if (!data) { edHint('这张图本机浏览器处理不了，换一张小图试试'); return; }
+          if (!ed) return;
+          ed.img = data;
+          renderEdImg(); renderEdGrid(); renderEdPreview();
+        });
+      }
+    });
+  } else if (edImgBtn) {
+    edImgBtn.addEventListener('click', () => edHint('这台浏览器暂不支持在这里选图，先选个 emoji'));
+  }
+  [edNameEl, edDescEl, edBaseEl].forEach((el) => { if (el) el.addEventListener('input', renderEdPreview); });
+  if (edMysteryEl) edMysteryEl.addEventListener('change', () => { if (ed) ed.mysteryOn = edMysteryEl.checked; renderEdPreview(); });
+  if (edSaveBtn) edSaveBtn.addEventListener('click', (e) => { e.stopPropagation(); edSave(); });
+  if (edDelBtn) edDelBtn.addEventListener('click', (e) => { e.stopPropagation(); edDelete(); });
+  if (edCancelBtn) edCancelBtn.addEventListener('click', (e) => { e.stopPropagation(); closeEditor(); });
+  if (edCloseBtn) edCloseBtn.addEventListener('click', (e) => { e.stopPropagation(); closeEditor(); });
   // 转赠：写心意柜「我送TA」记录（gift-shop 的 recordGiftBox，走既有心意柜渲染），拍品移出收藏
   function giftAway(i) {
     const bag = loadBag();
@@ -660,7 +872,7 @@
     const wish = '拍卖会上抢到的，转送给你';
     try {
       if (typeof window.recordGiftBox === 'function') {
-        window.recordGiftBox({ id: 'au_' + Date.now(), giftId: '', name: it.name, emoji: it.ico, img: '', price: it.fen / 100, cat: '拍卖会', wish: wish }, 'out', wish);
+        window.recordGiftBox({ id: 'au_' + Date.now(), giftId: '', name: it.name, emoji: it.ico, img: auSafeImg(it.img), price: it.fen / 100, cat: '拍卖会', wish: wish }, 'out', wish);
       }
     } catch (e) {}
     bag.splice(i, 1);
@@ -759,9 +971,11 @@
   if (passBtn) passBtn.addEventListener('click', (e) => { e.stopPropagation(); myPass(); });
   if (bagBtn) bagBtn.addEventListener('click', (e) => { e.stopPropagation(); showBag(); });
   if (historyBtn) historyBtn.addEventListener('click', (e) => { e.stopPropagation(); showHistory(); });
-  if (addBtn) addBtn.addEventListener('click', (e) => { e.stopPropagation(); addCustomModal(); });
+  if (addBtn) addBtn.addEventListener('click', (e) => { e.stopPropagation(); openEditor(null); });
   // #301 转赠按钮（收藏列表内，事件委托）
   if (ovBodyEl) ovBodyEl.addEventListener('click', (e) => {
+    // #1032 空态「开始拍卖」直达：收掉浮层直接开新场
+    if (e.target.closest('.au-bag-empty-btn')) { e.stopPropagation(); hideOverlay(); newSession(); return; }
     const sendBtn = e.target.closest('.au-send-btn');
     if (!sendBtn) return;
     e.stopPropagation();
@@ -794,7 +1008,7 @@
     let name = T('TA');
     try {
       const s = window.activeStore && window.activeStore();
-      name = (s && (s.get('cs-lbl-partner') || s.get('lbl-partner'))) || name;
+      name = (s && (s.get('lbl-partner') || s.get('cs-lbl-partner'))) || name;
     } catch (e) {}
     if (partnerNameEl) partnerNameEl.textContent = name;
   }
@@ -818,6 +1032,7 @@
     clearInterval(giftTimer); giftTimer = null;
     bagOpen = false;
     hideIntro(); hideHelp();
+    closeEditor(); // #1041 编辑台也是面板内全屏层：关面板/切联系人（走 closePanel）必须一并收，防旧 idx 跨桌面残留
     if (panel) panel.hidden = true;
   }
   window.closeAuctionPanel = closePanel;
@@ -834,10 +1049,10 @@
   setInterval(() => { try { checkGifts(); } catch (e) {} }, 600000);
   // #348 开屏异步回填：localStorage 缺失而 IndexedDB 有（被清/换机）时把收藏与记录搬回同步读路径
   (function restoreFromIdb() {
-    ['auction-items', 'auction-history', 'au-gifts-pending'].forEach((k) => {
+    ['auction-items', 'auction-history', 'au-gifts-pending', 'auction-custom'].forEach((k) => {
       try {
         const key = prefix() + ':' + k;
-        if (localStorage.getItem(key)) return;
+        if (lsGet(key)) return;
         if (typeof window.idbGet !== 'function') return;
         Promise.resolve(window.idbGet(key)).then((v) => {
           try {
@@ -845,7 +1060,7 @@
             const s = typeof v === 'string' ? v : JSON.stringify(v);
             if (!s) return;
             const p = JSON.parse(s);
-            if (Array.isArray(p) && p.length) localStorage.setItem(key, s);
+            if (Array.isArray(p) && p.length) persist(key, s);
           } catch (e) {}
         }).catch(() => {});
       } catch (e) {}
@@ -900,6 +1115,9 @@
     myBid: myBid,
     loadBag: loadBag,
     poolSize: () => activePool().length,
+    loadCustom: loadCustom,
+    openEditor: openEditor,
+    ed: () => ed,
     lastBuzz: null,
     fast: false
   };

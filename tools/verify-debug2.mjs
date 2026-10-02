@@ -1,0 +1,105 @@
+// ===== 调试验证脚本 =====
+import { spawn } from 'node:child_process';
+import { createServer } from 'node:http';
+import { readFileSync, statSync } from 'node:fs';
+import { join, normalize, extname, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = normalize(dirname(fileURLToPath(import.meta.url)) + '/..');
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const candidates = [
+  process.env.CHROME_PATH,
+  'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+  'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+  'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+  'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  '/usr/bin/google-chrome',
+  '/usr/bin/chromium',
+  '/usr/bin/chromium-browser'
+].filter(Boolean);
+const chromePath = candidates.find((p) => { try { return statSync(p).isFile(); } catch (e) { return false; } });
+if (!chromePath) { console.error('找不到 Chrome/Edge'); process.exit(1); }
+
+const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.json': 'application/json', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
+const server = createServer((req, res) => {
+  try {
+    let p = normalize(join(root, decodeURIComponent(req.url.split('?')[0])));
+    if (!p.startsWith(root)) { res.writeHead(403); res.end(); return; }
+    if (statSync(p).isDirectory()) p = join(p, 'index.html');
+    const body = readFileSync(p);
+    res.writeHead(200, { 'Content-Type': types[extname(p)] || 'application/octet-stream' });
+    res.end(body);
+  } catch (e) { res.writeHead(404); res.end('nf'); }
+});
+await new Promise((r) => server.listen(0, '127.0.0.1', r));
+const baseUrl = 'http://127.0.0.1:' + server.address().port;
+
+const cdpPort = Number(process.env.MOCHI_CDP_PORT) || (9300 + Math.floor(Math.random() * 500));
+const chrome = spawn(chromePath, [
+  '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
+  '--user-data-dir=' + join(process.env.TEMP || '/tmp', 'mochi-verify-' + Date.now()),
+  '--remote-debugging-port=' + cdpPort, 'about:blank'
+], { stdio: 'ignore' });
+
+let ws = null, msgId = 0;
+const pend = new Map();
+async function cdpConnect() {
+  for (let i = 0; i < 60; i++) {
+    try {
+      const list = await (await fetch('http://127.0.0.1:' + cdpPort + '/json')).json();
+      const page = list.find((t) => t.type === 'page');
+      if (page) {
+        ws = new WebSocket(page.webSocketDebuggerUrl);
+        await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
+        ws.onmessage = (ev) => {
+          const m = JSON.parse(ev.data);
+          if (m.id && pend.has(m.id)) { pend.get(m.id)(m.result); pend.delete(m.id); }
+        };
+        return;
+      }
+    } catch (e) {}
+    await sleep(150);
+  }
+  throw new Error('无法连接无头浏览器');
+}
+function cdp(method, params = {}) {
+  const id = ++msgId;
+  return new Promise((res) => { pend.set(id, res); ws.send(JSON.stringify({ id, method, params })); });
+}
+async function evalJs(expr) {
+  try {
+    const r = await cdp('Runtime.evaluate', { expression: expr, returnByValue: true });
+    if (r && r.exceptionDetails) return null;
+    return r && r.result ? r.result.value : null;
+  } catch (e) { return null; }
+}
+
+await cdpConnect();
+await cdp('Page.enable');
+await cdp('Runtime.enable');
+
+async function debugPage(pageId, selector) {
+  await evalJs("(function(){document.querySelectorAll('.page').forEach(function(p){p.hidden=(p.id!=='"+pageId+"');});})()");
+  await sleep(500);
+  const result = await evalJs("(function(){var pg=document.getElementById('"+pageId+"'); if(!pg) return 'no-page'; var hidden=pg.hidden; var innerHTML=pg.innerHTML.substring(0,500); var sel=document.querySelector('"+selector+"'); return JSON.stringify({hidden, hasSelector:!!sel, innerHTML});})()");
+  console.log(pageId, ':', result);
+}
+
+await cdp('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+await cdp('Page.navigate', { url: baseUrl + '/index.html' });
+await sleep(2500);
+for (let i = 0; i < 40; i++) { if (await evalJs('!!window.__mochiDataReady')) break; await sleep(300); }
+await evalJs("(function(){var s=document.getElementById('splash');if(s&&!s.classList.contains('hide'))s.click();return true;})()");
+await sleep(900);
+
+await debugPage('page-setting', '.gs-scroll');
+await debugPage('page-mail', '.mail-list');
+await debugPage('page-feed', '.feed-list');
+await debugPage('page-divination', '.div-scroll');
+await debugPage('page-chatcard', '.card-list');
+
+try { if (ws) ws.close(); } catch (e) {}
+try { chrome.kill(); } catch (e) {}
+try { server.close(); } catch (e) {}

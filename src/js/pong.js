@@ -688,12 +688,14 @@
   }
 
   // ---- Canvas 尺寸适配（DPR 清晰） ----
+  // #784（#774 同族根治）：iOS 独立应用/安卓 Chrome 视口抖动期 resize 逐事件同步重铺——
+  // 给 canvas.width 赋值哪怕同值也清空位图＝白闪一次，全屏 availH 又跟着抖动量＝画布来回脉冲。
+  // 改为「先算几何，与上次铺设一致整条跳过（幂等）」；resize 侧另走 280ms 落定闸门（onViewportChange）。
+  let lastFitGeo = '';
   function fitCanvas() {
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = W * dpr;
-    canvas.height = H * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const box = canvas.parentElement;   // .pong-canvas-box
+    let geo, apply;
     if (isFs) {
       // 全屏：按视口计算 canvas 最大尺寸（保持 4:3 比例），显式设置 canvas + canvas-box
       const availW = window.innerWidth - 16;
@@ -711,16 +713,32 @@
       let cw = availW;
       let ch = Math.round(cw * H / W);
       if (ch > availH) { ch = availH; cw = Math.round(ch * W / H); }
-      canvas.style.width = cw + 'px';
-      canvas.style.height = ch + 'px';
-      if (box) { box.style.width = cw + 'px'; box.style.height = ch + 'px'; }
+      geo = 'fs|' + dpr + '|' + cw + 'x' + ch;
+      apply = function () {
+        canvas.width = W * dpr;
+        canvas.height = H * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        canvas.style.width = cw + 'px';
+        canvas.style.height = ch + 'px';
+        if (box) { box.style.width = cw + 'px'; box.style.height = ch + 'px'; }
+      };
     } else {
       const rect = canvas.getBoundingClientRect();
       if (rect.width === 0) return;
-      canvas.style.width = '';
-      canvas.style.height = (rect.width * H / W) + 'px';
-      if (box) { box.style.width = ''; box.style.height = ''; }
+      const chCss = (rect.width * H / W) + 'px';
+      geo = 'nf|' + dpr + '|' + rect.width + 'x' + chCss;
+      apply = function () {
+        canvas.width = W * dpr;
+        canvas.height = H * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        canvas.style.width = '';
+        canvas.style.height = chCss;
+        if (box) { box.style.width = ''; box.style.height = ''; }
+      };
     }
+    if (geo === lastFitGeo) return;
+    lastFitGeo = geo;
+    apply();
   }
 
   // ---- 覆盖层（开始 / 结束） ----
@@ -937,11 +955,12 @@
       // v3.9.x：双人乒乓从聊天页进入（聊天域）——优先读聊天专用昵称，未设置回退桌面昵称
       try {
         const s = window.activeStore && window.activeStore();
-        partnerNameEl.textContent = (s && (s.get('cs-lbl-partner') || s.get('lbl-partner'))) || (window.taWord ? window.taWord() : 'TA');
+        partnerNameEl.textContent = (s && (s.get('lbl-partner') || s.get('cs-lbl-partner'))) || (window.taWord ? window.taWord() : 'TA');
       } catch (e) { partnerNameEl.textContent = window.taWord ? window.taWord() : 'TA'; }
     }
     if (isFs) toggleFs();   // 防上次全屏残留
     panel.hidden = false;
+    lastFitGeo = '';   // #784 打开必重铺（原实现每次 fitCanvas 都重建位图＝顺带清台，幂等闸门后显式保留该语义）
     fitCanvas();
     paused = false;
     if (pauseBtn) pauseBtn.textContent = '⏸';
@@ -982,6 +1001,11 @@
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && running && state && state.status !== 'ended') { saveGame(); togglePause(); }
   });
-  // 窗口尺寸变化时重适配
-  window.addEventListener('resize', () => { if (panel && !panel.hidden) fitCanvas(); });
+  // 窗口尺寸变化时重适配（#784：抖动期不再逐事件重铺，视口安静 280ms 后再量一次）
+  let refitSettle = 0;
+  function onViewportChange() {
+    clearTimeout(refitSettle);
+    refitSettle = setTimeout(function () { if (panel && !panel.hidden) fitCanvas(); }, 280);
+  }
+  window.addEventListener('resize', onViewportChange);
 })();

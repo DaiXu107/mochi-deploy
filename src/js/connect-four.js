@@ -438,12 +438,20 @@
     // 写聊天系统消息 + TA 随机回应（分组语义同贪吃蛇：输的一方视角）
     try {
       const resTxt = winner === 1 ? '你赢' : winner === 2 ? T('TA') + '赢' : '平局';
-      if (window.chatAddSystem) window.chatAddSystem(T('四子棋') + ' · ' + resTxt, { special: 'c4' });
+      // #891：带结构化结算负载（chat.js 小游戏卡片渲染；{ta} 由渲染侧按当前昵称展开）
+      const c4Stats = ['本局共 ' + st.moves + ' 手', '累计战绩 你 ' + s.w + '胜 · {ta} ' + s.l + '胜 · ' + s.d + '平',
+        '下一局 ' + (s.nextFirst === 'you' ? '你' : '{ta}') + '先手'].concat(coinLine4 ? [coinLine4] : []).concat(c4Drop ? ['🎁 掉落限定摆件「' + c4Drop.name + '」'] : []);
+      if (window.chatAddSystem) window.chatAddSystem(T('四子棋') + ' · ' + resTxt, { special: 'c4', game: {
+        name: '四子棋',
+        outcome: winner === 1 ? 'win' : winner === 2 ? 'lose' : 'draw',
+        result: winner === 1 ? '你赢了！' : winner === 2 ? '{ta}赢了' : '平局',
+        stats: c4Stats
+      } });
       const grp = winner === 1 ? '游戏失败·回应' : winner === 2 ? '游戏胜利·回应' : '游戏平局·回应';
       const fb = winner === 1 ? ['让你赢啦，再来？'] : winner === 2 ? ['我赢啦，再来一局吗'] : ['平局，再来一局？'];
       const pool = window.getInteractPool ? window.getInteractPool(grp, fb) : fb;
-      const say = pool[Math.floor(Math.random() * pool.length)] || fb[0];
-      setTimeout(() => {
+      const say = pool.length ? pool[Math.floor(Math.random() * pool.length)] : ''; // #1515 整组停用＝静默（四子棋）
+      if (say) setTimeout(() => {
         try { if (window.chatAddIn) window.chatAddIn(say, { silent: true }); } catch (e) {}
       }, 800);
     } catch (e) {}
@@ -517,7 +525,7 @@
     let name = T('TA');
     try {
       const s = window.activeStore && window.activeStore();
-      name = (s && (s.get('cs-lbl-partner') || s.get('lbl-partner'))) || name;
+      name = (s && (s.get('lbl-partner') || s.get('cs-lbl-partner'))) || name;
     } catch (e) {}
     if (partnerNameEl) partnerNameEl.textContent = name;
     if (sideNameEl) sideNameEl.textContent = name;

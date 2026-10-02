@@ -38,6 +38,9 @@ _server.js
 build_out.txt
 build_err.txt
 diag-*.html
+# 批次构建/诊断日志（临时，批次结束即删；2026-09-21 一次全量提交把 #961 的四份构建日志
+# 扫进了公开库，故收口根目录 *.log——只阻止提交，不删本地文件）
+/*.log
 
 # 性能基线尺子的机器本地基线（verify-perf.mjs 生成，换机器/换 Chrome 重录，不入库）
 /tools/perf-baseline.local.json
@@ -58,3 +61,6 @@ diag-*.html
 
 # 无头诊断的一次性 Chrome profile（临时，不入库）
 /tools/.diag-*/
+tools/tmp-triage-cache/
+tools/tmp-triage-report.txt
+REAL-DEVICE-CHECK.md

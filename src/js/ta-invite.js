@@ -4,8 +4,9 @@
 // 支持自定义新增、分组管理、批量导入、跨分类搜索、字卡库双入口、IndexedDB 权威恢复。
 // 触发链路不变：tryAutoSend → tryActiveInvite（chat.js）按 联系人回复设置→其他 的
 // ai-rps-en/prob、ai-game-en/prob 判定后从本库抽一张；本文件只负责题库存储与抽取。
-// 手动触发入口：聊天「更多功能 → TA的提问 → 邀请」（triggerTaInviteNow 定义在 chat.js，
-// 因为发送/弹确认/开半框依赖聊天页内部函数）；本库提供 taInvitePickAny 供其抽卡。
+// 手动触发入口：聊天「更多功能 → TA的提问 → 邀请 / 贴贴」（triggerTaInviteNow / triggerTaCuddleNow
+// 定义在 chat.js，因为发送/弹确认/开半框依赖聊天页内部函数）；本库提供 taInvitePickAny（全类型）
+// 与 taInvitePickKind（按类型，v8.29 #1003 起供「贴贴」那枚用）供其抽卡。
 (function () {
   const store = window.activeStore();
   const KEY = 'ta-invite';
@@ -22,21 +23,21 @@
     { id: 'iv_r3', cat: 'rps', kind: 'rps', text: '手痒了，陪我猜拳好不好？', enabled: true },
     { id: 'iv_r4', cat: 'rps', kind: 'rps', text: '三局两胜的猜拳，敢不敢？', enabled: true },
     { id: 'iv_p1', cat: 'pong', kind: 'pong', text: '想和你玩一局 Pong，来吗？', enabled: true },
-    { id: 'iv_p2', cat: 'pong', kind: 'pong', text: '敢不敢来一局 Pong？我可是很强的。', enabled: true },
-    { id: 'iv_p3', cat: 'pong', kind: 'pong', text: 'Pong 桌子摆好了，就等你了。', enabled: true },
+    { id: 'iv_p2', cat: 'pong', kind: 'pong', text: '敢不敢来一局 Pong？我可是很强的', enabled: true },
+    { id: 'iv_p3', cat: 'pong', kind: 'pong', text: 'Pong 桌子摆好了，就等你了', enabled: true },
     { id: 'iv_s1', cat: 'snake', kind: 'snake', text: '想和你玩双人贪吃蛇，来吗？', enabled: true },
     { id: 'iv_s2', cat: 'snake', kind: 'snake', text: '来盘贪吃蛇？看谁吃得多！', enabled: true },
-    { id: 'iv_s3', cat: 'snake', kind: 'snake', text: '双人贪吃蛇开一局？这次我不撞你。', enabled: true },
+    { id: 'iv_s3', cat: 'snake', kind: 'snake', text: '双人贪吃蛇开一局？这次我不撞你', enabled: true },
     { id: 'iv_c1', cat: 'cuddle', kind: 'cuddle', text: '想贴贴了，你可以过来一点吗？', enabled: true },
-    { id: 'iv_c2', cat: 'cuddle', kind: 'cuddle', text: '抱一下再忙别的嘛，就一下下。', enabled: true },
-    { id: 'iv_c3', cat: 'cuddle', kind: 'cuddle', text: '手伸过来，我想牵一会儿。', enabled: true },
-    { id: 'iv_c4', cat: 'cuddle', kind: 'cuddle', text: '靠着你坐一会儿吧，什么都不做的那种。', enabled: true },
-    { id: 'iv_c5', cat: 'cuddle', kind: 'cuddle', text: '想把脑袋搁在你肩上，借我五分钟。', enabled: true },
-    { id: 'iv_c6', cat: 'cuddle', kind: 'cuddle', text: '刚才好像碰到你的手了？再来一次，这次牵住不放。', enabled: true },
-    { id: 'iv_c7', cat: 'cuddle', kind: 'cuddle', text: '隔着世界也想贴贴你，感觉到了就不要躲。', enabled: true },
-    { id: 'iv_c8', cat: 'cuddle', kind: 'cuddle', text: '今天很想你，想到想蹭蹭你。', enabled: true },
-    { id: 'iv_c9', cat: 'cuddle', kind: 'cuddle', text: '晚上早点休息，我来抱着你睡。', enabled: true },
-    { id: 'iv_c10', cat: 'cuddle', kind: 'cuddle', text: '心情很好，这种时候最适合亲亲了。', enabled: true }
+    { id: 'iv_c2', cat: 'cuddle', kind: 'cuddle', text: '抱一下再忙别的嘛，就一下下', enabled: true },
+    { id: 'iv_c3', cat: 'cuddle', kind: 'cuddle', text: '手伸过来，我想牵一会儿', enabled: true },
+    { id: 'iv_c4', cat: 'cuddle', kind: 'cuddle', text: '靠着你坐一会儿吧，什么都不做的那种', enabled: true },
+    { id: 'iv_c5', cat: 'cuddle', kind: 'cuddle', text: '想把脑袋搁在你肩上，借我五分钟', enabled: true },
+    { id: 'iv_c6', cat: 'cuddle', kind: 'cuddle', text: '刚才好像碰到你的手了？再来一次，这次牵住不放', enabled: true },
+    { id: 'iv_c7', cat: 'cuddle', kind: 'cuddle', text: '隔着世界也想贴贴你，感觉到了就不要躲', enabled: true },
+    { id: 'iv_c8', cat: 'cuddle', kind: 'cuddle', text: '今天很想你，想到想蹭蹭你', enabled: true },
+    { id: 'iv_c9', cat: 'cuddle', kind: 'cuddle', text: '晚上早点休息，我来抱着你睡', enabled: true },
+    { id: 'iv_c10', cat: 'cuddle', kind: 'cuddle', text: '心情很好，这种时候最适合亲亲了', enabled: true }
   ];
   const CATS_TI = [['rps', '猜拳邀请'], ['pong', 'Pong 邀请'], ['snake', '贪吃蛇邀请'], ['cuddle', '贴贴邀请']];
   const KIND_OF = {};
@@ -76,9 +77,14 @@
     if (changed) d.mergedIds = merged;
     return changed;
   }
+  // #1520：加载期自动写的静默读数闸（自动路径不弹 toast；读不全＝宁可不落笔）
+  function ckAutoHold(k) { try { return !!(window.xyBigWriteHold && window.xyBigWriteHold(store, k)); } catch (e) { return false; } }
   function tiLoad() {
     let d = null;
     try { d = JSON.parse(store.get(KEY) || 'null'); } catch (e) { d = null; }
+    // #1519：读空但库里本该有＝大键没读全，当场请库取回一次（#1349a 单次飞行闸）；这一拍仍按旧形状
+    //   走（播种纯预设只在内存里，isNew 守卫不写盘），下一拍读到权威值
+    if (!d) { try { if (store.awaitingBigKey && store.awaitingBigKey(KEY)) store.requestBigKey(KEY); } catch (e0) {} }
     if (!d || typeof d !== 'object' || Array.isArray(d)) d = {};
     if (!d.settings || typeof d.settings !== 'object') d.settings = {};
     if (d.settings.useDefault === undefined) d.settings.useDefault = true;
@@ -91,14 +97,21 @@
       });
       d.mergedIds = DEFAULT_QUESTIONS.map(q => q.id);
       // 全新用户不立即写盘——防本地空快照覆盖 IndexedDB 权威数据（与 ta-ask.js 同因）
-      if (!isNew) { try { store.set(KEY, JSON.stringify(d)); } catch (e) {} }
+      if (!isNew && !ckAutoHold(KEY)) { try { store.set(KEY, JSON.stringify(d)); } catch (e) {} }
     } else {
-      if (tiMerge(d)) { try { store.set(KEY, JSON.stringify(d)); } catch (e) {} }
+      if (tiMerge(d) && !ckAutoHold(KEY)) { try { store.set(KEY, JSON.stringify(d)); } catch (e) {} }
     }
     if (!Array.isArray(d.groups)) d.groups = [];
     return d;
   }
-  function tiSave(d) { try { store.set(KEY, JSON.stringify(d)); } catch (e) {} }
+  // #1519：邀请字卡库整包写＝读-改-写。大键没读全时把「纯预设＋本次改动」写回＝自定义内容被清空，
+  //   判据与文案同 ta-ask（xyBigWriteBlocked 拦下时照实 toast、绝不落笔；回填后再点一次即可）
+  function tiSave(d) {
+    // #1520：回传布尔＝调用方知道这一发有没有真落笔（被拦时不报成功）
+    if (window.xyBigWriteBlocked && window.xyBigWriteBlocked(store, KEY, '邀请字卡库')) return false;
+    try { store.set(KEY, JSON.stringify(d)); } catch (e) {}
+    return true;
+  }
 
   // ---------- 抽取 ----------
   // 池内随机并避免连抽同一张
@@ -116,7 +129,10 @@
   function drawFrom(pool) { const q = pickFrom(pool, lastId()); if (q) markLast(q); return q; }
   function enabledPool(d, kinds) {
     const useDefault = (d.settings || {}).useDefault !== false;
-    return d.questions.filter(q => q && q.enabled !== false && q.text && kinds.indexOf(q.kind) >= 0 && (useDefault || q.isPreset !== true));
+    // #1315：整类停用（共用件 window.presetGroup，键 pg-groups-off）——本页的分类字段是 kind；
+    //   只闸系统预设邀请，用户自建的同类条目不受影响。
+    const pgOff = function (q) { return !!(q.isPreset === true && q.kind && window.presetGroup && window.presetGroup.isOff('ta-invite', q.kind)); };
+    return d.questions.filter(q => q && q.enabled !== false && q.text && kinds.indexOf(q.kind) >= 0 && (useDefault || q.isPreset !== true) && !pgOff(q));
   }
   // 自动链路抽取（chat.js tryActiveInvite 调用）：保持旧版权重语义——
   // 先掷猜拳门（ai-rps-en/ai-rps-prob），命中且猜拳池有货则出猜拳；
@@ -125,7 +141,14 @@
   // c 为联系人回复设置对象（cfg()），缺字段回退默认值（与 reply-settings 默认一致）。
   function gn(c, k, def) { try { const v = c ? c[k] : undefined; return (typeof v === 'number' && !isNaN(v)) ? v : def; } catch (e) { return def; } }
   // #518：hit 出口统一套「系统预设字卡总档」缩放（本文件 hit 仅用于猜拳/游戏/贴贴三道邀请门）
-  function hit(p) { return Math.random() * 100 < (window.dcpEff ? window.dcpEff(p) : p); }
+  // #1153：再套一层「互动卡频率」档（用户直派「联系人在聊天里发送互动卡片的频率需要可以调整 /
+  //   原来的频率也保留」——邀请三类与提问卡同属「聊天里 TA 主动发的卡」，一起随档缩放）。
+  //   倍数与档位表在 src/js/ta-ask.js（icProb/IC_MODES，键 reply-ic-freq 随联系人桌面隔离）；
+  //   原频率档 ×1＝原值直通。手动「让 TA 邀请我」不走本函数（走 taInvitePickAny，不受档位影响）。
+  function hit(p) {
+    const eff = window.dcpEff ? window.dcpEff(p) : p;
+    return Math.random() * 100 < (window.icProb ? window.icProb(eff) : eff);
+  }
   window.taInviteDraw = function (c) {
     try {
       const d = tiLoad();
@@ -150,6 +173,15 @@
     try {
       const d = tiLoad();
       return drawFrom(enabledPool(d, ['rps', 'pong', 'snake', 'cuddle']));
+    } catch (e) { return null; }
+  };
+  // v8.29 #1003：手动触发按类型抽取（更多功能→TA的提问→贴贴）——只在指定类型的启用池里抽。
+  // 「邀请」那枚走上面的 taInvitePickAny（全类型随机），贴贴那枚要的是「一定是贴贴」，
+  // 故单开一个按 kind 抽的出口；口径与 taInvitePickAny 相同（不看开关/概率，抽不到返回 null）。
+  window.taInvitePickKind = function (kind) {
+    try {
+      const d = tiLoad();
+      return drawFrom(enabledPool(d, [kind]));
     } catch (e) { return null; }
   };
   window.__tiBankInfo = function () {
@@ -184,6 +216,8 @@
       html += '<button class="cc-tab' + (k === tiSysCat ? ' sel' : '') + '" data-cat="' + k + '">' + esc(label) + '<em class="cc-tab-n">' + counts[k] + '</em></button>';
     });
     html += '</div>';
+    // #1315：整类停用条——本页的一个分类（猜拳/游戏/贴贴）就是一个「分组」
+    html += window.presetGroup ? window.presetGroup.catBar('ta-invite', tiSysCat, esc((CATS_TI.find(c => c[0] === tiSysCat) || [])[1] || tiSysCat)) : '';
     d.questions.forEach(q => {
       if (!(hitKw(q) && q.kind === tiSysCat)) return;
       const idx = d.questions.indexOf(q);
@@ -193,6 +227,7 @@
         '</div>';
     });
     container.innerHTML = html;
+    if (window.presetGroup) window.presetGroup.bindBar(container.querySelector('.preset-cat-bar'), 'ta-invite', tiSysCat, function () { renderTiSysInto(container, search); });
     container.querySelectorAll('.cc-tab[data-cat]').forEach(t => {
       t.addEventListener('click', () => { tiSysCat = t.dataset.cat; renderTiSysInto(container, search); });
     });

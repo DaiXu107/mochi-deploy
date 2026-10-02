@@ -70,6 +70,8 @@
 [data-theme="dark"] .ver-credit { color:#777; }
 [data-theme="dark"] .set-alert { background:#232323; color:#aaa; }
 [data-theme="dark"] .set-alert b { color:#eee; }
+/* #1453：开屏勾选行「查看免责声明」锚点——暗色用免责卡的亮红（同 base.css 和 #315b 卡口径） */
+[data-theme="dark"] .splash-age-view { color:#ff8080; }
 [data-theme="dark"] .gs-row { border-bottom-color:rgba(255,255,255,.05); }
 [data-theme="dark"] .stp-min,
 [data-theme="dark"] .stp-max { background:var(--dark-hover); color:#aaa; }
@@ -109,6 +111,13 @@
 [data-theme="dark"] .chat-ask-opts { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
 [data-theme="dark"] .chat-ask-opts:focus { border-color:var(--ink); }
 [data-theme="dark"] .chat-ask-bulk { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
+/* #1188 邀请记录（暗色同构：折叠行/翻页钮的浅底浅框在暗色下要翻过来） */
+[data-theme="dark"] .chat-ask-hist { border-bottom-color:rgba(255,255,255,.14); }
+[data-theme="dark"] .ih-day-btn { border-color:rgba(255,255,255,.09); background:rgba(255,255,255,.04); color:var(--ink); }
+[data-theme="dark"] .ih-day-btn:active { background:var(--dark-hover); }
+[data-theme="dark"] .ih-more { border-color:rgba(255,255,255,.18); color:var(--ink); }
+[data-theme="dark"] .ih-more:active { background:var(--dark-hover); }
+[data-theme="dark"] .ih-ok { color:#7cc47f; }
 [data-theme="dark"] .chat-input-row { background:var(--dark-card-92); border-color:var(--dark-border); }
 [data-theme="dark"] .chat-input { color:var(--ink); }
 [data-theme="dark"] .chat-input:empty::before { color:var(--hint-ink); }
@@ -150,8 +159,8 @@
 [data-theme="dark"] .emoji-item.sel { background:rgba(255,255,255,.08); }
 [data-theme="dark"] .emoji-empty { color:#666; }
 [data-theme="dark"] .emoji-check { background:var(--btn-bg); color:var(--btn-ink); }
-[data-theme="dark"] .msg-voice-play { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
-[data-theme="dark"] .msg-voice-play.playing { background:var(--ink); color:#111; border-color:var(--ink); }
+/* #1487 这里原有两条把深色模式语音钮钉成 --ink／#111 的兜底：钮改吃所在气泡自己的字色后，
+   深色模式不再需要单独一份（留着反而会在「深色主题＋浅色气泡」上把钮重新刷回浅色＝又隐形）。 */
 [data-theme="dark"] .msg-reactions { background:var(--dark-card-92); border-color:var(--dark-border); }
 [data-theme="dark"] .msg-reaction { background:var(--dark-hover); border-color:var(--dark-border-12); }
 [data-theme="dark"] .msg-edit-input { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
@@ -194,6 +203,8 @@
 [data-theme="dark"] #cc-list .ccg-toggle { background:var(--dark-hover); border-color:var(--dark-border-12); color:var(--dark-soft); }
 [data-theme="dark"] #cc-list .ccg-toggle.off { background:var(--btn-bg); border-color:var(--btn-bg); color:var(--btn-ink); }
 [data-theme="dark"] #cc-list .cc-group-header.off .ccg-name { color:#777; }
+/* #926：系统预设字卡分组开关暗色适配（开关本体走全局 .toggle / .tk 暗色规则） */
+[data-theme="dark"] .preset-list .cc-group-header.off .ccg-name { color:#777; }
 [data-theme="dark"] .cc-check { background:var(--dark-card); border-color:#555; }
 [data-theme="dark"] .cc-check.on { background:var(--btn-bg); border-color:var(--btn-bg); }
 [data-theme="dark"] .cc-check.on::after { color:var(--btn-ink); }
@@ -378,7 +389,10 @@
 /* v3.6.x：tabbar 硬编码白色背景在深色页面上形成突兀白条 + 间隙露出深色背景，
      视觉上"底部导航栏多出一块灰色长方形遮挡上方文字"——补深色覆盖。
      box-shadow 与浅色模式同步去掉（纯色背景上投影即"灰"，不必要） */
-[data-theme="dark"] .tabbar { background:var(--dark-card-92); border-color:var(--dark-border-12); }
+/* #769：改为喂 --tabbar-base-bg 底色变量而非直接覆盖 background——
+   tabbar.css 的 color-mix 透明度链在深色模式下同样生效（旧写法盖死 background，
+   背景透明度滑杆在深色下会整条失效） */
+[data-theme="dark"] .tabbar { --tabbar-base-bg:var(--dark-card-92); border-color:var(--dark-border-12); }
 [data-theme="dark"] .tabbar .tab.active { background:var(--dark-hover); }
 /* SVG stroke 兜底 */
 [data-theme="dark"] .ch-back svg,
@@ -411,6 +425,12 @@
 [data-theme="dark"] .msg-inplace .ip-input { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
 [data-theme="dark"] .msg-inplace .ip-opt-row { background:var(--dark-card); border-color:var(--dark-border-12); }
 [data-theme="dark"] .msg-inplace .ip-opt-row.sel { border-color:var(--ink); background:rgba(255,255,255,.06); }
+/* #1415 多选题勾选框：未勾＝深卡底＋提亮描边（沿用 --dark-border-12 会淡到看不出这是个控件），
+   勾上＝亮底。勾那一笔跟着换成深字——var(--ink) 在深色下是浅色，白勾会整枚隐形。 */
+[data-theme="dark"] .msg-inplace .ip-opt-box { background:var(--dark-card); border-color:rgba(255,255,255,.34); }
+[data-theme="dark"] .msg-inplace .ip-opt-chk.on { background:rgba(255,255,255,.06); }
+[data-theme="dark"] .msg-inplace .ip-opt-chk.on .ip-opt-box { border-color:var(--ink); background:var(--ink); }
+[data-theme="dark"] .msg-inplace .ip-opt-chk.on .ip-opt-box::after { border-color:#111; }
 [data-theme="dark"] .msg-ask-card { background:var(--dark-card-92); border-color:var(--dark-border); }
 [data-theme="dark"] .msg-choose-card { background:var(--dark-card-92); border-color:var(--dark-border); }
 /* v3.33.x #521：批量问卷长卡片（暗色适配，跨域改动见 WORKLOG；观感对齐单题 ask-card） */
@@ -558,6 +578,7 @@
 /* var(--ink) 底+白字的按钮族：深色下底变浅、白字隐形，统一改深字
      （.poke-big 已单独跟 accent 变量，不在此列） */
 [data-theme="dark"] .msg-inplace .ip-send,
+[data-theme="dark"] .msg-inplace .ip-multi-submit,
 [data-theme="dark"] .call-panel-dial { color:#111; }
 [data-theme="dark"] .call-av,
 [data-theme="dark"] .call-mini-av { background:#2a2a2a; }
@@ -593,6 +614,15 @@
 /* ---- chat-pages.css 补齐：经期页（整页白底大区） ---- */
 [data-theme="dark"] .period-card { background:var(--dark-card-92); border-color:var(--dark-border); }
 [data-theme="dark"] .period-status-ico { background:#555; }
+/* #1266 阶段填色回收（iPhone 12 Pro Max／iOS 16.6 Safari 实报「经期页无法正常显示填色的图标」，
+   用户明说多机型同现）：本段通用图标/格子规则与浅色侧同特异度或更高，把
+   chat-pages.css 的 phase-* 阶段色和 ph-period/ph-fertile 日历填色整体压平
+   （实报读数：状态图标 rgb(85,85,85)、经期/排卵格 rgb(30,30,30) 与空白格同色＝整页无色）。
+   补齐按阶段逐个恢复，零机型／零 UA 分支——判定只取 data-theme 与选择器特异度。 */
+[data-theme="dark"] .period-status-ico.phase-period { background:#e85a8f; }
+[data-theme="dark"] .period-status-ico.phase-fertile { background:#f5a623; }
+[data-theme="dark"] .period-status-ico.phase-safe { background:#7ec69e; }
+[data-theme="dark"] .period-status-ico.phase-unknown { background:#555; }
 [data-theme="dark"] .period-phase-bar .seg { color:#999; background:var(--static-bg); }
 [data-theme="dark"] .period-phase-bar .seg-0 { background:rgba(232,90,143,.18); color:#ff9ec4; }
 [data-theme="dark"] .period-phase-bar .seg-1 { background:rgba(245,166,35,.16); color:#ffc76e; }
@@ -601,6 +631,7 @@
 [data-theme="dark"] .pms-badge.pms-mid { background:rgba(245,166,35,.15); color:#ffb74d; }
 [data-theme="dark"] .pms-badge.pms-heavy { background:rgba(232,90,143,.16); color:#f48fb1; }
 [data-theme="dark"] .period-btn { border-color:var(--dark-border-12); background:var(--dark-card-92); }
+[data-theme="dark"] .period-btn.primary { background:#e85a8f; border-color:#e85a8f; color:#fff; }
 [data-theme="dark"] .period-month-btn { border-color:var(--dark-border-12); background:var(--dark-card); color:var(--ink); }
 [data-theme="dark"] .period-month-btn:active { background:var(--dark-hover); }
 [data-theme="dark"] .period-legend .lg { color:#999; }
@@ -608,6 +639,15 @@
 [data-theme="dark"] .period-grid .pc-cell { color:#999; background:var(--dark-card); border-color:var(--dark-border); }
 [data-theme="dark"] .period-grid .pc-cell.ph-predict { background:rgba(232,90,143,.14); color:#f48fb1; border-color:#b04a67; }
 [data-theme="dark"] .period-grid .pc-cell.band.ph-predict { color:#ef7fa4; }
+/* #1266 续：日历格填色回收——经期实色（含经量热力四档，深浅对比换到深底可读的字色）、
+   排卵格按本段 seg-1 的暗色语汇恢复；置信度高斯带沿用浅色侧 calc 形态。 */
+[data-theme="dark"] .period-grid .pc-cell.ph-period { background:#e85a8f; color:#fff; border-color:#e85a8f; }
+[data-theme="dark"] .period-grid .pc-cell.ph-period.pc-flow-spot { background:#f8b0c4; color:#7a2b48; }
+[data-theme="dark"] .period-grid .pc-cell.ph-period.pc-flow-light { background:#f48aa8; color:#6d203f; }
+[data-theme="dark"] .period-grid .pc-cell.ph-period.pc-flow-heavy { background:#d6336c; color:#fff; }
+[data-theme="dark"] .period-grid .pc-cell.ph-fertile { background:rgba(245,166,35,.18); color:#ffc76e; border-color:#f5a623; }
+[data-theme="dark"] .period-grid .pc-cell.band.ph-predict { background:rgba(232,90,143,calc(0.10 + 0.34 * var(--conf))); border-color:rgba(232,90,143,calc(0.35 + 0.45 * var(--conf))); }
+[data-theme="dark"] .period-legend .lg-fertile::before { background:rgba(245,166,35,.24); border-color:#f5a623; }
 [data-theme="dark"] .period-hist-row { background:var(--dark-card-92); border-color:rgba(255,255,255,.09); }
 [data-theme="dark"] .reg-badge.reg-good { background:rgba(58,155,90,.16); color:#7ed6a2; }
 [data-theme="dark"] .reg-badge.reg-mid { background:rgba(245,166,35,.15); color:#ffb74d; }
@@ -695,6 +735,23 @@
       radial-gradient(circle at 5px calc(100% - 5px), rgba(255,255,255,.16) 1.1px, transparent 1.6px),
       radial-gradient(circle at calc(100% - 5px) calc(100% - 5px), rgba(255,255,255,.16) 1.1px, transparent 1.6px);
   }
+/* v3.27.x：占卜自定义牌面 / 牌面图鉴（chat-pages.css 新增类） */
+[data-theme="dark"] .divf-tab,
+[data-theme="dark"] .divf-mode { background:var(--dark-card-92); border-color:var(--dark-border); color:var(--dark-soft); }
+[data-theme="dark"] .divf-tab.sel,
+[data-theme="dark"] .divf-mode.sel { background:var(--ink); color:#111; border-color:var(--ink); }
+[data-theme="dark"] .divf-row { border-bottom-color:rgba(255,255,255,.08); }
+[data-theme="dark"] .divf-thb,
+[data-theme="dark"] .divf-cell-img { background:#262a30; }
+[data-theme="dark"] .divf-cell { background:var(--dark-card-92); border-color:var(--dark-border); }
+[data-theme="dark"] .divf-act,
+[data-theme="dark"] .divf-mini { background:var(--dark-hover); color:var(--ink); }
+[data-theme="dark"] .divf-del { color:#e07a7a; }
+[data-theme="dark"] .divf-io-btn { color:#111; }
+[data-theme="dark"] #divf-import { background:var(--dark-hover); color:var(--ink); }
+[data-theme="dark"] .divf-empty { color:#666; }
+[data-theme="dark"] .divf-batch-btn { background:var(--dark-card-92); border-color:var(--dark-border); color:var(--ink); }
+[data-theme="dark"] .div-chat-faces-btn { background:var(--dark-card-92); border-color:var(--dark-border); color:var(--ink); }
 [data-theme="dark"] .ck-location { border-bottom-color:rgba(255,255,255,.06); }
 [data-theme="dark"] .ck-loc-entry { border-color:rgba(255,255,255,.22); background:var(--static-bg); }
 [data-theme="dark"] .ck-loc-entry:active { background:var(--dark-hover); }
@@ -753,6 +810,17 @@
 [data-theme="dark"] .mg-add:active { background:var(--dark-hover); }
 [data-theme="dark"] .decor-done { background:rgba(255,255,255,.15); color:#fff; }
 [data-theme="dark"] .avlib-cell { background:var(--dark-hover); border-color:var(--dark-border); }
+/* 2026-09-16 昵称池 + 大类切换：与上方 .avlib-cell 同族——chat-pages.css 硬编码的
+   白底/深字在深色下会变成白块浅字，这里统一翻成深底浅字 */
+[data-theme="dark"] .avlib-name-cell { background:var(--dark-hover); border-color:var(--dark-border); }
+[data-theme="dark"] .avlib-name-del { background:rgba(255,255,255,.16); color:#bbb; }
+[data-theme="dark"] .avlib-kinds { background:rgba(255,255,255,.07); }
+/* 昵称池小字说明：浅色下是浅灰蒙底，深色下反过来给一点亮底 */
+[data-theme="dark"] .avlib-note { background:rgba(255,255,255,.06); }
+[data-theme="dark"] .avlib-kind { color:#999; }
+/* 选中块：与同排的 .avlib-tab.active 同一口径——深色下 var(--ink) 翻成 #f0f0f0，
+   文字必须取深色，否则浅块浅字＝看不出选中 */
+[data-theme="dark"] .avlib-kind.active { background:var(--ink); color:#111; }
 [data-theme="dark"] .ff-sec,
 [data-theme="dark"] .ff-row { background:var(--dark-card-92); border-color:rgba(255,255,255,.08); }
 [data-theme="dark"] .ff-desktop-av { background:#2a2a2a; }
@@ -1065,3 +1133,12 @@
 [data-theme="dark"] #page-market .gift-item-top { background:transparent !important; }
 /* 心意柜 hero：深色底已覆盖但 color:#111 只在浅色规则里 → 图标/文字继承深色看不见 */
 [data-theme="dark"] .giftbox-hero { color:#f2f2f2; }
+
+/* ⑦ 备份提醒警示形态（base.css `.modal--warn`，#900）深色适配：浅色那套 #c92a1f 红字在深底卡面上对比不足
+      （等于没标），故重点字样用亮红；描边与说明块底色一并提亮。正文本体沿用深色普通文字色
+      （整段都染红＝满屏皆重点，用户反馈「文字全都变成红色了」）。
+      扁平选择器（本文件禁原生嵌套，见文件头 #258 铁律）。 */
+[data-theme="dark"] .modal.modal--warn { border-color:#e8564a; box-shadow:0 20px 50px rgba(232,56,44,.42); }
+[data-theme="dark"] .modal.modal--warn .modal-title { color:#ff7a6b; }
+[data-theme="dark"] .modal.modal--warn .modal-static { background:rgba(232,56,44,.16); border-color:rgba(255,122,107,.5); }
+[data-theme="dark"] .modal.modal--warn .modal-static .modal-static-key { color:#ff8a7a; }

@@ -123,8 +123,11 @@
     else { if (!normObj(o.relate.f)) { o.relate.f = {}; dirty = true; } if (!Array.isArray(o.relate.notes)) { o.relate.notes = []; dirty = true; } }
     if (!normObj(o.ifw)) { o.ifw = {}; dirty = true; }
     IFW_FIELDS.forEach(f => { if (!isFv(o.ifw[f[0]])) { o.ifw[f[0]] = ''; dirty = true; } });
-    if (dirty) saveFor(o, cid);
-    arcCache[cid] = o;
+    // #850：回填未完成的「读空」≠「真没档案」——不落盘也不进缓存（空档一旦入缓存，
+    // done 后仍会被当现档继续写＝真实档案被空档顶掉；正常编辑在占位期进不到这条链）
+    const _arcPending = window.mochiDataPending && window.mochiDataPending();
+    if (dirty && !_arcPending) saveFor(o, cid);
+    if (!_arcPending) arcCache[cid] = o;
     return o;
   }
   function ensureArc() { return ensureArcFor(viewCid); }
@@ -177,6 +180,8 @@
   // 一次性把旧中间版「共享档 myarc-shared」直写进每位联系人档案后清掉（防已写入内容丢失）
   function absorbSharedOnce() {
     const s = gStore(); if (!s) return;
+    // #850：回填期共享档读空会被误判成「没内容」直接删根键（remove SHARED_KEY）——整体让位给 done 后补跑
+    if (window.mochiDataPending && window.mochiDataPending()) return; // #850c 回填未决，删根键的动作整体让位
     let sh = null;
     try { sh = JSON.parse(s.get(SHARED_KEY) || 'null'); } catch (e) {}
     if (!sh || typeof sh !== 'object') return;
@@ -250,6 +255,12 @@
   // ---- 渲染主入口 ----
   function render() {
     if (!root) return;
+    // #850：回填未完成时整体出加载占位（档案是整包读-改-写的大键，占位期不能让
+    // mergedArc/ensureArc 读到空就建档落盘）；done 后由 boot 尾 mochiOnDataReady 补渲收敛
+    if (window.mochiDataPending && window.mochiDataPending()) {
+      root.innerHTML = window.mochiLoadingHtml('我的档案');
+      return;
+    }
     const arc = mergedArc();
     let h = '';
     h += chipsHTML();
@@ -870,7 +881,11 @@
     }
   }
 
-  function boot() { absorbSharedOnce(); bind(); }
+  function boot() {
+    absorbSharedOnce(); bind();
+    // #850：回填完成补跑一次性吸收＋补渲（回调纯重画幂等，备份导入再派发时同样收敛）
+    if (window.mochiOnDataReady) window.mochiOnDataReady(function () { try { absorbSharedOnce(); render(); } catch (e) {} });
+  }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 })();

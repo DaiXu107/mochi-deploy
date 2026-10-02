@@ -106,6 +106,40 @@
   //   情绪字卡：mc-off-mood:<内容>；回应字卡：rc-off-<分类>:<内容>；关闭为 '1'
   function isCardOff(k, c) { return ls.get(k + ':' + c) === '1'; }
   function setCardOff(k, c, off) { ls.set(k + ':' + c, off ? '1' : '0'); }
+  // #1315：整组停用（共用件＝default-cards.js 的 window.presetGroup，键 pg-groups-off）。
+  //   情绪/心意/意图三类各有分组名单，判据叠在本文件已有的单卡闸出口 typeOff 上——三条链
+  //   （getMoodCard/getHeartCard/getIntentCard）与各页 UI 全部自动跟上，无需逐处加分支；
+  //   组内逐张开关的存值一字不动，重新启用分组即恢复原状（同 #926 口径）。
+  const PG_ID_MC = { mood: 'mc:mood', heart: 'mc:heart', intent: 'mc:intent' };
+  let pgIdx = null;   // 内容 -> [分组名,…]：预设数据静态，索引只建一次
+  function pgGroupsOf(type, content) {
+    if (!pgIdx) {
+      pgIdx = {};
+      ['mood', 'heart', 'intent'].forEach(function (k) {
+        const list = k === 'heart' ? (DATA.heart || []).concat(DATA.specialHeart || [])
+          : k === 'intent' ? (DATA.intent || []) : (DATA.mood || []);
+        list.forEach(function (g) {
+          (g.cards || []).forEach(function (c) {
+            const id = PG_ID_MC[k] + '\u0000' + c.content;
+            if (!pgIdx[id]) pgIdx[id] = [];
+            if (pgIdx[id].indexOf(g.group) < 0) pgIdx[id].push(g.group);
+          });
+        });
+      });
+    }
+    return pgIdx[PG_ID_MC[type] + '\u0000' + content] || null;
+  }
+  // 同一条文案出现在多个分组时，任一所在分组停用即算停用（与 #926 同一保守口径）
+  function pgOff(type, content) {
+    const pg = window.presetGroup;
+    if (!pg) return false;
+    const gs = pgGroupsOf(type, content);
+    if (!gs) return false;
+    for (let i = 0; i < gs.length; i++) { if (pg.isOff(PG_ID_MC[type], gs[i])) return true; }
+    return false;
+  }
+  // 回应字卡的「分组」就是分类本身，故判据按分类问一次（叠在 rc-off-<分类>:* 之上）
+  function rcOff(cat, t) { return isCardOff('rc-off-' + cat, t) || !!(window.presetGroup && window.presetGroup.isOff('rc', cat)); }
 
   // #500 三级链各持独立开关键 + 心意/交流意图卡补单卡开关：
   //   ①此前三类字卡共用 mc-off-mood:<内容>，同名卡（「想念」「分享」「陪伴」等 20+ 张
@@ -123,6 +157,7 @@
     return false;
   }
   function typeOff(type, content) {
+    if (pgOff(type, content)) return true;   // #1315：分组闸先判——单卡「重新打开」也不许越过整组停用
     const own = ls.get(OFF_KEY[type] + ':' + content);
     if (own !== null && own !== '') return own === '1';
     if (type !== 'mood' && !hasMoodCard(content) && ls.get('mc-off-mood:' + content) === '1') return true;
@@ -152,6 +187,7 @@
     if (Math.random() * 100 > prob) return null;
     // v3.6.x：单卡开关过滤——只从仍开启的字卡里抽，整组关完则跳过该组
     const groups = (DATA.mood || [])
+      .filter(g => !(window.presetGroup && window.presetGroup.isOff(PG_ID_MC.mood, g.group)))   // #1315 整组停用：组直接不进候选
       .map(g => ({ ...g, cards: g.cards.filter(c => !isCardOff('mc-off-mood', c.content)) }))
       .filter(g => g.cards && g.cards.length);
     // 经期中：负面情绪组权重 ×3（悲伤/愤怒/不安/克制），正向组权重 ×0.6
@@ -294,6 +330,7 @@
 
   // ================= 聊天回应字卡（连接词）=================
   const rcList = document.getElementById('rc-list');
+  if (rcList) rcList.classList.add('preset-list'); // #1315 分组开关样式锚（与 #926 那四个列表同一份 .preset-list 规则）
   const rcEnabled = document.getElementById('rc-enabled');
   if (rcList && rcEnabled) {
     rcEnabled.checked = (ls.get('rc-enabled') === null) ? true : ls.get('rc-enabled') === '1';
@@ -342,11 +379,19 @@
         // v3.6.x：搜索时只显示命中的分类，空分类不渲染分组头（与自定义聊天字卡一致）
         if (rcQ && !arr.length) return;
         const h = document.createElement('div');
-        h.className = 'cc-group-header';
-        h.innerHTML = '<span class="ccg-name">' + name + '</span><span class="ccg-count">' + arr.length + '</span>';
+        // #1315：分组标题右侧整组开关——停用后本分类全部回应卡不再抽取（组内单卡开关存值不动）
+        const rcGOff = !!(window.presetGroup && window.presetGroup.isOff('rc', key));
+        h.className = 'cc-group-header' + (rcGOff ? ' off' : '');
+        h.innerHTML = window.presetGroup
+          ? window.presetGroup.headerHTML('rc', key, name, arr.length)
+          : '<span class="ccg-name">' + name + '</span><span class="ccg-count">' + arr.length + '</span>';
         rcList.appendChild(h);
+        if (window.presetGroup) window.presetGroup.bind(h, 'rc', key, function (nowOff) {
+          renderReply();
+          toast(nowOff ? '已停用分组：' + name + '（本组 ' + arr.length + ' 张字卡不再使用）' : '已启用分组：' + name);
+        });
         arr.forEach(t => {
-          const off = isCardOff('rc-off-' + key, t);
+          const off = rcOff(key, t);
           const d = document.createElement('div');
           d.className = 'cc-item glass' + (off ? ' off' : '');
           // v3.6.x：整页为系统预设字卡，统一标【系统】与自定义字卡区分；
@@ -398,6 +443,7 @@
 
   // ================= 情绪 / 心意 / 交流意图字卡页面 =================
   const mcList = document.getElementById('mc-list');
+  if (mcList) mcList.classList.add('preset-list'); // #1315 分组开关样式锚（与 #926 那四个列表同一份 .preset-list 规则）
   const mcEnabled = document.getElementById('mc-enabled');
   if (mcList && mcEnabled) {
     mcEnabled.checked = (ls.get('mc-enabled') === null) ? true : ls.get('mc-enabled') === '1';
@@ -480,11 +526,22 @@
       if (!shown.length) { mcList.innerHTML = '<div class="cc-empty">暂无字卡</div>'; return; }
       shown.forEach(g => {
         const h = document.createElement('div');
-        h.className = 'cc-group-header';
-        h.innerHTML = '<span class="ccg-name">' + g.group + '</span><span class="ccg-count">' + g.cards.length + '</span>' +
+        // #1315：分组标题右侧整组开关（情绪/心意/意图三类各按自己的分组名单停用）
+        const mcId = PG_ID_MC[g.type || mcType] || 'mc:mood';
+        const mcGOff = !!(window.presetGroup && window.presetGroup.isOff(mcId, g.group));
+        h.className = 'cc-group-header' + (mcGOff ? ' off' : '');
+        h.innerHTML = window.presetGroup
+          ? window.presetGroup.headerHTML(mcId, g.group, g.group, g.cards.length,
+            (g.weight ? '<span class="ccg-count" style="background:rgba(0,0,0,.03)">权重 ' + g.weight + '</span>' : '') +
+            (g.special ? '<span class="ccg-count" style="background:rgba(0,0,0,.03)">特殊</span>' : ''))
+          : '<span class="ccg-name">' + g.group + '</span><span class="ccg-count">' + g.cards.length + '</span>' +
           (g.weight ? '<span class="ccg-count" style="background:rgba(0,0,0,.03)">权重 ' + g.weight + '</span>' : '') +
           (g.special ? '<span class="ccg-count" style="background:rgba(0,0,0,.03)">特殊</span>' : '');
         mcList.appendChild(h);
+        if (window.presetGroup) window.presetGroup.bind(h, mcId, g.group, function (nowOff) {
+          renderMood();
+          toast(nowOff ? '已停用分组：' + g.group + '（本组 ' + g.cards.length + ' 张字卡不再使用）' : '已启用分组：' + g.group);
+        });
         g.cards.forEach(c => {
           const off = typeOff(g.type || mcType, c.content);
           const d = document.createElement('div');
@@ -551,10 +608,10 @@ window.getReplyCard = function () {
   if (Math.random() * 100 >= (window.dcpEff ? window.dcpEff(rcardProb()) : rcardProb())) return ''; // #518 套总档
   const followup = DATA.followup || {};
   // v3.6.x：单卡开关过滤——只从仍开启的分类里选（整类关完则跳过该类）
-  const cats = Object.keys(followup).filter(k => followup[k] && followup[k].some(t => !isCardOff('rc-off-' + k, t)));
+  const cats = Object.keys(followup).filter(k => followup[k] && followup[k].some(t => !rcOff(k, t)));
   if (!cats.length) return '';
   const cat = cats[Math.floor(Math.random() * cats.length)];
-  const pool = followup[cat].filter(t => !isCardOff('rc-off-' + cat, t));
+  const pool = followup[cat].filter(t => !rcOff(cat, t));
   return pool[Math.floor(Math.random() * pool.length)];
 };
 // ================= 聊天回应（连接词）=================
@@ -568,8 +625,8 @@ window.getReplyCard = function () {
     else if (reply.length > 10) cat = Math.random() < 0.5 ? 'keep' : 'probe';
     else cat = Math.random() < 0.5 ? 'echo' : 'confirm';
     // v3.6.x：单卡开关过滤——本类可用字卡抽空时回退到「接话」类的可用字卡
-    let pool = (followup[cat] || []).filter(t => !isCardOff('rc-off-' + cat, t));
-    if (!pool.length && cat !== 'echo') pool = (followup['echo'] || []).filter(t => !isCardOff('rc-off-echo', t));
+    let pool = (followup[cat] || []).filter(t => !rcOff(cat, t));
+    if (!pool.length && cat !== 'echo') pool = (followup['echo'] || []).filter(t => !rcOff('echo', t));
     if (!pool.length) return '';
     return pool[Math.floor(Math.random() * pool.length)];
   };

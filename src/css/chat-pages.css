@@ -103,6 +103,15 @@
 #cc-list .ccg-toggle.off { background:#111; color:#fff; border-color:#111; }
 #cc-list .cc-group-header.off .ccg-name { color:var(--muted); }
 #cc-list .cc-group-header.off .ccg-count { opacity:.6; }
+/* v3.36.x #926：系统预设字卡的分组开关（默认聊天字卡/功能字卡/词典/查岗四页共用 mountCardView，
+   容器由它打 .preset-list）——分组头形态对齐上面自定义字卡管理页，开关尺寸与列表里的单卡开关一致；
+   只作用于这四个列表，不碰 #emoji-list / #poke-list 那类没有开关的分组头 */
+.preset-list .cc-group-header .ccg-name { display:inline-flex; align-items:center; gap:6px; flex:1; min-width:0; }
+.preset-list .cc-group-header .ccard-toggle { width:36px; height:21px; flex-shrink:0; }
+.preset-list .cc-group-header .ccard-toggle .tk::before { width:15px; height:15px; top:3px; left:3px; }
+.preset-list .cc-group-header .ccard-toggle input:checked + .tk::before { transform:translateX(15px); }
+.preset-list .cc-group-header.off .ccg-name { color:var(--muted); }
+.preset-list .cc-group-header.off .ccg-count { opacity:.6; }
 
 .card-search {
   display:flex; align-items:center; gap:8px;
@@ -118,7 +127,19 @@
 }
 .card-search-input::placeholder { color:var(--muted); letter-spacing:.5px; }
 
-.card-list { flex:1; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none; padding-bottom:6px; }
+/* FIX 2026-09-29 #1411：字卡库列表页「只有字卡列表能翻动，其它地方翻不动」＝一页两根滚动轴。
+   旧默认 flex:1 + overflow-y:auto 让列表自己成一根轴：头部（返回条＋tab＋两排工具条＋分组条＋
+   搜索框＋说明）按内容把列表压到 cc 148px / mc 6px / tm 84px / rc 103px（OPPO Reno6 5G 360×663
+   实测），于是 .page 的 scrollHeight==clientHeight＝整页零滚动区间，屏上除那条窄列表外全都
+   「跟着屏幕一起固定」。base.css 的 .card-list{overscroll-behavior:contain} 又掐断滚动链，
+   窄列表滚到底也接不上外层＝#239（2026-09-07 同一台雨见报「下面无法滑动显示字卡」）与 #350 的
+   同族病。那两批按页面 id 逐页打补丁（dc/fc/dk/dict 四条），漏了 cc/mc/tm/rc 四页——本轮把口径
+   收到类上：列表一律随内容自然生长，滚动只由 .page 承担，新增字卡页无需再登记任何 per-id 规则。
+   判据零机型／零 UA 分支，也不依赖 :has()（老内核上静默不生效＝病灶原地复发）。
+   ⚠ 不要改回 flex:1/overflow-y:auto：default-cards.js 的虚拟窗口按「谁真在裁剪内容」选滚动容器
+     （guessScroller），列表不再裁剪时它会走 .page；把列表重新变成裁剪容器＝窗口与滚动容器再度错位。
+   旧的四条 per-id 规则（#239a/#350 等哨兵焊着的）保留不动，与本行同值＝幂等。 */
+.card-list { flex:0 0 auto; overflow:visible; min-height:0; -webkit-overflow-scrolling:auto; overscroll-behavior:auto; scrollbar-width:none; -ms-overflow-style:none; padding-bottom:6px; }
 .card-list::-webkit-scrollbar { display:none; }
 .cc-item {
   display:flex; align-items:center; gap:12px;
@@ -224,6 +245,18 @@
   100% { opacity:0; transform:translate(-50%, 10px); }
 }
 
+/* #724 多行长文案收纳（跨域声明：AI-B 修后台通知测试「字飞出黑色框」，用户直派）——
+   #cc-toast 原本无换行/限高约束：消息里的 \n 被 white-space:normal 折成空格、
+   十几行诊断挤成一坨超高胶囊＝黑框文字溢出观感。pre-line 按行渲染、限高裁剪兜底、
+   长 URL/长串强制断行；单行短提示观感不变（仍居中、胶囊形）。 */
+#cc-toast {
+  white-space:pre-line;
+  line-height:1.45;
+  max-height:min(60vh, 420px);
+  overflow:hidden;
+  overflow-wrap:break-word;
+}
+
 /* ===== 聊天默认字卡页 ===== */
 /* v3.7.x：iOS 性能优化——main 分类 4621 张 .cc-item.glass，.glass 的 box-shadow × 4621
    触发大量 paint、.cc-item 的 transform transition 让每卡成合成层候选，iOS Safari
@@ -278,6 +311,27 @@
 .dc-toggle-txt { flex:1; min-width:0; }
 .dc-toggle-name { font-size:15px; font-weight:700; }
 .dc-toggle-sub { font-size:11px; color:var(--muted); margin-top:3px; }
+
+/* v3.43.x：预设字卡页设置区顶部 tag 分类（分段控件观感）——点 tag 展开对应设置面板，
+   默认全部收起，首屏只留字卡列表；避免四组设置全堆在页顶把列表顶出屏外。
+   面板 hidden 由 default-cards.js 的 mountSetTabs 控制。 */
+.dc-set-tabs {
+  display:flex; gap:4px; margin:10px 12px 0; padding:4px; flex-shrink:0;
+  background:rgba(0,0,0,.05); border-radius:14px;
+}
+.dc-set-tab {
+  flex:1; display:inline-flex; align-items:center; justify-content:center; gap:3px;
+  padding:8px 6px; font-size:12.5px; font-weight:600; font-family:inherit;
+  color:rgba(0,0,0,.5); background:transparent; border:none; border-radius:10px;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+  transition:background .15s ease, color .15s ease, box-shadow .15s ease;
+}
+.dc-set-tab .dct-ar { font-style:normal; font-size:9px; opacity:.55; transition:transform .18s ease; }
+.dc-set-tab.active { background:#fff; color:#111; box-shadow:0 1px 3px rgba(0,0,0,.13); }
+.dc-set-tab.active .dct-ar { transform:rotate(180deg); opacity:.75; }
+[data-theme="dark"] .dc-set-tabs { background:rgba(255,255,255,.08); }
+[data-theme="dark"] .dc-set-tab { color:rgba(255,255,255,.55); }
+[data-theme="dark"] .dc-set-tab.active { background:rgba(255,255,255,.16); color:#fff; box-shadow:none; }
 
 /* 分组筛选栏 */
 .cc-groups-bar {
@@ -474,7 +528,11 @@
   box-shadow:0 2px 8px rgba(0,0,0,.04);
 }
 .mem-card-label { font-size:12px; color:var(--muted); letter-spacing:1px; margin-bottom:10px; }
-/* 恋爱纪念日日期按钮：原生 date input 覆盖整个按钮，点击任意位置唤起手机日期选择器 */
+/* 恋爱纪念日日期按钮：点击打开站内月历弹层（#mem-date-mask）。
+   v8.29 #984：原方案是「透明原生 date 控件铺满按钮、靠内核把点按转发给原生控件」——
+   点按是否有效、取回的日期字符串形态全由内核决定（date 回落 text 的内核给的是无连字符
+   串，落库即脏值）；iPhone 夸克实报点了没反应、同族机型同现。改纯 DOM 月历，按钮自己
+   接点击，零机型分支。 */
 .mem-date-wrap { position:relative; display:flex; align-items:center; margin-top:6px; }
 .mem-date-btn {
   display:flex; align-items:center; justify-content:center; gap:8px;
@@ -482,15 +540,12 @@
   border:1px solid rgba(0,0,0,.14); border-radius:14px;
   background:rgba(0,0,0,.04); color:var(--ink);
   font-size:15px; font-weight:600; cursor:pointer; font-family:inherit;
-  pointer-events:none; /* 视觉层不接点击，由覆盖其上的原生 date input 接收 */
+  -webkit-tap-highlight-color:transparent;
 }
+.mem-date-btn:active { background:rgba(0,0,0,.09); }
 .mem-date-btn-ico { width:20px; height:20px; color:var(--ink); opacity:.75; flex-shrink:0; }
 .mem-date-btn-ico svg { width:100%; height:100%; display:block; }
 .mem-date-btn[data-set="1"] { color:var(--ink); font-weight:700; }
-#love-date-input.mem-date {
-  position:absolute; inset:0; width:100%; height:100%;
-  opacity:0; cursor:pointer; border:none; outline:none;
-}
 .mem-days { font-size:44px; font-weight:800; color:var(--ink); margin-top:8px; }
 .mem-days b { font-size:52px; }
 .mem-date-txt { font-size:13px; color:var(--muted); margin-top:6px; }
@@ -580,7 +635,6 @@
 .fav-tabs {
   display:flex; gap:7px; padding:4px 18px 8px; flex-shrink:0;
   overflow-x:auto; scrollbar-width:none; -ms-overflow-style:none;
-  -webkit-overflow-scrolling:touch;
 }
 .fav-tabs::-webkit-scrollbar { display:none; }
 .fav-tab {
@@ -790,6 +844,10 @@
 .period-ovu-line { font-size:12px; color:#f5a623; margin-bottom:10px; font-weight:600; }
 /* PMS 经前综合征指数行 */
 .period-pms-line { display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+/* #1321（重放）：下次经期的日期行——状态卡以前只报「距下次约 N 天」这一个数，全页没有一处把
+   nextStart 写成日期；日历又只画当月格＝下次落到下个月时本月一格预测都没有。用中性墨色（--muted
+   随主题自动翻），不再新增第四种强调色 */
+.period-next-line { font-size:12px; color:var(--muted,#666); margin-bottom:10px; font-weight:600; }
 .pms-badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700; }
 .pms-badge.pms-none { background:#f0f0f0; color:#888; }
 .pms-badge.pms-light { background:#e8f5e9; color:#2e7d32; }
@@ -797,6 +855,9 @@
 .pms-badge.pms-heavy { background:#fde2ee; color:#c44a78; }
 .pms-tip { font-size:11px; color:var(--muted,#666); }
 .period-action-row { display:flex; gap:10px; }
+/* #1321：动作行加上「记一次经期」之后，12px 的左右内边距让「标记今天开始」
+   六字标签折成两行。只收这一行的横向留白（纵向 12px 与点击高度不动，弹层里的 .dp-save 不受影响）。 */
+.period-action-row .period-btn { padding-left:8px; padding-right:8px; }
 .period-btn {
   flex:1; padding:12px; font-size:13px; font-weight:600; border-radius:14px;
   border:1px solid rgba(0,0,0,.12); background:rgba(255,255,255,.92); color:var(--ink);
@@ -826,7 +887,8 @@
   font-size:12px; color:#777; background:rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.1);
   cursor:pointer; position:relative;
 }
-.period-grid .pc-cell.blank { background:transparent; border:none; cursor:default; }
+/* 月首月尾补进来的相邻月日子：真格子、照常涂色可点，只压一档透明度区分归属（旧写法是点不动的死格）*/
+.period-grid .pc-cell.pc-out { opacity:.45; }
 .period-grid .pc-cell.today { outline:2px solid var(--ink); outline-offset:-2px; }
 .period-grid .pc-cell.ph-period { background:#e85a8f; color:#fff; font-weight:700; border-color:#e85a8f; }
 /* 经量热力图：经期日按经量深浅着色（medium 用默认 ph-period 色）*/
@@ -834,8 +896,16 @@
 .period-grid .pc-cell.ph-period.pc-flow-light { background:#f48aa8; }
 .period-grid .pc-cell.ph-period.pc-flow-heavy { background:#d6336c; }
 .period-grid .pc-cell.ph-predict { background:#fde2ee; color:#c44a78; border:1px dashed #e85a8f; }
-.period-grid .pc-cell:not(.blank):active { opacity:.7; }
+.period-grid .pc-cell:active { opacity:.7; }
 .period-card-title { font-size:14px; font-weight:700; letter-spacing:.5px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+/* 症状缓解建议卡右上角删除（#1490：卡片是每日症状记录派生，就近给删除入口） */
+.period-card-title .pc-del {
+  width:24px; height:24px; border:none; background:transparent; color:#bbb; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; padding:0; flex-shrink:0;
+  -webkit-tap-highlight-color:transparent;
+}
+.period-card-title .pc-del svg { width:14px; height:14px; }
+.period-card-title .pc-del:active { color:#e85a8f; }
 .period-history { display:flex; flex-direction:column; gap:8px; }
 .period-hist-row {
   display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:12px;
@@ -1006,6 +1076,13 @@
 .acc-ov-val { font-size:16px; font-weight:800; color:var(--ink); }
 .acc-ov-val.expense { color:#e85a5a; }
 .acc-ov-val.income { color:#3aa86c; }
+.acc-remind { display:flex; align-items:center; gap:10px; border-radius:16px; padding:12px 16px; margin:-2px 0 14px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.acc-remind:active { opacity:.7; }
+.acc-remind-main { flex:1; min-width:0; }
+.acc-remind-title { font-size:14px; font-weight:700; color:var(--ink); }
+.acc-remind-sub { font-size:11px; color:var(--muted); margin-top:3px; line-height:1.4; }
+.acc-remind-badge { flex-shrink:0; font-size:11px; font-weight:700; color:var(--muted); border:1px solid var(--card-border); border-radius:12px; padding:4px 10px; white-space:nowrap; }
+.acc-remind-badge.on { color:#fff; background:#3aa86c; border-color:#3aa86c; }
 .acc-form-card { border-radius:20px; padding:16px 18px; margin-bottom:14px; }
 .acc-type-tabs { display:flex; gap:8px; margin-bottom:12px; }
 .acc-type-tab { flex:1; padding:8px 0; border-radius:10px; border:1px solid var(--card-border); background:transparent; font-size:14px; font-weight:600; color:var(--muted); cursor:pointer; -webkit-tap-highlight-color:transparent; }
@@ -1046,6 +1123,7 @@
 .acc-row-del svg { width:15px; height:15px; }
 .acc-row-del:active { color:#e85a5a; }
 .acc-empty { font-size:13px; color:var(--muted); text-align:center; padding:24px 0; }
+.acc-search-tip { font-size:11px; color:var(--muted); padding:0 2px 8px; }
 .acc-view-tabs { display:flex; gap:6px; margin-bottom:12px; }
 .acc-view-tab { flex:1; padding:6px 0; border-radius:8px; border:1px solid var(--card-border); background:transparent; font-size:12px; font-weight:600; color:var(--muted); cursor:pointer; -webkit-tap-highlight-color:transparent; }
 .acc-view-tab.sel { background:var(--ink); color:var(--btn-ink); border-color:var(--ink); }
@@ -1284,7 +1362,7 @@
 .div-card-row {
   display:flex; gap:7px; overflow-x:auto; padding:6px 2px;
   scrollbar-width:none; -ms-overflow-style:none;
-  -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain;
+  overscroll-behavior-x:contain;
 }
 .div-card-row::-webkit-scrollbar { display:none; }
 .div-pile-card {
@@ -1356,6 +1434,114 @@
 .div-chat-hist-view:active, .div-chat-hist-del:active { opacity:.7; }
 .div-chat-hist-del { color:#a33; }
 
+/* ===== v3.27.x：占卜自定义牌面 / 牌面图鉴 / 雷诺曼 36-40 体系 ===== */
+/* 36/40 切换容器复用 .div-modes（display:flex）——[hidden] 会被它盖掉，需显式补 */
+.div-leno-sys[hidden] { display:none; }
+#chat-divine-body .div-leno-sys[hidden] { display:none; }
+/* 图鉴：占卜页内的全屏浮层（不用独立 .page——tabs.js 的 FULL_PAGES 静态快照认不出
+   运行期新建页，会误把桌面导航栏显示出来） */
+#page-divine { position:relative; }
+#page-divine.divf-lock { overflow:hidden; }
+.divf-page {
+  position:absolute; inset:0; z-index:30; display:flex; flex-direction:column;
+  background:linear-gradient(168deg, var(--bg-a, #fff) 0%, var(--bg-b, #f2f2f2) 100%);
+}
+.divf-page[hidden] { display:none; }
+/* 聊天页占卜半框里的「牌面图鉴」入口 + 36/40 行 */
+.div-chat-facesbar { margin:0 0 8px; }
+.div-chat-faces-btn {
+  width:100%; border:1px solid rgba(0,0,0,.12); border-radius:11px; padding:9px 0;
+  background:rgba(255,255,255,.92); color:var(--ink); font-size:13px; font-weight:600;
+  cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.div-chat-faces-btn:active { opacity:.8; }
+/* 自定义牌面：图片铺满牌面（方形小牌 + 已抽竖牌两处；聊天半框走 svg <image> 路径不受影响） */
+.div-card-img { width:100%; height:100%; }
+.div-card-img img { width:100%; height:100%; object-fit:cover; display:block; }
+.div-card-face.has-face { padding:0; overflow:hidden; position:relative; }
+.div-card-face.has-face .div-card-img { position:absolute; inset:0; }
+.div-card-face.has-face .div-card-name {
+  position:absolute; left:0; right:0; bottom:0; padding:5px 6px;
+  background:linear-gradient(to top, rgba(0,0,0,.62), rgba(0,0,0,0));
+  color:#fff; text-align:center;
+}
+.ddc-face.has-face { padding:0; overflow:hidden; }
+.ddc-face.has-face::before { display:none; }
+.ddc-face.has-face .div-card-img { position:absolute; inset:0; }
+.ddc-face.has-face .div-card-img img { border-radius:6px; }
+.ddc-face.has-face .ddc-name {
+  position:absolute; left:0; right:0; bottom:0; padding:3px 4px;
+  background:linear-gradient(to top, rgba(0,0,0,.66), rgba(0,0,0,0));
+  color:#fff; max-width:100%;
+}
+.ddc-face.has-face .ddc-pos {
+  position:absolute; top:3px; right:3px; margin:0; padding:0 4px;
+  background:rgba(0,0,0,.5); color:#fff; border-radius:6px;
+}
+/* 牌面图鉴页 */
+.divf-tabs { display:flex; gap:8px; padding:10px 18px 0; flex-shrink:0; }
+.divf-tab {
+  flex:1; padding:9px 0; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
+  border:1px solid rgba(0,0,0,.1); border-radius:12px; background:rgba(255,255,255,.92); color:#666;
+}
+.divf-tab.sel { background:var(--ink); color:#fff; border-color:var(--ink); }
+.divf-scroll { flex:1; overflow-y:auto; padding:12px 18px 24px; scrollbar-width:none; -ms-overflow-style:none; }
+.divf-scroll::-webkit-scrollbar { display:none; }
+.divf-modes { display:flex; gap:8px; margin-bottom:10px; }
+.divf-mode {
+  flex:1; padding:8px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit;
+  border:1px solid rgba(0,0,0,.1); border-radius:12px; background:rgba(255,255,255,.92); color:#666;
+}
+.divf-mode.sel { background:var(--ink); color:#fff; border-color:var(--ink); }
+.divf-hint { font-size:11px; color:var(--muted); line-height:1.6; margin:2px 0 10px; }
+/* 批量上传按钮 + 文件名说明：置于两个页签之外，管理/图鉴都看得到 */
+.divf-tools { flex-shrink:0; padding:10px 18px 0; }
+.divf-tools .divf-hint { margin:0 0 4px; }
+.divf-batch-btn {
+  width:100%; margin:0 0 10px; border:1px dashed rgba(0,0,0,.22); border-radius:12px; padding:10px 0;
+  background:rgba(255,255,255,.92); color:var(--ink); font-size:13px; font-weight:600;
+  cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.divf-batch-btn:active { opacity:.8; }
+.divf-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid rgba(0,0,0,.06); }
+.divf-thb {
+  width:44px; height:44px; flex-shrink:0; border-radius:10px; overflow:hidden;
+  background:#eceff3; display:flex; align-items:center; justify-content:center; color:var(--ink);
+}
+.divf-thb img { width:100%; height:100%; object-fit:cover; display:block; }
+.divf-thb-ico svg { width:22px; height:22px; }
+.divf-name { flex:1; min-width:0; font-size:13px; font-weight:600; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.divf-act {
+  flex-shrink:0; border:none; border-radius:99px; padding:6px 12px; font-size:12px; cursor:pointer;
+  font-family:inherit; background:rgba(0,0,0,.06); color:var(--ink);
+}
+.divf-act:active { opacity:.7; }
+.divf-del { color:#a33; }
+.divf-gal-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+#divf-gal-count { font-size:11px; color:var(--muted); }
+.divf-mini {
+  border:none; border-radius:99px; padding:5px 10px; font-size:11px; cursor:pointer;
+  font-family:inherit; background:rgba(0,0,0,.06); color:var(--ink);
+}
+.divf-mini:active { opacity:.7; }
+.divf-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; }
+.divf-cell { border:1px solid rgba(0,0,0,.08); border-radius:12px; overflow:hidden; background:rgba(255,255,255,.7); }
+.divf-cell-img { width:100%; aspect-ratio:1; background:#eceff3; display:flex; align-items:center; justify-content:center; }
+.divf-cell-img img { width:100%; height:100%; object-fit:cover; display:block; }
+.divf-missing { font-size:10px; color:var(--muted); }
+.divf-cell-name { font-size:11px; font-weight:600; color:var(--ink); padding:6px 6px 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.divf-cell-mode { font-size:9px; color:var(--muted); margin-left:4px; font-weight:400; }
+.divf-cell-acts { display:flex; gap:4px; padding:6px; }
+.divf-cell-acts .divf-mini { flex:1; text-align:center; }
+.divf-empty { font-size:12px; color:#c0c0c0; text-align:center; padding:30px 0; }
+.divf-io { display:flex; gap:10px; margin-top:16px; }
+.divf-io-btn {
+  flex:1; padding:12px 0; border-radius:12px; border:none; cursor:pointer; font-family:inherit;
+  font-size:13px; font-weight:700; background:var(--ink); color:#fff;
+}
+.divf-io-btn:active { opacity:.85; }
+#divf-import { background:rgba(0,0,0,.06); color:var(--ink); }
+
 /* 帮我决定弹层内容 */
 .decide-options {
   display:flex; flex-direction:column; gap:8px; margin-bottom:14px; max-height:220px; overflow-y:auto;
@@ -1418,13 +1604,21 @@
 .ck-value { font-size:16px; font-weight:700; color:var(--ink); margin-top:5px; line-height:1.6; }
 
 /* ===== TA在身边·位置面板 ===== */
-.ck-loc-entry {
-  display:block; width:100%; margin-top:14px; padding:11px 14px;
-  border:1px dashed rgba(0,0,0,.18); border-radius:12px;
-  background:rgba(255,255,255,.6); color:var(--ink);
-  font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; text-align:center;
-}
+/* v3.26.x #875：入口常显化。它藏在寻踪里是产品设计（位置面板的唯一入口就在寻踪半框与寻踪页），
+   但原形态是全宽浅色虚线的次要按钮、排在面板最底部，被读成寻踪的附加说明——用户既不知道这是独立
+   功能，也找不到只住在位置面板里的三枚换位开关（TA 自动换位 / 换位提醒弹窗 / 换位发到聊天）。
+   改图标＋主副两行＋箭头的功能卡；放置与点击行为一字未动（仍是这两颗 id → openLocPanel）。
+   dark.css 里 [data-theme="dark"] 的三条覆盖（border-color / background / :active）原样适用，
+   故暗色下仍是同一张卡：强调靠图标块与字号，不靠底色，两个主题下都成立。 */
+.ck-loc-entry { display:flex; align-items:center; gap:9px; width:100%; margin-top:14px; padding:10px 13px; border:1px solid rgba(255,160,90,.5); border-radius:14px; background:linear-gradient(135deg, rgba(255,196,140,.22), rgba(255,160,90,.10)); color:var(--ink); cursor:pointer; font-family:inherit; text-align:left; }
 .ck-loc-entry:active { background:rgba(0,0,0,.06); }
+.ck-loc-ico { flex-shrink:0; width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg, #ffc48c, #ff8f4d); color:#fff; }
+.ck-loc-ico svg { width:17px; height:17px; }
+.ck-loc-main { flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; }
+.ck-loc-t { font-size:14px; font-weight:800; line-height:1.3; }
+.ck-loc-s { font-size:11px; font-weight:500; color:var(--muted); line-height:1.35; }
+.ck-loc-arrow { flex-shrink:0; display:flex; color:var(--muted); }
+.ck-loc-arrow svg { width:15px; height:15px; }
 .loc-panel {
   position:fixed; left:0; right:0; bottom:0; z-index:78;
   max-height:90vh; display:flex; flex-direction:column;
@@ -1468,7 +1662,7 @@
 .loc-title b { font-weight:800; }
 /* 滚动容器（头部固定，内容整体滚动） */
 .loc-scroll {
-  flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  flex:1; min-height:0; overflow-y:auto;
 }
 .loc-body {
   padding:14px 16px calc(18px + var(--mochi-safe-bottom, env(safe-area-inset-bottom, 0px)));
@@ -1750,6 +1944,54 @@
 }
 .avlib-del:active { background:rgba(224,85,85,.8); }
 #avlib-upload { margin-bottom:10px; }
+
+/* 头像和昵称互动：大类切换（头像 / 昵称）——2026-09-16 新增昵称池后与下方
+   联系人/我的页签构成两级切换（上排＝换什么，下排＝换谁的）。用分段控件的
+   「槽 + 高亮块」形态，与 .avlib-tab 的实心/描边页签在视觉上分层，避免两级
+   切换看起来是同一排四个页签。 */
+.avlib-kinds {
+  display:flex; gap:6px; margin:0 0 10px; padding:3px;
+  border-radius:12px; background:rgba(0,0,0,.06);
+}
+.avlib-kind {
+  flex:1; text-align:center; padding:7px 6px; border-radius:9px;
+  font-size:13px; font-weight:700; color:#666; cursor:pointer;
+  user-select:none; -webkit-user-select:none;
+  transition:background .15s, color .15s;
+}
+.avlib-kind.active { background:#fff; color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.08); }
+.avlib-kind:active { opacity:.8; }
+
+/* 昵称池的小字说明（#616 用户要求）：聊天昵称因为会被昵称池频繁轮换，只影响聊天页，
+   其他功能一律跟桌面昵称——这句必须写在池子旁边，否则用户会在通话/小游戏里找变化。 */
+.avlib-note {
+  font-size:11px; line-height:1.65; color:var(--muted);
+  background:rgba(0,0,0,.035); border-radius:8px;
+  padding:6px 8px; margin:8px 0 10px;
+}
+.avlib-note b { font-weight:700; }
+
+/* 昵称池：一条昵称＝一个胶囊（点文字换昵称、点右侧 ✕ 删这一条）。
+   昵称是变长文字，用 flex-wrap 的胶囊行而非固定列网格——长昵称最多占满一行后截断，
+   不会像网格那样把长名字压成两行或撑破卡片 */
+.avlib-names { display:flex; flex-wrap:wrap; gap:8px; padding:4px 0 8px; }
+.avlib-name-cell {
+  display:flex; align-items:center; gap:6px; max-width:100%;
+  padding:8px 10px; border-radius:12px;
+  background:rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.1);
+}
+.avlib-name-txt {
+  font-size:13px; line-height:1.4; color:var(--ink); cursor:pointer;
+  max-width:190px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+/* 当前正在使用的聊天昵称：与 .avlib-cell.avlib-now 同款高亮 */
+.avlib-name-cell.avlib-now { outline:2px solid var(--ink); outline-offset:-2px; border-color:transparent; }
+.avlib-name-del {
+  flex:0 0 auto; width:16px; height:16px; padding:0; border:none; border-radius:50%;
+  background:rgba(0,0,0,.12); color:#666; font-size:10px; line-height:1;
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+.avlib-name-del:active { background:rgba(224,85,85,.8); color:#fff; }
 
 /* 管理分组面板 */
 .mg-mask {
@@ -2156,6 +2398,16 @@
 /* 文字字卡 tab 的「查看更多」入口 */
 .stats-more { text-align:center; font-size:12px; color:var(--ink); font-weight:600; padding:10px 0 2px; cursor:pointer; }
 .stats-more:active { opacity:.55; }
+/* #993 聊天统计流水区块（申请心意币 / 小游戏记录）默认折叠：整行头＝开关，右侧「N 笔 / N 条」+ ▾ */
+.stats-fold-head { margin-bottom:0; padding:11px 12px; background:var(--static-bg); border-radius:10px; }
+.stats-fold[data-stats-fold] > .stats-fold-head { cursor:pointer; }
+.stats-fold[data-stats-fold] > .stats-fold-head:active { opacity:.55; }
+.stats-fold-head .stats-sec-count { background:var(--card-bg); }
+.stats-fold-right { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+.stats-fold-caret { font-size:11px; color:var(--muted); transition:transform .18s; }
+.stats-fold.open .stats-fold-caret { transform:rotate(180deg); }
+.stats-fold:not(.open) > .stats-fold-body { display:none; }
+.stats-fold-body { padding-top:10px; }
 
 /* ===== 信箱 ===== */
 .mail-item {
@@ -2178,6 +2430,25 @@
 .mail-tag.new { color:#fff; background:var(--ink); border-color:var(--ink); }
 .mail-item-desc { font-size:12px; color:var(--muted); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .mail-item-time { font-size:10px; color:var(--muted); flex-shrink:0; }
+/* #1402 信箱按时间分组：分组小标题＋按月折叠条（观感沿用统计页 stats-fold 那一档：只吃主题变量，暗色自动跟随） */
+.mail-sec-label { font-size:11px; font-weight:600; color:var(--muted); margin:2px 0 8px; }
+.mail-fold { margin-bottom:10px; }
+.mail-fold-head { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:11px 12px; background:var(--static-bg); border-radius:10px; cursor:pointer; }
+.mail-fold-head:active { opacity:.55; }
+.mail-fold-title { font-size:13px; font-weight:600; color:var(--ink); }
+.mail-fold-right { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+.mail-fold-count { font-size:10px; color:var(--muted); background:var(--card-bg); padding:2px 8px; border-radius:99px; }
+.mail-fold-caret { font-size:11px; color:var(--muted); transition:transform .18s; }
+.mail-fold.open .mail-fold-caret { transform:rotate(180deg); }
+.mail-fold:not(.open) > .mail-fold-body { display:none; }
+.mail-fold-body { padding-top:10px; }
+/* #1417：未读跟着自己的时间落进月份组之后，这一枚是组标题上的「未读封数」——
+   组默认开着（见 mailFoldHtml），红字只是让「哪一组里有红点信」一眼可见 */
+.mail-fold-unread { font-size:10px; font-weight:600; color:var(--danger-ink); background:var(--danger-soft); padding:2px 8px; border-radius:99px; flex-shrink:0; }
+/* #1417：读到旧账/读空时列表最上方那张提示条＋「从本地库找回」按钮 */
+.mail-rescue-tip { display:flex; align-items:center; gap:8px; margin:0 0 10px; padding:10px 12px; background:var(--static-bg); border-radius:10px; }
+.mail-rescue-txt { flex:1; font-size:11px; color:var(--muted); line-height:1.5; }
+.mail-rescue-tip .cc-tool { flex-shrink:0; width:auto; padding:8px 12px; }
 
 /* 信纸（简约卡片，非米色信封） */
 .mail-paper {
@@ -2260,7 +2531,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
 .feed-name { font-size:14px; font-weight:700; color:var(--ink); }
 .feed-time { font-size:10px; color:var(--muted); margin-top:2px; }
 .feed-del { background:none; border:none; color:var(--muted); cursor:pointer; padding:4px; }
-.feed-content { font-size:14px; color:var(--ink); line-height:1.6; margin-top:10px; word-break:break-word; }
+.feed-content { font-size:14px; color:var(--ink); line-height:1.6; margin-top:10px; word-break:break-word; white-space:pre-wrap; }
 .feed-actions { display:flex; gap:18px; margin-top:12px; border-top:1px solid rgba(0,0,0,.05); padding-top:10px; }
 /* v3.26.x：动作按钮用 flex 居中图标与文字——原 display:block + SVG inline vertical-align:-3px
    仅对单个图标近似对齐，各图标路径几何中心不同（星形 bbox 中心 Y 9.7 vs 心形 12.4）时文字
@@ -2279,6 +2550,29 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
   font-size:12px; font-family:inherit; cursor:pointer;
 }
 .feed-more-btn:active { background:rgba(0,0,0,.12); }
+/* #1406 朋友圈「本周＋按月」翻页条：默认只看本周，更早的按月折起来手动切。
+   sticky 挂在 .cal-scroll（本页真正的滚动容器）顶端＝翻长列表时切换入口不跟着跑掉；
+   横向滑动只作用在胶囊行自己那一条上，列表区保持纯纵向滚动（不与安卓上下滑打架）。
+   底色/边框/阴影复用 .glass，暗色随主题变量走，不另开一套。 */
+.feed-range-bar { position:sticky; top:0; z-index:6; display:flex; align-items:center; gap:4px; margin:0 0 12px; padding:5px; border-radius:14px; }
+.feed-range-bar[hidden] { display:none; }
+.feed-range-pills { display:flex; gap:4px; flex:1; min-width:0; overflow-x:auto; scrollbar-width:none; -ms-overflow-style:none; }
+.feed-range-pills::-webkit-scrollbar { display:none; }
+.feed-range-pill, .feed-range-nav {
+  flex-shrink:0; display:inline-flex; align-items:center; gap:5px;
+  min-height:28px; padding:4px 10px; border-radius:14px;
+  border:1px solid var(--pill-border, rgba(0,0,0,.1)); background:none;
+  color:var(--muted); font-size:12px; font-family:inherit; cursor:pointer; white-space:nowrap;
+}
+.feed-range-nav { padding:4px 6px; }
+.feed-range-pill.on { background:var(--ink); border-color:var(--ink); color:var(--card-bg); }
+.feed-range-nav[disabled] { opacity:.3; }
+.feed-range-n { font-size:10px; opacity:.72; }
+/* #1406 长信/长动态折叠：正文收成 6 行（行高跟着 .feed-content 的 1.6），展开就地放开；
+   评论区/配图区是 .feed-body 的兄弟节点，不受这一层裁剪 */
+.feed-clamp { display:-webkit-box; -webkit-line-clamp:6; -webkit-box-orient:vertical; overflow:hidden; }
+.feed-expand { background:none; border:none; padding:4px 0 0; cursor:pointer; font-size:12px; font-family:inherit; color:var(--muted); }
+.feed-expand:active { opacity:.6; }
 /* 评论区（v3.14.x 重设计：统一灰底圆角面板——删除文件后段重复定义的 border-top 冲突规则，
    灰底面板内不再有一道横线；楼中楼改「左引导线 + 我/TA 统一缩进」对称对齐；
    「A 回复 B」的回复分隔徽章化，双方名字同权重高亮） */
@@ -2286,14 +2580,14 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
   margin-top:8px; padding:8px 10px;
   background:rgba(0,0,0,.045); border-radius:10px;
 }
-.feed-comment { font-size:12px; color:#555; line-height:1.7; padding:3px 0; cursor:pointer; }
+.feed-comment { font-size:12px; color:#555; line-height:1.7; padding:3px 0; cursor:pointer; white-space:pre-wrap; }
 .feed-comment b { color:var(--ink); font-weight:600; }
 /* 楼中楼：统一缩进 + 左引导线——我的回复与 TA 的回复同一对齐（对称），不再双重缩进 */
 .feed-replies {
   margin:2px 0 2px 4px; padding-left:9px;
   border-left:2px solid rgba(0,0,0,.08);
 }
-.feed-reply { font-size:12px; color:#666; line-height:1.7; padding:2px 0; cursor:pointer; }
+.feed-reply { font-size:12px; color:#666; line-height:1.7; padding:2px 0; cursor:pointer; white-space:pre-wrap; }
 .feed-reply b { color:var(--ink); font-weight:600; }
 /* 「回复」分隔徽章：弱化为小胶囊，A、B 两个名字视觉同权重（谁回复谁都对称可读） */
 .fd-r-sep {
@@ -2384,7 +2678,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
 /* 音乐库分类筛选条 —— v3.9.x（全部音乐 / 未分类音乐 / 各歌单，横向滚动） */
 .music-lib-filter {
   display:flex; gap:8px; margin-bottom:12px; overflow-x:auto;
-  scrollbar-width:none; -ms-overflow-style:none; -webkit-overflow-scrolling:touch;
+  scrollbar-width:none; -ms-overflow-style:none;
 }
 .music-lib-filter::-webkit-scrollbar { display:none; }
 .mlf-chip {
@@ -2424,6 +2718,8 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
   padding:0 5px; border-radius:5px; flex-shrink:0;
 }
 .sm-src-local { color:var(--ink); border-color:var(--ink); }
+/* #700：导入时浏览器解不动的本地歌「放不了」徽标（真播出来过会自动消失） */
+.sm-src-bad { color:var(--accent,#e74c5e); border-color:var(--accent,#e74c5e); }
 .sm-song-dur { font-size:11px; color:var(--muted); flex-shrink:0; }
 .sm-song-more {
   width:26px; height:26px; border:none; background:transparent; color:#999;
@@ -2579,6 +2875,18 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
   display:flex; flex-direction:column; gap:7px; user-select:none; cursor:grab;
 }
 .sm-float[hidden] { display:none; }
+/* v3.26.x #714：电脑端宽屏视口 fixed 浮层锚回手机壳（壳几何推导与老内核回退见 base.css
+   同号注释）：批量操作条/位置面板/寻踪全屏/音乐批量条/悬浮小框原为「视口贴边」，在
+   电脑上按钮落到窗口边缘＝飞出屏幕。改为壳中线±壳内原偏移、壳上下沿叠加原偏移；
+   html:not 链排除满屏形态（force-mobile/真全屏时 .phone=100vw，贴边即贴壳）；
+   loc-full 四长手（同 #428 老内核兼容口径）。≤900px 手机不进查询、行为不变。 */
+@media (min-width: 901px) {
+  html:not(.force-mobile):not(.tablet):not(.fs-active):not(.fs-css-active) .cc-manage-bar { left: calc(50% - 177px); right: calc(50% - 177px); bottom: calc(max(24px, 50vh - 422px) + 18px); }
+  html:not(.force-mobile):not(.tablet):not(.fs-active):not(.fs-css-active) .loc-panel { left: calc(50% - 195px); right: calc(50% - 195px); bottom: max(24px, 50vh - 422px); }
+  html:not(.force-mobile):not(.tablet):not(.fs-active):not(.fs-css-active) .loc-panel.loc-full { top: max(24px, 50vh - 422px); right: calc(50% - 195px); bottom: max(24px, 50vh - 422px); left: calc(50% - 195px); }
+  html:not(.force-mobile):not(.tablet):not(.fs-active):not(.fs-css-active) .music-batch-bar { left: calc(50% - 195px); right: calc(50% - 195px); bottom: max(24px, 50vh - 422px); }
+  html:not(.force-mobile):not(.tablet):not(.fs-active):not(.fs-css-active) .sm-float { left: calc(50% - 183px); top: calc(max(24px, 50vh - 422px) + 80px); }
+}
 .sm-f-info { width:100%; min-width:0; padding-right:18px; }
 .sm-f-name {
   display:block;
@@ -2695,6 +3003,21 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
 .dc-h-options { font-size:11px; color:var(--muted); margin-top:3px; }
 .dc-h-result { font-size:13px; font-weight:700; color:var(--ink); margin-top:4px; }
 .dc-h-time { font-size:10px; color:var(--muted); margin-top:3px; }
+/* #1053：决定历史「当天直显、更早默认折叠」——更早记录块用原生 details/summary，零 JS */
+.dc-h-more { margin-top:6px; border:1px solid rgba(0,0,0,.1); border-radius:10px; overflow:hidden; }
+.dc-h-more-sum {
+  list-style:none; display:flex; align-items:center; justify-content:space-between; gap:6px;
+  padding:10px 12px; font-size:12px; font-weight:700; color:var(--ink);
+  cursor:pointer; -webkit-tap-highlight-color:transparent; user-select:none;
+}
+.dc-h-more-sum::-webkit-details-marker { display:none; }
+.dc-h-more-sum::after { content:'▾'; font-size:11px; color:var(--muted); transition:transform .15s ease; }
+.dc-h-more[open] .dc-h-more-sum::after { transform:rotate(180deg); }
+.dc-h-more-cnt { font-size:11px; font-weight:400; color:var(--muted); margin-left:auto; }
+.dc-h-more-body { padding:2px 0 6px; }
+.dc-h-day { padding:2px 0; }
+.dc-h-day-label { font-size:11px; font-weight:700; color:var(--muted); padding:6px 12px 2px; }
+.dc-h-day-empty { font-size:11px; color:var(--muted); padding:4px 2px 6px; }
 
 /* ===== 多人决定 ===== */
 /* 成员选择块：胶囊 chip（checkbox 藏进 label，勾选态由 JS 上 .on 类） */
@@ -2779,6 +3102,10 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
 .feed-cover::after {
   content:''; position:absolute; top:-30px; right:-20px; width:120px; height:120px;
   border:1px solid rgba(255,255,255,.15); border-radius:50%;
+  /* FIX 2026-09-26 #1311：纯装饰的圆环不吃命中——它按「最后一个子节点」绘制，压在封面那张
+     「真·可点 input 层」上方（absolute 定位层），右上 120×120 那块点下去会被它接住、转交封面自己的
+     合成腿＝iOS 上「点了没反应」的那条老路。让路后这一整块仍是那张层。 */
+  pointer-events:none;
 }
 .feed-cover.has-bg { background-size:cover; background-position:center; }
 .feed-cover-av {
@@ -2787,7 +3114,9 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
   display:flex; align-items:center; justify-content:center;
 }
 .feed-cover-av img { width:100%; height:100%; object-fit:cover; display:block; }
-.feed-cover-name { font-size:16px; font-weight:700; color:#fff; letter-spacing:1px; text-shadow:0 1px 3px rgba(0,0,0,.4); }
+/* FIX 2026-09-26 #1311：昵称抬到封面那张「真·可点 input 层」之上（按 #821 桌面昵称同一口径）。
+   它是静态流内元素，绘制与命中都排在定位层之后＝不抬会被整层盖住＝点昵称变成选图片。 */
+.feed-cover-name { position:relative; z-index:1; font-size:16px; font-weight:700; color:#fff; letter-spacing:1px; text-shadow:0 1px 3px rgba(0,0,0,.4); }
 .feed-post {
   background:rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.1);
   border-radius:14px; padding:14px; margin-bottom:12px;
@@ -2806,7 +3135,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
 .feed-name { font-size:14px; font-weight:700; color:var(--ink); }
 .feed-time { font-size:10px; color:var(--muted); margin-top:2px; }
 .feed-del { background:none; border:none; color:var(--muted); cursor:pointer; padding:4px; }
-.feed-content { font-size:14px; color:var(--ink); line-height:1.6; margin-top:10px; word-break:break-word; }
+.feed-content { font-size:14px; color:var(--ink); line-height:1.6; margin-top:10px; word-break:break-word; white-space:pre-wrap; }
 .feed-actions { display:flex; gap:18px; margin-top:12px; border-top:1px solid rgba(0,0,0,.05); padding-top:10px; }
 /* v3.26.x：动作按钮用 flex 居中图标与文字——原 display:block + SVG inline vertical-align:-3px
    仅对单个图标近似对齐，各图标路径几何中心不同（星形 bbox 中心 Y 9.7 vs 心形 12.4）时文字
@@ -3003,6 +3332,20 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
 .msg-pong-label { font-size:11px; color:var(--muted); margin-bottom:2px; }
 .msg-pong-result { font-size:15px; font-weight:600; color:var(--ink); }
 .msg-memory .msg-pong-result { font-size:13px; }
+/* #1028：砖块结算正文比 pong 长一倍（分数+连击+层数），15px 在 390 宽手机上必然折行——与记忆翻牌同款收窄（12.5px＝剥掉重复句首后最长文案在 360 宽仍单行） */
+.msg-brick .msg-pong-result { font-size:12.5px; }
+
+/* #891 小游戏结算卡片（五子棋/四子棋/合作扫雷/连连看/消消乐/拍卖会）：结论行按输赢上色，下接本局数据行 */
+.msg-game-card { padding:10px 16px; }
+.msg-game-result { font-size:15px; font-weight:600; color:var(--ink); }
+.msg-game-result.game-win,.msg-game-result.game-clear { color:#1f9d55; }
+.msg-game-result.game-lose,.msg-game-result.game-fail { color:#d94848; }
+.msg-game-result.game-draw { color:var(--muted); }
+.msg-game-stats { margin-top:7px; padding-top:6px; border-top:1px dashed rgba(0,0,0,.1); display:flex; flex-direction:column; gap:2px; }
+.msg-game-stat { font-size:11px; color:var(--muted); line-height:1.5; }
+[data-theme="dark"] .msg-game-result.game-win,[data-theme="dark"] .msg-game-result.game-clear { color:#4ade80; }
+[data-theme="dark"] .msg-game-result.game-lose,[data-theme="dark"] .msg-game-result.game-fail { color:#ff8787; }
+[data-theme="dark"] .msg-game-stats { border-top-color:rgba(255,255,255,.14); }
 
 /* Pong 顶栏按钮组 / 暂停 / 全屏 */
 .pong-bar-right { display:flex; align-items:center; gap:6px; }
@@ -3012,7 +3355,9 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
 .pong-overlay-btn2 { background:rgba(255,255,255,.16); }
 /* Pong 全屏模式：面板占满视口，游戏区域 + UI 全部放大，flex 撑满无滚动无空白 */
 /* FIX 2026-09-16：补 100dvh 与安全区兜底——iPhone 全面屏底部按钮贴手势条、动态工具栏下内容被裁（brick-fs/snake-fs 同款写法） */
-#chat-pong-panel.pong-fs { position:fixed !important; top:0 !important; right:0 !important; bottom:0 !important; left:0 !important; z-index:9999; border-radius:0; max-height:none !important; height:100vh; height:100dvh; background:#0f1420; padding-left:0; padding-right:0; padding-top:max(env(safe-area-inset-top,0px),8px); padding-bottom:max(var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px)),8px); overscroll-behavior:none; }
+#chat-pong-panel.pong-fs { position:fixed !important; top:0 !important; right:0 !important; bottom:0 !important; left:0 !important; z-index:9999; border-radius:0; max-height:none !important; height:100vh; background:#0f1420; padding-left:0; padding-right:0; padding-top:max(env(safe-area-inset-top,0px),8px); padding-bottom:max(var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px)),8px); overscroll-behavior:none; }
+/* #853：dvh 行收进 @supports（老 WebKit 会把整条 height 作废成 auto，100vh 前置拦不住；机制见 base.css #853 注释） */
+@supports (height: 100dvh) { #chat-pong-panel.pong-fs { height:min(var(--mochi-ios-h, 100dvh), 100dvh); } }
 #chat-pong-panel.pong-fs .poke-card-scroll { max-height:none; flex:1; overflow:hidden; display:flex; flex-direction:column; padding:0; }
 #chat-pong-panel.pong-fs .poke-card-head { background:transparent; color:#fff; border-bottom-color:rgba(255,255,255,.12); padding:12px 18px; flex-shrink:0; }
 #chat-pong-panel.pong-fs .poke-card-head b { color:#fff; font-size:20px; }
@@ -3057,7 +3402,9 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
 .brick-rate span { opacity:.4; }
 /* 打砖块全屏：面板占满视口（对齐 pong-fs 布局方案） */
 /* 打砖块全屏：面板占满视口（真·Fullscreen API 或 CSS 兜底），UI 单独设计 */
-#chat-brick-panel.brick-fs { position:fixed !important; top:0 !important; right:0 !important; bottom:0 !important; left:0 !important; z-index:9999; border-radius:0; max-height:none !important; height:100vh; height:100dvh; background:#101625; padding-left:0; padding-right:0; padding-top:max(env(safe-area-inset-top,0px),8px); padding-bottom:max(var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px)),8px); overscroll-behavior:none; }
+#chat-brick-panel.brick-fs { position:fixed !important; top:0 !important; right:0 !important; bottom:0 !important; left:0 !important; z-index:9999; border-radius:0; max-height:none !important; height:100vh; background:#101625; padding-left:0; padding-right:0; padding-top:max(env(safe-area-inset-top,0px),8px); padding-bottom:max(var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px)),8px); overscroll-behavior:none; }
+/* #853：同上——dvh 行收进 @supports */
+@supports (height: 100dvh) { #chat-brick-panel.brick-fs { height:min(var(--mochi-ios-h, 100dvh), 100dvh); } }
 #chat-brick-panel.brick-fs .poke-card-scroll { max-height:none; flex:1; overflow:hidden; display:flex; flex-direction:column; padding:0; }
 #chat-brick-panel.brick-fs .poke-card-head { background:transparent; color:#fff; border-bottom-color:rgba(255,255,255,.12); padding:10px 16px; flex-shrink:0; }
 #chat-brick-panel.brick-fs .poke-card-head b { color:#fff; font-size:19px; }
@@ -3096,6 +3443,12 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
 .snake-diff { font-size:13px; padding:4px 8px; border-radius:8px; border:1px solid rgba(0,0,0,.12); background:rgba(255,255,255,.6); color:var(--ink); outline:none; font-family:inherit; }
 .snake-icon-btn { width:32px; height:32px; border-radius:50%; border:none; background:rgba(0,0,0,.06); font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; line-height:1; color:var(--ink); }
 .snake-icon-btn:active { transform:scale(.92); }
+/* #799 道具用完：灰而不消失——仍可点，点了由 TA 说一句「重开一局才恢复」 */
+.snake-icon-btn.game-prop-off { opacity:.38; }
+/* #799 消消乐：对局中切了模式下拉，信息条常驻「重开才生效」警示 */
+.m3-mode-pending { color:#e8533d; font-weight:700; }
+/* #799 消消乐：场上留有未引爆道具时的常驻胶囊（状态行在棋盘下方容易被挤出可视区） */
+.m3-prop-live { background:rgba(232,83,61,.12); color:#e8533d; border-radius:10px; padding:1px 8px; font-weight:700; }
 .snake-score { text-align:center; font-size:13px; font-weight:700; color:var(--ink); padding:4px 0 2px; letter-spacing:.5px; }
 .snake-best { text-align:center; font-size:11px; color:var(--muted); padding:0 0 6px; }
 .snake-canvas { display:block; width:min(360px,90vw); height:min(360px,90vw); margin:0 auto; background:#f6f6f8; border-radius:12px; touch-action:none; }
@@ -3115,8 +3468,13 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
 .snake-dp[data-dir="left"] { grid-column:1; grid-row:2; }
 .snake-dp[data-dir="down"] { grid-column:2; grid-row:2; }
 .snake-dp[data-dir="right"] { grid-column:3; grid-row:2; }
-/* 全屏：面板占满视口，canvas + UI 按视口等比放大铺满 */
-#chat-snake-panel.snake-fs { position:fixed !important; top:0 !important; right:0 !important; bottom:0 !important; left:0 !important; z-index:9999; border-radius:0; max-height:none !important; height:100vh; height:100dvh; background:#fff; padding-top:max(env(safe-area-inset-top,0px),8px); padding-bottom:max(var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px)),8px); overscroll-behavior:none; }
+/* 全屏：面板占满视口，canvas + UI 按视口等比放大铺满
+   #774 高度改走全站小游戏同一条 min(var(--mochi-ios-h,100dvh),100dvh)：iOS 26.x 独立应用
+   100vh/100dvh 都不等于真实可视高（实测 874 vs 812），原写法面板比可视区长一条 62px，
+   与 JS 侧视口抖动闸门同批；非 iOS 该变量不写＝行为不变 */
+#chat-snake-panel.snake-fs { position:fixed !important; top:0 !important; right:0 !important; bottom:0 !important; left:0 !important; z-index:9999; border-radius:0; max-height:none !important; height:100vh; background:#fff; padding-top:max(env(safe-area-inset-top,0px),8px); padding-bottom:max(var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px)),8px); overscroll-behavior:none; }
+/* #853：同上——dvh 行收进 @supports */
+@supports (height: 100dvh) { #chat-snake-panel.snake-fs { height:min(var(--mochi-ios-h, 100dvh), 100dvh); } }
 /* 兜底可纵向滚：极矮/横屏下画布格子有 9px 下限仍可能塞不下结算，overflow:hidden 会让「再来一局」永久点不到（canvas 有 touch-action:none，滑动控制不受滚动影响） */
 #chat-snake-panel.snake-fs .poke-card-scroll { overflow:hidden auto; padding:min(2vh,2vw) 8px; }
 /* 全屏隐藏方向键：滑动/键盘已覆盖全部输入，把空间让给更大的地图 */
@@ -3158,7 +3516,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
 .msg-snake-side { font-weight:700; min-width:24px; }
 
 /* ===== v3.x：同频 / 伸手 页（桌面第三页动态注入） ===== */
-.tp-body, .ss-body { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; box-sizing:border-box; padding:14px 14px 40px; }
+.tp-body, .ss-body { flex:1; overflow-y:auto; box-sizing:border-box; padding:14px 14px 40px; }
 .tp-card { padding:16px 14px; margin-bottom:14px; border-radius:14px; }
 .tp-label { font-size:13px; color:var(--ink-soft,#888); margin-bottom:8px; }
 .tp-status { font-size:20px; font-weight:600; min-height:28px; }
@@ -3193,7 +3551,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
 @keyframes ssTrace { 0%{ left:-60%; opacity:0; } 30%{ opacity:1; } 100%{ left:120%; opacity:0; } }
 
 /* ===== 喝水 / 吃什么 页（桌面第三页动态注入） ===== */
-.water-body, .eat-body { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; box-sizing:border-box; padding:14px 14px 40px; }
+.water-body, .eat-body { flex:1; overflow-y:auto; box-sizing:border-box; padding:14px 14px 40px; }
 .water-card { padding:24px 18px; border-radius:14px; text-align:center; margin-bottom:16px; }
 .water-num { font-size:48px; font-weight:700; color:var(--ink,#222); line-height:1; }
 .water-unit { font-size:14px; color:var(--ink-soft,#999); margin:6px 0 14px; }
@@ -3258,8 +3616,11 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
 /* ---- 吃什么 · 历史 ---- */
 .eat-history { text-align:center; font-size:12px; color:var(--ink-soft,#aaa); min-height:18px; margin-bottom:4px; line-height:1.8; }
 .eh-tag { display:inline-block; margin:0 4px; padding:2px 10px; border-radius:12px; background:rgba(0,0,0,.05); font-size:12px; color:var(--ink-soft,#999); }
+/* ---- TA 提醒记录页（喝水/吃什么共用子页；列表项复用 .tc-listitem，暗色主题已适配） ---- */
+.remind-log { flex:1; overflow-y:auto; box-sizing:border-box; padding:14px 14px 40px; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
+.remind-log-sum { font-size:12px; color:var(--ink-soft,#999); margin-bottom:10px; }
 /* ---- 吃什么 · 菜单编辑 ---- */
-.eat-mgr { display:flex; gap:10px; justify-content:center; margin-top:6px; }
+.eat-mgr { display:flex; gap:10px; justify-content:center; margin-top:6px; flex-wrap:wrap; }
 .eat-menu-btn { font-size:13px; color:var(--ink-soft,#888); background:none; border:1px dashed rgba(0,0,0,.15); border-radius:10px; padding:8px 14px; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; }
 .eat-add { font-size:13px; color:var(--ink-soft,#888); background:none; border:1px dashed rgba(0,0,0,.15); border-radius:10px; padding:8px 14px; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; }
 .eat-menu-panel { margin-top:12px; padding:10px; background:rgba(255,255,255,.4); border-radius:12px; }
@@ -3294,7 +3655,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
 .eat-switch-go[disabled] { opacity:.45; pointer-events:none; }
 
 /* ===== 番茄钟 页（桌面第三页动态注入） ===== */
-.pomo-body { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; box-sizing:border-box; padding:14px 14px 40px; }
+.pomo-body { flex:1; overflow-y:auto; box-sizing:border-box; padding:14px 14px 40px; }
 .pomo-card { padding:18px 16px 20px; border-radius:14px; text-align:center; margin-bottom:16px; }
 .pomo-tabs { display:flex; gap:8px; justify-content:center; margin-bottom:14px; }
 .pomo-tab { font-size:13px; font-family:inherit; border:none; border-radius:16px; padding:7px 16px; background:rgba(0,0,0,.07); color:var(--ink-soft,#666); -webkit-tap-highlight-color:transparent; }
@@ -3343,7 +3704,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
 .pmp-menu button[data-pmpc="quit"] { color:#e8533d; border-color:rgba(232,83,61,.3); }
 
 /* ===== 番茄钟 · 陪伴模式专属聊天窗（独立页，不进普通聊天记录） ===== */
-.pmp-c-list { flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; box-sizing:border-box; padding:14px 14px 20px; display:flex; flex-direction:column; gap:10px; scrollbar-width:none; -ms-overflow-style:none; overscroll-behavior:contain; }
+.pmp-c-list { flex:1; min-height:0; overflow-y:auto; box-sizing:border-box; padding:14px 14px 20px; display:flex; flex-direction:column; gap:10px; scrollbar-width:none; -ms-overflow-style:none; overscroll-behavior:contain; }
 .pmp-c-list::-webkit-scrollbar { display:none; }
 .pmp-c-row { display:flex; flex-shrink:0; }
 .pmp-c-row.me { justify-content:flex-end; }
@@ -3374,7 +3735,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
 .pmp-c-chat .pmp-c-empty { font-size:11px; line-height:1.8; }
 
 /* ===== 存钱罐（桌面第三页）：金色小金库 ===== */
-.piggy-body { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; box-sizing:border-box; padding:14px 14px 40px; }
+.piggy-body { flex:1; overflow-y:auto; box-sizing:border-box; padding:14px 14px 40px; }
 .piggy-hero { padding:22px 18px 20px; border-radius:14px; text-align:center; margin-bottom:16px; }
 .piggy-goal-name { font-size:13px; color:#b7791f; margin-bottom:8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .piggy-bal { font-size:44px; font-weight:700; color:var(--ink,#222); line-height:1.1; font-variant-numeric:tabular-nums; }
@@ -3615,7 +3976,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
 .cj-groups {
   display: flex; gap: 8px; align-items: center;
   overflow-x: auto; margin: 0 -18px 2px; padding: 6px 18px 10px;
-  -webkit-overflow-scrolling: touch; scrollbar-width: none;
+ scrollbar-width: none;
   position: -webkit-sticky; position: sticky; top: 0; z-index: 5;
 }
 .cj-groups::-webkit-scrollbar { display: none; }
@@ -3679,10 +4040,18 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
 .c4-land { animation:c4land .18s ease-out; }
 @keyframes c4land { 0% { transform:scale(1,1); } 45% { transform:scale(1.06,.88); } 100% { transform:scale(1,1); } }
 .c4-wincol::before { background:rgba(127,127,127,.06); }
-.c4-win { animation:c4win .9s ease-in-out infinite alternate; }
-@keyframes c4win {
-  from { filter:brightness(1) drop-shadow(0 0 0 rgba(255,255,255,0)); }
-  to { filter:brightness(1.25) drop-shadow(0 0 7px rgba(255,224,138,.9)); }
+/* #722 iOS 去无限 filter 动画（brightness/drop-shadow 插值每帧重绘不进合成器＝胜利态常驻重绘面）：
+   金晕+提亮烘焙在棋子 ::after 上，只动 opacity/transform 合成属性，视觉同为金光呼吸 */
+.c4-win::after {
+  content:''; position:absolute; inset:0; border-radius:inherit;
+  background:rgba(255,236,180,.30); /* 模拟 brightness(1.25) 提亮 */
+  box-shadow:0 0 7px 1px rgba(255,224,138,.9); /* 模拟金色 drop-shadow，静态烘焙 */
+  opacity:0; pointer-events:none; z-index:2;
+  animation:c4winGlow .9s ease-in-out infinite alternate;
+}
+@keyframes c4winGlow {
+  from { opacity:0; transform:scale(1); }
+  to { opacity:1; transform:scale(1.06); }
 }
 .c4-shake { animation:c4shake .26s ease-in-out; }
 @keyframes c4shake { 0%,100% { transform:translateX(0); } 25% { transform:translateX(-3px); } 50% { transform:translateX(3px); } 75% { transform:translateX(-2px); } }
@@ -3696,7 +4065,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
 /* 弱动效偏好：落子/庆祝动画关闭（布局不受影响） */
 @media (prefers-reduced-motion: reduce) {
   .c4-disc { transition-duration:0s !important; }
-  .c4-land, .c4-win, .c4-shake { animation:none; }
+  .c4-land, .c4-win, .c4-win::after, .c4-shake { animation:none; }
 }
 
 /* ===== 合作扫雷（聊天页底部半框，复用 .poke-card 容器与 .pong-overlay 组件） ===== */
@@ -3906,11 +4275,17 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
 .fish-btn:disabled { opacity:.55; box-shadow:none; }
 .fish-btn[hidden] { display:none; }
 .fish-reel {
+  position:relative; /* #722 提亮层走伪元素 */
   background:linear-gradient(135deg,#f2994a,#e8683a);
   box-shadow:0 3px 8px rgba(232,104,58,.35);
-  animation:fishreelpulse 1s ease-in-out infinite;
 }
-@keyframes fishreelpulse { 0%,100% { filter:brightness(1); } 50% { filter:brightness(1.14); } }
+/* #722 iOS 去无限 brightness 动画（filter 插值每帧重绘不进合成器）：改白洗层 opacity 脉冲，视觉同为呼吸提亮 */
+.fish-reel::after {
+  content:''; position:absolute; inset:0; border-radius:inherit;
+  background:#fff; opacity:0; pointer-events:none;
+  animation:fishReelPulse 1s ease-in-out infinite;
+}
+@keyframes fishReelPulse { 0%,100% { opacity:0; } 50% { opacity:.14; } }
 
 /* 页签：今日收获 / 鱼图鉴 / TA送我的 */
 .fish-tabs { display:flex; gap:8px; padding:0 4px; }
@@ -3951,6 +4326,8 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
   font-size:12px; color:#5a7c95;
 }
 .fish-sellbar b { color:#e8963a; font-size:13px; }
+/* #763 日封顶用量提示（今日收获页，仅已产生收入时出现；--muted 色暗色模式天然可读） */
+.fish-capnote { margin-top:6px; text-align:center; font-size:10.5px; color:var(--muted); font-variant-numeric:tabular-nums; }
 .fish-sell {
   flex-shrink:0; padding:8px 16px; border:none; border-radius:99px;
   font-size:12.5px; font-weight:700; font-family:inherit; cursor:pointer; color:#fff;
@@ -4003,7 +4380,7 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
 @media (prefers-reduced-motion: reduce) {
   .fish-water::before { animation:none; }
   .fish-bobber { animation:none !important; }
-  .fish-reel { animation:none; }
+  .fish-reel, .fish-reel::after { animation:none; } /* #722 同步伪层 */
   .fish-scene[data-mine="biting"] .fish-me .fish-rod,
   .fish-scene[data-ta="biting"] .fish-ta .fish-rod { animation:none; }
   .fish-splash { animation-duration:.01s; opacity:0; }
@@ -4141,11 +4518,13 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
    且 top:0+bottom:0 双锚在 height 行被老内核丢弃时仍能撑满全屏。 ===== */
 .poke-card.game-fs { position:fixed !important; top:0 !important; right:0 !important; bottom:0 !important; left:0 !important;
   z-index:9999; border-radius:0; max-height:none !important;
-  height:100vh; height:min(var(--mochi-ios-h, 100dvh), 100dvh);
+  height:100vh;
   background:#fff; overscroll-behavior:none;
   padding-top:max(env(safe-area-inset-top, 0px), 8px);
   padding-bottom:max(var(--mochi-safe-bottom, env(safe-area-inset-bottom, 0px)), 8px);
 }
+/* #853：同上——dvh 行收进 @supports（iOS<15.4 点全屏面板高度不再塌成内容高） */
+@supports (height: 100dvh) { .poke-card.game-fs { height:min(var(--mochi-ios-h, 100dvh), 100dvh); } }
 /* #320 全屏游戏面板抬层：.game-fs 仍位于 .page（z-index:2）上下文内，z-9999 被压到 2，
    永远低于全局顶部提醒条(ver-update-bar/backup-remind-bar z-998) → 全屏时头部难度下拉
    被提醒条盖住点不到。fullscreen.js 在任一可见 .game-fs 时给 .phone 挂 game-fs-active，
@@ -4332,7 +4711,7 @@ select.mochi-custom-select-native { display:none; }
 .mochi-custom-select.open .mochi-custom-select-caret { transform:rotate(180deg); }
 .mochi-custom-select-list {
   display:none; position:absolute; top:calc(100% + 4px); left:0; min-width:100%; z-index:60;
-  max-height:34vh; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain;
+  max-height:34vh; overflow-y:auto; overscroll-behavior:contain;
   background:var(--card-bg); border:1px solid var(--card-border); border-radius:12px;
   box-shadow:0 8px 24px rgba(0,0,0,.12); padding:6px; box-sizing:border-box;
   scrollbar-width:none; -ms-overflow-style:none;
@@ -4403,6 +4782,12 @@ select.mochi-custom-select-native { display:none; }
 [data-theme="dark"] .au-r2 { background:rgba(240,173,40,.28); color:#ffd479; }
 /* ===== #302 朋友圈贴纸回复 + 回忆闪回 ===== */
 .feed-imgs { position: relative; }
+/* #845：纯文字动态的空白底纸——贴纸没有照片可贴时铺一张卡纸承接（feed.js contentHtmlFor 的
+   hasStickers 分支 / feedEnsureStickerBox 共用此类名），否则「贴纸」按钮贴上去看不见 */
+.feed-imgs.feed-imgs-blank { min-height:132px; border-radius:10px; background:linear-gradient(135deg,#fff2f6,#f1f6ff); box-shadow:inset 0 0 0 1px rgba(0,0,0,.06); }
+.feed-imgs.feed-imgs-blank::before { content:'贴纸卡片'; position:absolute; left:10px; top:8px; font-size:11px; color:rgba(0,0,0,.28); }
+[data-theme="dark"] .feed-imgs.feed-imgs-blank { background:linear-gradient(135deg,#2b2b33,#232833); }
+[data-theme="dark"] .feed-imgs.feed-imgs-blank::before { color:rgba(255,255,255,.3); }
 .feed-sticker { position: absolute; width: 44px; height: 44px; transform: translate(-50%, -50%); cursor: pointer; z-index: 2; filter: drop-shadow(0 2px 4px rgba(0,0,0,.25)); }
 .feed-sticker img { width: 100%; height: 100%; object-fit: contain; }
 .feed-sticker-emoji { font-size: 30px; line-height: 44px; }
@@ -4487,4 +4872,76 @@ select.mochi-custom-select-native { display:none; }
 .arc-drop { font-size:11px; padding:4px 9px; border-radius:9px; background:rgba(127,127,127,.1); color:var(--muted); }
 .arc-drop.on { background:rgba(91,143,249,.16); color:#3a7fd5; font-weight:600; }
 [data-theme="dark"] .arc-drop.on { color:#8fb8ff; }
-.au-bag-row .au-send-btn { display:inline-block; margin-left:6px; padding:2px 10px; font-size:11px; }
+/* #1032 拍卖藏品页改版（方案 A 卡片网格 + 空态）：浮层恒为深色底（.pong-overlay rgba(15,20,32,.88)），
+   取色直接按深底写死、不随明暗主题走（与开场教学 #au-intro 同族）。旧裸文本行样式已随 showBag 重写退役。 */
+.au-bag-stat { text-align:center; font-size:11.5px; color:rgba(255,255,255,.62); margin:2px 0 10px; }
+.au-bag-stat b { color:#ffd479; font-weight:700; }
+.au-bag-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; max-width:340px; margin:0 auto; }
+.au-bag-card { position:relative; display:flex; flex-direction:column; gap:6px; padding:10px 10px 11px; box-sizing:border-box; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.1); border-radius:14px; text-align:center; }
+.au-bag-card.au-bag-rare { border-color:rgba(88,150,230,.45); }
+.au-bag-card.au-bag-ssr { border-color:rgba(240,173,40,.55); box-shadow:inset 0 0 14px rgba(240,173,40,.18); }
+.au-bag-badge { position:absolute; top:8px; right:8px; margin-right:0; z-index:1; }
+.au-bag-tile { height:62px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:34px; background:radial-gradient(circle at 50% 38%, rgba(255,255,255,.14), rgba(255,255,255,.03) 70%); }
+.au-bag-name { font-size:13px; font-weight:600; color:#fff; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.au-bag-meta { font-size:11px; color:rgba(255,255,255,.55); }
+.au-bag-meta.au-bag-from-ta { color:#9ec4f5; }
+.au-bag-send { display:block; width:100%; margin-left:0; border:none; border-radius:99px; padding:5px 0; font-size:11.5px; font-weight:600; color:#fff; background:rgba(255,107,157,.9); }
+.au-bag-send:active { transform:scale(.96); }
+.au-bag-empty { display:flex; flex-direction:column; align-items:center; gap:10px; padding:56px 0 40px; }
+.au-bag-empty-ico { font-size:52px; opacity:.85; }
+.au-bag-empty-t { font-size:14px; font-weight:600; color:rgba(255,255,255,.85); }
+.au-bag-empty-s { font-size:12px; color:rgba(255,255,255,.5); }
+.au-bag-empty-btn { margin-top:8px; }
+/* #1041 拍卖藏品图贯通：自制拍品带商品图时，竞价台/背包卡/记录行/转赠与实物同图（emoji 位换成圆角小图）。 */
+.au-ico-img { width:76px; height:76px; border-radius:16px; object-fit:cover; vertical-align:middle; background:#fff; }
+.au-bag-tile .au-bag-img { width:100%; height:100%; border-radius:10px; object-fit:cover; background:#fff; }
+.au-hist-img { width:18px; height:18px; border-radius:4px; object-fit:cover; vertical-align:-3px; margin-right:2px; background:#fff; }
+/* #1041 自制拍品全屏编辑台（方案 A）：恒深底（与 #au-intro/#au-help 同族，取色写死不随明暗主题）。
+   ID 特异性 display:flex 会压掉 UA 的 [hidden]（#331 同因），[hidden] 救援必须有。 */
+#au-editor {
+  position:fixed; inset:0; z-index:1335; border-radius:0;
+  display:flex; align-items:center; justify-content:center;
+  padding:max(env(safe-area-inset-top, 0px), 14px) 14px max(env(safe-area-inset-bottom, 0px), 14px);
+  background:rgba(12,16,26,.94); overflow-y:auto;
+  justify-content:safe center;
+}
+#au-editor[hidden] { display:none; }
+.au-ed-card { width:100%; max-width:380px; max-height:100%; display:flex; flex-direction:column; gap:10px; box-sizing:border-box; }
+.au-ed-head { display:flex; align-items:center; gap:8px; }
+.au-ed-title { flex:1; font-size:15.5px; font-weight:800; color:#fff; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.au-ed-preview { display:flex; align-items:center; gap:12px; padding:12px; border-radius:14px; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.12); }
+.au-ed-pface { width:56px; height:56px; flex:0 0 auto; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:32px; background:radial-gradient(circle at 50% 38%, rgba(255,255,255,.14), rgba(255,255,255,.03) 70%); overflow:hidden; }
+.au-ed-pface .au-ed-pimg { width:100%; height:100%; object-fit:cover; background:#fff; }
+.au-ed-pinfo { flex:1; min-width:0; }
+.au-ed-pname { font-size:14px; font-weight:700; color:#fff; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.au-ed-pdesc { font-size:11.5px; color:rgba(255,255,255,.6); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.au-ed-pbase { font-size:11.5px; color:#ffd479; margin-top:2px; }
+.au-ed-body { flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding:2px; }
+.au-ed-label { font-size:11px; font-weight:700; color:rgba(255,255,255,.55); margin-top:4px; }
+.au-ed-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; }
+.au-ed-ico { aspect-ratio:1; border:1px solid rgba(255,255,255,.1); border-radius:10px; background:rgba(255,255,255,.06); font-size:21px; line-height:1; color:#fff; padding:0; cursor:pointer; }
+.au-ed-ico.on { border-color:#ff6b9d; background:rgba(255,107,157,.16); }
+.au-ed-imgrow { display:flex; align-items:center; gap:8px; }
+.au-ed-imgprev { width:44px; height:44px; flex:0 0 auto; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:22px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); overflow:hidden; }
+.au-ed-imgprev img { width:100%; height:100%; object-fit:cover; }
+.au-ed-imgbtn { border:1px solid rgba(255,255,255,.16); border-radius:99px; padding:7px 14px; font-size:12px; font-weight:600; color:rgba(255,255,255,.88); background:rgba(255,255,255,.08); cursor:pointer; }
+.au-ed-inp { width:100%; box-sizing:border-box; border:1px solid rgba(255,255,255,.14); border-radius:10px; padding:10px 12px; font-size:13.5px; font-family:inherit; color:#fff; background:rgba(255,255,255,.07); }
+.au-ed-inp::placeholder { color:rgba(255,255,255,.38); }
+.au-ed-row2 { display:grid; grid-template-columns:minmax(0,1fr) 104px; gap:8px; }
+.au-ed-price { text-align:right; }
+.au-ed-switch { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 10px; border-radius:10px; background:rgba(255,255,255,.05); font-size:12.5px; color:rgba(255,255,255,.85); }
+.au-ed-switch input { appearance:none; -webkit-appearance:none; flex:0 0 auto; width:40px; height:22px; margin:0; border-radius:99px; background:rgba(255,255,255,.18); position:relative; cursor:pointer; transition:background .15s; }
+.au-ed-switch input::after { content:''; position:absolute; top:3px; left:3px; width:16px; height:16px; border-radius:50%; background:#fff; transition:left .15s; }
+.au-ed-switch input:checked { background:#ff6b9d; }
+.au-ed-switch input:checked::after { left:21px; }
+.au-ed-hint { font-size:11.5px; line-height:1.5; color:#ffb37a; }
+.au-ed-lib:empty { display:none; }
+.au-ed-lib-t { font-size:11px; color:rgba(255,255,255,.5); margin:2px 0 4px; }
+.au-ed-lib { display:flex; flex-wrap:wrap; gap:6px; }
+.au-ed-chip { display:flex; align-items:center; gap:5px; border:1px solid rgba(255,255,255,.1); border-radius:99px; padding:5px 11px; font-size:11.5px; color:rgba(255,255,255,.85); background:rgba(255,255,255,.06); cursor:pointer; max-width:100%; }
+.au-ed-chip.on { border-color:#ff6b9d; }
+.au-ed-chip img { width:18px; height:18px; border-radius:5px; object-fit:cover; background:#fff; }
+.au-ed-chip span, .au-ed-chip { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.au-ed-foot { display:flex; align-items:center; justify-content:center; gap:10px; padding-bottom:2px; }
+.au-ed-foot .pong-overlay-btn { min-width:0; flex:1; }
+.au-ed-del { color:#ff8f8f !important; }

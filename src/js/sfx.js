@@ -9,7 +9,21 @@
 // v3.7.x：默认关闭——未做任何选择（缺省）或显式选「静音」（'none'）时均不播放；
 //   需在音效设置页主动点选内置音效或上传自定义音频后才会生效（用户要求）。
 (function () {
-  const store = window.activeStore();
+  // #643：音效作用范围可切换——「所有桌面共用」时读写全局命名空间（xy-home-v2: 根），
+  //   关闭时维持原行为（每联系人桌面各自一套）。包装层只改这一处，页内所有
+  //   store.get/set/remove（含 playSfx 播放时的读取）自动跟随，外部调用方零改动。
+  const rawStore = window.activeStore();
+  const gStore = window.xyStore('xy-home-v2');
+  function sfxUnified() { try { return gStore.get('sfx-unified') === '1'; } catch (e) { return false; } }
+  window.sfxUnified = sfxUnified;
+  // #698d：群聊音效键（sfx-gc-*）恒走全局根命名空间——群聊是全局功能（消息/成员都不随
+  // 桌面隔离），音效也应一套全局，不跟随「当前桌面」也不受 #643 共用开关影响
+  function isGcKey(k) { return typeof k === 'string' && k.indexOf('sfx-gc-') === 0; }
+  const store = {
+    get(k) { if (isGcKey(k)) return gStore.get(k); return (sfxUnified() ? gStore : rawStore).get(k); },
+    set(k, v) { if (isGcKey(k)) { gStore.set(k, v); return; } (sfxUnified() ? gStore : rawStore).set(k, v); },
+    remove(k) { if (isGcKey(k)) { gStore.remove(k); return; } (sfxUnified() ? gStore : rawStore).remove(k); }
+  };
   function toast(msg) {
     let t = document.getElementById('cc-toast');
     if (!t) { t = document.createElement('div'); t.id = 'cc-toast'; document.body.appendChild(t); }
@@ -18,9 +32,9 @@
     clearTimeout(t._timer);
     t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2200);
   }
-  const KEYS = { ring: 'sfx-ring', in: 'sfx-in', out: 'sfx-out' };
-  const BKEYS = { ring: 'sfx-ring-b', in: 'sfx-in-b', out: 'sfx-out-b' };
-  const NAMES = { ring: '联系人来电铃声', in: '联系人发送和回复消息', out: '我发送和回复消息' };
+  const KEYS = { ring: 'sfx-ring', in: 'sfx-in', out: 'sfx-out', 'gc-in': 'sfx-gc-in', 'gc-out': 'sfx-gc-out' };
+  const BKEYS = { ring: 'sfx-ring-b', in: 'sfx-in-b', out: 'sfx-out-b', 'gc-in': 'sfx-gc-in-b', 'gc-out': 'sfx-gc-out-b' };
+  const NAMES = { ring: '联系人来电铃声', in: '联系人发送和回复消息', out: '我发送和回复消息', 'gc-in': '群聊收消息', 'gc-out': '群聊发消息' };
 
   // ================= 内置音效库（v3.7.x） =================
   // 全部由 Web Audio API 合成，无外部资源、不占 localStorage。
@@ -35,11 +49,14 @@
   const PRESET_ORDER = {
     ring: ['ring-warm', 'ring-classic'],
     in: ['bubble', 'ding', 'bird', 'drop', 'piano', 'tick'],
-    out: ['bubble', 'ding', 'bird', 'drop', 'piano', 'tick']
+    out: ['bubble', 'ding', 'bird', 'drop', 'piano', 'tick'],
+    // #698d：群聊收发与单聊同款内置音效可选
+    'gc-in': ['bubble', 'ding', 'bird', 'drop', 'piano', 'tick'],
+    'gc-out': ['bubble', 'ding', 'bird', 'drop', 'piano', 'tick']
   };
   // v3.7.x：默认关闭——不再有"缺省即播默认内置"的兜底；
   //   缺省（无键）与显式「静音」（'none'）在 sfxState/playSfx 中统一按静音处理。
-  const PRESET_CONTAINERS = { ring: 'sfx-ring-presets', in: 'sfx-in-presets', out: 'sfx-out-presets' };
+  const PRESET_CONTAINERS = { ring: 'sfx-ring-presets', in: 'sfx-in-presets', out: 'sfx-out-presets', 'gc-in': 'sfx-gcin-presets', 'gc-out': 'sfx-gcout-presets' };
 
   // AudioContext 单例：首建 + 每次播放前 resume（iOS 自动播放策略要求）
   let _ctx = null;
@@ -278,43 +295,66 @@
     }
     if (wasLoop) playBuiltin(ringBuiltinFallbackId(), true); // 来电兜底：保证不无声
   }
+  // #1485b：自定义铃声播放链提为模块级——playSfx 主路径与「大键空窗补读」共用同一条
+  //   播放链（Blob+对象 URL 优先、失败回落内置），不另起第二份实现。
+  function playRingSrc(src, loop) {
+    if (ringAudio) { try { ringAudio.pause(); } catch (e) {} try { ringAudio.removeAttribute('src'); ringAudio.load(); } catch (e) {} }
+    ringAudio = new Audio(src);
+    ringAudio.loop = loop;
+    ringAudio.volume = 0.9;
+    let failed = false;
+    const fail = function () { if (!failed) { failed = true; ringCustomFail(loop); } };
+    ringAudio.addEventListener('error', fail);
+    ringAudio.play().catch(fail);
+  }
+  // data: 大段 base64 部分安卓内核播放失效（v3.26.x 原案）：Blob+对象 URL 优先、失败直播 dataURL
+  function playRingCustom(v, loop) {
+    if (v.indexOf('data:') === 0) {
+      dataUrlToBlob(v, function (b) {
+        if (b) {
+          try {
+            const newUrl = URL.createObjectURL(b);
+            revokeRingObjUrl(); // 先回收旧 URL，再挂新 URL（顺序不可反：先 revoke 会把新 URL 也一起回收）
+            ringObjUrl = newUrl;
+            playRingSrc(newUrl, loop);
+            return;
+          } catch (e) { revokeRingObjUrl(); }
+        }
+        revokeRingObjUrl();
+        playRingSrc(v, loop); // Blob 不可用（fetch 受限）→ dataURL 直播
+      });
+    } else {
+      revokeRingObjUrl();
+      playRingSrc(v, loop);
+    }
+  }
+  // #1485b：铃声补读代次闸——每次 playSfx('ring') / stopSfx('ring') 各进一代；
+  //   回读/超时兜底落地时代次不匹配（已被接听/挂断/新来电作废）就闭嘴，防迟响与双响。
+  let ringReadGen = 0;
 
   // 播放音效：自定义上传（dataURL）优先，其次内置音效（'none'=静音，缺省=默认内置）
+  // FIX 2026-09-28 #1374e：站内自己的音乐正在出声时，消息类音效不再叠上去。
+  //   用户实报（安卓 iQOO 10／Chrome 150，并明说「这个问题其他设备型号也有出现」「不要覆盖
+  //   修改导致不同型号设备浏览器的 bug 反复出现」）：「网站内播放音乐的时候一直有嘟嘟声，
+  //   一直边放音乐边嘟嘟响，是其他音频设置混进来了，而不是只有音乐的声音」。
+  //   #673 那批把「音乐互动台词」改成静默、并特意留下「普通 TA 对话消息照常响音效」——
+  //   听歌时每来一条回复就响一次，正是用户此刻要消灭的那一路。判据只取一个代码事实：
+  //   那一个 <audio> 元素此刻在不在出声（paused===false，与 bg-keep #1374c 同一把尺），
+  //   零机型／零 UA 分支；用户没在站内放歌时行为一字不变。
+  //   只管消息类（in/out/gc-in/gc-out，群聊 playSfxGc 也是转进来调本函数）：
+  //   来电铃声（ring）是「错过就没了」的单发事件照旧响，且来电时 musicHoldForCall 已把音乐停掉。
+  function siteMusicAudible() {
+    try { const m = window.__mochiMusic; return !!(m && m.el && m.el.paused === false); } catch (e) { return false; }
+  }
   window.playSfx = function (type, opts) {
     try {
+      if (type !== 'ring' && siteMusicAudible()) return;
       const loop = !(opts && opts.loop === false);
       const custom = store.get(KEYS[type]);
       if (custom && typeof custom === 'string' && custom.length > 10) {
         if (type === 'ring') {
           // —— 通话铃声自定义：Blob+对象 URL 优先，播放失败回落内置铃声 ——
-          const playRingWith = function (src) {
-            if (ringAudio) { try { ringAudio.pause(); } catch (e) {} try { ringAudio.removeAttribute('src'); ringAudio.load(); } catch (e) {} }
-            ringAudio = new Audio(src);
-            ringAudio.loop = loop;
-            ringAudio.volume = 0.9;
-            let failed = false;
-            const fail = function () { if (!failed) { failed = true; ringCustomFail(loop); } };
-            ringAudio.addEventListener('error', fail);
-            ringAudio.play().catch(fail);
-          };
-          if (custom.indexOf('data:') === 0) {
-            dataUrlToBlob(custom, function (b) {
-              if (b) {
-                try {
-                  const newUrl = URL.createObjectURL(b);
-                  revokeRingObjUrl(); // 先回收旧 URL，再挂新 URL（顺序不可反：先 revoke 会把新 URL 也一起回收）
-                  ringObjUrl = newUrl;
-                  playRingWith(newUrl);
-                  return;
-                } catch (e) { revokeRingObjUrl(); }
-              }
-              revokeRingObjUrl();
-              playRingWith(custom); // Blob 不可用（fetch 受限）→ dataURL 直播
-            });
-          } else {
-            revokeRingObjUrl();
-            playRingWith(custom);
-          }
+          playRingCustom(custom, loop);
           return;
         }
         // —— 非通话铃声（收发消息音效）自定义：dataURL 直播 + 播完卸 src（OOM 防线）——
@@ -323,6 +363,43 @@
         releaseWhenDone(a);
         a.play().catch(() => {});
         return;
+      }
+      // —— 通话铃声「大键空窗补读」（#1485b）——
+      // sfx-ring 是 IDB-only 大键（>200KB 只进 IndexedDB+内存缓存，从不落 localStorage）：
+      // 切后台被 #1195e 按体积放掉内存副本、启动回填挂起、页面被系统回收后冷启动这几类
+      // 时刻，同步读口交出 null＝「没读到」，长得和「用户没设过」一模一样。旧代码直接落
+      // 内置段，而上传自定义时内置选择已被清掉（handleUpload remove BKEYS）⇒ 内置段同样
+      // 无声＝「自定义铃声有时候不响」（用户实报：一加 Ace3／Edge，多机型同现）。这里先问
+      // 数据层那句证人（放掉名册／启动挂起名单／__big-idx 大键证人／回填未落定），本该有
+      // 数据就异步回读，回来走同一条自定义播放链；确无此键或问不出结果才按内置段收场
+      // （bid 空＝用户真没设过，维持「默认静音」设计不变）。判据＝数据层证人＋代次闸，
+      // 零机型／零 UA 分支。
+      if (type === 'ring') {
+        const sst = sfxUnified() ? gStore : rawStore;
+        let needsAsk = false;
+        try { needsAsk = !!(sst && sst.awaitingBigKey && sst.awaitingBigKey(KEYS.ring)); } catch (e) {}
+        if (needsAsk) {
+          const gen = ++ringReadGen;
+          let settled = false;
+          const tryCustom = function () {
+            if (settled || gen !== ringReadGen) return;
+            let v = null;
+            try { v = sst.get(KEYS.ring); } catch (e) {}
+            if (v && typeof v === 'string' && v.length > 10) { settled = true; playRingCustom(v, loop); }
+          };
+          const builtinSeg = function () {
+            if (settled || gen !== ringReadGen) return;
+            settled = true;
+            const bid = store.get(BKEYS.ring);
+            if (bid !== 'none' && bid && SYNTHS[bid]) playBuiltin(bid, true);
+          };
+          tryCustom(); // 回读可能在问证人期间已落地（竞速窗口）
+          if (!settled) {
+            try { sst.whenBigKeyBack(KEYS.ring, tryCustom); } catch (e) {}
+            setTimeout(builtinSeg, 1600); // 确无此键（'absent' 不回调）或问不出结果时按时收场
+          }
+          return;
+        }
       }
       // —— 内置音效 ——
       const bid = store.get(BKEYS[type]);
@@ -334,9 +411,21 @@
       if (bid !== 'none' && bid && SYNTHS[bid]) playBuiltin(bid, type === 'ring' && loop);
     } catch (e) {}
   };
+  // #698d：群聊收发音效入口——读 sfx-gc-in / sfx-gc-out（全局键）；两类都没设置过
+  // （用户没在音效设置里动过群聊卡）时回退单聊同名类别，保持升级前「群聊跟随当前
+  // 桌面音效」的既有听感；显式「静音」则静音不回退。
+  window.playSfxGc = function (type) {
+    const gcType = (type === 'in') ? 'gc-in' : 'gc-out';
+    const singleType = (type === 'in') ? 'in' : 'out';
+    try {
+      const touched = store.get(KEYS[gcType]) || store.get(BKEYS[gcType]);
+      window.playSfx(touched ? gcType : singleType, { loop: false });
+    } catch (e) { try { window.playSfx(singleType, { loop: false }); } catch (e2) {} }
+  };
   // 停止长音（来电铃声）：同时停自定义 Audio 与内置 BufferSource
   window.stopSfx = function (type) {
     if (type === 'ring') {
+      ringReadGen++; // #1485b：接听/挂断＝在飞的补读与超时兜底全部作废，不许迟响/双响
       if (ringAudio) { try { ringAudio.pause(); } catch (e) {} ringAudio = null; }
       revokeRingObjUrl();
       if (ringSrc) { try { ringSrc.stop(); } catch (e) {} ringSrc = null; }
@@ -363,12 +452,12 @@
   // 无自定义音频：仅显示「上传自定义音频」；有自定义：显示「试听自定义 / 清除自定义」。
   // 上传：FileReader → dataURL（超 3MB 提示可能过大）；上传即替换内置，内置键清除
   function handleUpload(type) {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'audio/*';
-    input.onchange = () => {
-      const f = input.files && input.files[0];
-      if (!f) return;
+    // FIX 2026-09-18 #755：统一走 window.mochiFilePick（原实现 detached＋无 label＋accept 迟到）
+    window.mochiFilePick({
+      id: 'mochi-sfx-pick', accept: 'audio/*',
+      onFiles: (files) => {
+      const f = files && files[0];
+      if (!f) { toast('没有取到音频，请再选一次'); return; }
       if (f.size > 3 * 1024 * 1024) { toast('音频较大（>3MB），可能占用较多存储空间'); }
       toast('正在读取音频…');
       const reader = new FileReader();
@@ -380,8 +469,8 @@
       };
       reader.onerror = () => { toast('音频读取失败'); };
       reader.readAsDataURL(f);
-    };
-    input.click();
+      }
+    });
   }
   // 清除：仅移除自定义上传音频，回落到内置音效（或保持用户选的静音）
   function handleClear(type) {
@@ -412,7 +501,7 @@
   }
   // 状态显示
   function updateVals() {
-    [['ring', 'sfx-ring-val'], ['in', 'sfx-in-val'], ['out', 'sfx-out-val']].forEach((pair) => {
+    [['ring', 'sfx-ring-val'], ['in', 'sfx-in-val'], ['out', 'sfx-out-val'], ['gc-in', 'sfx-gcin-val'], ['gc-out', 'sfx-gcout-val']].forEach((pair) => {
       const el = document.getElementById(pair[1]);
       if (el) el.textContent = sfxState(pair[0]).label;
     });
@@ -445,9 +534,13 @@
     renderPresets('ring', PRESET_CONTAINERS.ring);
     renderPresets('in', PRESET_CONTAINERS.in);
     renderPresets('out', PRESET_CONTAINERS.out);
+    renderPresets('gc-in', PRESET_CONTAINERS['gc-in']); // #698d：群聊收发两张卡片
+    renderPresets('gc-out', PRESET_CONTAINERS['gc-out']);
     renderTools('ring', 'sfx-ring-tools');
     renderTools('in', 'sfx-in-tools');
     renderTools('out', 'sfx-out-tools');
+    renderTools('gc-in', 'sfx-gcin-tools');
+    renderTools('gc-out', 'sfx-gcout-tools');
     updateVals();
   }
 
@@ -473,6 +566,31 @@
   document.addEventListener('contact-switched', () => {
     renderAllSfx();
   });
+
+  // #643：作用范围开关——「所有桌面共用音效设置」
+  //   开启：以当前桌面的六项设置（三类自定义 + 三类内置选择）作为共用底稿写入全局槽；
+  //         各桌面自己的设置保留不动，之后关掉开关即原样恢复各桌面独立。
+  //   关闭：回到每桌面各自一套（原行为，默认）。
+  const sfxUniToggle = document.getElementById('sfx-unified');
+  function syncSfxUniRow() { if (sfxUniToggle) sfxUniToggle.checked = sfxUnified(); }
+  if (sfxUniToggle) {
+    sfxUniToggle.addEventListener('change', () => {
+      const on = !!sfxUniToggle.checked;
+      try { gStore.set('sfx-unified', on ? '1' : '0'); } catch (e) {}
+      if (on) {
+        ['sfx-ring', 'sfx-in', 'sfx-out', 'sfx-ring-b', 'sfx-in-b', 'sfx-out-b'].forEach(k => {
+          const v = rawStore.get(k);
+          if (v !== null && v !== undefined && v !== '') gStore.set(k, v); else gStore.remove(k);
+        });
+        toast('已切换为全部桌面共用（以当前桌面的设置为共用设置）');
+      } else {
+        toast('已切换为各桌面各自设置');
+      }
+      renderAllSfx();
+    });
+    syncSfxUniRow();
+  }
+  document.addEventListener('contact-switched', syncSfxUniRow);
 
   // 设置页入口：点行 → 独立音效设置页；返回回设置页
   // 事件委托绑定（document 级）：确保点击一定生效，不受其他脚本/异常影响

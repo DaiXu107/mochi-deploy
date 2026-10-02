@@ -897,12 +897,14 @@
   }
 
   // ---- Canvas 尺寸适配（DPR 清晰；全屏时按实际剩余空间算最大尺寸保持比例） ----
+  // #784（#774 同族根治）：视口抖动期 resize 逐事件同步重铺——给 canvas.width 赋值哪怕同值
+  // 也清空位图＝白闪一次，全屏 availH 直接读 innerHeight 又跟着抖动＝画布来回脉冲。
+  // 改为「先算几何，与上次铺设一致整条跳过（幂等）」；resize 侧另走 280ms 落定闸门（onViewportChange）。
+  let lastFitGeo = '';
   function fitCanvas() {
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = W * dpr;
-    canvas.height = H * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const box = canvas.parentElement;
+    let geo, apply;
     if (isFs) {
       // 全屏：按视口扣除头部/信息栏/底注的实际高度（横屏时 info 变侧栏、foot 隐藏，
       // 同一套测量自然适配），并计入安全区 padding
@@ -924,16 +926,31 @@
         cw = availW; ch = Math.round(cw * H / W);
         if (ch > availH) { ch = availH; cw = Math.round(ch * W / H); }
       }
-      canvas.style.width = cw + 'px';
-      canvas.style.height = ch + 'px';
-      if (box) { box.style.width = cw + 'px'; box.style.height = ch + 'px'; }
+      geo = 'fs|' + dpr + '|' + cw + 'x' + ch;
+      apply = function () {
+        canvas.width = W * dpr;
+        canvas.height = H * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        canvas.style.width = cw + 'px';
+        canvas.style.height = ch + 'px';
+        if (box) { box.style.width = cw + 'px'; box.style.height = ch + 'px'; }
+      };
     } else {
       const rect = canvas.getBoundingClientRect();
       if (rect.width === 0) return;
-      canvas.style.width = '';
-      canvas.style.height = '';
-      if (box) { box.style.width = ''; box.style.height = ''; }
+      geo = 'nf|' + dpr + '|' + rect.width;
+      apply = function () {
+        canvas.width = W * dpr;
+        canvas.height = H * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        canvas.style.width = '';
+        canvas.style.height = '';
+        if (box) { box.style.width = ''; box.style.height = ''; }
+      };
     }
+    if (geo === lastFitGeo) return;
+    lastFitGeo = geo;
+    apply();
   }
 
   function showOverlay(title, body, btn) {
@@ -1222,12 +1239,13 @@
     let name = taName();
     try {
       const st = window.activeStore && window.activeStore();
-      name = (st && (st.get('cs-lbl-partner') || st.get('lbl-partner'))) || name;
+      name = (st && (st.get('lbl-partner') || st.get('cs-lbl-partner'))) || name;
     } catch (e) {}
     if (partnerNameEl) partnerNameEl.textContent = name;
     if (footNameEl) footNameEl.textContent = name;
     if (isFs) toggleFs();
     panel.hidden = false;
+    lastFitGeo = '';   // #784 打开必重铺（原实现每次 fitCanvas 都重建位图＝顺带清台，幂等闸门后显式保留该语义）
     fitCanvas();
     stopLoop();
     paused = false;
@@ -1292,5 +1310,11 @@
   };
   // 切换联系人桌面时关闭（chat.js 会触发 contact-switched）
   document.addEventListener('contact-switched', () => { try { closeBrickPanel(); } catch (e) {} });
-  window.addEventListener('resize', () => { if (panel && !panel.hidden) fitCanvas(); });
+  // 窗口尺寸变化时重适配（#784：抖动期不再逐事件重铺，视口安静 280ms 后再量一次）
+  let refitSettle = 0;
+  function onViewportChange() {
+    clearTimeout(refitSettle);
+    refitSettle = setTimeout(function () { if (panel && !panel.hidden) fitCanvas(); }, 280);
+  }
+  window.addEventListener('resize', onViewportChange);
 })();

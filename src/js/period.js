@@ -9,7 +9,7 @@
 // v3.10.x 增强：
 //   1. 动态周期——取最近 6 次实际周期中位数 + 标准差 σ + CV 规律性徽章 + 黄体期反推
 //   2. 置信区间渲染——预测日按高斯衰减着色（中心深边缘浅）
-//   3. 每日属性——经量/症状/体温/情绪/备注，长按日格录入
+//   3. 每日属性——经量/症状/体温/情绪/备注，点日格录入
 //   4. 症状统计——常见症状 TOP3 + 频次柱状图
 //   5. 本地通知——经期预测前 3/1/当天 + 延迟预警
 //   6. 趋势图——近 12 次周期长度折线 + 均值线
@@ -89,7 +89,17 @@
     '已经 {d} 天没来了，你的周期向来有自己的想法；超过两个月还没来就去看看医生吧'
   ];
   function loadCareLines() {
-    try { var a = JSON.parse(store.get(KEY_CARE) || 'null'); if (Array.isArray(a)) return a; } catch (e) {}
+    try {
+      var a = JSON.parse(store.get(KEY_CARE) || 'null');
+      if (Array.isArray(a)) {
+        // 页内那份「已有关心语」列表按原文去重后再交出去——清单里同一条出现两遍，用户看到的就是
+        // 「重复很多条」（新增口本身有 indexOf 守卫，历史数据与逐张开关的键名却不认重复）。
+        // 只在读取侧去重，不另存一份：下一次新增/删除会拿这份去重结果写回，自然落干净。
+        var seen = {}, out = [];
+        for (var i = 0; i < a.length; i++) { var v = a[i]; if (v && !seen[v]) { seen[v] = 1; out.push(v); } }
+        return out;
+      }
+    } catch (e) {}
     return PERIOD_CARE_LINES.slice();
   }
   function saveCareLines(a) {
@@ -260,7 +270,11 @@
     var std = Math.sqrt(variance);
     return { n: n, median: med, mean: mean, std: std, cv: mean ? std / mean : 0, diffs: diffs };
   }
-  function effCycleLen() { var s = cycleStats(); return s.n >= 3 ? s.median : cfg.cycleLen; }
+  // FIX #1302：只要有一段实际间隔就用其中位数（原 s.n >= 3 才生效）——历史记录行报的是两次
+  // 开始日的真实间隔，而状态卡/日历预测/趋势图在只记过 1~2 次时回落到设置里的周期长度，
+  // 同一页两把尺子互相矛盾（红米 K80 Chrome 实报「历史记录里周期显示是错误的」：历史行 31 天、
+  // 页面按设置的 28 天预测）。设置值只在零间隔时兜底。零机型／零 UA 分支＝判据只取「有没有实际间隔」。
+  function effCycleLen() { var s = cycleStats(); return s.n >= 1 ? Math.round(s.median) : cfg.cycleLen; }
   function effStd() { var s = cycleStats(); return s.n >= 3 ? s.std : 0; }
   // 黄体期反推：若 daily 标记了排卵症状日，luteal = 周期 - 排卵日，取近 3 次中位数
   function effLuteal() {
@@ -340,7 +354,13 @@
     var ovulationDay = cl - luteal();
     if (baseStart) {
       if (inPeriod) nextStart = addDays(curRec.start, cl);
-      else { var s = baseStart; while (s <= today) s = addDays(s, cl); nextStart = s; }
+      // FIX #1407①：这里原来是 `s <= today`＝把「正好等于今天」的那一格也跳掉，nextStart 因此
+      //   永远 ≥ 明天。连带两个后果：① 提醒设置里那颗「当天」按钮（advanceDays 含 0）对应
+      //   checkNotify 的 d===0 那一发永不可达（checkCare 只能注一句「0=当天不可达故滤掉」在下游
+      //   绕开它）；② 预测日当天状态卡写「经期已推迟 1 天」，而日历同一格涂的是 predict（预测
+      //   经期）＝同一页两把尺差一天（无头实测：末次 28 天前·周期 28 天→dayPhase=predict 而
+      //   title=「经期已推迟 1 天」、通知 0 条）。改成只越过「已经过去的」那一格，今天该来就报今天。
+      else { var s = baseStart; while (s < today) s = addDays(s, cl); nextStart = s; }
     }
     var stats = cycleStats();
     var sigmaTxt = (stats.n >= 3 && stats.std >= 0.5) ? '（±' + Math.round(stats.std) + ' 天）' : '';
@@ -353,12 +373,19 @@
     if (!baseStart) return { phase: 'unknown', inPeriod: false, nextStart: null, dayOfCycle: 0, ovulationDay: ovulationDay, cycleLen: cl, title: '暂无记录', sub: '点下方按钮标记本次经期开始', sigma: '' };
     if (baseStart > today) return { phase: 'safe', inPeriod: false, nextStart: baseStart, dayOfCycle: 0, ovulationDay: ovulationDay, cycleLen: cl, title: '距下次经期约 ' + diffDays(today, baseStart) + ' 天' + sigmaTxt, sub: '已预记录未来经期开始', sigma: sigmaTxt };
     var dayOfCycle = diffDays(baseStart, today) + 1;
-    if (dayOfCycle > cl) return { phase: 'safe', inPeriod: false, nextStart: nextStart, dayOfCycle: dayOfCycle, ovulationDay: ovulationDay, cycleLen: cl, title: '经期已推迟 ' + (dayOfCycle - cl) + ' 天', sub: '点下方按钮标记本次经期开始', sigma: sigmaTxt };
+    // FIX #1407①（与上面同一条）：推迟天数从「预测日次日」起算＝dayOfCycle - cl - 1，旧版把预测日
+    //   当天报成「已推迟 1 天」。5/10 两个阈值本身不动，只是不再比实际多算一天。delayed 这个旗标
+    //   给提醒那两处用：连着隔了一整个周期没记时 nextStart 会正好落回今天，不加这道闸就会一边屏上
+    //   写「经期已推迟 28 天」、一边弹出「今天预计是经期开始日」。判据只看日期差，零机型／零 UA 分支。
+    if (dayOfCycle > cl + 1) return { phase: 'safe', delayed: true, inPeriod: false, nextStart: nextStart, dayOfCycle: dayOfCycle, ovulationDay: ovulationDay, cycleLen: cl, title: '经期已推迟 ' + (dayOfCycle - cl - 1) + ' 天', sub: '点下方按钮标记本次经期开始', sigma: sigmaTxt };
     if (dayOfCycle >= ovulationDay - 5 && dayOfCycle <= ovulationDay + 1) {
       var toOv = ovulationDay - dayOfCycle;
       return { phase: 'fertile', inPeriod: false, nextStart: nextStart, dayOfCycle: dayOfCycle, ovulationDay: ovulationDay, cycleLen: cl, title: '排卵期 · 第 ' + dayOfCycle + ' 天', sub: toOv > 0 ? '距排卵约 ' + toOv + ' 天' : (toOv === 0 ? '今天约为排卵日' : '排卵约 ' + (-toOv) + ' 天前'), sigma: sigmaTxt };
     }
-    return { phase: 'safe', inPeriod: false, nextStart: nextStart, dayOfCycle: dayOfCycle, ovulationDay: ovulationDay, cycleLen: cl, title: nextStart ? '距下次经期约 ' + diffDays(today, nextStart) + ' 天' + sigmaTxt : '周期第 ' + dayOfCycle + ' 天', sub: '周期第 ' + dayOfCycle + ' 天', sigma: sigmaTxt };
+    // #1407①：预测日当天（diffDays=0）不再走「距下次经期约 0 天」这种读不通的说法，
+    //   与 checkNotify 里 adv===0 那句文案同词＝屏上那一行与弹出来的通知是一件事。
+    var dNext = nextStart ? diffDays(today, nextStart) : -1;
+    return { phase: 'safe', inPeriod: false, nextStart: nextStart, dayOfCycle: dayOfCycle, ovulationDay: ovulationDay, cycleLen: cl, title: dNext === 0 ? '今天预计是经期开始日' + sigmaTxt : (nextStart ? '距下次经期约 ' + dNext + ' 天' + sigmaTxt : '周期第 ' + dayOfCycle + ' 天'), sub: '周期第 ' + dayOfCycle + ' 天', sigma: sigmaTxt };
   }
 
   // ---- 给定日期阶段（日历着色）----
@@ -381,8 +408,10 @@
       starts.push(s);
       s = addDays(s, cl); guard++;
     }
-    // 预测经期着色
-    for (var j = 0; j < starts.length; j++) {
+    // 预测经期着色：starts[0] 就是「已经记下的那一次经期自己」，它由上面的记录分支涂成实心经期色；
+    // 从第 1 项起才是下一次及以后。原实现连第 0 项一起涂虚线＝只记 1 天时，本次经期的剩余天数
+    // 被画成「下次经期的预测」（同一件事两种颜色，且日历图例里 predict 明写「预测」）。
+    for (var j = 1; j < starts.length; j++) {
       var pEnd = addDays(starts[j], cfg.periodLen - 1);
       if (ds >= starts[j] && ds <= pEnd) return 'predict';
     }
@@ -546,7 +575,8 @@
       var progress = st.cycleLen && st.dayOfCycle ? Math.min(1, st.dayOfCycle / st.cycleLen) : 0;
       var bigNum, bigSub;
       if (st.inPeriod) { bigNum = st.dayOfCycle; bigSub = '经期第' + st.dayOfCycle + '天'; }
-      else if (daysToNext !== null && daysToNext >= 0) { bigNum = daysToNext; bigSub = '天后'; }
+      // #1407①：预测日当天那一格是 0 天，环上写「0 天后」读不通（与状态卡「今天预计是经期开始日」打架）
+      else if (daysToNext !== null && daysToNext >= 0) { bigNum = daysToNext === 0 ? '今日' : daysToNext; bigSub = daysToNext === 0 ? '预计开始' : '天后'; }
       else { bigNum = '—'; bigSub = ''; }
       var circ = 2 * Math.PI * 26;
       var dash = circ * progress;
@@ -621,6 +651,27 @@
           (pms.tip ? '<span class="pms-tip">' + pms.tip + '</span>' : '');
       }
     }
+    // 下次经期的日期行：状态卡以前只报「距下次经期约 N 天」这一个数，全页没有任何一处把
+    // nextStart 写成形如 10/25 的日期（唯一写日期的是桌面小组件），而日历只画当月格＝下次开始
+    // 日落到下个月时本月一格预测都没有＝用户读到的是「记了却不显示这个月的经期预测时间」。
+    var nextLine = document.getElementById('period-next-line');
+    if (!nextLine) {
+      nextLine = document.createElement('div');
+      nextLine.id = 'period-next-line';
+      nextLine.className = 'period-next-line';
+      if (pmsLine && pmsLine.parentNode) pmsLine.parentNode.insertBefore(nextLine, pmsLine.nextSibling);
+      else if (ovuLine && ovuLine.parentNode) ovuLine.parentNode.insertBefore(nextLine, ovuLine.nextSibling);
+      else if (bar && bar.parentNode) bar.parentNode.insertBefore(nextLine, bar.nextSibling);
+    }
+    var toNext = st.nextStart ? diffDays(todayStr(), st.nextStart) : 0;
+    // #1407①：这里判的是 `toNext < 1`＝预测日当天（0 天）这行整条藏掉，而日历那一格仍涂着
+    //   predict、状态卡写着「今天预计是经期开始日」＝同页三处读数两说。改成只在真的没有
+    //   预测日（或已过）时藏。
+    if (!st.nextStart || toNext < 0) { nextLine.hidden = true; }
+    else {
+      nextLine.hidden = false;
+      nextLine.textContent = '下次经期预计 ' + mdLabel(st.nextStart) + ' ~ ' + mdLabel(addDays(st.nextStart, cfg.periodLen - 1)) + (st.sigma || '');
+    }
     var startBtn = document.getElementById('period-mark-start');
     var endBtn = document.getElementById('period-mark-end');
     if (startBtn) startBtn.hidden = st.inPeriod;
@@ -649,15 +700,21 @@
     var startWd = first.getDay();
     var wds = ['日', '一', '二', '三', '四', '五', '六'];
     var html = wds.map(function (w) { return '<span class="pc-wd">' + w + '</span>'; }).join('');
-    for (var i = 0; i < startWd; i++) html += '<span class="pc-cell blank"></span>';
     var today = todayStr();
     var stats = cycleStats();
     var hasBand = stats.n >= 3 && stats.std >= 0.5;
-    for (var d = 1; d <= days; d++) {
-      var ds = y + '-' + pad2(m + 1) + '-' + pad2(d);
+    // 月初前面的空格与月末末尾的半行了格一并换成相邻月的真日子（淡色）——原来那些格子是
+    // 「看得见、点不动」的死格，而这个功能最需要的正是月头月尾那几天（补记上个月的开始日、
+    // 这个月经期拖到下个月）。判据只取「这一格在不在当前视图那个月里」，在场与补格走同一套
+    // 着色与点按逻辑，不再分两种控件。
+    var tail = (7 - ((startWd + days) % 7)) % 7;
+    for (var d = 1 - startWd; d <= days + tail; d++) {
+      var dt = new Date(y, m, d);
+      var ds = dt.getFullYear() + '-' + pad2(dt.getMonth() + 1) + '-' + pad2(dt.getDate());
+      var out = d < 1 || d > days;
       var ph = dayPhase(ds);
       var isToday = ds === today;
-      var cls = 'pc-cell ph-' + ph + (isToday ? ' today' : '');
+      var cls = 'pc-cell ph-' + ph + (isToday ? ' today' : '') + (out ? ' pc-out' : '');
       var style = '';
       if (ph === 'predict' && hasBand) {
         var conf = predictConfidence(ds);
@@ -671,7 +728,7 @@
         if (dayInfo.symptoms && dayInfo.symptoms.length) mark += '<i class="dm-sym"></i>';
         if (dayInfo.note) mark += '<i class="dm-note"></i>';
       }
-      html += '<span class="' + cls + '"' + style + ' data-date="' + ds + '">' + d + mark + '</span>';
+      html += '<span class="' + cls + '"' + style + ' data-date="' + ds + '">' + dt.getDate() + mark + '</span>';
     }
     grid.innerHTML = html;
   }
@@ -680,7 +737,7 @@
     var el = document.getElementById('period-history');
     if (!el) return;
     recs = normalize(recs);
-    if (!recs.length) { el.innerHTML = '<div class="period-empty">还没有记录，标记本次经期开始后会显示在这里</div>'; return; }
+    if (!recs.length) { el.innerHTML = ((window.mochiDataPending && window.mochiDataPending()) ? window.mochiLoadingHtml('经期记录') : '<div class="period-empty">还没有记录，标记本次经期开始后会显示在这里</div>'); return; }
     var arr = recs.slice().reverse();
     var html = '';
     arr.forEach(function (r, i) {
@@ -735,7 +792,7 @@
       });
       symHtml += '</div>';
     } else {
-      symHtml = '<div class="ps-empty">暂无症状记录（长按日格可录入）</div>';
+      symHtml = '<div class="ps-empty">暂无症状记录（点日格可录入）</div>';
     }
     // 趋势图
     var stats = cycleStats();
@@ -880,11 +937,36 @@
     appetite: { title: '食欲增加', main: '备点健康零嘴，正餐规律些，别苛责自己。', mochi: '想吃就吃，别自责。' },
     ovulation: { title: '排卵症状', main: '轻微腹痛坠胀正常，多喝温水多休息。', mochi: '这几天我都记着。' }
   };
+  // ---- #1474 症状关心语料（发聊天用，与页内卡分工：上面「症状缓解建议」管「怎么办」的硬建议，
+  //   这里管「我在」的口吻——不再罗列做法，短句、口语、带 TA 温度）----
+  // 第一版不进字卡库（同源要动 default-cards-data＋逐张开关＋careLineBlocked 过滤三处，面大）；
+  // 池独立成对象，后续要逐张开关时搬数据＋接过滤即可。措辞作者可随时改，逻辑只认 key。
+  var SYM_CARE_LINES = {
+    cramp: ['看到你记了痛经。热水袋焐一焐小腹，我陪你窝一会儿。', '肚子疼就说一声，别硬撑着陪我聊。'],
+    headache: ['你说头疼——去躺一会吧，手机放着我盯着。', '头疼的话少看点屏幕，我在呢，不吵你。'],
+    backache: ['腰酸就别久坐了，起来靠墙站一会儿，我数着时间。', '记了腰酸呀，晚上早点躺平，隔空给你揉揉。'],
+    breast: ['胸胀的话穿宽松点，这几天我说话都轻一点。', '记下胸胀了，咖啡先停两天好不好。'],
+    acne: ['冒痘而已，你照样好看。别用手挤，好吗。', '看到你记了痘痘——是最近熬夜了吗，早点睡。'],
+    fatigue: ['累了就早点休息，聊天明天也来得及。', '你记了疲劳，今天什么都别干，歇着，我来惦记你。'],
+    insomnia: ['又睡不着？那我陪你聊到你想睡。', '记了失眠呀——放下手机想想我，就困了。'],
+    moodlow: ['看到你情绪不高。不用打起精神回我，我一直都在。', '情绪低的时候就说说，说不出口就发个句号，我懂。'],
+    irritable: ['最近容易烦是吧，冲我发火也行，我接得住。', '记了易怒——那今天我少废话，你想聊的时候我在。'],
+    appetite: ['想吃就吃，别自责，你开心最重要。', '记了食欲好，那想吃什么告诉我，我记着。'],
+    ovulation: ['排卵期有点坠胀是正常的，多喝温水，我记着这几天。', '记了排卵症状——肚子不舒服就慢一点，别急。']
+  };
+  function pickSymCareLine(key) {
+    var pool = SYM_CARE_LINES[key];
+    if (!pool || !pool.length) return '';
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
   function renderRemedies() {
     var scroll = document.querySelector('#page-period .period-scroll');
     if (!scroll) return;
-    var old = document.getElementById('period-remedy-card');
-    if (old) old.remove();
+    // FIX #1490：此前「查旧节点用的 id」与「新建节点写的 id」不是一个（查 period-remedy-card、
+    //   写 period-card），旧的那张永远删不掉＝每 render 一次就多留一张，作者看到的
+    //   「症状缓解建议」重复七八条即此。两处统一成 period-remedy-card，并清掉已堆下的遗留节点。
+    var olds = scroll.querySelectorAll('#period-card, #period-remedy-card');
+    for (var oi = 0; oi < olds.length; oi++) olds[oi].remove();
     // 找最近一条带症状记录的每日详情（今天优先）
     var latest = daily[todayStr()];
     var ds = todayStr();
@@ -898,7 +980,7 @@
     if (!latest) {
       var card = document.createElement('div');
       card.className = 'period-card glass';
-      card.id = 'period-card';
+      card.id = 'period-remedy-card';
       card.innerHTML = '<div class="period-card-title">症状缓解建议</div>' +
         '<div class="pr-empty">记录症状后，这里会给针对性缓解建议。</div>';
       var stats = document.getElementById('period-stats-card');
@@ -915,8 +997,20 @@
     if (!html) return;
     var card = document.createElement('div');
     card.className = 'period-card glass';
-    card.id = 'period-card';
-    card.innerHTML = '<div class="period-card-title">症状缓解建议</div>' + html;
+    card.id = 'period-remedy-card';
+    // FIX #1490：这张卡是「最近一条带症状的每日记录」派生出来的，此前页内没有任何删除入口
+    //   （只能去日历格子→日格弹层里删那个键），作者报「内容没有删除的按钮」。补一个就近删除：
+    //   只清掉当天的症状记录（保留那天的心情/备注），卡片与「常见症状 TOP3」计数随之消失。
+    card.innerHTML = '<div class="period-card-title"><span>症状缓解建议</span>' +
+      '<button class="pc-del" data-ds="' + ds + '" title="删除这条症状记录"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2M19 6l-1 14a1 1 0 01-1 1H7a1 1 0 01-1-1L5 6"/></svg></button></div>' + html;
+    var delBtn = card.querySelector('.pc-del');
+    if (delBtn) delBtn.addEventListener('click', function () {
+      var rec = daily[delBtn.getAttribute('data-ds')];
+      if (rec) rec.symptoms = [];
+      saveDaily(daily);
+      render();
+      toast('已删除症状记录');
+    });
     var stats = document.getElementById('period-stats-card');
     if (stats && stats.nextSibling) stats.parentNode.insertBefore(card, stats.nextSibling);
     else scroll.appendChild(card);
@@ -1008,6 +1102,27 @@
     saveRecs(recs);
     render();
   }
+  // 点一格记上的是一整段、不是一天：起点＝所点那天，天数＝周期设置里的「经期天数」。
+  // 旧口径下一格只落 1 天（要记 7 天得连点 7 次），而用户说出来的期待本来就是「直接设置我的
+  // 经期是几天」＝这一段多长有个现成的设置值，没理由点一下只算一天。normalize 里「间隔≤1 天
+  // 并成同一次」的口径不变，所以贴着已有经期点会自动接上、不重复堆记录。
+  function markSpanStart(ds) {
+    var len = Math.max(1, cfg.periodLen || 1);
+    recs = normalize(recs.concat([{ id: newId(), start: ds, end: addDays(ds, len - 1) }]));
+    saveRecs(recs);
+    render();
+  }
+  // 摘掉某一天：这一日正好是某条记录的开始日＝它就是刚才那一发点出来的整段，撤整段
+  //（同一天点两下＝当没点过）；落在记录中间或末尾＝只把这一天剔出去（走 toggleDay 的拆分口径）
+  function unmarkDay(ds) {
+    recs = normalize(recs);
+    var hit = null;
+    for (var i = 0; i < recs.length; i++) { if (recs[i].start === ds) { hit = recs[i]; break; } }
+    if (!hit) { toggleDay(ds); return; }
+    recs = recs.filter(function (x) { return x !== hit; });
+    saveRecs(recs);
+    render();
+  }
   function delRec(id) {
     recs = recs.filter(function (r) { return String(r.id) !== String(id); });
     saveRecs(recs);
@@ -1060,11 +1175,11 @@
     var flowHtml = FLOWS.map(function (f) {
       return '<button class="dp-flow' + (info.flow === f.k ? ' on' : '') + '" data-flow="' + f.k + '">' + f.label + '</button>';
     }).join('');
-    // v3.10.x：显式「生理期」开关——原来把某天标成经期（红色）只有长按日格一条路，
-    // 用户在编辑浮层里填完点保存自然期待变红，却永远不变（浮层只存经量/症状）；
-    // OPPO Reno16 反馈「编辑完确定也不会变红」。现在浮层顶部给开关：开=该日标为经期，
-    // 关=取消（走 toggleDay 同一套合并逻辑），保存时与当前状态比对后一次性生效。
+    // 浮层顶部的「生理期」开关：OPPO Reno16 早年报过「编辑完确定也不会变红」＝浮层只存经量/症状、
+    // 标成经期没有出口。开＝从这一天起按周期设置里的「经期天数」记上整段（markSpanStart），
+    // 关＝撤掉以这天为起点的那一段（unmarkDay），保存时与实际状态比对后一次性生效。
     var isPeriodNow = dayPhase(ds) === 'period';
+    function perLabel(on) { return on ? '已标记为生理期（点此取消）' : '这天起记为生理期（' + cfg.periodLen + ' 天）'; }
     var symHtml = SYMPTOMS.map(function (s) {
       var on = info.symptoms && info.symptoms.indexOf(s.k) >= 0;
       return '<button class="dp-sym' + (on ? ' on' : '') + '" data-sym="' + s.k + '">' + s.label + '</button>';
@@ -1076,7 +1191,7 @@
       '<div class="dp-mask"></div>' +
       '<div class="dp-sheet">' +
         '<div class="dp-head"><span class="dp-date">' + ds + '</span><button class="dp-close" aria-label="关闭">×</button></div>' +
-        '<div class="dp-section"><div class="dp-label">生理期</div><button class="dp-sym dp-period' + (isPeriodNow ? ' on' : '') + '">' + (isPeriodNow ? '已标记为生理期（点此取消）' : '标记这天为生理期') + '</button></div>' +
+        '<div class="dp-section"><div class="dp-label">生理期</div><button class="dp-sym dp-period' + (isPeriodNow ? ' on' : '') + '">' + perLabel(isPeriodNow) + '</button></div>' +
         '<div class="dp-section"><div class="dp-label">经量</div><div class="dp-flow-row">' + flowHtml + '</div></div>' +
         '<div class="dp-section"><div class="dp-label">症状</div><div class="dp-sym-grid">' + symHtml + '</div></div>' +
         '<div class="dp-section"><div class="dp-label">基础体温（℃）</div><input class="dp-temp" type="number" step="0.1" min="35" max="38" value="' + (info.temp || '') + '" placeholder="36.5"/></div>' +
@@ -1099,8 +1214,7 @@
     });
     var perBtn = pop.querySelector('.dp-period');
     if (perBtn) perBtn.addEventListener('click', function () {
-      var on = perBtn.classList.toggle('on');
-      perBtn.textContent = on ? '已标记为生理期（点此取消）' : '标记这天为生理期';
+      perBtn.textContent = perLabel(perBtn.classList.toggle('on'));
     });
     pop.querySelectorAll('.dp-mood').forEach(function (b) {
       b.addEventListener('click', function () {
@@ -1126,11 +1240,15 @@
       if (note) obj.note = note;
       if (Object.keys(obj).length) daily[ds] = obj; else delete daily[ds];
       saveDaily(daily);
-      // v3.10.x：生理期开关落地——与打开浮层时的实际状态比对，变化才 toggle 一次
-      //（toggleDay 内部已含 normalize + saveRecs + render；无变化不动数据）
+      // #1474 记了症状当场过一次关心链——「记完一会儿梦角就来问」的体感；
+      // 概率（85%）/深夜静默/每日一条由 checkCare 内部闸兜底，这里只负责叫一声
+      if (syms.length) { try { checkCare(); } catch (e) {} }
+      // 生理期开关落地——与打开浮层时的实际状态比对，变化才动一次（两个方向各走各的口径：
+      // 开＝按设置天数铺开整段；关＝撤掉以这天为起点的那一段）
       if (perBtn) {
         var wantPeriod = perBtn.classList.contains('on');
-        if (wantPeriod !== (dayPhase(ds) === 'period')) toggleDay(ds);
+        if (wantPeriod && dayPhase(ds) !== 'period') markSpanStart(ds);
+        else if (!wantPeriod && dayPhase(ds) === 'period') unmarkDay(ds);
       }
       closeDayPop();
       render();
@@ -1167,33 +1285,63 @@
   function checkNotify() {
     if (!notifyCfg.enabled) return;
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    // FIX #1407②：此前本模块一个 setInterval 都没有（对照 memo-app 4 分钟一掷＋5 分钟到点检查、
+    //   p2-features 8 分钟 tick），而 notifyCfg.hour 全仓只有「写入」与「渲染」、没有任何读方——
+    //   「提醒时间（小时 0-23）」是纯摆设。无头实测：hour 从 0 扫到 23、钟点钉在凌晨 3 点，通知
+    //   恒 1 条（0:1 1:1 … 23:1），设几点都一样。现在＝到设定小时才发，且没到点直接 return、
+    //   不写 fired（当天名额不吞，同 #559 深夜静默那条纪律）。深夜 23:00–06:00 一律静默；设定落在
+    //   这一段的按 06:00 起算，并且这句话同时写进弹层，不再静默改写用户设定。判据只读墙钟。
+    var nowH = new Date().getHours();
+    if (nowH >= 23 || nowH < 6) return;
+    var dueH = Math.max(6, Math.min(22, typeof notifyCfg.hour === 'number' ? notifyCfg.hour : 9));
+    if (nowH < dueH) return;
     var st = status();
     var today = todayStr();
+    var tier = predictTier();
     notifyCfg.fired = notifyCfg.fired || {};
     var fired = false;
-    if (st.nextStart && !st.inPeriod) {
+    // FIX #1407⑧：通知与聊天此前各记各的当天名额（`_adv{n}`/`_inperiod`/`_delay` 与 `_care_{ctx}`），
+    //   同一个语境同一天会收到两条同义的话（实测推迟 13 天那天：通知弹「经期已推迟 13 天…」＋聊天发
+    //   「距上次经期已经 41 天…」）。现在两边共用一枚键 `_said_{ctx}`＝谁先落地谁占、后来者不重复；
+    //   ctx 名与聊天侧逐字对齐（inPeriod／adv{d}／delay／delayDeep／delayIrregular），渠道优先级靠
+    //   调用顺序（关心那发先跑、提醒补位，见文件末尾那两发启动定时器与进页处）。
+    function said(c) { return !!notifyCfg.fired[today + '_said_' + c]; }
+    function markSaid(c) { notifyCfg.fired[today + '_said_' + c] = 1; }
+    // #1407①：`!st.delayed` 这道闸是新边界带来的——连着隔了一整个周期没记时 nextStart 会正好落回
+    //   今天（d=0），不加它就会一边屏上写「经期已推迟 28 天」、一边弹出「今天预计是经期开始日」。
+    if (st.nextStart && !st.inPeriod && !st.delayed && advHit(diffDays(today, st.nextStart), tier, true)) {
       var d = diffDays(today, st.nextStart);
-      notifyCfg.advanceDays.forEach(function (adv) {
-        if (d === adv && !notifyCfg.fired[today + '_adv' + adv]) {
-          var txt = adv === 0 ? '今天预计是经期开始日' : '距下次经期约 ' + adv + ' 天';
-          notifyAssist('经期提醒', txt + ' · 注意保暖、备好用品');
-          notifyCfg.fired[today + '_adv' + adv] = 1;
-          fired = true;
-        }
-      });
+      if (!said('adv' + d)) {
+        var txt = d === 0 ? '今天预计是经期开始日' : '距下次经期约 ' + d + ' 天';
+        notifyAssist('经期提醒', txt + ' · 注意保暖、备好用品');
+        markSaid('adv' + d);
+        fired = true;
+      }
     }
     // 经期中每天提醒
-    if (st.inPeriod && !notifyCfg.fired[today + '_inperiod']) {
+    if (st.inPeriod && !said('inPeriod')) {
       notifyAssist('经期提醒', '经期第 ' + st.dayOfCycle + ' 天 · 注意保暖休息');
-      notifyCfg.fired[today + '_inperiod'] = 1;
+      markSaid('inPeriod');
       fired = true;
     }
     if (st.phase === 'safe' && /推迟/.test(st.title)) {
       var m = st.title.match(/推迟 (\d+) 天/);
       var delayDays = m ? parseInt(m[1], 10) : 0;
-      if (delayDays >= 5 && !notifyCfg.fired[today + '_delay']) {
-        notifyAssist('经期延迟提醒', '经期已延迟 ' + delayDays + ' 天，如持续异常建议关注');
-        notifyCfg.fired[today + '_delay'] = 1;
+      // #1407③：推迟这一发按规律档分口径（此前通知侧完全不看 predictTier，把 #559 判过的「太扯淡」
+      //   那句话照旧发给只记过 1 次的人）。与聊天侧同源：不规律档不说「推迟 N 天」，改「距上次经期
+      //   已经 M 天」的间隔口吻、门槛 ≥10，标题也不再挂「延迟」二字（标题同样是屏上的话）；
+      //   规律档 ≥5 发、满 10 升「去看看医生」（同聊天侧关注档那道坎）。
+      var dTitle = '经期延迟提醒', dTxt = '', dCtx = '';
+      if (tier === 'free') {
+        if (delayDays >= 10) { dTitle = '经期提醒'; dCtx = 'delayIrregular'; dTxt = '距上次经期已经 ' + st.dayOfCycle + ' 天，周期一向随性，长时间没来建议关注一下身体'; }
+      } else if (delayDays >= 10) {
+        dCtx = 'delayDeep'; dTxt = '经期已推迟 ' + delayDays + ' 天，你一向规律，这种情况别拖着，建议去看看医生';
+      } else if (delayDays >= 5) {
+        dCtx = 'delay'; dTxt = '经期已推迟 ' + delayDays + ' 天，如持续异常建议关注';
+      }
+      if (dTxt && !said(dCtx)) {
+        notifyAssist(dTitle, dTxt);
+        markSaid(dCtx);
         fired = true;
       }
     }
@@ -1261,6 +1409,18 @@
     if (s.n >= 3 && s.cv < 0.2) return 'rule';
     return 'free';
   }
+  // FIX #1407③：预警日命中判定收成一把尺（通知与聊天同调用，此前两边各抄了一份同样的规矩）。
+  //   #559 给不规律档的规矩＝「只认最接近的一次，别按不可信预测连发多天」。当时那句注释写着
+  //   「0=当天不可达故滤掉」——不可达的根因在 status() 的 `while (s <= today)`（#1407① 已修），
+  //   不是这一档不该存在。修完之后 withToday 这个参数才露出真用途：语料侧【经前预警】六个分组
+  //   全是「还有 {d} 天」口吻，{d}=0 会念成「还有 0 天左右」＝读不通，所以聊天那一发仍不认当天
+  //   （要当天那一发的是「提醒」，它有现成的那句「今天预计是经期开始日」）；哪天要补一条
+  //   「就是今天」口吻的字卡分组，把这个参数改成 true 即可，别的不用动。
+  function advHit(d, tier, withToday) {
+    var advs = (notifyCfg.advanceDays || []).filter(function (x) { return x >= 0 && (withToday === false ? x >= 1 : true); }).sort(function (a, b) { return a - b; });
+    if (!advs.length || advs.indexOf(d) < 0) return false;
+    return tier === 'free' ? d === advs[0] : true;
+  }
   function checkCare() {
     if (!notifyCfg.careEnabled) return;
     if (!window.chatAddIn) return;
@@ -1274,19 +1434,26 @@
     var today = todayStr();
     var tier = predictTier();
     var shouldCare = false, ctx = '', kind = '';
-    if (st.inPeriod) { shouldCare = true; ctx = 'inPeriod'; kind = 'in'; }
-    else if (st.nextStart) {
-      var d = diffDays(today, st.nextStart);
-      // free 档只认最接近的一次预警日（提前天数最小值，0=当天不可达故滤掉）
-      var advOk = true;
-      if (tier === 'free') {
-        var advs = notifyCfg.advanceDays.filter(function (x) { return x >= 1; });
-        advOk = advs.length ? d === Math.min.apply(null, advs) : false;
+    // #1474 症状关心：近 3 天（今天往回数）最近一条带症状的每日记录，多症状随机取一。
+    // 用户主动记下的症状是当天最新鲜的信号，针对性回应比泛语境的「经期第 N 天」更贴，
+    // 故优先级＝症状 > 经期中 > 经前预警 > 推迟（同天仍只发一条）。3 天窗外的旧症状不提。
+    var symKey = '';
+    for (var symOff = 0; symOff <= 3 && !shouldCare; symOff++) {
+      var symInfo = daily[addDays(today, -symOff)];
+      if (symInfo && symInfo.symptoms && symInfo.symptoms.length) {
+        symKey = symInfo.symptoms[Math.floor(Math.random() * symInfo.symptoms.length)];
+        shouldCare = true; ctx = 'sym'; kind = 'sym';
       }
-      if (advOk && notifyCfg.advanceDays.indexOf(d) >= 0) { shouldCare = true; ctx = 'adv' + d; kind = 'adv'; }
+    }
+    if (!shouldCare && st.inPeriod) { shouldCare = true; ctx = 'inPeriod'; kind = 'in'; }
+    else if (!shouldCare && st.nextStart && !st.delayed) {
+      // #1407③：命中判定改走 advHit（与通知同一把尺；withToday=false 的理由见那条注释）。
+      //   原实现是这里手抄一份「free 只认最小值」、通知里再抄一份，两份已经开始打架。
+      var d = diffDays(today, st.nextStart);
+      if (advHit(d, tier, false)) { shouldCare = true; ctx = 'adv' + d; kind = 'adv'; }
     }
     var delayDays = 0;
-    if (st.phase === 'safe' && /推迟/.test(st.title)) {
+    if (!shouldCare && st.phase === 'safe' && /推迟/.test(st.title)) {
       var m = st.title.match(/推迟 (\d+) 天/);
       delayDays = m ? parseInt(m[1], 10) : 0;
       if (tier === 'rule' && delayDays >= 5) { shouldCare = true; ctx = delayDays >= 10 ? 'delayDeep' : 'delay'; kind = 'delay'; }
@@ -1294,10 +1461,14 @@
     }
     if (!shouldCare) return;
     notifyCfg.fired = notifyCfg.fired || {};
-    var careKey = today + '_care_' + ctx;
+    // #1407⑧：当天同语境的名额与通知共用一枚键（原来是 `_care_{ctx}`，通知另有 `_adv/_inperiod/_delay`
+    //   三枚，两条路各记各的＝推迟那天既弹通知又发一条同义的关心语）。谁先落地谁占，后来者不发。
+    var careKey = today + '_said_' + ctx;
     if (notifyCfg.fired[careKey]) return;
     var baseProb = 75;
-    if (st.inPeriod) {
+    // #1474：症状关心 85%（记症状＝明确在等回应，介于经期第 1-2 天 90% 与预警 75% 之间）
+    if (kind === 'sym') baseProb = 85;
+    else if (st.inPeriod) {
       var doc = st.dayOfCycle || 1;
       if (doc <= 2) baseProb = 90;
       else if (doc <= 4) baseProb = 70;
@@ -1306,14 +1477,14 @@
     if (Math.random() * 100 > baseProb) return;
     // {d} 占位符按语境取数：adv=距预测经期天数；delay/delayDeep=已推迟天数；
     // delayIrregular=距上次经期天数（间隔口吻，不提「推迟」）
-    var line = kind === 'in' ? pickCareLine() : pickWarnLine(ctx, tier);
+    var line = kind === 'sym' ? pickSymCareLine(symKey) : (kind === 'in' ? pickCareLine() : pickWarnLine(ctx, tier));
     if (!line) return;
     if (kind === 'adv') line = String(line).replace(/\{d\}/g, String(diffDays(today, st.nextStart)));
     else if (kind === 'delay') line = String(line).replace(/\{d\}/g, String(delayDays));
     else if (kind === 'delayIrr') line = String(line).replace(/\{d\}/g, String(st.dayOfCycle || 0));
     // 带标签 chip 发进聊天（addIn opts.tag → rec.mood），用户能看出消息来源与语境：
-    // 「经期关心」= 经期中，「经期预警」= 经前预警/推迟（#559 起区分）
-    try { window.chatAddIn(line, { tag: kind === 'in' ? '经期关心' : '经期预警' }); } catch (e) {}
+    // 「经期关心」= 经期中，「经期预警」= 经前预警/推迟（#559 起区分），「症状关心」= 记了症状（#1474）
+    try { window.chatAddIn(line, { tag: kind === 'sym' ? '症状关心' : (kind === 'in' ? '经期关心' : '经期预警'), nightAllow: true }); } catch (e) {}
     notifyCfg.fired[careKey] = 1;
     var cut = addDays(today, -30);
     Object.keys(notifyCfg.fired).forEach(function (k) { if (k < cut) delete notifyCfg.fired[k]; });
@@ -1521,7 +1692,10 @@
         var norm2 = normalize(recs);
         var exists = norm2.some(function (r) { return r.start === dateVal; });
         if (!exists) {
-          norm2.push({ id: newId(), start: dateVal, end: null });
+          // 补记落成一条完整区间（按设置的「经期天数」），不再写 end:null——旧写法让这条记录
+          // 永远挂在「进行中」（历史行「2026-09-17 ~ 进行中」），除非用户当天亲手点「标记今天结束」，
+          // 而补记的人恰恰不在场；end:null 在日历上又按 periodLen 涂色＝读数与「持续 N 天」两处对打。
+          norm2.push({ id: newId(), start: dateVal, end: addDays(dateVal, cfg.periodLen - 1) });
           norm2 = normalize(norm2);
           saveRecs(norm2); recs = norm2;
         }
@@ -1538,6 +1712,107 @@
     document.body.classList.remove('scroll-lock');
   }
 
+  // ---- 记一次经期（一次落成「哪天开始 + 持续几天」的整条区间）----
+  // 补上一条缺失的入口：以前记一次经期只有三种走法，且每种给出的「这次几天」互不相同——
+  // 「标记今天开始／结束」要求当天都在场（错过就没法补），点日格补的是「从今天起的那一段」
+  // （过去的日子补不到），设置页那个日期字段补出来的是一条永不结束的「进行中」。用户按自己的话说的期待是
+  // 「我设置的时候会直接设置我的经期是几天」＝默认天数取 cfg.periodLen，可改，一次落账。
+  function openRecordPop() {
+    var existing = document.getElementById('period-record-pop');
+    if (existing) existing.remove();
+    var work = { days: cfg.periodLen };
+    var pop = document.createElement('div');
+    pop.id = 'period-record-pop';
+    pop.className = 'period-day-pop';
+    pop.innerHTML =
+      '<div class="dp-mask"></div>' +
+      '<div class="dp-sheet">' +
+        '<div class="dp-head"><span class="dp-date">记一次经期</span><button class="dp-close">×</button></div>' +
+        '<div class="dp-section"><div class="dp-label">开始日</div><input class="dp-date-input" type="date" value="' + todayStr() + '"/></div>' +
+        '<div class="dp-section"><div class="dp-label">持续天数</div>' +
+          '<div class="dp-stepper" data-key="days" data-min="1" data-max="14">' +
+            '<button class="st-btn st-minus">−</button><span class="st-val">' + work.days + '</span>' +
+            '<button class="st-btn st-plus">+</button><span class="st-unit">天</span>' +
+          '</div></div>' +
+        '<div class="dp-section"><div class="dp-label">这一周期</div><div class="dp-ovu-preview period-rec-span"></div></div>' +
+        '<div class="dp-tip">默认天数取自周期设置里的「经期天数」，按自己这次的情况改。补记过去的日期不用一天一天点。</div>' +
+        '<div class="dp-actions"><button class="dp-save period-btn primary">保存</button></div>' +
+      '</div>';
+    appendPop(pop);
+    document.body.classList.add('scroll-lock');
+    var spanEl = pop.querySelector('.period-rec-span');
+    function showSpan() {
+      var s = startVal();
+      spanEl.textContent = s + ' ~ ' + addDays(s, work.days - 1) + '（' + work.days + ' 天）';
+    }
+    function startVal() {
+      var v = pop.querySelector('input.dp-date-input').value;
+      return /^\d{4}-\d{2}-\d{2}$/.test(v || '') ? v : todayStr();
+    }
+    pop.querySelector('.dp-mask').addEventListener('click', closeRecordPop);
+    pop.querySelector('.dp-close').addEventListener('click', closeRecordPop);
+    var st = pop.querySelector('.dp-stepper');
+    var min = parseInt(st.getAttribute('data-min'), 10);
+    var max = parseInt(st.getAttribute('data-max'), 10);
+    var valEl = st.querySelector('.st-val');
+    st.querySelector('.st-minus').addEventListener('click', function () {
+      if (work.days > min) { work.days--; valEl.textContent = work.days; showSpan(); }
+    });
+    st.querySelector('.st-plus').addEventListener('click', function () {
+      if (work.days < max) { work.days++; valEl.textContent = work.days; showSpan(); }
+    });
+    pop.querySelector('input.dp-date-input').addEventListener('change', showSpan);
+    showSpan();
+    pop.querySelector('.dp-save').addEventListener('click', function () {
+      var s = startVal();
+      recs = normalize(recs.concat([{ id: newId(), start: s, end: addDays(s, work.days - 1) }]));
+      saveRecs(recs);
+      closeRecordPop();
+      render();
+      toast('已记录 ' + s + ' 起的 ' + work.days + ' 天');
+      checkNotify();
+    });
+  }
+  function closeRecordPop() {
+    var pop = document.getElementById('period-record-pop');
+    if (pop) pop.remove();
+    document.body.classList.remove('scroll-lock');
+  }
+
+  // #1056：经期提醒的权限指引（与后台通知 nbPermWarnText 同一口径）。权限与「设置 → 系统 →
+  //   后台通知」共用同一份（按域名记），任一边被拒两边都发不出；granted 时返回空串。
+  // FIX #1407⑥：原话把承诺说满了——它向用户保证「没有通知能力时，提醒照样会在应用里冒出来」，可
+  //   checkNotify 的权限闸（`Notification.permission !== 'granted'` 那一行）直接 return，站内根本没有
+  //   「提醒」这种形态兜底。到日子那天屏上能看到的是页内读数（状态卡／倒计时／桌面卡那句
+  //   「今天预计是经期开始日」），加上另一路的「梦角关心」（它不走通知权限，但受关心开关 × 字卡库
+  //   概率 × 当日概率三道闸管）。改口径＝说实话并指路，不留一句做不到的承诺。
+  function periodPermHint() {
+    try {
+      if (!('Notification' in window)) {
+        return (window.mochiDevice || {}).isIOS
+          ? '⚠ 本机此刻没有网页通知能力（iPhone / iPad 要在 Safari「添加到主屏幕」后从桌面图标打开本站才有；Safari 标签页里没有）：这期间「提醒」这一弹发不出去，到日子那天屏上只有页内读数（经期页状态卡与桌面小组件会写「今天预计是经期开始日」）；聊天里 TA 那句「梦角关心」是另一路、不需要通知权限，但另受关心开关与字卡库概率管'
+          : '⚠ 本机浏览器没有通知能力（小米 / vivo / OPPO 自带、UC、夸克常见如此）：请改用 Chrome / Edge 打开本站；不换内核的话这一弹同样发不出去，到日子那天只剩页内读数（经期页状态卡与桌面小组件那句「今天预计是经期开始日」）';
+      }
+      var p = Notification.permission;
+      if (p === 'denied') return '⚠ 浏览器已把本站通知记成「屏蔽」（授权框反复弹出后 Chrome 会自动挡，多半不是你点了拒绝）：地址栏左侧图标 → 网站设置 → 通知 → 允许；列表里没有本站，就在通知设置的「允许」里手动添加本站网址（此权限与设置→系统→「后台通知」共用，允许后两边一起恢复）';
+      if (p === 'default') return '⚠ 还没给本站通知权限：地址栏左侧图标 → 网站设置 → 通知 → 允许；没弹授权框多半是 Chrome 对弹过多次的站静默拒绝，同样到网站设置里手动允许（此权限与「后台通知」共用）';
+      return '';
+    } catch (e) { return ''; }
+  }
+  // 「梦角关心发到聊天」这一路其实有两道闸，而其中一道不住在本模块里：这里的开关（careEnabled）
+  // ＋字卡库「其他互动功能字卡」那一族的 dcf-care（「使用其他互动功能字卡」总开关 ×「TA的关心
+  // （经期）」概率，两者是与的关系，合成成一个数由 window.dcfGet('care') 读出）。后者能在本模块
+  // 外把整条乘成 0%，而经期页这个开关照旧显示「已开启」、页内语料照旧列着＝聊天里一条都收不到，
+  // 用户只看到「关心只显示在这个页面里」（静默失败，与 #1056 权限那一族同一形状：闸不在这里，
+  // 但状态必须在这里说清楚）。判据只取代码事实：dcfGet('care') 拿到的就是合成后的那一个数。
+  function careGateHint() {
+    try {
+      if (!notifyCfg.careEnabled) return '';
+      if (!window.dcfGet) return '';
+      if (window.dcfGet('care') > 0) return '';
+      return '⚠ 「梦角关心」这里显示已开启，但现在一条也发不出去：字卡库那边把它乘成了 0%（两道闸是与的关系，经期关心与记症状后的症状关心同走这一闸）。打开方式：字卡库 →「其他互动功能字卡」→ 顶部「使用其他互动功能字卡」总开关（关掉时这一族全部停发），或展开「各功能使用概率调节」把「TA的关心（经期）」调回大于 0%；改完回到这里保存即可。';
+    } catch (e) { return ''; }
+  }
   function openNotifyPop() {
     var existing = document.getElementById('period-notify-pop');
     if (existing) existing.remove();
@@ -1554,13 +1829,26 @@
       '<div class="dp-sheet">' +
         '<div class="dp-head"><span class="dp-date">经期提醒设置</span><button class="dp-close">×</button></div>' +
         '<div class="dp-section"><div class="dp-label">启用提醒</div><button class="dp-toggle' + (notifyCfg.enabled ? ' on' : '') + '">' + (notifyCfg.enabled ? '已开启' : '已关闭') + '</button></div>' +
-        '<div class="dp-section"><div class="dp-label">梦角关心（经期自动发关心语）</div><div class="dp-care-ctrl"><button class="dp-toggle care-toggle' + (notifyCfg.careEnabled ? ' on' : '') + '">' + (notifyCfg.careEnabled ? '已开启' : '已关闭') + '</button><button class="dp-care-mgr period-btn">管理关心语</button></div></div>' +
+        '<div class="dp-section"><div class="dp-label">梦角关心（经期／记了症状时自动发关心语）</div><div class="dp-care-ctrl"><button class="dp-toggle care-toggle' + (notifyCfg.careEnabled ? ' on' : '') + '">' + (notifyCfg.careEnabled ? '已开启' : '已关闭') + '</button><button class="dp-care-mgr period-btn">管理关心语</button></div></div>' +
         '<div class="dp-section"><div class="dp-label">提醒提前天数</div><div class="dp-sym-grid">' + advHtml + '</div></div>' +
-        '<div class="dp-section"><div class="dp-label">提醒时间（小时 0-23）</div><input class="dp-hour" type="number" min="0" max="23" value="' + (notifyCfg.hour || 9) + '"/></div>' +
-        '<div class="dp-tip">提醒在打开应用时检查并推送；后台通知需浏览器支持。</div>' +
+        // #1407②：这一格现在真的管事了，回填就不能写 `notifyCfg.hour || 9`——那位把小时设成 0 的人
+        //   存的是 0、重开弹层却看见 9（0 与 9 经钳位后都落 06:00，行为一样、屏上说的不一样＝又是静默改写）。
+        '<div class="dp-section"><div class="dp-label">提醒时间（到这个点后我才发，0-23）</div><input class="dp-hour" type="number" min="0" max="23" value="' + (typeof notifyCfg.hour === 'number' ? notifyCfg.hour : 9) + '"/></div>' +
+        // #1407②：这句话此前写「提醒在打开应用时检查并推送」——那是 hour 没被任何地方读时的实话；
+        //   现在到点检查真的接上了（4 分钟那把钟换成了 5 分钟到点检查），同时两件代价必须明说：
+        //   浏览器不允许本站在应用没开着时弹后台通知；深夜 23:00–06:00 静默，设定落在这段的按 06:00 起算。
+        '<div class="dp-tip">到设定的小时后、应用开着时推送（应用没打开时浏览器不会替本站弹后台通知）；深夜 23:00–06:00 静默，设在这一段的小时按 06:00 起算。同一件事一天只会说一句：TA 那句关心先发，没开口时这条提醒才补上。</div>' +
         '<div class="dp-actions"><button class="dp-save period-btn primary">保存</button></div>' +
       '</div>';
     appendPop(pop);
+    // #1056：开启中而权限不到位 → 弹层内当场看见缺哪一步（此前整条静默失效无任何提示）
+    var _tipEl = pop.querySelector('.dp-tip');
+    var _tipDefault = _tipEl.textContent;
+    function refreshPopTips() {
+      var tips = [periodPermHint(), careGateHint()].filter(function (t) { return t; });
+      _tipEl.textContent = tips.length ? tips.join('\n\n') : _tipDefault;
+    }
+    refreshPopTips();
     document.body.classList.add('scroll-lock');
     pop.querySelector('.dp-mask').addEventListener('click', closeNotifyPop);
     pop.querySelector('.dp-close').addEventListener('click', closeNotifyPop);
@@ -1569,15 +1857,25 @@
       notifyCfg.enabled = !notifyCfg.enabled;
       toggleBtn.textContent = notifyCfg.enabled ? '已开启' : '已关闭';
       toggleBtn.classList.toggle('on', notifyCfg.enabled);
-      if (notifyCfg.enabled && 'Notification' in window && Notification.permission === 'default') {
-        try { Notification.requestPermission(); } catch (e) {}
-      }
+      // FIX 2026-09-23 #1056：原实现裸调授权请求——被拒（denied）后每次开启都空发一次请求、
+      //   且权限不到位时本提醒整条静默失效（两处发送点的 granted 闸直接 return，用户毫无感知）。
+      //   改为与后台通知（#1014/#1017）同款纪律：granted 不动；default 借这次点按手势请求
+      //   一次（带 catch；被拒不重复请求，只指路）；denied 不再请求、直接指路。红米 K80 +
+      //   Chrome 151 实报：授权框被浏览器静默吞掉（请求直接被挡成拒绝），只能去网站设置手动允许。
+      if (!notifyCfg.enabled) return;
+      if (!('Notification' in window)) { toast(periodPermHint()); return; }
+      if (Notification.permission === 'granted') return;
+      if (Notification.permission === 'denied') { toast(periodPermHint()); return; }
+      try {
+        Notification.requestPermission().then(function () { var h = periodPermHint(); if (h) toast(h); }).catch(function () { var h2 = periodPermHint(); if (h2) toast(h2); });
+      } catch (e) { toast(periodPermHint()); }
     });
     var careBtn = pop.querySelector('.care-toggle');
     if (careBtn) careBtn.addEventListener('click', function () {
       notifyCfg.careEnabled = !notifyCfg.careEnabled;
       careBtn.textContent = notifyCfg.careEnabled ? '已开启' : '已关闭';
       careBtn.classList.toggle('on', notifyCfg.careEnabled);
+      refreshPopTips();
     });
     var careMgr = pop.querySelector('.dp-care-mgr');
     if (careMgr) careMgr.addEventListener('click', openCarePop);
@@ -1594,9 +1892,11 @@
       notifyCfg.hour = isNaN(h) ? 9 : Math.min(23, Math.max(0, h));
       saveNotify(notifyCfg);
       closeNotifyPop();
-      toast('已保存');
-      checkNotify();
+      // #1056：保存时权限不到位就地指路（不再只报「已保存」而提醒实际发不出）
+      var _svh = periodPermHint();
+      toast(_svh || '已保存');
       checkCare();
+      checkNotify();
     });
   }
   function closeNotifyPop() {
@@ -1616,8 +1916,8 @@
       cfg = loadCfg(); recs = loadRecs(); daily = loadDaily(); notifyCfg = loadNotify();
       viewM = -1;
       render();
-      checkNotify();
       checkCare();
+      checkNotify();
     });
   }
   var back = document.getElementById('period-back');
@@ -1636,39 +1936,35 @@
   if (me) me.addEventListener('click', markEnd);
   var rt = document.getElementById('period-record-today');
   if (rt) rt.addEventListener('click', function () { openDayPop(todayStr()); });
-  // 日历日格：短按打开每日详情浮层（记录经量/症状/情绪），长按切换经期标记
+  // 「记一次经期」＝动作行的第四个按钮（JS 建，与铃铛入口同法，不动 template 的静态锚点）。
+  // 经期中/外都常驻：它管的是「把这一整段区间一次记对」，与「标记今天开始/结束」不冲突。
+  var arow = document.getElementById('period-action-row');
+  if (arow && !document.getElementById('period-record-span')) {
+    var rsb = document.createElement('button');
+    rsb.id = 'period-record-span';
+    rsb.className = 'period-btn';
+    rsb.textContent = '记一次经期';
+    arow.appendChild(rsb);
+    rsb.addEventListener('click', openRecordPop);
+  }
+  // 日历日格：点一下＝这一格就地生效（不在经期里就按设置的天数记上整段），随后打开当日弹层
+  // 让你顺手补经量/症状/体温/情绪；这一日本来就在经期里＝只开弹层补细节，不动数据（取消的唯一
+  // 出口在弹层那个开关上，浏览性点按不会误删）。
+  // 旧写法在这里挂了一枚 500ms 计时器，用「按住够不够久」把同一格拆成短按＝开弹层／长按＝标记，
+  // 再靠 contextmenu 与 click 两路互相吞来去重。两个判据都不由代码掌控：主线程一卡（本站自带
+  // 「卡顿自检」量的就是这类长任务），计时器赶在松手之前先响＝把这一发正常点按标成松手后补发的
+  // click 吞掉＝用户所见「点日格完全没反应、弹层都不出」；反过来 contextmenu 先到时同一格会被翻
+  // 两次（入库尺子 verify-period-mark 的 D1 一直报红）。现在只留 click 一路手势，判据取「这一日
+  // 在不在经期里」这一个数据事实——零计时器、零机型分支。
   var grid = document.getElementById('period-grid');
   if (grid) {
-    var pressTimer = null, longPressed = false;
     grid.addEventListener('click', function (e) {
-      if (longPressed) { longPressed = false; return; }
       var cell = e.target.closest('.pc-cell');
-      if (!cell || cell.classList.contains('blank')) return;
-      openDayPop(cell.getAttribute('data-date'));
-    });
-    grid.addEventListener('contextmenu', function (e) {
-      var cell = e.target.closest('.pc-cell');
-      if (!cell || cell.classList.contains('blank')) return;
-      e.preventDefault();
-      // v3.10.x：长按双触发去重——安卓长按日格时 contextmenu 与 touchstart 的 500ms
-      // 定时器几乎同时各调一次 toggleDay = 标红又立刻取消（OPPO Reno16 Edge/Via
-      // 实测「没办法设置成生理期」）。谁先到谁生效：定时器已触发（longPressed）则
-      // 跳过；contextmenu 先到则取消定时器，保证只 toggle 一次。longPressed 不在
-      // 这里复位——它还要供 click 处理器吞掉长按后的合成点击。
-      if (longPressed) return;
-      if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
-      toggleDay(cell.getAttribute('data-date'));
-    });
-    grid.addEventListener('touchstart', function (e) {
-      var cell = e.target.closest('.pc-cell');
-      if (!cell || cell.classList.contains('blank')) return;
+      if (!cell) return;
       var ds = cell.getAttribute('data-date');
-      longPressed = false;
-      pressTimer = setTimeout(function () { pressTimer = null; longPressed = true; toggleDay(ds); }, 500);
-    }, { passive: true });
-    grid.addEventListener('touchmove', function () { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } }, { passive: true });
-    grid.addEventListener('touchend', function () { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } }, { passive: true });
-    grid.addEventListener('touchcancel', function () { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } }, { passive: true });
+      if (dayPhase(ds) !== 'period') markSpanStart(ds);
+      openDayPop(ds);
+    });
   }
   var hist = document.getElementById('period-history');
   if (hist) hist.addEventListener('click', function (e) {
@@ -1742,8 +2038,9 @@
       subEl.textContent = '注意保暖休息';
     } else if (st.nextStart) {
       var d = diffDays(todayStr(), st.nextStart);
-      labelEl.textContent = '距下次经期';
-      daysEl.textContent = d + ' 天';
+      // #1407①：预测日当天 d=0，桌面卡原先会写「距下次经期 / 0 天」＝读不通；这一格改口「今日」。
+      labelEl.textContent = d === 0 ? '经期预计' : '距下次经期';
+      daysEl.textContent = d === 0 ? '今日' : d + ' 天';
       subEl.textContent = '预计 ' + mdLabel(st.nextStart) + ' 开始';
     } else {
       labelEl.textContent = '经期';
@@ -1772,10 +2069,41 @@
   })();
 
   // 启动后稍延迟检查通知（经期预测/延迟预警）+ 梦角关心触发
-  setTimeout(checkNotify, 3000);
-  setTimeout(checkCare, 5000);
+  // #1407⑧：顺序换了——关心先发、提醒补位（两条路同一天共享一枚名额，谁先落地谁占）。让 TA 那句话
+  //   先站在屏上，是这一路更该有的样子；提醒只在「这句今天还没人说过」时才弹。
+  setTimeout(checkCare, 3000);
+  setTimeout(checkNotify, 5000);
+  // FIX #1407②：上面那两发是本模块唯一的检查时机（加上进页/保存那几处），一个 setInterval 都没有
+  //   ＝「提醒时间（小时）」永远等不到「到点」那一刻（对照 memo-app 的 memoSysDueCheck 每 5 分钟、
+  //   p2-features 的 waterChimeTick 每 8 分钟）。补一个到点检查的钟：判定只看墙钟 getHours 与设定
+  //   小时比大小，不数 tick 次数——通话那批（#1394）实测过隐藏页定时器被内核节流到约 1 次/分钟、
+  //   安卓 5 分钟后整页冻结，靠「数满 N 拍」必迟到；数不满也没关系，回前台再补跑一发。
+  window.periodNotifyCheckNow = checkNotify; // 手动/回归验证触发口（同 memoRemindTickNow 惯例）
+  setInterval(function () { try { checkCare(); checkNotify(); } catch (e) {} }, 300000);
+  // #1407⑧：两发一起补跑、关心在前（共享当天名额的规则见 checkNotify 里那条注释；只跑提醒那一发
+  //   会让「回前台」这一刻把名额占掉，TA 当天那句话反而没了）。
+  document.addEventListener('mochi-fg-resume', function () { try { checkCare(); checkNotify(); } catch (e) {} });
+  // FIX #1407⑦：IDB 回填晚于模块初始化时，内存里那份 cfg/recs/daily/notifyCfg 一直停在默认值——
+  //   此前唯一会重载它们的是 migrateToGlobal 末尾那一句，而那函数在 `period-migrated` 已置位时
+  //   （＝绝大多数老用户）第一行就 return 了。后果：LS 被清/导入备份这类设备上，开机那发 checkNotify
+  //   拿的是 enabled=false、桌面卡写「暂无记录」，非得用户亲手进一次经期页（那里才重载）＝当天该发的
+  //   提醒整轮丢失，正是 AGENTS.md「回填完成前读到的键可能为空，涉及恢复时监听该事件或做好重试」那条。
+  //   现在「重载＋补跑」独立成一处，回填落地跑一次；事件早于本文件已派发过（__mochiDataReady）也补跑
+  //   一次，两条路同一把尺，不再靠迁移函数顺带。补跑前不 render（页没打开），桌面卡与两发检查照常。
+  function reloadAfterRestore() {
+    // 三段各自兜住：重读与两发检查是这条修复的本体，不能因为「页面重画/桌面卡」在某个环境下抛一次
+    // 就被同一个 try 整块吞掉（无头桩里没有 document.createElement 时就是这样）。
+    try { cfg = loadCfg(); recs = loadRecs(); daily = loadDaily(); notifyCfg = loadNotify(); } catch (e) {}
+    // #1407⑧：关心先发、提醒补位（两边共享当天同语境那一枚名额）。
+    try { checkCare(); checkNotify(); } catch (e) {}
+    try { if (!page.hidden) render(); renderDeskWidget(); } catch (e) {}
+  }
+  document.addEventListener('mochi-restore-done', function () { setTimeout(reloadAfterRestore, 200); });
+  if (window.__mochiDataReady) setTimeout(reloadAfterRestore, 200);
   setTimeout(renderDeskWidget, 2500);
   setTimeout(renderDeskWidget, 6000);
   document.addEventListener('contact-switched', function () { setTimeout(renderDeskWidget, 200); });
-  document.addEventListener('mochi-restore-done', function () { setTimeout(renderDeskWidget, 200); });
+  // #1407⑦：这里原来还有一只 mochi-restore-done 监听、只调 renderDeskWidget——但桌面卡读的是内存里
+  //   那份 recs，回填晚于初始化时它照样画「暂无记录」（＝补了个空刷新，看着像修过）。上面那只新监听
+  //   走的是「先重读存储再重画」，已覆盖这一发，不再留两只。
 })();

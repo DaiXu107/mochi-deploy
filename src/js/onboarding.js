@@ -5,7 +5,7 @@
 // 触发：数据就绪(__mochiDataReady) + 开屏关闭 + 无其它弹层 后自动弹一次；标记键 xy-home-v2:__guide-done
 //（已列入 contacts.js 全局系统键白名单，不随联系人迁移；pwa.js 的 hasData 判定不受影响）。
 // 不打扰老用户：只在「全新环境」（除内部标记外无任何 xy-home-v2: 业务键）才自动弹；
-// 老用户要重看走 设置 → 工具 → 新手引导（行由本文件注入）。
+// 老用户要重看走 设置 → 关于 → 帮助与支持 → 新手引导（行由本文件注入）。
 // 自包含：样式与 DOM 全部本文件创建，不改 template.html / 全局 CSS；跳转一律点既有入口，
 // 不重复实现任何打开逻辑。
 (function () {
@@ -80,7 +80,9 @@
       // #577b：#577 只写了「聊天设置 → 形象」一条换聊天头像的路，漏了聊天页内的「头像互动」
       // 半框（模板 #more-avatar / avatar-lib.js，可上传多张头像库、点图即换、定时随机换）——
       // 两条路写的是同一套聊天域键 cs-avatar-*，桌面头像都不受影响。
-      tip: '聊天头像另有一条快路：聊天输入栏左边的「更多功能」（⋯）→ 互动类 → <b>头像互动</b>——可上传多张头像库、点库里的图即换聊天头像，还能开「TA 随机换头像 / TA 主动给我换头像」（每 1-8 小时一次）。',
+      // 2026-09-16：该半框并入昵称池后改名「头像和昵称互动」（同一个入口，上排切头像/昵称），
+      // 聊天昵称也一并写进这条快路——「聊天设置 → 形象」仍是另一条单条改名路径。
+      tip: '聊天头像和聊天昵称另有一条快路：聊天输入栏左边的「更多功能」（⋯）→ 互动类 → <b>头像和昵称互动</b>——头像可上传多张头像库、点库里的图即换；昵称可存多个文字昵称、点名字即换；两边都能开「TA 随机更换 / TA 主动给我换」（每 1-8 小时一次）。',
       go: 'name' },
     { n: '2', h: '先添加字卡', d: '底部「字卡库」→ 公用字卡 / 专属字卡 添加或导入；不加字卡，TA 就没有话可说。', go: 'cards' },
     { n: '3', h: '开始聊天', d: '回桌面点「聊天」图标，随便发一条消息试试（TA 会按概率回复）。', go: 'chat' }
@@ -157,20 +159,25 @@
     }, 400);
   }, 300);
 
-  // ---- 设置 → 工具 → 新手引导（重看入口；行 DOM 本文件注入，不改 template.html） ----
+  // ---- 设置 → 关于 → 帮助与支持 → 新手引导（重看入口；行 DOM 本文件注入，不改 template.html） ----
+  // #606（2026-09-16）：新手引导与「使用说明」同属了解应用类，优先挂进含 #row-guide 的
+  // 「帮助与支持」分组；该组缺失时退回关于段独立成组，再退回工具段（兼容旧结构）。
   (function injectSettingRow() {
-    const sec = document.querySelector('#page-setting .them-sec[data-sec="tools"]')
-      || document.querySelector('#page-setting .them-sec[data-sec="about"]');
-    if (!sec) return;
-    const grp = document.createElement('div');
-    grp.className = 'set-group glass';
-    grp.innerHTML = '<div class="set-row" id="row-guidebook">'
-      + '<div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 114 2c-.9.7-1.5 1.2-1.5 2.2"/><circle cx="12" cy="17" r=".6" fill="#111111"/></svg></div>'
+    const about = document.querySelector('#page-setting .them-sec[data-sec="about"]');
+    const guideRow = document.getElementById('row-guide');
+    const helpGroup = (guideRow && guideRow.closest) ? guideRow.closest('.set-group') : null;
+    const host = helpGroup || about || document.querySelector('#page-setting .them-sec[data-sec="tools"]');
+    if (!host) return;
+    const row = document.createElement('div');
+    row.className = 'set-row';
+    row.id = 'row-guidebook';
+    row.innerHTML = '<div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 114 2c-.9.7-1.5 1.2-1.5 2.2"/><circle cx="12" cy="17" r=".6" fill="#111111"/></svg></div>'
       + '<div class="txt">新手引导<span class="sub">3 步上手：设置昵称头像（桌面 / 聊天分开设）/ 添加字卡 / 开始聊天</span></div>'
-      + '<div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>'
-      + '</div>';
-    sec.appendChild(grp);
-    const row = grp.querySelector('#row-guidebook');
-    if (row) row.addEventListener('click', function () { window.openMochiGuide(); });
+      + '<div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>';
+    // 挂到「使用说明」之后、其说明副文案(#guide-sub)之前，避免两行被提示条隔开
+    const guideSub = document.getElementById('guide-sub');
+    if (helpGroup && guideSub && guideSub.parentNode === host) host.insertBefore(row, guideSub);
+    else host.appendChild(row);
+    row.addEventListener('click', function () { window.openMochiGuide(); });
   })();
 })();

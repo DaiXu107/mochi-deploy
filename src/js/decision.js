@@ -29,7 +29,7 @@
     t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
   }
   // v3.9.x：帮我决定从聊天页进入（聊天域）——优先读聊天专用昵称，未设置回退桌面昵称
-  function partnerName() { try { const s = window.activeStore(); return s.get('cs-lbl-partner') || s.get('lbl-partner') || 'TA'; } catch (e) { return 'TA'; } }
+  function partnerName() { try { const s = window.activeStore(); return s.get('lbl-partner') || s.get('cs-lbl-partner') || 'TA'; } catch (e) { return 'TA'; } }
   function fmtDT(ts) {
     const d = new Date(ts);
     const p = (n) => (n < 10 ? '0' + n : '' + n);
@@ -138,18 +138,27 @@
       });
     } catch (e) { return Promise.resolve(); }
   }
-  try {
-    document.addEventListener('mochi-restore-done', function () {
-      // 先把存量各桌面旧数据合并进全局根键，完成前不放开写保护（防止半路写覆盖）
-      Promise.resolve(migrateGlobalData()).catch(function () {}).then(function () {
-        histReady = true;
-        flushPendingHist();
-      });
+  // #857：就绪钩子两层化（零机型分支，与 #785b 同族）。本模块已改成 <script defer src="js/…">
+  // 外置件，而空库/快恢复时 mochi-restore-done 早在这一行执行前就由 idb.js 派发完了——只挂监听
+  // 永远等不到 → histReady 恒 false → saveHistory 把每条记录塞进 histPending 且永不落盘、存量
+  // 迁移也永不执行＝「历史记录没保存」（外置前是同步内联，监听必然赶上，故这几天才冒出来）。
+  function onDecHistRestore() {
+    // 先把存量各桌面旧数据合并进全局根键，完成前不放开写保护（防止半路写覆盖）
+    Promise.resolve(migrateGlobalData()).catch(function () {}).then(function () {
+      histReady = true;
+      flushPendingHist();
     });
+  }
+  try {
+    if (window.__mochiDataReady) onDecHistRestore();
+    else document.addEventListener('mochi-restore-done', onDecHistRestore);
   } catch (e) {}
-  // v3.6.x：多桌面——切换联系人后重置历史权威状态（防止旧桌面的 histPending 串入新桌面）
+  // v3.6.x：多桌面——切换联系人时放开历史写保护（v3.27.x #857：本键走全局根命名空间，
+  // 缓冲与桌面无关，故此处是把恢复窗口内攒下的记录落盘，不再丢弃）
   document.addEventListener('contact-switched', function () {
-    try { histReady = true; histPending = null; } catch (e) {}
+    // #857：本键是全局根键（不分桌面），旧写法 histPending = null 等于把恢复窗口内攒下的记录
+    // 直接丢弃；改为放开写保护后立即落盘（flushPendingHist 无缓冲时自己早退）
+    try { histReady = true; flushPendingHist(); } catch (e) {}
     // v3.7.x：清掉挂起的决定定时器——否则切到 B 后回调执行，A 的决定历史/聊天结果写到 B
     try { if (decideTimer) { clearTimeout(decideTimer); decideTimer = null; } } catch (e) {}
     try { if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; } } catch (e) {}
@@ -194,6 +203,10 @@
   function closePanel() {
     if (panel) panel.hidden = true;
   }
+  // FIX 2026-09-20 #906：点面板外（聊天记录/输入栏/桌面）关闭——用户报「帮我决定点屏幕其他地方关不掉」。
+  // 本半框自建立起就没有 document 层点外关闭路径（同族的拍一拍/表情包/寻踪都有），只能点 ✕。
+  // 判据（刚开不关 / 弹窗遮罩不算点外 / 走 ✕ 同一条关闭路）统一在 chat.js 的 mochiSheetOutsideClose。
+  if (window.mochiSheetOutsideClose) window.mochiSheetOutsideClose(panel, closePanel);
   function panelHtml() {
     return '' +
       '<div class="dc-tabs"><button class="dc-tab sel" data-dtab="typea">是/否/半对</button>' +
@@ -329,39 +342,94 @@
         const n = Math.floor(Math.random() * maxSelect) + 1;
         result = shuffled.slice(0, Math.min(n, shuffled.length)).join('、');
       }
+      // FIX 2026-09-18 #745 出答案卡顿（用户报「思考时间设 1 秒，出答案页面冻几秒」）：答案渲染与重活拆两拍——
+      // 原实现同一拍里做「历史全量重写」（≤1000 条 parse+stringify+同步 setItem，几百 KB 级）＋聊天投递
+      // （addRec/gcSendDecisionText 会级联 schedulePersist：msgsBytes 全量遍历 + 快照/整包 stringify，
+      // 大记录桌面主线程秒级冻结）；倒计时结束瞬间撞上＝用户视角「答案出不来/出了页面卡死」。
+      // 现第一拍只画结果（立即上屏），重活让路到空闲拍（最迟 600ms 补完，投递肉眼无差）；
+      // 拍间切桌面则放弃写入（沿用原 cid 守卫口径）。
       resultEl.textContent = result;
       resultEl.classList.add('done');
-      // 历史记录（全部保存）
-      const h = loadHistory();
-      h.unshift({ id: 'd_' + Date.now(), type: type, question: question, result: result, options: options, ts: Date.now() });
-      if (h.length > 1000) h.splice(1000);
-      saveHistory(h);
-      // 发送结果：从群聊打开→发到群聊（系统消息）；聊天页打开→发到聊天（联系人回复样式）
-      if (loadSettings().replyToChat) {
-        const replyText = type === 'typeb' && options
-          ? '【帮我决定】' + question + '\n选项：\n' + options.map((o, i) => (i + 1) + '. ' + o).join('\n') + '\n→ ' + result
-          : '【帮我决定】' + question + ' → ' + result;
-        if (panelFromGroup && window.gcSendDecisionText) window.gcSendDecisionText(replyText);
-        else if (window.chatAddIn) window.chatAddIn(replyText, { enter: true, silent: true, follow: true, dedupExempt: true }); // FIX 2026-09-15 #492 帮我决定结果是用户主动触发，跟底不吃 in 侧钉住闸（chat.js follow 通道）；FIX 2026-09-15 #544 dedupExempt 决定答案豁免收件侧去重（快速重跑同问题同文答案被 2500ms 窗静默吞且连锁吞多条，用户视角「联系人消息被吞了几条」。#544 编号顺延：#542 已被并行会话（房间亮度）占用）
-      }
-      toast('帮我决定已完成');
+      const settle = () => {
+        if ((window.__activeCid || 'default') !== myCid) return;
+        // 历史记录（全部保存）
+        const h = loadHistory();
+        h.unshift({ id: 'd_' + Date.now(), type: type, question: question, result: result, options: options, ts: Date.now() });
+        if (h.length > 1000) h.splice(1000);
+        saveHistory(h);
+        // 发送结果：从群聊打开→发到群聊（系统消息）；聊天页打开→发到聊天（联系人回复样式）
+        if (loadSettings().replyToChat) {
+          const replyText = type === 'typeb' && options
+            ? '【帮我决定】' + question + '\n选项：\n' + options.map((o, i) => (i + 1) + '. ' + o).join('\n') + '\n→ ' + result
+            : '【帮我决定】' + question + ' → ' + result;
+          if (panelFromGroup && window.gcSendDecisionText) window.gcSendDecisionText(replyText); // 群聊那一路自己响 playSfxGc('in')，此处不补（补了就是两声）
+          else if (window.chatAddIn) {
+            window.chatAddIn(replyText, { enter: true, silent: true, follow: true, dedupExempt: true, rateAllow: true, nightAllow: true }); // FIX 2026-09-15 #492 帮我决定结果是用户主动触发，跟底不吃 in 侧钉住闸（chat.js follow 通道）；FIX 2026-09-15 #544 dedupExempt 决定答案豁免收件侧去重（快速重跑同问题同文答案被 2500ms 窗静默吞且连锁吞多条，用户视角「联系人消息被吞了几条」。#544 编号顺延：#542 已被并行会话（房间亮度）占用）
+            // #968 单聊这一路要自己补响「联系人发送和回复消息」音效（用户直派「结果发送到聊天，需要触发
+            // 联系人发消息的音效」）：silent:true 当初只用来压桌面横幅（结果不是 TA 真发来的消息），
+            // 但 v3.26.x 给 addIn 加了收消息音效后，同一枚标记也被那道闸门认下（chat.js `!opts.silent`）
+            // ＝单聊决定结果一声不响。只补音效、silent 保留（横幅语义不动），与其他入口听感一致。
+            try { if (window.playSfx) window.playSfx('in'); } catch (e) {} // FIX 2026-09-21 #968 帮我决定结果响收消息音效
+          }
+        }
+        toast('帮我决定已完成');
+      };
+      // #745：重活让路——空闲拍执行（真机忙时顺延到 idle，不跟答案渲染抢拍）；80ms 定时器兜底
+      // （无头/idle 饥饿下保证投递上限），先到先得互斥。
+      let settled = false;
+      const runSettle = () => {
+        if (settled) return;
+        settled = true;
+        try { if (idleId && window.cancelIdleCallback) window.cancelIdleCallback(idleId); } catch (e) {}
+        clearTimeout(settleT);
+        settle();
+      };
+      let idleId = window.requestIdleCallback ? window.requestIdleCallback(runSettle, { timeout: 600 }) : 0;
+      const settleT = setTimeout(runSettle, 80);
     }, thinkTime * 1000);
   }
 
+  // #1053：历史「当天直显、更早默认折叠」——数据层仍全量保存，仅渲染层按天分组：
+  // 当天的记录平铺展示；更早的记录收进可点开折叠的「更早记录」块（原生 details/summary。
+  // 历史很长时先只露当天、其余收起，需要时点开看，避免一进记录页整屏刷出几百条。
+  function fmtDayKey(ts) { const d = new Date(ts); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+  function fmtDayLabel(ts) {
+    const d = new Date(ts); const now = new Date();
+    const md = (d.getMonth() + 1) + '月' + d.getDate() + '日';
+    return d.getFullYear() === now.getFullYear() ? md : d.getFullYear() + '年' + md;
+  }
+  function histItemHtml(r) {
+    return '<div class="tc-listitem">' +
+      '<div class="tc-li-q">' + esc(r.question) + '</div>' +
+      (r.options && r.options.length ? '<div class="dc-h-options">选项：' + r.options.map((o, i) => (i + 1) + '. ' + esc(o)).join('，') + '</div>' : '') +
+      '<div class="dc-h-result">→ ' + esc(r.result) + '</div>' +
+      '<div class="dc-h-time">' + fmtDT(r.ts) + '</div></div>';
+  }
   function renderHistory() {
     const el = document.getElementById('dec-history');
     if (!el) return;
     const h = loadHistory();
-    el.innerHTML = h.length
-      ? h.map(r =>
-          '<div class="tc-listitem">' +
-          '<div class="tc-li-q">' + esc(r.question) + '</div>' +
-          (r.options && r.options.length ? '<div class="dc-h-options">选项：' + r.options.map((o, i) => (i + 1) + '. ' + esc(o)).join('，') + '</div>' : '') +
-          '<div class="dc-h-result">→ ' + esc(r.result) + '</div>' +
-          '<div class="dc-h-time">' + fmtDT(r.ts) + '</div></div>'
-        ).join('')
-      : '<div class="ta-empty">暂无帮我决定记录</div>';
+    if (!h.length) { el.innerHTML = ((window.mochiDataPending && window.mochiDataPending()) ? window.mochiLoadingHtml('决定记录') : '<div class="ta-empty">暂无帮我决定记录</div>'); return; }
+    const today = fmtDayKey(Date.now());
+    const todayItems = [], pastDays = {}, pastKeys = [];
+    h.forEach(r => {
+      if (!r || r.ts === undefined) return;
+      const k = fmtDayKey(r.ts);
+      if (k === today) { todayItems.push(r); return; }
+      if (!pastDays[k]) { pastDays[k] = { label: fmtDayLabel(r.ts), items: [] }; pastKeys.push(k); }
+      pastDays[k].items.push(r);
+    });
+    const pastCount = pastKeys.reduce((n, k) => n + pastDays[k].items.length, 0);
+    let html = todayItems.length ? todayItems.map(histItemHtml).join('') : '<div class="dc-h-day-empty">今天暂无记录</div>';
+    if (pastCount) {
+      html += '<details class="dc-h-more"><summary class="dc-h-more-sum">更早记录<span class="dc-h-more-cnt">' + pastCount + ' 条</span></summary><div class="dc-h-more-body">' +
+        pastKeys.map(k => '<div class="dc-h-day"><div class="dc-h-day-label">' + pastDays[k].label + '</div>' + pastDays[k].items.map(histItemHtml).join('') + '</div>').join('') +
+        '</div></details>';
+    }
+    el.innerHTML = html;
   }
+  // #797：回填完成补渲一次（renderHistory 现读现画幂等；只写文本，页面关着也无害）
+  if (window.mochiOnDataReady) window.mochiOnDataReady(function () { try { renderHistory(); } catch (e) {} });
 
   // 入口：聊天更多功能 → 帮我决定（chat.js 里 more-decide 调用）
   // v3.27.x #421b：不再整体覆盖 window.openDecision（顶部已挂分派器），回填真实实现引用即可

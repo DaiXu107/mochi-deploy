@@ -3,11 +3,19 @@
    夜晚氛围用 .night 调暗墙面/地板；灯类家具点亮加暖光晕。禁整页 zoom/scale（技术红线）。 */
 
 #page-room { overflow: hidden; }
+/* #1421 房间页此前全站唯一「一根滚动轴都没有」的页：页本身是裁剪框，而 stage 不滚＝内容一旦
+   高过可视区（矮屏／键盘／以后再加一排读数）就被静默裁掉，且划哪儿都不动（实测 360×640 与
+   390×844 两档逐 y 划动全为死区）。补成单轴：滚动只由 stage 承担，返回条照旧常驻。
+   刻意用 overscroll-behavior:auto 而非 contain——#612 已证 contain 会把「窗口滚到底」的手势链
+   拦断，那是同族「下面滑不动」报障的成因之一。家具拖拽不受影响：`.r-furn` 本就 touch-action:none。 */
 .room-stage {
   flex: 1; display: flex; flex-direction: column; gap: 10px;
   padding: 10px 14px calc(12px + var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px)));
   min-height: 0;
+  overflow-y: auto; overscroll-behavior: auto;
+  scrollbar-width: none; -ms-overflow-style: none;
 }
+.room-stage::-webkit-scrollbar { display: none; }
 
 /* ---- HUD 状态条 ---- */
 .r-hud { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -16,7 +24,9 @@
   font-size: 11px; color: var(--ink); opacity: .85;
   background: var(--glass-bg, rgba(255,255,255,.55));
   border: 1px solid rgba(0,0,0,.06); border-radius: 999px;
-  padding: 4px 10px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  /* #722 去 backdrop-filter（iOS WebKit 每帧重采样 backdrop，页面又带常驻动画＝持续合成开销；
+     同 base.css v3.6.x 弹窗先例），玻璃感靠 --glass-bg 半透明底保留 */
+  padding: 4px 10px;
 }
 /* 点数飘字（+n🏠） */
 .r-fly {
@@ -94,6 +104,17 @@
 .r-scene.night .r-floor { filter: brightness(.55) saturate(.85); }
 .r-scene.night .wall-starw, .r-scene.night .wall-nightw { filter: brightness(.8); }
 
+.r-scene.night.r-manual-light .r-wall,
+.r-scene.night.r-manual-light .r-floor { filter: none; transition: none; }
+.r-scene.r-manual-light.room-in { animation: none; }
+.r-scene.r-manual-light { transition: none; }
+.r-brightness { display: flex; align-items: center; gap: 8px; flex: none; min-width: 0; color: var(--ink); font-size: 12px; }
+.r-brightness label { flex: none; }
+.r-brightness output { display: inline-block; min-width: 34px; }
+.r-brightness input[type="range"] { flex: 1; min-width: 0; width: 0; height: 32px; padding: 0; accent-color: var(--ink); }
+.r-brightness button { flex: none; min-height: 32px; padding: 4px 8px; color: var(--ink); background: var(--glass-bg, rgba(255,255,255,.55)); border: 1px solid var(--card-border); border-radius: 8px; }
+.r-brightness button:disabled { opacity: .5; }
+
 /* 门与窗（固定布景） */
 .r-door {
   position: absolute; left: 3.5%; top: 8%;
@@ -141,11 +162,13 @@
   animation: rMeteor 7s linear infinite;
 }
 .r-window.wb.nw .r-sky::after { animation-delay: 3.4s; }
+/* #722 iOS 去 left 动画（布局属性每帧 reflow）：改 translateX 合成位移。
+   几何换算：sweep＝(-34%→128%)×窗宽＝162%窗宽；流星自宽 36%窗宽 → 162/36＝450% 自宽 */
 @keyframes rMeteor {
-  0% { left: -34%; opacity: 0; }
+  0% { transform: rotate(-22deg) translateX(0); opacity: 0; }
   5% { opacity: .95; }
-  11% { left: 128%; opacity: 0; }
-  100% { left: 128%; opacity: 0; }
+  11% { transform: rotate(-22deg) translateX(450%); opacity: 0; }
+  100% { transform: rotate(-22deg) translateX(450%); opacity: 0; }
 }
 
 /* 下雨时窗外雨滴下滑 */
@@ -160,9 +183,13 @@
 /* ---- 地板格（放置/移动模式：可放绿色呼吸、被占灰掉） ---- */
 .r-cell { position: absolute; box-sizing: border-box; border-radius: 6px; }
 .r-cell:hover { background: rgba(255,255,255,.18); }
+/* #722 呼吸底色移到 ::before（原动画 background 每帧重绘不进合成器；outline 常驻不参与呼吸） */
 .r-scene.placing .r-cell.ok {
   outline: 1.5px solid rgba(96,168,96,.65); outline-offset: -3px;
-  background: rgba(122,200,122,.12);
+}
+.r-scene.placing .r-cell.ok::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  background: rgba(122,200,122,.28); opacity: .29; pointer-events: none;
   animation: rBreath 1.6s ease-in-out infinite;
 }
 .r-scene.placing .r-cell.bad {
@@ -174,7 +201,8 @@
   background: rgba(110,200,110,.26);
   animation: none;
 }
-@keyframes rBreath { 0%,100% { background: rgba(122,200,122,.08); } 50% { background: rgba(122,200,122,.28); } }
+.r-scene.placing .r-cell.tgt::before { animation: none; } /* #722 ok+tgt 同挂时呼吸层一并关 */
+@keyframes rBreath { 0%,100% { opacity: .29; } 50% { opacity: 1; } } /* .28 底色 × .29 ≈ 原 0% 帧 .08 */
 
 /* ---- 家具 ---- */
 .r-furn {
@@ -240,11 +268,11 @@
 @keyframes rGlow { 0%,100% { opacity: .75; } 50% { opacity: 1; } }
 .r-ta-av {
   position: absolute; left: 50%; top: 0;
-  width: 34px; height: 34px; transform: translateX(-50%);
+  /* #910：34px＋opacity .92 时真人照片认不出是谁（暖光晕从底下透上来把脸洗淡）＝放大并去淡 */
+  width: 44px; height: 44px; transform: translateX(-50%) translateZ(0);
   border-radius: 50%;
   background-color: #efe6d6; background-size: cover; background-position: center;
   box-shadow: 0 0 0 2px rgba(255,255,255,.75), 0 2px 6px rgba(0,0,0,.18);
-  opacity: .92;
   pointer-events: none;
 }
 .r-ta-av.r-ta-sil {
@@ -257,9 +285,9 @@
    关键帧自带 translateX(-50%) 与基础定位完全一致，仍不与定位 transform 冲突 */
 #room-ta.walking .r-ta-av { animation: rBob .46s ease-in-out infinite; }
 #room-ta.walking .r-ta-glow { animation-duration: 1.6s; }
-@keyframes rBob { 0%,100% { transform: translateX(-50%); } 50% { transform: translateX(-50%) translateY(-4px); } }
+@keyframes rBob { 0%,100% { transform: translateX(-50%) translateZ(0); } 50% { transform: translateX(-50%) translateY(-4px) translateZ(0); } }
 /* 坐/躺等安顿姿态：略缩小下沉，显得"坐进去了" */
-#room-ta.seated .r-ta-av { width: 29px; height: 29px; margin-top: 7px; opacity: .95; }
+#room-ta.seated .r-ta-av { width: 37px; height: 37px; margin-top: 7px; }
 #room-ta.seated .r-ta-glow { width: 40px; height: 40px; top: 62%; }
 
 /* ---- 入场：灯光从暗到亮渐显 ---- */
@@ -319,7 +347,7 @@
   max-width: 92%;
   background: rgba(28,26,22,.82); color: #fff;
   border-radius: 999px; padding: 7px 8px 7px 14px;
-  font-size: 12px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  font-size: 12px; /* #722 去 backdrop-filter（同 .r-chip，iOS 每帧重采样开销） */
   white-space: nowrap;
 }
 .r-banner span { overflow: hidden; text-overflow: ellipsis; }
@@ -340,8 +368,7 @@
   font-size: 12.5px; line-height: 1.7; color: var(--ink);
   background: var(--glass-bg, rgba(255,255,255,.55));
   border: 1px solid rgba(0,0,0,.06); border-radius: 12px;
-  padding: 10px 12px;
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  padding: 10px 12px; /* #722 去 backdrop-filter（同 .r-chip） */
 }
 
 /* ---- 底部操作条 ---- */

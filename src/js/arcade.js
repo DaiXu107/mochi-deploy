@@ -185,7 +185,7 @@
     let name = T('TA');
     try {
       const s = window.activeStore && window.activeStore();
-      name = (s && (s.get('cs-lbl-partner') || s.get('lbl-partner'))) || name;
+      name = (s && (s.get('lbl-partner') || s.get('cs-lbl-partner'))) || name;
     } catch (e) {}
     if (partnerNameEl) partnerNameEl.textContent = name;
     if (lgPartnerNameEl) lgPartnerNameEl.textContent = name;

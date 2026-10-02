@@ -18,6 +18,18 @@
   content: attr(data-ph); color: #aaa; pointer-events: none;
 }
 
+/* ---- v3.34.x #697：群聊美化「栏位不透明度 / 位置微调」----
+   与 chat-main.css 的 #page-chat 同款规则，但只作用于群聊页（不碰共享文件、不串聊天页）：
+   ::before/::after 是参与 flex 布局的留白（#655 口径：消息区随栏位内移缩短，不用 transform/zoom）；
+   --cs-bar-rgb 定义白/深底，不透明度取 JS applyGcBeauty 写入的 --cs-* 局部变量（默认 .92 不变）。 */
+#page-group-chat::before, #page-group-chat::after { content:''; display:block; flex-shrink:0; }
+#page-group-chat::before { height:var(--cs-head-inset, 0px); }
+#page-group-chat::after { height:var(--cs-input-inset, 0px); }
+#page-group-chat { --cs-bar-rgb:255,255,255; }
+[data-theme="dark"] #page-group-chat { --cs-bar-rgb:30,30,30; }
+#page-group-chat > .chat-head { background:rgba(var(--cs-bar-rgb), var(--cs-head-opacity, .92)); }
+#page-group-chat > .chat-input-row { background:rgba(var(--cs-bar-rgb), var(--cs-input-opacity, .92)); }
+
 /* ---- 右上角三点下拉菜单（v3.9.x） ---- */
 .gc-head { position: relative; }
 
@@ -53,10 +65,17 @@
 /* ---- 群聊设置面板（整页全屏，v3.9.x；v3.42.x 主视图由底部弹层改为全屏，与聊天设置一致） ---- */
 .gc-settings-panel {
   position: fixed; left: 0; right: 0; top: 0;
-  height: min(var(--mochi-ios-h, 100dvh), 100dvh);
+  /* FIX 2026-09-18 #718：补 height:100vh 前置兜底——不支持 dvh 的老内核（<Chrome 108 / iOS <15.4）
+     整条 min() 失效＝面板高度塌成内容高、长设置列表不可滚；与聊天设置面板（chat-pages.css 同款
+     双声明）对齐，v3.42.x 改全屏时漏带这行。 */
+  height: 100vh;
   background: #fff; z-index: 210; overflow: hidden;
   display: flex; flex-direction: column;
 }
+/* #853：dvh 行收进 @supports——老 WebKit（iOS<15.4）会把整条 height 作废成 auto（不是
+   Chromium 的解析期丢弃退回 100vh），#718 的「100vh 前置兜底」拦不住它；老内核看不到
+   @supports 块里的 dvh 行、落 100vh，现代内核 dvh 行胜出＝与改动前一致 */
+@supports (height: 100dvh) { .gc-settings-panel { height: min(var(--mochi-ios-h, 100dvh), 100dvh); } }
 .gc-settings-panel[hidden] { display: none; }
 .gc-set-head {
   display: flex; align-items: center; justify-content: space-between;
@@ -184,11 +203,18 @@
 #page-group-chat.cs-time-hidden .msg-time { display: none; }
 
 /* ---- 成员列表面板（居中弹层） ---- */
+/* #1018（用户实报「无法新建群聊，功能失效」）：本组浮层＝成员列表 / 群聊列表 / 头像昵称互动 /
+   成员选择器。它们当前唯一的入口都开在「群聊设置」整页面板**内部**——#816 精简三点菜单时把
+   「群成员」「切换群聊」两个菜单项 remove() 掉，设置面板就成了唯一门（renderGroupsPanel /
+   renderMembersPanel 只做内嵌段同步）。而设置面板 z-index 210 > 本组 200，且两者同在
+   #page-group-chat 这个 .page（z-index:2 自成层叠上下文）里 ⇒ 本组被设置面板整块盖住：
+   群名弹窗照常弹出（.modal-mask 是 .page 的兄弟、不参与这里的比较），点「确定」后选择器
+   在面板背后渲染＝用户看到「点了没反应、什么都没发生」。故本组必须恒在设置面板之上：230。 */
 .gc-members-panel {
   position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%);
   width: 86%; max-width: 340px; max-height: 70vh;
   background: #fff; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,.18);
-  z-index: 200; overflow: hidden; display: flex; flex-direction: column;
+  z-index: 230; overflow: hidden; display: flex; flex-direction: column;
 }
 .gc-members-panel[hidden] { display: none; }
 .gc-mp-head {
@@ -221,6 +247,14 @@
   display: flex; flex-direction: column;
 }
 .gc-at-panel[hidden] { display: none; }
+/* v3.26.x #714：电脑端宽屏视口 fixed 面板锚回手机壳（壳几何推导与老内核回退见 base.css
+   同号注释）：群设置整页/@提及面板原为「视口贴边全宽」，电脑上按钮落到窗口左右边缘＝
+   飞出屏幕。改为壳中线±195px、壳上下沿定位；html:not 链排除满屏形态
+   （force-mobile/真全屏时 .phone=100vw，贴边即贴壳）。≤900px 手机不进查询。 */
+@media (min-width: 901px) {
+  html:not(.force-mobile):not(.tablet):not(.fs-active):not(.fs-css-active) .gc-settings-panel { left: calc(50% - 195px); right: calc(50% - 195px); top: max(24px, 50vh - 422px); height: min(844px, calc(100vh - 48px)); }
+  html:not(.force-mobile):not(.tablet):not(.fs-active):not(.fs-css-active) .gc-at-panel { left: calc(50% - 195px); right: calc(50% - 195px); bottom: max(24px, 50vh - 422px); }
+}
 .gc-at-head { padding: 12px 16px; border-bottom: 1px solid rgba(0,0,0,.06); font-size: 13px; color: #888; }
 .gc-at-body { overflow-y: auto; padding: 4px 0; }
 .gc-at-item {
@@ -271,3 +305,35 @@
   border-radius: 999px; cursor: pointer; user-select: none;
 }
 .gc-earlier:active { opacity: .65; }
+
+/* ===== #698c：头像互动/昵称互动半框 ===== */
+.gc-inter-pills { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 14px 0; }
+.gc-inter-pill {
+  padding: 4px 10px; border-radius: 999px; border: none; cursor: pointer;
+  font-size: 12px; color: var(--ink, #111);
+  background: var(--card-soft, rgba(127, 127, 127, .14));
+}
+.gc-inter-pill.on { background: #111111; color: #ffffff; }
+.gc-inter-hint { padding: 8px 14px 2px; font-size: 11.5px; color: var(--muted, #8a8a8a); }
+.gc-inter-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 10px 14px; }
+.gc-inter-grid.nick { grid-template-columns: repeat(3, 1fr); }
+.gc-inter-cell {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; border-radius: 12px; padding: 4px;
+}
+.gc-inter-cell:active { opacity: .7; }
+.gc-inter-cell.cur { outline: 2px solid #111111; outline-offset: -2px; }
+.gc-inter-av { width: 100%; aspect-ratio: 1 / 1; }
+.gc-inter-av img, .gc-inter-av svg { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.gc-inter-nick {
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 12px; padding: 8px 10px; border-radius: 999px;
+  background: var(--card-soft, rgba(127, 127, 127, .14));
+}
+.gc-inter-del {
+  position: absolute; top: -4px; right: -4px; width: 18px; height: 18px;
+  border-radius: 50%; border: none; background: rgba(0, 0, 0, .55); color: #fff;
+  font-size: 10px; line-height: 18px; padding: 0; cursor: pointer;
+}
+.gc-inter-ops { display: flex; gap: 8px; padding: 8px 14px 14px; }
+.gc-inter-ops .gc-set-btn { flex: 1; }

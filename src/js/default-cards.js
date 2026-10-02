@@ -26,6 +26,18 @@
     } catch (e) {}
   })();
   (function () {
+  // #961 字卡库顶部标红提醒（聊天默认字卡页 #dc-size-hint、词典页 #dict-size-hint）：两池体量很大，
+  //   不常用词典时建议关掉。文案唯一来源＝card-lock.js 的 window.mochiPresetSizeTip（二级密码解锁
+  //   成功弹窗用同一份），本处只负责填字；放在页面锚点守卫之前——它的两个容器与字卡列表无关，
+  //   列表锚点以后若改名也不该让提醒条变成空白。
+  (function presetSizeHints() {
+    const tip = window.mochiPresetSizeTip;
+    if (!tip) return;
+    ['dc-size-hint', 'dict-size-hint'].forEach(function (id) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = tip;
+    });
+  })();
   const list = document.getElementById('dc-list');
   const tabsWrap = document.getElementById('dc-tabs');
   const enabledEl = document.getElementById('dc-enabled');
@@ -46,6 +58,126 @@
     const s = String(txt == null ? '' : txt);
     toast((off ? '已关闭：' : '已开启：') + (s.length > 18 ? s.slice(0, 18) + '…' : s));
   }
+  // ================= #926 分组开关（整组停用/启用） =================
+  // 此前只能逐张关闭（dc-off-<分类>:<内容>），一个分组几十上百张（词典「常用词·双字」
+  // 1380 张），想停用一整组只能一张张点。补一层分组开关，与自定义字卡库的 cc-groups-off
+  // 同构同形态：存 <桌面>:dc-groups-off = { 分类: [分组名, ...] }（按联系人桌面独立，同 dc-off-*）。
+  // 生效口径＝「该组内全部字卡视为已关闭」，收在 isOff 这一个消费端总闸上——聊天混入/群聊/
+  // 写信/朋友圈/日历/词典拼字/梦角造句/各功能同源池全部自动跟上，无需逐个加分支。
+  // 单卡开关各自的存值一字不动：分组开关只是叠一层，重新启用分组即恢复原状。
+  const GOFF_KEY = 'dc-groups-off';
+  let goffRaw = null;   // 单格缓存：读到的原始值没变才复用解析结果（切桌面读到另一桌面的值＝自动重解析）
+  let goffObj = null;
+  const goffExp = {};   // 分类 -> { src, names, set }：停用组内文案展开；没有分组停用时不建、不占内存
+  function groupOffRecord(st) {
+    let raw = null;
+    try { raw = st.get(GOFF_KEY); } catch (e) { return null; }
+    if (raw === goffRaw) return goffObj;
+    let o = null;
+    try {
+      if (raw) { const p = JSON.parse(raw); if (p && typeof p === 'object' && !Array.isArray(p)) o = p; }
+    } catch (e) {}
+    goffRaw = raw; goffObj = o;
+    return o;
+  }
+  function groupOffTexts(cat, names) {
+    const src = DATA[cat] || [];
+    const e = goffExp[cat];
+    if (e && e.src === src && e.names === names) return e.set;
+    const kill = new Set(names), set = new Set();
+    src.forEach(g => { if (kill.has(g[0])) (g[1] || []).forEach(c => set.add(c)); });
+    goffExp[cat] = { src, names, set };
+    return set;
+  }
+  // 同一条文案出现在多个分组时，任一所在分组停用即算停用（保守：停用即不出现）
+  function groupOffFor(cat, c, st) {
+    const o = groupOffRecord(st);
+    const names = o && o[cat];
+    return !!(names && names.length) && groupOffTexts(cat, names).has(c);
+  }
+  // ================= #1315 「整组停用」共用出口（供 mountCardView 以外的预设字卡页接入）==========
+  // 需求＝用户实报「字卡库→系统预设字卡→其他互动功能字卡 的单独分组无法选择关闭使用」：
+  // #926 的分组开关只覆盖 mountCardView 那四个列表，而【系统预设字卡】入口下另有 12 个由各页
+  // 自渲染的预设池（情绪/回应/TA的心情/寻踪日常/今日情话/位置卡/TA 的询问·小问题·好奇·吐槽·
+  // 查岗·邀请），它们只有逐张开关——一个分组几十张，想停掉整组只能一张张点，等于够不到「关闭使用」。
+  // 机制与上面同构，但**另存一份键**（pg-groups-off，id 用「<页>:<分类>」）：dc-groups-off 的语义
+  // 已被 #926 的针与 #932 的自检账绑在 mountCardView 的分类名单上，把别的页面塞进同一份名单＝改动
+  // 邻居批的口径。各页仍走自己已有的单卡判据叠一层（判据＝该组内全部字卡视为已关闭），组内逐张
+  // 开关的存值一字不动，重新启用分组即恢复原状；同 dc-* 按桌面（联系人命名空间）独立保存。
+  const PG_KEY = 'pg-groups-off';
+  let pgRaw = null, pgObj = null;   // 单格缓存：原始值没变才复用解析结果（切桌面＝自动重解析）
+  function pgRecord(st) {
+    let raw = null;
+    try { raw = (st || ls).get(PG_KEY); } catch (e) { return null; }
+    if (raw === pgRaw) return pgObj;
+    let o = null;
+    try {
+      if (raw) { const p = JSON.parse(raw); if (p && typeof p === 'object' && !Array.isArray(p)) o = p; }
+    } catch (e) {}
+    pgRaw = raw; pgObj = o;
+    return o;
+  }
+  function pgIsOff(id, grp, st) {
+    const o = pgRecord(st);
+    const names = o && o[id];
+    return !!(names && names.indexOf(grp) >= 0);
+  }
+  function pgSet(id, grp, off) {
+    const cur = pgRecord(ls) || {};
+    const arr = (cur[id] || []).slice();
+    const i = arr.indexOf(grp);
+    if (off && i < 0) arr.push(grp);
+    if (!off && i >= 0) arr.splice(i, 1);
+    const next = {};
+    Object.keys(cur).forEach(k => { if (k !== id && Array.isArray(cur[k]) && cur[k].length) next[k] = cur[k].slice(); });
+    if (arr.length) next[id] = arr;
+    ls.set(PG_KEY, JSON.stringify(next));
+  }
+  function pgNames(id) {
+    const o = pgRecord(ls);
+    const names = o && o[id];
+    return Array.isArray(names) ? names.slice() : [];
+  }
+  // 开关形态与 #926 分组头同款（.cc-group-header ＋ label.toggle.ccard-toggle，样式锚 .preset-list）；
+  // .ccg-switch 只是接线时认出「这一发是分组开关」的凭据，不参与任何样式。
+  function pgSwitchHTML(off) {
+    return '<label class="toggle ccard-toggle ccg-switch" title="' + (off ? '启用该分组' : '停用该分组') + '">' +
+      '<input type="checkbox"' + (off ? '' : ' checked') + '><span class="tk"></span></label>';
+  }
+  function pgOffTag(off) { return off ? '<em class="ccg-off-tag">已停用</em>' : ''; }
+  function pgWire(scopeEl, id, grp, onChange) {
+    if (!scopeEl) return;
+    const input = scopeEl.querySelector('.ccg-switch input');
+    if (!input) return;
+    input.addEventListener('change', () => {
+      const nowOff = !input.checked;
+      pgSet(id, grp, nowOff);
+      if (typeof onChange === 'function') onChange(nowOff, grp);
+    });
+  }
+  // 扁平 tab 页（列表里没有分组头可挂）用的「整类停用」条
+  function pgCatBar(id, grp, label) {
+    const off = pgIsOff(id, grp);
+    return '<div class="set-group glass preset-cat-bar"><div class="gs-row"><span>整组停用「' + label + '」' +
+      pgOffTag(off) + '</span>' + pgSwitchHTML(off) + '</div></div>';
+  }
+  window.presetGroup = {
+    KEY: PG_KEY,
+    isOff: pgIsOff,
+    set: pgSet,
+    names: pgNames,
+    switchHTML: pgSwitchHTML,
+    offTag: pgOffTag,
+    bind: pgWire,
+    bindBar: pgWire,   // 分组头与整类停用条用的是同一形态（.ccg-switch），两个名字都给，调用方按语义读
+    catBar: pgCatBar,
+    // 各页分组头的整行内容（名称＋已停用徽标＋张数＋开关），extra 传该页自己的附加徽标
+    headerHTML: function (id, grp, label, count, extra) {
+      const off = pgIsOff(id, grp);
+      return '<span class="ccg-name">' + label + pgOffTag(off) + '</span><span class="ccg-count">' + count + '</span>' +
+        (extra || '') + pgSwitchHTML(off);
+    }
+  };
   // ---- 开关/概率读取（store 参数化）----
   // 所有 dc-* 键都按桌面（联系人命名空间）独立保存；顶层 API 绑 activeStore（当前
   // 桌面），群聊等跨桌面场景用 defaultCardApiFor(目标桌面 store) 按成员自己的桌面读。
@@ -59,7 +191,10 @@
     const gP = function (k) { const v = st.get('dc-prob-' + k); return v === null ? 25 : Number(v); };
     const gU = function (k) { const v = st.get('dc-use-' + k); return v === null ? true : v === '1'; };
     const gC = function (k) { const v = st.get('dc-cat-' + k); return v === null ? true : v === '1'; };
-    const gOff = function (cat, c) { return st.get('dc-off-' + cat + ':' + c) === '1'; };
+    const gOff = function (cat, c) {
+      if (st.get('dc-off-' + cat + ':' + c) === '1') return true;
+      return groupOffFor(cat, c, st);
+    };
     return {
       enabled: gE,
       overall: gO,
@@ -99,6 +234,30 @@
   // #319 防未成年人二级验证锁：锁定时系统预设字卡整体视为不存在（字卡库/回复池/词典拼字/
   //   各功能同源池全部取空），用户自建字卡不受影响——card-lock.js 先于本文件加载。
   const LOCKED = () => !(window.cardLockOpen && window.cardLockOpen());
+  // #849 系统预设字卡去重（用户实报「词典里有重复内容，比如基础汉字的【嗯】与词库重复」「默认
+  // 聊天字卡里有重复内容」）：批量化补卡时同一句话被反复写进多个分组，字卡库列表出现重复行、
+  // 拼字抽卡池里同一张卡被抽中的概率翻倍。规则＝组内同文一律只留第一张；cross＝整个分类跨分组
+  // 判重（词典、默认聊天字卡两分类按用户报障口径去重），分组顺序即优先级，先出现的分组保留。
+  function dedupeCardGroups(groups, cross) {
+    const across = cross ? new Set() : null;
+    (groups || []).forEach(function (g) {
+      if (!g || !Array.isArray(g[1])) return;
+      const seen = across || new Set();
+      const out = [];
+      g[1].forEach(function (c) {
+        if (typeof c !== 'string') { out.push(c); return; }
+        if (seen.has(c)) return;
+        seen.add(c);
+        out.push(c);
+      });
+      g[1] = out;
+    });
+    return groups;
+  }
+  // dict 由 mergeDictCustom 每次重建（含自建词条），去重在那里做
+  Object.keys(DATA).forEach(function (k) {
+    if (k !== 'dict' && Array.isArray(DATA[k])) dedupeCardGroups(DATA[k], k === 'main');
+  });
 
   // ================= v3.28.x #301：词典自建词条（词典 tab 内自由新增/删除） =================
   // 存储：全局命名空间 xy-home-v2:dict-custom-quotes / dict-custom-words（JSON 数组）——
@@ -136,7 +295,7 @@
       const gw = base.find(g => g[0].indexOf('词库') === 0);
       if (gw) gw[1] = gw[1].concat(ws);
       else if (ws.length) base.push(['词库·自建', ws.slice()]);
-      DATA.dict = base;
+      DATA.dict = dedupeCardGroups(base, true);
       window.__dictCustomSet = new Set(qs.concat(ws));
     } catch (e) {}
   }
@@ -222,6 +381,23 @@
   // v3.6.x：暴露单卡开关查询（供 chat.js 字卡池兜底过滤：自定义字卡为空时
   //   系统字卡补池也必须跳过用户已关闭的字卡）
   window.isDefaultCardOff = function (cat, c) { return isCardOff(cat, c); };
+  // #926：分组开关读写（当前桌面）——写时整份重写，不改缓存里的对象（缓存靠 raw/数组引用失效）
+  function isGroupOff(cat, gname) {
+    const o = groupOffRecord(ls);
+    const names = o && o[cat];
+    return !!(names && names.indexOf(gname) >= 0);
+  }
+  function setGroupOff(cat, gname, off) {
+    const cur = groupOffRecord(ls) || {};
+    const arr = (cur[cat] || []).slice();
+    const i = arr.indexOf(gname);
+    if (off && i < 0) arr.push(gname);
+    if (!off && i >= 0) arr.splice(i, 1);
+    const next = {};
+    Object.keys(cur).forEach(k => { if (k !== cat && Array.isArray(cur[k]) && cur[k].length) next[k] = cur[k].slice(); });
+    if (arr.length) next[cat] = arr;
+    ls.set(GOFF_KEY, JSON.stringify(next));
+  }
 
   // ---- 页面 UI ----
   let cur = 'main';
@@ -252,7 +428,8 @@
     const note = document.createElement('div');
     note.id = 'dc-scope-note';
     note.style.cssText = 'margin:8px 12px 10px;font-size:11px;line-height:1.6;color:#999;';
-    note.textContent = '以上开关按当前桌面对应的联系人独立保存：当当前桌面联系人关闭【聊天使用】，聊天和群聊里这个联系人也无法使用默认字卡（其他联系人不受影响）。';
+    note.textContent = '以上开关按当前桌面对应的联系人独立保存：当当前桌面联系人关闭【聊天使用】，聊天和群聊里这个联系人也无法使用默认字卡（其他联系人不受影响）。\n下方字卡列表里，每个分组标题右侧的开关是「整组停用/启用」——停用后本组字卡全部不再使用，组内每张卡自己的开关一字不改，重新启用分组即恢复原样。';
+    note.style.whiteSpace = 'pre-line';
     grp.parentNode.insertBefore(note, grp.nextSibling);
   })();
   // v3.8.x：分类开关绑定——主字卡 / 颜文字 / emoji / 拍一拍 分别控制默认字卡分类使用
@@ -307,6 +484,34 @@
       toast('默认字卡' + label + '占比：' + nv + '%');
     });
   });
+  // v3.43.x：设置区顶部 tag 分类 + 点击展开——默认全部收起（首屏只留字卡列表），
+  //   点 tag 展开对应设置面板，再点同一 tag 收起；同一时刻只开一个，避免又堆成一团。
+  //   列表始终显示（面板在 tag 与列表之间展开），不隐藏列表，虚拟窗口无需重排。
+  //   barId → 面板 id = panelPrefix + key（key 取按钮 data-dcset）；keys 为该 bar 的面板顺序。
+  //   两个页面共用：聊天默认字卡页（dc-set-*）与词典页（dict-set-*）。
+  function mountSetTabs(barId, panelPrefix, keys) {
+    const bar = document.getElementById(barId);
+    if (!bar) return;
+    let openKey = '';
+    function apply(key) {
+      openKey = key || '';
+      keys.forEach(function (k) {
+        const el = document.getElementById(panelPrefix + k);
+        if (el) el.hidden = (k !== openKey);
+      });
+      bar.querySelectorAll('.dc-set-tab[data-dcset]').forEach(function (b) {
+        b.classList.toggle('active', b.dataset.dcset === openKey);
+      });
+    }
+    bar.addEventListener('click', function (e) {
+      const b = e.target && e.target.closest ? e.target.closest('.dc-set-tab[data-dcset]') : null;
+      if (!b) return;
+      apply(b.dataset.dcset === openKey ? '' : b.dataset.dcset);
+    });
+    apply('');
+  }
+  mountSetTabs('dc-set-tabs', 'dc-set-', ['scene', 'prob', 'cat']);
+  mountSetTabs('dict-set-tabs', 'dict-set-', ['use', 'prob']);
   // v3.32.x：功能字卡使用概率绑定——其他互动功能字卡页（含查岗页）每个分类一个
   //   stepper，存键 dcf-<分类>（per-cid，随桌面命名空间）。未设置时回退该分类的
   //   历史默认值（= 改版前代码里写死的触发概率），行为不变；设 0 即该分类字卡
@@ -434,9 +639,9 @@
   //   点击弹 openModal 静态说明，讲清该功能何时触发、概率控制什么、如何彻底关。用事件委托避免
   //   为每个分类单独绑监听。
   const DCF_DESC = {
-    fish: '【摸鱼】联系人按你摸鱼/钓鱼的进度，在桌面上飘出「摸鱼浮字」打趣你；点击浮字可抓包，抓包后双方摸鱼值翻倍，并在聊天里回应。\n触发时机：页面在前台时每 60 秒检查一次摸鱼值变化，仅在摸鱼值上涨、距上次 ≥45 分钟、当天不超过 12 次时判定；后台不触发。\n概率 = 每次判定出现浮字的概率（默认 35%），0% = 不出现浮字（本页字卡也可逐张关闭）。',
+    fish: '【摸鱼】联系人按你摸鱼/钓鱼的进度，在桌面上飘出「摸鱼浮字」打趣你；点击浮字可抓包，抓包会结算 TA 自上次被抓以来涨的全部摸鱼值（TA 补一份总账、你得同额），并在聊天里回应。\n触发时机：页面在前台时每 60 秒检查一次摸鱼值变化，仅在摸鱼值上涨、距上次 ≥45 分钟、当天不超过 12 次时判定；后台不触发。\n概率 = 每次判定出现浮字的概率（默认 35%），0% = 不出现浮字（本页字卡也可逐张关闭）。',
     eat: '【吃饭】到饭点（早 06:30–09:30、午 11:00–13:30、晚 17:00–19:30、夜宵 21:30–23:30）时，联系人主动来聊天提醒你吃饭，并按概率补一句「追问关心」（夜宵时段用夜宵关心话术）。\n触发时机：每 4 分钟判定一次，每个饭点每天只提醒一次，23:00–06:00 静默。主提醒由本功能自带的概率（默认 2%）控制；本项概率只控制提醒之后是否补发追问。\n概率 = 补发追问的概率（默认 35%），0% = 只提醒、不追问。',
-    period: '【经期·温柔化】处于经期时，联系人的每条文字回复有概率被加上温柔前缀/后缀（如「抱抱」「慢慢来」）。\n触发时机：TA 每生成一条文字回复时判定一次，仅经期生效。\n概率 = 每条回复被温柔化的概率（默认 25%），0% = 不加温柔前缀/后缀。\n拼接时前缀、正文、动作各自是一张字卡，中间空一格（与单气泡拼字同款，不是被粘成一串）。\n（本项属经期专属语态，与「回复设置→字卡·拼字」的多字卡回复/词典拼字/梦角自由造句是两回事——那边全关也只停各自玩法；想停掉温柔语态只认本页概率与逐张开关。）\n（预测期的「梦角关心」是独立的一项「TA的关心」，另见其说明。）',
+    period: '【经期·温柔化】处于经期时，联系人的每条文字回复有概率被加上温柔前缀/后缀（如「抱抱」「慢慢来」）。\n触发时机：TA 每生成一条文字回复时判定一次，仅经期生效。\n概率 = 每条回复被温柔化的概率（默认 25%），0% = 不加温柔前缀/后缀。\n拼接时前缀、正文、动作各自是一张字卡，中间空一格（与单气泡拼字同款，不是被粘成一串）。\n（本项属经期专属语态，词典拼字/梦角自由造句全关也只停各自玩法；但「回复设置→多字卡回复」总开关关闭时本项一并不改写——加前缀/动作＝往同一条气泡里拼第二张字卡，归那颗总开关管。想单独停掉温柔语态只认本页概率与逐张开关。）\n（预测期的「梦角关心」是独立的一项「TA的关心」，另见其说明。）',
     water: '【喝水】每天 06:00–23:00，联系人会来聊天里催你喝水；当天已打卡达标时改为约 1/4 概率发夸奖。\n触发时机：页面在前台时每 8 分钟判定一次，至少隔 50 分钟、每天最多 4 条；打开喝水页时也可能补发；后台不触发。\n概率 = 每次判定发出催水的概率（默认 35%），0% = 完全不催。',
     garden: '【花园】联系人在花园打理植物（播种/浇水/收成/施肥/巡逻）后，可能在花园日志里留一句「梦角悄悄话」。\n触发时机：你与花园互动时有 8% 概率触发 TA 帮忙打理；回到手机桌面或进花园时，TA 也会按后台经过时间打理（每 30 分钟一段、每段 40% 概率）。\n概率 = 每次 TA 打理后追加悄悄话的概率（默认 40%），0% = 只打理、不留悄悄话。\n（TA 摘花送进聊天是另一套 30% 逻辑，不受本项影响。）',
     sync: '【同频】在「同频」页长按敲三下（每下长按 0.35 秒、三下需在 5 秒内完成）时，联系人有概率接住并回应你。\n触发时机：靠你主动长按触发，无冷却、无每日上限；回应会发到聊天（可在同频页关掉「发到聊天」）。\n概率 = 敲三下后接住的概率（默认 60%），0% = 永远接不住。',
@@ -447,12 +652,12 @@
     drift: '【漂流瓶】捞出漂流瓶时，瓶内话术（海风/TA的话/TA的回应）从「漂流瓶」字卡池抽取。\n触发时机：打开漂流瓶页、捡瓶前、从后台切回时结算；捡瓶有 20 秒冷却，TA 瓶每天最多 3 个；TA 回应在发布后 6–40 小时结算（45% 概率会回应，同时最多 2 个）。\n概率 = 抽到字卡话术的概率（默认 100%），0% = 不出字卡（普通瓶仍有内置兜底、不会空白；TA 回应瓶则不再生成）。',
     interact: '【互动回应】你主动做的各种小互动（戳一戳 / 拍一拍 / 拉拉手等）时，联系人回应的字卡。\n⚠ 当前版本本项概率尚未接线到回应抽取，调整暂不生效（回应的实际概率由回复设置里的相关项控制）。\n触发时机：你主动互动时。\n概率 = 预留的回应字卡概率（默认 100%），设计意图为 0% = 互动不回应字卡，修复接线后生效。',
     music: '【音乐】播放歌曲时，TA 偶尔会「暂停一下再恢复」来逗你。\n触发时机：每开始一首歌判定一次（自带 3% 概率、同一首只触发一次、距上次 ≥10 分钟）；命中后 10–25 秒随机暂停，3.5 秒后恢复。\n概率 = 暂停/恢复时是否附上字卡气泡（默认 100%），0% = 仍有暂停动作和系统消息，但不出字卡。',
-    checkin: '【寻踪日常】联系人定期更新「TA 的日常」（在哪里 / 在做什么 / 想对你说），并推送到聊天。\n触发机制与时间：首次打开（数据就绪后）立即生成一条；此后每隔 1–8 小时随机更新一次，页面在前台时每 60 秒检查一次；后台不更新，从后台切回后 90 秒冷静期内不更新。\n推送内容：每次更新向聊天发三条——「更新了一条日常」提示 + 日常内容 + 30% 概率的「提醒你来寻踪」。\n概率 = 本次更新是否推送这三条到聊天的概率（默认 100%），0% = 完全不发（寻踪页与历史记录照常生成）。',
+    checkin: '【寻踪日常】联系人定期更新「TA 的日常」（在哪里 / 在做什么 / 想对你说），并推送到聊天。\n触发机制与时间：首次打开（数据就绪后）立即生成一条；此后每隔 1–8 小时随机更新一次，页面在前台时每 60 秒检查一次；后台不更新，从后台切回后 90 秒冷静期内不更新。\n推送内容：每次更新向聊天发三条——「更新了一条日常」提示 + 日常内容 + 30% 概率的「提醒你来寻踪」。\n概率 = 本次更新是否推送这三条到聊天的概率（默认 100%），0% = 完全不发（寻踪页与历史记录照常生成）。\n想整体停用：设置 → 工具 → 寻踪（TA 的日常）总开关——关闭后连日常生成与记录一起停用、聊天里的寻踪入口收起（桌面【寻踪】图标仍在，进去写明「已禁用」，页里「TA在身边 · 位置感知」照常可用），与本概率是两层东西。',
     pomo: '【番茄钟】你用番茄钟完成一段专注时，联系人在聊天里发「去休息一会儿」（如有奖励还会附上摸鱼补偿）的消息。\n触发时机：每完成一段「专注」结算一次（休息段不发），需番茄钟页的「发到聊天」开关也打开。\n概率 = 完成后发这条消息的概率（默认 100%），0% = 不发。',
-    care: '【TA的关心（经期）】经期中、经前预警日（提前天数见经期页「提醒设置」）、或经期推迟时，联系人主动发消息。v3.42.x #559 起按「语境 × 经期规律」分级：经期中发「经期关心」（附「经期关心」标签，语料=字卡库「经期」tab「经期关心」分组+经期页自管理关心语）；经前预警日/推迟发「经期预警」（附「经期预警」标签）。分级判据=近 3 次周期变异系数 CV<0.2（很规律/较规律）视为预测可信，否则预测仅参考——①经前预警：预测可信按配置预警日发确定口吻（「经前预警」组）；预测仅参考只在最接近的一次预警日发「按记录推算、仅供参考」版（「经前预警·不规律」组）。②推迟：预测可信晚 ≥5 天发「比平时晚了 N 天，你一向很准」（「经期推迟」组），晚 ≥10 天升关注档、措辞带就医建议（「经期推迟·关注」组）；预测仅参考不说「推迟」（预测误差可能比推迟天数还大），晚 ≥10 天才以「距上次经期已经 N 天」间隔口吻轻提（「经期推迟·不规律」组）。各语料 {d} 自动替换为具体天数。\n触发时机：TA 每条文字/表情/图片回复后、打开经期页、保存提醒设置时各判定一次；每个语境每天最多一条；23:00–06:00 深夜静默（不发、也不占当天名额，白天再触发照常）。\n本概率 = 在原有闸门之上统一放行（默认 100%）：经期中第 1–2 天另有 90%、第 3–4 天 70%、第 5+ 天 55%，经前预警/推迟预警 75% 的基数；本项 100% = 保持原节奏，0% = 完全不发。\n更彻底：到「经期记录」页把「梦角关心」按钮也关掉（两者都关才真的完全关）。',
+    care: '【TA的关心（经期）】经期中、经前预警日（提前天数见经期页「提醒设置」）、或经期推迟时，联系人主动发消息。v3.42.x #559 起按「语境 × 经期规律」分级：经期中发「经期关心」（附「经期关心」标签，语料=字卡库「经期」tab「经期关心」分组+经期页自管理关心语）；经前预警日/推迟发「经期预警」（附「经期预警」标签）。分级判据=近 3 次周期变异系数 CV<0.2（很规律/较规律）视为预测可信，否则预测仅参考——①经前预警：预测可信按配置预警日发确定口吻（「经前预警」组）；预测仅参考只在最接近的一次预警日发「按记录推算、仅供参考」版（「经前预警·不规律」组）。②推迟：预测可信晚 ≥5 天发「比平时晚了 N 天，你一向很准」（「经期推迟」组），晚 ≥10 天升关注档、措辞带就医建议（「经期推迟·关注」组）；预测仅参考不说「推迟」（预测误差可能比推迟天数还大），晚 ≥10 天才以「距上次经期已经 N 天」间隔口吻轻提（「经期推迟·不规律」组）。各语料 {d} 自动替换为具体天数。\n触发时机：TA 每条文字/表情/图片回复后、打开经期页、保存提醒设置时各判定一次；每个语境每天最多一条；23:00–06:00 深夜静默（不发、也不占当天名额，白天再触发照常）。\n本概率 = 在原有闸门之上统一放行（默认 100%）：经期中第 1–2 天另有 90%、第 3–4 天 70%、第 5+ 天 55%，经前预警/推迟预警 75% 的基数；本项 100% = 保持原节奏，0% = 完全不发。\n与经期页那个「梦角关心」按钮是「与」的关系：本项设 0%、或那边关掉，任一成立就一条都不发（不必两个都关）。被本项拦成 0% 而经期页仍显示「已开启」时，经期页「提醒设置」底部会当场写出这一条与打开方式，不再静默不发。',
     memo: '【备忘提醒】你有未完成的备忘时，联系人在聊天里催一件，带「备忘提醒」标签。\n触发时机：启动 60 秒后首次、之后每 4 分钟判定一次、回前台补触发；至少隔 2 天、23:00–06:00 静默。\n本概率 = 在备忘页自带的「备忘提醒」开关/概率（默认 2%）之上是否放行（默认 100%）：100% = 保持原节奏，0% = 完全不催备忘。\n备忘页里自己的开关仍独立有效。',
-    ask: '【TA主动提问】联系人在聊天里主动发起的问题卡：关心询问 / 小问题 / 好奇卡片 / 互动 / 吐槽，带你作答选项。\n触发时机：五类各自定时判定（首次 60–150 秒、之后每 240–300 秒），各有冷却（30/45/90 分钟），任一互动卡发出后 60 分钟内其余类型不再自动触发；无深夜静默。\n本概率 = 在各类自带的触发概率（询问/小问题/好奇/吐槽默认 5%、TA分享你的字卡默认 4%）与冷却之上是否统一放行（默认 100%）：100% = 保持原节奏，0% = 完全不主动提问。\n不影响查岗（查岗走自己的「跨桌面查岗」）。',
-    deskcheck: '【跨桌面查岗·回应】其他桌面的联系人来查岗、你回答后，TA 是否从「跨桌面查岗」字卡池抽 1–5 张作为回应。\n触发时机：查岗本身由全局「查岗频率模式」控制（安静：每 60 秒判定、每次 1% 概率、冷却 180 分钟；标准 2% / 30 分钟；频繁 6% / 15 分钟），本项不控制是否来查岗，只控制回答之后的回应。\n概率 = 回答后抽回应字卡的概率（默认 50%），0% = 只给文字回复、不抽字卡。\n（本项为独立入口，不受「其他互动功能字卡」总开关约束。）'
+    ask: '【TA主动提问】联系人在聊天里主动发起的问题卡：关心询问 / 小问题 / 好奇卡片 / 互动 / 吐槽，带你作答选项。\n触发时机：五类各自定时判定（首次 60–150 秒、之后每 240–300 秒），各有冷却（30/45/90 分钟），任一互动卡发出后 60 分钟内其余类型不再自动触发；无深夜静默。\n本概率 = 在各类自带的触发概率（询问/小问题/好奇/吐槽默认 5%、TA分享你的字卡默认 4%）与冷却之上是否统一放行（默认 100%）：100% = 保持原节奏，0% = 完全不主动提问。\n#1153 频率整体档：设置 → 回复设置 →「互动卡频率」四档（原频率 / 稍安静 / 安静 / 很安静）可把这五类（以及邀请三类、音乐邀请）的概率、提问卡冷却与 60 分钟跨类型间隔一起整体往下缩放；「原频率」（默认）＝完全保持现在的节奏，没有比它更高的档。\n不影响查岗（查岗走自己的「跨桌面查岗」）。',
+    deskcheck: '【跨桌面查岗·回应】其他桌面的联系人来查岗、你回答后，TA 是否从「跨桌面查岗」字卡池抽 1–5 张作为回应。\n触发时机：查岗本身由全局「跨桌面查岗频率」控制（原频率：每 60 秒判定、每次 2% 概率、冷却 30 分钟；安静 1% / 3 小时（默认）；更安静 0.5% / 6 小时；最安静 0.2% / 12 小时），本项不控制是否来查岗，只控制回答之后的回应。\n概率 = 回答后抽回应字卡的概率（默认 50%），0% = 只给文字回复、不抽字卡。\n（本项为独立入口，不受「其他互动功能字卡」总开关约束。）'
   };
   // 注入「功能说明」标签到每个概率行（含新启用的 checkin/pomo）——复用 .gs-row .tag 样式，
   // 标签带 data-fdesc/<data-dname，交给下方 document 级事件委托。
@@ -503,43 +708,46 @@
   // v3.26.x：小键写日志异步合并（idb.js mochi-wrj-heal）把 dc-* 键修正后，重同步
   // 总开关/场景开关/分类开关的 UI——修荣耀 Edge 杀进程回滚 LS 后「开关退出重进变回去」
   // 且已打开的设置页仍显示旧值的问题
-  document.addEventListener('mochi-wrj-heal', function () {
-    try {
-      enabledEl.checked = getEnabled();
-      ['chat', 'mail', 'feed'].forEach(function (k) {
-        const el = document.getElementById('dc-use-' + k);
-        if (el) el.checked = getUse(k);
-      });
-      ['main', 'kaomoji', 'emoji', 'touch'].forEach(function (k) {
-        const el = document.getElementById('dc-cat-' + k);
-        if (el) el.checked = getCat(k);
-      });
-      // v3.28.x：使用概率 stepper 同样随 heal 重同步
-      ['chat', 'mail', 'feed'].forEach(function (k) {
-        const valEl = document.getElementById('dc-overall-' + k + '-val');
-        if (valEl) valEl.value = String(dcOverallVal(k));
-      });
-      // v3.33.x：分类占比 stepper 同样随 heal 重同步
-      ['main', 'kaomoji', 'emoji', 'touch'].forEach(function (k) {
-        const valEl = document.getElementById('dc-prob-' + k + '-val');
-        if (valEl) valEl.value = String(getProb(k));
-      });
-      // v3.32.x：功能字卡概率 stepper 同样随 heal 重同步（v3.26.x #515：改走 dcfRefreshUI，
-      //   同时刷新同键的全部 stepper，如寻踪日常字卡页那一个）
-      Object.keys(DCF_DEF).forEach(function (k) {
-        dcfRefreshUI(k);
-      });
-      // v3.33.x：功能字卡总开关同样随 heal 重同步
-      const deEl = document.getElementById('dcf-enabled');
-      if (deEl) deEl.checked = dcfEnabled();
-    } catch (e) {}
-  });
-  // v3.26.x #515：切换到另一个桌面联系人 / IDB 回填完成后，概率行重新读键——dcf-* 是 per-cid 键，
-  //   不重读会把上一个桌面的数值留在屏幕上（寻踪日常字卡页与功能字卡页同键，dcfRefreshUI 一并刷新）
-  ['contact-switched', 'mochi-restore-done'].forEach(function (ev) {
-    document.addEventListener(ev, function () {
-      try { Object.keys(DCF_DEF).forEach(function (k) { dcfRefreshUI(k); }); } catch (e) {}
+  // v3.26.x：默认字卡开关 UI 重同步——dc-* 与 dcf-* 都是 per-cid 键，切换联系人桌面 /
+  //   IDB 回填 / 小键写日志修正后，已渲染的 checkbox/stepper 不会自动重读，会把上一个桌面
+  //   的勾选/数值留在屏幕上。用户在旧状态上操作 → 写到当前桌面但 UI 显示旧桌面 →
+  //   "关了还能发、再看又是开的"（#745 多机型同现，根因＝contact-switched 漏刷 dc-* 开关）
+  function syncDcSwitchUI() {
+    enabledEl.checked = getEnabled();
+    ['chat', 'mail', 'feed'].forEach(function (k) {
+      const el = document.getElementById('dc-use-' + k);
+      if (el) el.checked = getUse(k);
     });
+    ['main', 'kaomoji', 'emoji', 'touch'].forEach(function (k) {
+      const el = document.getElementById('dc-cat-' + k);
+      if (el) el.checked = getCat(k);
+    });
+    // v3.28.x：使用概率 stepper 同样重同步
+    ['chat', 'mail', 'feed'].forEach(function (k) {
+      const valEl = document.getElementById('dc-overall-' + k + '-val');
+      if (valEl) valEl.value = String(dcOverallVal(k));
+    });
+    // v3.33.x：分类占比 stepper 同样重同步
+    ['main', 'kaomoji', 'emoji', 'touch'].forEach(function (k) {
+      const valEl = document.getElementById('dc-prob-' + k + '-val');
+      if (valEl) valEl.value = String(getProb(k));
+    });
+    // v3.32.x：功能字卡概率 stepper（v3.26.x #515：改走 dcfRefreshUI，同时刷新同键全部 stepper）
+    Object.keys(DCF_DEF).forEach(function (k) {
+      dcfRefreshUI(k);
+    });
+    // v3.33.x：功能字卡总开关同样重同步
+    const deEl = document.getElementById('dcf-enabled');
+    if (deEl) deEl.checked = dcfEnabled();
+  }
+  document.addEventListener('mochi-wrj-heal', function () { try { syncDcSwitchUI(); } catch (e) {} });
+  // v3.26.x #515 / #745：切换联系人桌面 / IDB 回填完成后，所有 dc-* / dcf-* 开关与概率行
+  //   重新读键——dcf-* 是 per-cid 键，不重读会把上一个桌面的数值留在屏幕上（寻踪日常字卡页
+  //   与功能字卡页同键，dcfRefreshUI 一并刷新）；#745 补：dc-enabled/dc-use-*/dc-cat-*/dc-overall-*/
+  //   dc-prob-* 同为 per-cid，此前 contact-switched 漏刷这些开关，用户在联系人桌面关了默认字卡
+  //   后切回 default 桌面，设置页仍显示旧桌面勾选状态，写入到非预期桌面 → 关了还能发、再看又是开的
+  ['contact-switched', 'mochi-restore-done'].forEach(function (ev) {
+    document.addEventListener(ev, function () { try { syncDcSwitchUI(); } catch (e) {} });
   });
 
   // ---- 双页共用渲染内核 ----
@@ -558,6 +766,9 @@
     const viewSearch = document.getElementById(ids.search);
     const pageEl = document.getElementById(ids.page);
     if (!viewList || !viewTabs || !viewBar || !viewSearch || !pageEl) return null;
+    // #926：四个预设字卡列表（默认聊天字卡/功能字卡/词典/查岗）共用的分组开关样式锚，
+    // 只打在这批列表容器上——#emoji-list、#poke-list 等同样用 .cc-group-header 但没有开关
+    viewList.classList.add('preset-list');
     const view = {
       keys: allowedKeys.slice(),
       searchKeys: (searchKeys || []).slice(),
@@ -648,11 +859,18 @@
       while (a < b) { const m = (a + b) >> 1; if (offs[m] <= y) a = m + 1; else b = m; }
       return Math.max(0, Math.min(n - 1, a - 1));
     }
+    function groupHeaderHTML(label, count, off) {
+      return '<span class="ccg-name">' + label + (off ? '<em class="ccg-off-tag">已停用</em>' : '') + '</span>' +
+        '<span class="ccg-count">' + count + '</span>' +
+        '<label class="toggle ccard-toggle" title="' + (off ? '启用该分组' : '停用该分组') + '"><input type="checkbox"' + (off ? '' : ' checked') + '><span class="tk"></span></label>';
+    }
     function makeNode(it, i) {
       const d = document.createElement('div');
       if (it.header) {
-        d.className = 'cc-group-header';
-        d.innerHTML = '<span class="ccg-name">' + it.gname + '</span><span class="ccg-count">' + it.count + '</span>';
+        // #926：分组标题右侧整组开关——停用后该组字卡一律不参与抽取（组内单卡开关各自存值不变）
+        const goff = isGroupOff(it.cat, it.gname);
+        d.className = 'cc-group-header' + (goff ? ' off' : '');
+        d.innerHTML = groupHeaderHTML(it.glabel, it.count, goff);
       } else {
         const off = isCardOff(it.cat, it.c);
         d.className = 'cc-item glass' + (off ? ' off' : '');
@@ -776,7 +994,7 @@
       }
       const list = [];
       shown.forEach(it => {
-        list.push({ header: true, gname: (it.key !== view.cur ? '[' + tabLabel(it.key) + '] ' : '') + it.gname, count: it.arr.length });
+        list.push({ header: true, cat: it.key, gname: it.gname, glabel: (it.key !== view.cur ? '[' + tabLabel(it.key) + '] ' : '') + it.gname, count: it.arr.length });
         it.arr.forEach(c => list.push({ header: false, c, cat: it.key }));
       });
       flat = list; n = list.length;
@@ -793,6 +1011,17 @@
     viewList.addEventListener('change', (e) => {
       const input = e.target;
       if (!input || input.type !== 'checkbox') return;
+      const head = input.closest('.cc-group-header');
+      if (head) {
+        const hrec = flat[Number(head.dataset.idx)];
+        if (!hrec || !hrec.header) return;
+        const nowOff = !input.checked;
+        setGroupOff(hrec.cat, hrec.gname, nowOff);
+        // 「已停用」徽标可能让分组头换行变高：整窗重排一次，顺带重测高度（滚动位置不漂）
+        requestLayout(true);
+        toast(nowOff ? '已停用分组：' + hrec.gname + '（本组 ' + hrec.count + ' 张字卡不再使用）' : '已启用分组：' + hrec.gname);
+        return;
+      }
       const item = input.closest('.cc-item');
       if (!item) return;
       const rec = flat[Number(item.dataset.idx)];
@@ -1142,18 +1371,59 @@
   // 各功能统一走它取同源池（消费侧再按 isDefaultCardOff(分类, 文案) 过滤已关卡片）
   // v3.32.x：并入用户自建的功能字卡（字卡库→可自定义字卡→其他互动功能字卡，存 cc-groups
   // 功能分类字段）——自定义卡追加在同源池后一起随机抽取；非功能分类/无自定义时不影响原行为
-  window.getLibPool = function (cat, group, fallback) {
-    if (LOCKED()) { // #319 锁定＝只回自建功能字卡，内置同源池与 fallback 兜底都不给
+  window.getLibPool = function (cat, group, fallback, exemptLock) {
+    if (LOCKED() && !exemptLock) { // #319 锁定＝只回自建功能字卡，内置同源池与 fallback 兜底都不给
       try { return (window.getCustomFuncCards && window.getCustomFuncCards(cat)) || []; } catch (e) { return []; }
     }
     const g = (DATA[cat] || []).find(x => x[0] === group);
     let arr = g && Array.isArray(g[1]) && g[1].length ? g[1] : (Array.isArray(fallback) ? fallback : []);
     arr = arr.slice();
+    // FIX 2026-09-30 #1498 消费端总闸下沉到取池口（本函数原先只「取组」、过滤全靠每个调用方自己
+    //   记着过 isDefaultCardOff）：auction（拍卖）／五子棋／连线／消消乐／四子棋／记忆翻牌／钓鱼／
+    //   音乐 等 8 个模块与 chat.js「吐槽·回应」、ta-ask.js「询问·回应」等处是**裸抽**
+    //   （getInteractPool(name, fb) 后直接 pool[random]），用户逐张关闭或整组停用「互动回应」
+    //   字卡后它们照旧使用（用户报障「设置了禁止使用的字卡，联系人还是能使用」的多机型同现）。
+    //   这里对【预设组内容 + 兜底数组】这一半统一过闸——已过滤的调用方再过滤一次是幂等的
+    //   （同口径三次过滤结果不变），裸抽的调用方从此自动跟上。自建功能字卡不过此闸：
+    //   它们由 cc-groups-off / cc-groups-public-off 管（见 getCustomFuncCards，已各自剔除停用分组）。
+    try { const off = window.isDefaultCardOff; if (off) arr = arr.filter(c => !off(cat, c)); } catch (e) {}
     try {
       const cf = (window.getCustomFuncCards && window.getCustomFuncCards(cat)) || [];
       if (cf.length) arr = arr.concat(cf);
     } catch (e) {}
     return arr;
+  };
+  // FIX 2026-09-30 #1498 兜底池必须同过一道闸（与 getLibPool 同一判据，零机型分支）：
+  //   各功能模块自带的 FB/DEF_* 兜底数组，多数就是数据组内容的旧拷贝——实测「花园→梦角悄悄话」
+  //   组内 7 条与 GB 的 WM 兜底 7 条**逐字重合**、「喝水→梦角催喝水」组内 18 条里兜底 6 条全重合。
+  //   原写法「过闸后为空 ⇒ 回落兜底」于是把用户刚关掉的同一批句子又捡回来，逐张关光/整组停用
+  //   等于没关（用户报障「设置了禁止使用的字卡，联系人还是能使用」）。统一出口：兜底也过闸，
+  //   全关＝真停用（空数组、不出声）；只有数据文件缺该分组时兜底才真有货。
+  window.gateCardFallback = function (cat, fallback) {
+    try {
+      const arr = Array.isArray(fallback) ? fallback.slice() : [];
+      const off = window.isDefaultCardOff;
+      if (!off) return arr;
+      return arr.filter(c => !off(cat, c));
+    } catch (e) { return []; }
+  };
+  // #1422（作者 2026-09-29 定）：这六池原是 chat.js／feed.js 里写死的「互动必答句」，字卡库里
+  //   没有页面——搜得到（旧的跨分类搜索钩子登记过）却看不到、也逐句关不掉。现并到
+  //   字卡库→系统预设字卡→【其他互动功能字卡→互动回应】同名分组，与「邀请TA·接受／拒绝」
+  //   「游戏胜负平·回应」同页同类；逐句开关（dc-off-interact:<文案>）与整组停用
+  //   （dc-groups-off.interact）全部复用 #926/#1315 既有闸（isDefaultCardOff 一条同时认这两样）。
+  // 三条与 getDeskCheckPool 不同的口径，都是刻意的：
+  //   ① 豁免 #319 二级锁——婉拒与回应是交互的必需回应，锁定设备不能让「拒绝贴贴邀请后 TA 一句话都不回」；
+  //   ② 不并自建功能字卡——「我发出的邀请」那组本就由「邀请TA」半框自己的分组表呈现，混进来＝同一批卡两处显示；
+  //   ③ 分组成员全被关掉时返回空数组（＝真停用），不回落代码兜底；兜底只在数据文件缺该分组时用。
+  window.getPresetGroupLines = function (group, fallback) {
+    let arr = [];
+    try {
+      const g = ((window.DEFAULT_CARD_DATA || {}).interact || []).find(x => x && x[0] === group);
+      arr = g && Array.isArray(g[1]) && g[1].length ? g[1].slice() : (Array.isArray(fallback) ? fallback.slice() : []);
+    } catch (e) { arr = Array.isArray(fallback) ? fallback.slice() : []; }
+    const off = window.isDefaultCardOff;
+    return off ? arr.filter(c => !off('interact', c)) : arr;
   };
   window.getInteractPool = function (name, fallback) {
     return window.getLibPool('interact', name, fallback);

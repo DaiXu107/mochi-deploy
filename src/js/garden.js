@@ -14,7 +14,7 @@ var PI = 1800;
 var WILT_SEC = 345600;
 var WATER_SEC = 172800;
 function pn() { return s.get("lbl-partner") || "TA"; }
-function load() { try { dataPf = window.activePrefix(); var d = JSON.parse(s.get(G) || "{}"); if (!d.p) d.p = []; while (d.p.length < PLOTS) d.p.push(null); if (!d.plotN) { var lv0 = Math.floor(Math.sqrt((d.exp || 0) / 10)) + 1; d.plotN = PLOTS + (lv0 >= 3 ? 2 : 0) + (lv0 >= 5 ? 2 : 0) + (lv0 >= 8 ? 2 : 0) + (lv0 >= 12 ? 4 : 0); } if (!d.l) d.l = []; if (!d.lpc) d.lpc = 0; if (!d.dex) d.dex = {}; if (!d.exp) d.exp = 0; if (!d.inv) d.inv = {}; if (!d.st) d.st = { p: 0, w: 0, h: 0, f: 0, mp: 0, mw: 0, mh: 0, mf: 0 }; if (!d.decor) d.decor = {}; if (!d.visitor) d.visitor = null; return d; } catch (e) { return { p: new Array(PLOTS).fill(null), plotN: PLOTS, l: [], lpc: 0, dex: {}, exp: 0, inv: {}, st: { p: 0, w: 0, h: 0, f: 0, mp: 0, mw: 0, mh: 0, mf: 0 }, decor: {}, visitor: null }; } }
+function load() { try { dataPf = window.activePrefix(); var d = JSON.parse(s.get(G) || "{}"); if (!d.p) d.p = []; while (d.p.length < PLOTS) d.p.push(null); if (!d.plotN) { /* FIX 2026-09-16 #601e：旧默认按等级自动扩地（满级 12→22）违反 #446「等级只解锁开垦资格、实操点开垦才扩地」，导致用户看到「远超 12 块」；改为默认 12——若存档 12 块之后已有花，保留到最远那株，绝不裁花 */ var _maxP = -1; for (var _pi = PLOTS; _pi < d.p.length; _pi++) { if (d.p[_pi]) _maxP = _pi; } d.plotN = _maxP >= PLOTS ? (_maxP + 1) : PLOTS; } if (!d.pnUser && d.plotN > PLOTS) { /* FIX 2026-09-16 #601e：存量被旧默认放大到 >12 块的存档，若 12 块之后全是空地则安全收回 12 块（有花之地绝不裁；用户手动开垦过的存档带 pnUser 标记、不再缩回） */ var _onlyEmptyTail = true; for (var _pj = PLOTS; _pj < d.plotN; _pj++) { if (d.p[_pj]) { _onlyEmptyTail = false; break; } } if (_onlyEmptyTail) d.plotN = PLOTS; } if (!d.l) d.l = []; if (!d.lpc) d.lpc = 0; if (!d.dex) d.dex = {}; if (!d.exp) d.exp = 0; if (!d.inv) d.inv = {}; if (!d.st) d.st = { p: 0, w: 0, h: 0, f: 0, mp: 0, mw: 0, mh: 0, mf: 0 }; if (!d.decor) d.decor = {}; if (!d.visitor) d.visitor = null; return d; } catch (e) { return { p: new Array(PLOTS).fill(null), plotN: PLOTS, l: [], lpc: 0, dex: {}, exp: 0, inv: {}, st: { p: 0, w: 0, h: 0, f: 0, mp: 0, mw: 0, mh: 0, mf: 0 }, decor: {}, visitor: null }; } }
 // v3.14.x 丢数据修复：save 加两道闸——
 // a) saveLock：启动/进园时 LS 缺 garden-data 且 IDB 尚未判定（有值回填 or 确认为空）前，
 //    一律禁止落盘。否则真我/荣耀 Edge 等 IDB 读慢或事务挂起的机型上，checkPartnerPassive
@@ -23,9 +23,14 @@ function load() { try { dataPf = window.activePrefix(); var d = JSON.parse(s.get
 // b) 桌面护栏：data 归属桌面（dataPf）与当前激活桌面不一致时（切桌面后残留旧对象），
 //    绝不把旧桌面花园写进新桌面的键——放弃本次保存并按新桌面重新加载。
 var saveLock = true, dataPf = null;
+// #804 数据就绪缓冲：openGarden 在「本地垃圾空档×回填未就绪」时挂起初始化（见 openGarden 内注释），
+// 等待期 gardenSaveHold 把 save 一并扣下——probeIdb 首轮未命中就会 done() 解开 saveLock，
+// 而回填是「只补缺失键」，这期间任何默认档落盘都会把真花园永久遮蔽（#588 同域数据隐患）。
+var gardenWaitChain = false, gardenSaveHold = false;
 function save(d) {
   try {
     if (saveLock) return;
+    if (gardenSaveHold) return;
     var pfNow = window.activePrefix();
     if (dataPf && pfNow !== dataPf) { try { data = load(); } catch (e0) {} return; }
     if (batchSave) { saveDirty = true; return; }
@@ -594,15 +599,41 @@ function ensureReclaimBtn() {
   tb.appendChild(sb);
 }
 // #503 缩地：把尾部连续的空地块收回（plotN 减小），下限 4 块；只动空地、有花不裁、随时可再开垦
+// #601c 收地重做：优先「选中哪块空地就收哪块，后面的花自动前移填位」；未选中空地时才退回原「收尾部空地」。
+// 旧实现只从最末尾往前连续删，中间的空洞收不了、尾部有花时直接提示「没有可收的空地」＝用户侧「点了没作用」。
 var MIN_PLOTS = 4;
 function shrinkPlots() {
-  var cur = data.plotN || PLOTS;
-  while (cur > MIN_PLOTS && !data.p[cur - 1]) cur--;
-  if (cur === (data.plotN || PLOTS)) {
-    if (window.openModal) window.openModal("收回地块", "", function () {}, { pills: [{ label: "好的", value: "ok" }], noInput: true, staticText: "没有可收的空地（最少保留 4 块）\n有花的地块不会被收回，收掉的地随时可再开垦" });
+  var from = data.plotN || PLOTS;
+  var selEmpty = (selPlot >= 0 && selPlot < data.p.length && !data.p[selPlot]) ? selPlot : -1;
+  // ① 选中了空地 → 单独收回这一块并压缩（有花的地往后前移，绝不裁花）
+  if (selEmpty >= 0) {
+    if (from <= MIN_PLOTS) {
+      if (window.openModal) window.openModal("收回地块", "", function () {}, { pills: [{ label: "好的", value: "ok" }], noInput: true, staticText: "最少保留 " + MIN_PLOTS + " 块地，不能再收啦" });
+      return;
+    }
+    var reclaimOne = function () {
+      data.p.splice(selEmpty, 1);
+      data.plotN = Math.max(MIN_PLOTS, from - 1);
+      syncPlots();
+      selPlot = -1;
+      addLog("★", "收回了第 " + (selEmpty + 1) + " 块空地，花园现有 " + data.p.length + " 块地");
+      save(data); renderAll();
+    };
+    if (!window.openModal) { reclaimOne(); return; }
+    window.openModal("收回地块", "", function (v) { if (v === "1") reclaimOne(); }, { pills: [{ label: "收回这块", value: "1" }, { label: "再想想", value: "0" }], noInput: true, staticText: "收回第 " + (selEmpty + 1) + " 块空地？\n后面的花会自动前移一格；有花的地块不会被动到。" });
     return;
   }
-  var from = data.plotN || PLOTS;
+  // ② 没选中空地 → 退回原「收尾部连续空地」
+  var cur = from;
+  while (cur > MIN_PLOTS && !data.p[cur - 1]) cur--;
+  if (cur === from) {
+    var onFlower = selPlot >= 0 && data.p[selPlot];
+    var msg = onFlower
+      ? "选中的地块有花，不能收回。\n想收它请先「收获」，或先点选一块空地再点「收地」。"
+      : "没有可收的空地（最少保留 " + MIN_PLOTS + " 块）\n想收回中间的空地：先点选那块空地，再点「收地」。\n有花的地块不会被收回，收掉的地随时可再开垦";
+    if (window.openModal) window.openModal("收回地块", "", function () {}, { pills: [{ label: "好的", value: "ok" }], noInput: true, staticText: msg });
+    return;
+  }
   if (!window.openModal) { data.plotN = cur; syncPlots(); save(data); renderAll(); return; }
   window.openModal("收回地块", "", function (v) {
     if (v !== "1") return;
@@ -631,10 +662,11 @@ function reclaimPlots() {
     if (window.openModal) window.openModal("\u5F00\u58A6\u65B0\u5730\u5757", "", function () {}, { pills: [{ label: "\u597D\u7684", value: "ok" }], noInput: true, staticText: "\u5F53\u524D " + cur + " \u5757\u5730\u5DF2\u5168\u90E8\u5F00\u58A6\n\u4E0B\u6B21\u5347\u7EA7\u53EF\u518D\u89E3\u9501\u65B0\u5730\u5757\u7684\u5F00\u58A6\u8D44\u683C\uFF08Lv.3/5/8 \u5404 +2\uFF0CLv.12 +4\uFF09" });
     return;
   }
-  if (!window.openModal) { data.plotN = ent; syncPlots(); save(data); renderAll(); return; }
+  if (!window.openModal) { data.plotN = ent; data.pnUser = 1; syncPlots(); save(data); renderAll(); return; }
   window.openModal("\u5F00\u58A6\u65B0\u5730\u5757", "", function (v) {
     if (v !== "1") return;
     data.plotN = ent;
+    data.pnUser = 1; // FIX 2026-09-16 #601e：用户手动开垦过 → load() 的存量缩地不再生效
     syncPlots();
     addLog("\u2605", "\u5F00\u58A6\u4E86 " + (ent - cur) + " \u4E2A\u65B0\u5730\u5757\uFF0C\u82B1\u56ED\u73B0\u6709 " + data.p.length + " \u5757\u5730");
     save(data); renderAll();
@@ -899,9 +931,14 @@ function partnerAct(silent, used) {
     // v3.13.x：悄悄话走系统预设字卡池（字卡库「花园」tab 同源，dc-off-garden:* 过滤）
     var wmPool = (window.getLibPool ? window.getLibPool("garden", "梦角悄悄话", WM) : WM).slice();
     if (window.isDefaultCardOff) wmPool = wmPool.filter(function (c) { return !window.isDefaultCardOff("garden", c); });
-    if (!wmPool.length) wmPool = WM.slice();
-    var msg = wmPool[Math.floor(Math.random() * wmPool.length)];
-    addLog(pName, "\uD83D\uDC95 " + msg);
+    // FIX 2026-09-30 #1498：兜底也必须过闸。WM 内置兜底 7 条与数据组「梦角悄悄话」前 7 条
+    //   **逐字重合**，原写法「过闸后为空 ⇒ 回落 WM」于是把用户刚关掉的同一批句子又捡回来，
+    //   逐张关光/整组停用等于没关（实测全关后 7/7 仍被使用）。全关＝真停用：不出声。
+    if (!wmPool.length) wmPool = (window.gateCardFallback ? window.gateCardFallback("garden", WM) : []);
+    if (wmPool.length) {
+      var msg = wmPool[Math.floor(Math.random() * wmPool.length)];
+      addLog(pName, "\uD83D\uDC95 " + msg);
+    }
     }
   }
   if (acted) {
@@ -930,6 +967,34 @@ function renderStats() {
   el.innerHTML = "<span class=\"gs-item\"><b>" + total + "</b>\u79CD</span><span class=\"gs-item\"><b>" + water + "</b>\u6D47</span><span class=\"gs-item\"><b>" + harvest + "</b>\u6536</span>";
 }
 
+// #601b 图鉴详情：点已收集的品种弹出花语/季节/成熟耗时/收录与品质/稀有杂交来源
+function openDexDetail(k) {
+  var tp = T[k]; if (!tp) return;
+  var dx = data.dex[k] || { p: 0, h: 0 };
+  if (!(dx.p > 0 || dx.h > 0)) return;
+  var lines = ["\u82B1\u8BED\uFF1A" + (tp.m || "\u2014")];
+  lines.push("\u5B63\u8282\uFF1A" + S[tp.ss].split(" ")[1] + "\u00B7\u5E94\u5B63\u751F\u957F\u66F4\u5FEB");
+  var totalSec = tp.g.reduce(function (a, b) { return a + b; }, 0);
+  lines.push("\u6210\u719F\uFF1A\u7EA6 " + fmtShort(totalSec) + "\uFF08" + tp.sn.join("\u2192") + "\uFF09");
+  lines.push("\u6536\u5F55\uFF1A\u5DF2\u79CD " + dx.p + " \u6B21 \u00B7 \u5DF2\u6536 " + dx.h + " \u6735");
+  var q = data.qual && data.qual[k];
+  if (q) {
+    var qp = [];
+    if (q.p) qp.push("\u5B8C\u7F8E\u00D7" + q.p);
+    if (q.f) qp.push("\u7CBE\u81F4\u00D7" + q.f);
+    if (q.n) qp.push("\u666E\u901A\u00D7" + q.n);
+    if (qp.length) lines.push("\u54C1\u8D28\uFF1A" + qp.join(" \u00B7 "));
+  }
+  if (tp.rare) {
+    var hb = null;
+    for (var i = 0; i < HYBRIDS.length; i++) if (HYBRIDS[i].r === k) { hb = HYBRIDS[i]; break; }
+    if (hb) {
+      var found = data.hybridFound && data.hybridFound[hb.a + "+" + hb.b];
+      lines.push("\u6742\u4EA4\u6765\u6E90\uFF1A" + (found ? T[hb.a].n + " \u00D7 " + T[hb.b].n : "\u5C1A\u672A\u53D1\u73B0\u914D\u65B9\uFF08\u8BA9\u76F8\u90BB\u7684\u4E0D\u540C\u82B1\u540C\u65F6\u5F00\u82B1\u8BD5\u8BD5\uFF09"));
+    }
+  }
+  if (window.openModal) window.openModal(tp.e[tp.e.length - 1] + " " + tp.n, "", function () {}, { noInput: true, staticText: lines.join("\n") });
+}
 function renderDex() {
   var el = document.getElementById("garden-dex");
   if (!el) return;
@@ -942,6 +1007,8 @@ function renderDex() {
     var search = document.getElementById("garden-dex-search");
     if (search) search.addEventListener("input", function () { dexSearch = this.value; renderDexList(); });
     el.querySelectorAll(".garden-dex-season").forEach(function (b) { b.addEventListener("click", function () { dexSeason = parseInt(this.dataset.season); el.querySelectorAll(".garden-dex-season").forEach(function (x) { x.classList.toggle("active", parseInt(x.dataset.season) === dexSeason); }); renderDexList(); }); });
+    var listEl = document.getElementById("garden-dex-list");
+    if (listEl) listEl.addEventListener("click", function (e) { var it = e.target.closest(".garden-dex-item"); if (it && it.dataset.k) openDexDetail(it.dataset.k); });
   }
   var search = document.getElementById("garden-dex-search");
   if (search && search.value !== dexSearch) search.value = dexSearch;
@@ -968,7 +1035,8 @@ function renderDexList() {
       var has = dx.p > 0 || dx.h > 0;
       var lock = tp.rare ? !has : (tp.lv > gLv());
       if (has) {
-        h += "<div class=\"garden-dex-item" + (tp.rare ? " rare" : "") + "\" title=\"" + tp.n + " \u79CD" + dx.p + "\u6536" + dx.h + "\"><span class=\"dex-emoji\">" + tp.e[tp.e.length - 1] + "</span><span class=\"dex-name\">" + tp.n + "</span><span class=\"dex-cnt\">\u00d7" + dx.h + "</span></div>";
+        var state = dx.h > 0 ? "\uD83C\uDF38\u00D7" + dx.h : "\uD83C\uDF31\u5DF2\u79CD";
+        h += "<div class=\"garden-dex-item tap" + (tp.rare ? " rare" : "") + "\" data-k=\"" + k + "\"><span class=\"dex-emoji\">" + tp.e[tp.e.length - 1] + "</span><span class=\"dex-name\">" + tp.n + "</span><span class=\"dex-cnt\">" + state + "</span>" + (tp.m ? "<span class=\"dex-lang\">" + tp.m + "</span>" : "") + "</div>";
       } else if (lock) {
         h += "<div class=\"garden-dex-item locked\"><span class=\"dex-emoji\">\uD83D\uDD12</span><span class=\"dex-name\">" + (tp.rare ? "\u7A00\u6709" : "Lv." + tp.lv) + "</span></div>";
       } else {
@@ -1027,7 +1095,7 @@ function renderDecor() {
   } else {
     h += "<div class=\"garden-decor-empty\">\u8FD8\u6CA1\u6709\u88C5\u9970\uFF0C\u53BB\u5546\u5E97\u770B\u770B\u5427</div>";
   }
-  h += "<button class=\"garden-decor-shop-btn\" id=\"garden-decor-shop-btn\">\uD83D\uDED2 \u88C5\u9970\u5546\u5E97\uFF08\u514D\u8D39\uFF09</button>";
+  h += "<button class=\"garden-decor-shop-btn\" id=\"garden-decor-shop-btn\"><span class=\"garden-decor-shop-ico\">\uD83D\uDED2</span>\u88C5\u9970\u5546\u5E97\uFF08\u514D\u8D39\uFF09</button>";
   el.innerHTML = h;
   var btn = el.querySelector("#garden-decor-shop-btn");
   if (btn) btn.addEventListener("click", buyDecor);
@@ -1358,21 +1426,14 @@ function renderReport() {
       "\uD83C\uDF38 \u613F\u6211\u4EEC\u7684\u82B1\u56ED\u4E00\u76F4\u7E41\u76DB"
     ];
     var text = lines.join("\n");
+    // FIX 2026-09-30 #1522：分享改走 feed.js 的 window.feedAddPost 正路（period.js 月报同款）。
+    // 原实现裸读 feed-posts 根键再整包写回：大键架构下同步 xyStore.get 只拿得到 LS 有损小快照
+    // 或空（内存副本被 #975 释放后必然读空），unshift 一条后整包写回＝把 IDB 权威整本顶掉，
+    // 朋友圈历史一发抹掉（#1349 同型盲写，台账挂账残余就此退役）；兆级 JSON.parse/stringify
+    // ＋同步 setItem 还都是白吃的主线程长任务。feedAddPost 内部走 load/feedGuardWrite/feedMem
+    // 全套闸（冷读期增量留 feedPending 不毁权威），失败返回 null＝照旧弹「发布失败」。
     var ok = false;
-    try {
-      var st = window.xyStore ? window.xyStore("xy-home-v2") : null;
-      if (st) {
-        var FK = "feed-posts";
-        var arr = []; try { arr = JSON.parse(st.get(FK) || "[]"); } catch (e2) {}
-        var owner = "default"; try { if (window.__activeCid) owner = window.__activeCid; } catch (e2) {}
-        var an = "\u6211"; try { var as = window.activeStore ? window.activeStore() : null; if (as) { var nn = as.get("feed-user-name") || as.get("lbl-user"); if (nn) an = nn; } } catch (e2) {}
-        arr.unshift({ id: "f_" + Date.now(), role: "me", owner: owner, authorName: an, authorAv: "", taName: "", taAv: "", content: text, imgs: [], ts: Date.now(), likes: [], comments: [] });
-        var raw = JSON.stringify(arr);
-        st.set(FK, raw);
-        if (window.idbSet) window.idbSet("xy-home-v2:" + FK, raw);
-        ok = true;
-      }
-    } catch (e3) {}
+    try { ok = typeof window.feedAddPost === "function" ? !!window.feedAddPost(text) : false; } catch (e3) {}
     try { document.dispatchEvent(new CustomEvent("garden-share-report", { detail: { ok: ok } })); } catch (e4) {}
     if (window.openModal) window.openModal(ok ? "\u2705 \u5DF2\u53D1\u5E03\u5230\u670B\u53CB\u5708" : "\u53D1\u5E03\u5931\u8D25", "", function () {}, { pills: [{ label: "\u597D\u7684", value: "ok" }], noInput: true, staticText: ok ? "\u82B1\u56ED\u5E74\u62A5\u5DF2\u53D1\u5230\u670B\u53CB\u5708\uFF0C\u53BB\u670B\u53CB\u5708\u770B\u770B\u5427~" : "\u8BF7\u7A0D\u540E\u518D\u8BD5" });
   });
@@ -1646,6 +1707,43 @@ function openGarden() {
   // 直接往下走会 load() 出全新空档并触发一连串自动保存（下雨浇水/访客/伙伴），
   // 把 IDB 里还没读完的老花园覆盖掉。先渲染当前内存态（可能为空），判定命中后重载。
   if (junkEmpty()) {
+    // #804：回填未就绪（mochiDataPending）时不再渲染内存默认档＋跑默认档初始化——空花园画面会被
+    // 读成「花园全丢了」，且 probeIdb 首轮 600ms 未命中就解锁放行，慢机器（41MB 桌面回填 12s+）
+    // 上 openGardenBody 的下雨浇水等无条件 save 会把全新档写进存储，回填「只补缺失键」＝真数据
+    // 永久遮蔽。改为：出「读取中」占位＋gardenSaveHold 扣住一切落盘＋1s 重探 IDB（复用 probeIdb
+    // 回填链，命中即按真数据进园）；mochi-restore-done 到来立即加速重探；35s 墙钟兜底超时按
+    // 今天的行为回退（openGardenBody 默认档——极慢/挂起存储场景与现状不差）。
+    if (window.mochiDataPending && window.mochiDataPending()) {
+      if (gardenWaitChain) return; // 等待链已在跑（离开又回来）：复用，不叠第二条
+      gardenWaitChain = true; gardenSaveHold = true;
+      var gPh = document.getElementById("garden-dataloading");
+      if (!gPh) {
+        var gScroll = page.querySelector(".garden-scroll");
+        if (gScroll) { gPh = document.createElement("div"); gPh.id = "garden-dataloading"; gScroll.appendChild(gPh); }
+      }
+      if (gPh) gPh.innerHTML = window.mochiLoadingHtml("花园");
+      var gEnd = function (hit) {
+        if (!gardenWaitChain) return;
+        gardenWaitChain = false; gardenSaveHold = false;
+        var p = document.getElementById("garden-dataloading");
+        if (p && p.parentNode) p.parentNode.removeChild(p);
+        if (!page.hidden) openGardenBody(!!hit);
+      };
+      var gDeadline = Date.now() + 35000;
+      var gTick = function () {
+        if (!gardenWaitChain) return;
+        probeIdb(function (v) {
+          if (!gardenWaitChain) return;
+          if (v) { gEnd(true); return; }
+          if (window.mochiDataPending && window.mochiDataPending() && Date.now() < gDeadline) setTimeout(gTick, 1000);
+          else gEnd(false);
+        });
+      };
+      if (window.mochiOnDataReady) window.mochiOnDataReady(function () { if (gardenWaitChain) gTick(); });
+      setTimeout(function () { if (gardenWaitChain) gEnd(false); }, 36000);
+      gTick();
+      return;
+    }
     try { renderAll(); } catch (e) {}
     // FIX 2026-09-16 #588：LS 还没回填时这里先渲染的是「内存态」＝用户看到一个**空花园**，
     //   读回前没有任何提示，最容易被当成「我的花园数据全丢了」（比卡顿更吓人）。

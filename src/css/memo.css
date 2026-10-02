@@ -1,5 +1,5 @@
 /* ===== 备忘录页（桌面第三页动态注入，src/js/memo-app.js） ===== */
-.memo-body { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; box-sizing:border-box; padding:14px 14px 40px; display:flex; flex-direction:column; }
+.memo-body { flex:1; overflow-y:auto; box-sizing:border-box; padding:14px 14px 40px; display:flex; flex-direction:column; }
 .memo-input-row { display:flex; gap:10px; margin-bottom:12px; }
 .memo-inp { flex:1; min-width:0; height:44px; border:none; border-radius:12px; background:rgba(255,255,255,.75); box-shadow:inset 0 0 0 1px rgba(0,0,0,.07); padding:0 14px; font-size:15px; color:var(--ink,#222); box-sizing:border-box; }
 .memo-inp:focus { outline:none; box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.2); }

@@ -76,8 +76,10 @@
 }
 
 /* 工具条 */
+/* FIX 2026-09-16 #601 工具条按钮超出手机屏（11 个按钮 scrollWidth 526 > 视口，最后「收地/补种」点不到）：
+   单行横滚且隐藏滚动条无任何提示；改为自动换行，全部按钮一屏可见 */
 .garden-toolbar {
-  display:flex; gap:4px; padding:0 12px 14px;
+  display:flex; flex-wrap:wrap; gap:4px; padding:0 12px 14px;
   overflow-x:auto; scrollbar-width:none; -ms-overflow-style:none;
 }
 .garden-toolbar::-webkit-scrollbar { display:none; }
@@ -103,7 +105,9 @@
   border-radius:18px;
 }
 .garden-log-title { font-size:14px; font-weight:700; margin-bottom:10px; }
-.garden-log-list { display:flex; flex-direction:column; gap:6px; max-height:200px; overflow-y:auto; }
+/* FIX 2026-09-16 #601 花园日志右侧灰色滚动条未隐藏：与 .garden-scroll 同款隐藏 */
+.garden-log-list { display:flex; flex-direction:column; gap:6px; max-height:200px; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none; }
+.garden-log-list::-webkit-scrollbar { display:none; }
 .garden-log-item {
   display:flex; align-items:flex-start; gap:8px;
   font-size:12px; color:var(--muted); line-height:1.4;
@@ -152,11 +156,16 @@
 .garden-dex-item {
   display:flex; align-items:center; gap:6px; padding:8px 6px;
   border-radius:12px; background:rgba(0,0,0,.03); font-size:11px;
+  flex-wrap:wrap;
 }
 .garden-dex-item.locked, .garden-dex-item.unknown { opacity:.4; justify-content:center; }
 .garden-dex-item .dex-emoji { font-size:18px; }
-.garden-dex-item .dex-name { color:var(--ink); font-weight:600; flex:1; }
-.garden-dex-item .dex-cnt { color:var(--muted); font-size:10px; }
+.garden-dex-item .dex-name { color:var(--ink); font-weight:600; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.garden-dex-item .dex-cnt { color:var(--muted); font-size:10px; flex-shrink:0; }
+/* #601b 已收集条目可点开详情；花语占满第二行 */
+.garden-dex-item.tap { cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.garden-dex-item.tap:active { background:rgba(0,0,0,.08); }
+.garden-dex-item .dex-lang { flex-basis:100%; font-size:10px; color:var(--muted); line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
 /* 库存 + 花束 */
 .garden-inv { margin:0 18px 18px; padding:14px 16px; border-radius:18px; }
@@ -207,6 +216,13 @@
   cursor:pointer; font-family:inherit;
 }
 .garden-decor-shop-btn:active { opacity:.8; }
+/* FIX 2026-09-16 #601f 商店 emoji 在绿色按钮上「看不见」：给 emoji 一个白色圆底并把字形色压深，
+   无论手机渲染成彩色 emoji 还是单色字形（继承 color）都能看清；文字仍是白字绿底不变 */
+.garden-decor-shop-ico {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:20px; height:20px; border-radius:50%; background:#fff;
+  margin-right:5px; vertical-align:-5px; font-size:12px; color:#444;
+}
 
 /* 排行榜 */
 .garden-lb { margin:0 18px 18px; padding:14px 16px; border-radius:18px; }
@@ -244,9 +260,18 @@
 
 /* ===== 稀有花发光 ===== */
 .garden-plot.rare { box-shadow: 0 0 14px rgba(255,215,0,.45), inset 0 0 8px rgba(255,235,150,.2); }
-.garden-plot.rare .garden-plant-emoji { filter: drop-shadow(0 0 6px rgba(255,215,0,.7)); }
-.garden-plot.rare.bloomed .garden-plant-emoji { animation: gardenSway 3.2s ease-in-out infinite, gardenRareGlow 2s ease-in-out infinite; }
-@keyframes gardenRareGlow { 0%,100% { filter: drop-shadow(0 0 5px rgba(255,215,0,.5)); } 50% { filter: drop-shadow(0 0 10px rgba(255,215,0,.9)); } }
+.garden-plot.rare .garden-plant-emoji { position:relative; filter: drop-shadow(0 0 6px rgba(255,215,0,.7)); }
+/* #722 iOS 去无限 drop-shadow 动画（filter 插值每帧重绘不进合成器＝稀有花常驻重绘面）：
+   呼吸光改 ::after 金晕盘只动 opacity/transform；花字本体保留静态基础光，
+   晕盘随 sway（transform）同摆；span 有 will-change:transform 自带层叠上下文，z-index:-1 不穿到花坛底下 */
+.garden-plot.rare.bloomed .garden-plant-emoji { animation: gardenSway 3.2s ease-in-out infinite; }
+.garden-plot.rare.bloomed .garden-plant-emoji::after {
+  content:''; position:absolute; inset:-45%; z-index:-1; border-radius:50%;
+  background:radial-gradient(circle, rgba(255,215,0,.55), rgba(255,215,0,0) 70%);
+  opacity:.4; pointer-events:none;
+  animation:gardenRareHalo 2s ease-in-out infinite;
+}
+@keyframes gardenRareHalo { 0%,100% { opacity:.4; transform:scale(.9); } 50% { opacity:1; transform:scale(1.1); } }
 
 /* ===== 图鉴稀有页 ===== */
 .garden-dex-sub { font-size: 12px; font-weight: 700; margin: 10px 0 6px; color: #f9a825; }
@@ -431,6 +456,7 @@
 @media (prefers-reduced-motion: reduce) {
   .garden-plot.bloomed .garden-plant-emoji,
   .garden-plot.rare.bloomed .garden-plant-emoji { animation: none !important; }
+  .garden-plot.rare.bloomed .garden-plant-emoji::after { animation: none !important; } /* #722 晕盘同步关 */
   .garden-fx { display: none !important; }
 }
 

@@ -58,6 +58,10 @@ html,body { overflow-x:hidden;
   -webkit-text-size-adjust:100%; text-size-adjust:100%;
   overscroll-behavior:none;
 }
+/* #827 关壳内核「智能字体放大」（X5/XWeb 等老内核按文本块逐个算膨胀倍率，布局跳变后可能停在大档不回＝实报「全部字体变大且无法恢复」）：
+   实测新 Chromium 解析期直接丢弃 none 令牌、且 text-size-adjust 本身可继承（html,body 的 100% 已护住标准引擎全站），
+   老内核字体漫游认的却是带前缀的 none——双保险：前缀 none 给老壳、标准 100% 给新引擎，页面自身字号零影响 */
+* { -webkit-text-size-adjust:none; text-size-adjust:100%; }
 /* v3.5.139：body 固定视口高度、留白放自身（padding 内含）——
    原来 html/body 共享 padding:24px 且 body 高度由内容撑开，桌面矮视口下
    .phone 会超出视口，形成页面级灰色滚动条（html 溢出）。固定后
@@ -66,13 +70,22 @@ html,body { overflow-x:hidden;
    box-sizing/margin 显式声明：不依赖全局 * 重置（个别环境 * 规则不生效时，
    缺声明会退回浏览器默认的 content-box + body margin 8px，padding 外扩、
    margin 撑出页面上下 16px 灰色滚动条） */
-body { height:100vh; height:100dvh; padding:24px; box-sizing:border-box; margin:0; }
+body { height:100vh; padding:24px; box-sizing:border-box; margin:0; }
+/* #853：dvh 收进 @supports——老 WebKit（iOS<15.4）对不认识的 dvh/svh 单位不是 Chromium 那种
+   「解析期丢弃＝退回上一条 vh」，而是把声明保留到计算期失败＝整个属性作废成 auto（实测 iPad7
+   Safari 15.3：.phone 高度变内容自然高 794→1319→2254 随页面波动、文档可滚出 600px、顶部/底部
+   按钮轮流跑到视口外点不到、聊天下滑到底整页被拽回顶）。「vh 前置+dvh 后置」阶梯只对 Chromium
+   系老内核成立，对老 WebKit 必须让 dvh 声明根本不被看到＝收进 @supports (height: 100dvh)：
+   老内核条件为假看不到该声明、自然落前一条 vh；现代内核条件为真、生效声明与改动前一致＝零回归。
+   min-height 阶梯（18dvh / html,body 的 min-height 100dvh 兜底层）作废只等于「失去下限」，
+   无截断/塌陷风险，不在其列。 */
+@supports (height: 100dvh) { body { height:100dvh; } }
 html { margin:0; padding:0; }
 
 /* ===== 开屏加载动画 ===== */
 .splash {
   position:fixed; inset:0; z-index:999;
-  background:var(--card-bg);
+  background:radial-gradient(130% 42% at 50% 0%, var(--sp-glow) 0%, transparent 72%), var(--card-bg);
   /* v3.8.y：整页一体滚动——列布局：.splash-box 占满剩余并自身滚动（顶部+公告一起滚），底部操作区常驻 */
   display:flex; flex-direction:column; align-items:center;
   transition:opacity .4s ease;
@@ -97,149 +110,174 @@ html { margin:0; padding:0; }
 .splash-box {
   flex:1; min-height:0; width:100%; overflow-y:auto;
   display:flex; flex-direction:column; align-items:center;
-  box-sizing:border-box; text-align:center; padding:26px 20px 12px;
+  box-sizing:border-box; text-align:center; padding:30px 18px 18px;
   scrollbar-width:none; -ms-overflow-style:none;
 }
 .splash-box::-webkit-scrollbar { display:none; }
+/* v8.29 #973：开屏最顶端「使用前必看」红卡——.splash-box 首个子节点（在品牌卡之上，开屏第一眼），
+   红左竖条 + 淡红底，与 #315b 免责卡 / #793 停更公告同一红色警示族但更靠前、左竖条更粗（4px）；
+   宽度与品牌卡一致 min(324px,100%) 保持整页左右对齐 */
+/* #1046（2026-09-22）：顶卡加到 6 段后 495px 会把 #864 指引条挤出首屏（top 885 > vh 844），行距/留白按此收紧
+   （字号 12.5px、颜色、加粗、内容一字不动；#973b 哨兵 needle 的 background/border 段原样保留） */
+.splash-bigwarn { width:min(324px, 100%); box-sizing:border-box; margin:0 0 10px; padding:11px 15px 12px 16px; background:#fdecec; border-left:4px solid #d23430; border-radius:12px; text-align:left; animation:splash-fade-up .6s ease 0s backwards; }
+.splash-bigwarn .splash-bigwarn-t { font-size:13.5px; font-weight:800; color:#c22b27; letter-spacing:.6px; margin-bottom:6px; line-height:1.6; }
+.splash-bigwarn p { font-size:12.5px; line-height:1.6; color:#7a1d1a; font-weight:700; }
+.splash-bigwarn p + p { margin-top:5px; }
+.splash-bigwarn strong { color:#c22b27; font-weight:800; }
+/* v8.29 #976：必读卡组容器——7 张必读卡从「品牌卡内 2 张 + 公告卡内 5 张」整组前移到品牌卡之前，
+   宽度与品牌卡/公告卡一致（min(324px,100%)）保持整页左右对齐；组内统一 14px 节奏（搬进来的两张卡原本是
+   品牌卡内联排距，改由组内统一），末张不留白、由容器 margin-bottom 收口 */
+.splash-mustread { width:min(324px, 100%); box-sizing:border-box; display:flex; flex-direction:column; align-items:stretch; margin:0 0 14px; }
+.splash-mustread > * { margin:0 0 14px !important; }
+.splash-mustread > *:last-child { margin-bottom:0 !important; }
+[data-theme="dark"] .splash-bigwarn { background:rgba(210,52,48,.20); border-color:#ff6b6b; }
+[data-theme="dark"] .splash-bigwarn .splash-bigwarn-t { color:#ff8f8f; }
+[data-theme="dark"] .splash-bigwarn p { color:#f0c6c6; }
+[data-theme="dark"] .splash-bigwarn strong { color:#ff8f8f; }
 /* v3.8.y：顶部品牌区卡片框——logo/标题/署名/原作信息统一装进一个精致白卡片 */
 .splash-brandcard {
-  width:min(322px, 100%); box-sizing:border-box;
-  padding:24px 20px 20px;
-  background:var(--card-bg); border:1px solid rgba(0,0,0,.07);
-  border-radius:20px;
+  width:min(324px, 100%); box-sizing:border-box;
+  padding:30px 22px 24px;
+  background:var(--card-bg); border:1px solid var(--sp-line);
+  border-radius:22px;
+  box-shadow:0 10px 32px rgba(0,0,0,.05);
   display:flex; flex-direction:column; align-items:center;
   animation:splash-fade-up .6s ease .04s backwards;
 }
 .splash-brandcard .splash-logo {
-  width:74px; height:74px; margin:0 auto 16px;
+  width:76px; height:76px; margin:0 auto 18px;
   /* v3.8.y：正方形里显示爱心——圆角收紧为小圆角(18%)，避免此前大圆角(32%)略显圆/近圆 */
-  border-radius:18px;
-  background:var(--card-bg); border:1px solid rgba(0,0,0,.08);
+  border-radius:20px;
+  background:var(--card-bg); border:1px solid var(--sp-line);
+  box-shadow:0 6px 18px rgba(0,0,0,.05);
   display:flex; align-items:center; justify-content:center;
   animation:splash-pop .7s ease .1s backwards;
 }
 .splash-logo svg { width:38px; height:38px; }
-.splash-title { font-size:18px; font-weight:800; letter-spacing:2px; color:var(--ink); }
+.splash-title { font-size:19px; font-weight:800; letter-spacing:3px; color:var(--ink); }
 /* v3.8.y：署名移到顶部，紧跟标题下方的小字 */
-.splash-brand { margin-top:8px; font-size:11px; color:var(--muted); letter-spacing:1px; }
-/* v3.8.y：原作/部署信息（署名下方）——小灰字低调展示使用网站/GitHub 库 */
-.splash-source { margin-top:12px; padding-top:12px; border-top:1px dashed var(--line); text-align:center; width:100%; }
-.splash-source-line { font-size:9px; color:var(--hint-ink); line-height:1.8; letter-spacing:0; white-space:nowrap; }
+.splash-brand { margin-top:10px; font-size:11px; color:var(--muted); letter-spacing:1.2px; line-height:1.9; }
+/* v3.8.y：原作/部署信息（署名下方）——小灰字低调展示使用网站/GitHub 库；
+   #611 后极简改版：虚线分隔改细实线，靠留白而非分割线区分层级 */
+.splash-source { margin-top:16px; padding-top:16px; border-top:1px solid var(--sp-line); text-align:center; width:100%; }
+.splash-source-line { font-size:9px; color:var(--hint-ink); line-height:1.9; letter-spacing:0; white-space:nowrap; }
 /* v3.26.x：置顶澄清行可换行——nowrap 仅供单行网址/署名，长句澄清不换行会超出手机屏幕 */
-.splash-source-line.splash-clarify { white-space:normal; padding:0 10px; }
+.splash-source-line.splash-clarify { white-space:normal; padding:0 14px; line-height:1.95; }
+/* #1503：品牌卡「许可 · 署名 · 灵感来源」块是长句（署名 / 二传二改四点要求 / 借鉴来源清单），
+   默认 nowrap 会把开屏撑出横向滚动（#973 S20 / #976 S15 实测）→ 仅本块内放开换行，不影响其余品牌行 */
+.splash-license .splash-source-line { white-space:normal; padding:0 14px; }
 .splash-source-url { color:var(--ink); font-weight:600; }
+/* v3.26.x #793：停更公告横幅（品牌卡内·署名行正下方，data-stop-update）——红色警示形态（同 #315b 免责卡红），
+   开屏第一屏第一眼必见；品牌卡整体居中排版，横幅自身改左对齐保正文可读性；暗色主题同批适配 */
+/* v8.29 #976：停更公告换「须知」橙族（用户定「红只留给使用红线」）——文案一字未改；
+   位置由品牌卡内挪进 #splash-mustread（必读卡组），间距交给组内统一节奏 */
+.splash-stopupdate {
+  width:100%; box-sizing:border-box;
+  padding:12px 14px 13px 15px;
+  background:#fff3e6; border-left:3px solid #e8590c; border-radius:12px;
+  text-align:left;
+}
+.splash-stopupdate .splash-stopupdate-t { font-size:13px; font-weight:800; color:#c2410c; letter-spacing:1px; margin-bottom:6px; }
+.splash-stopupdate p { font-size:12.5px; line-height:1.8; color:#8a3d05; font-weight:700; }
+.splash-stopupdate p + p { margin-top:6px; }
+.splash-stopupdate strong { color:#c2410c; font-weight:800; }
+[data-theme="dark"] .splash-stopupdate { background:rgba(232,89,12,.16); border-color:#ff8a3d; }
+[data-theme="dark"] .splash-stopupdate .splash-stopupdate-t { color:#ffa76a; }
+[data-theme="dark"] .splash-stopupdate p { color:#f3cfa8; }
+[data-theme="dark"] .splash-stopupdate strong { color:#ffa76a; }
+/* v3.26.x #864：开屏顶部「公告已精简 · 使用说明请看设置→关于」指引条（品牌卡内·署名行下方＝开屏第一屏第一眼）——
+   橙色提示形态（与 #793 停更公告的红色警示形态区分开：这条是入口说明不是警告）；品牌卡整体居中，本条自身左对齐保可读性 */
+.splash-abouttip {
+  margin:12px 0 0; width:100%; box-sizing:border-box;
+  padding:11px 14px 12px 15px;
+  background:#fff3e6; border-left:3px solid #e8590c; border-radius:12px;
+  text-align:left;
+}
+.splash-abouttip p { font-size:12.5px; line-height:1.8; color:#8a3d05; font-weight:700; }
+.splash-abouttip strong { color:#c2410c; font-weight:800; }
+[data-theme="dark"] .splash-abouttip { background:rgba(232,89,12,.16); border-color:#ff8a3d; }
+[data-theme="dark"] .splash-abouttip p { color:#f3cfa8; }
+[data-theme="dark"] .splash-abouttip strong { color:#ffa76a; }
 /* v3.8.y：底部统一卡片框——版本/加载/提示/按钮装进一个白卡片，与顶部品牌卡片呼应 */
 .splash-footcard {
-  width:min(322px, 100%); box-sizing:border-box;
-  padding:14px 18px calc(14px + var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px)));
-  background:var(--card-bg); border:1px solid rgba(0,0,0,.07);
-  border-radius:20px;
+  width:min(324px, 100%); box-sizing:border-box;
+  padding:10px 18px calc(12px + var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px)));
+  background:var(--card-bg); border:1px solid var(--sp-line);
+  border-radius:22px;
+  box-shadow:0 10px 32px rgba(0,0,0,.05);
   display:flex; flex-direction:column; align-items:center;
-  margin-bottom:calc(var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px)) + 18px);
+  margin-bottom:calc(var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px)) + 20px);
   animation:splash-fade-up .6s ease .4s backwards;
 }
-/* v3.8.y：底部版本块——两行：名称+版本(加粗) / 部署时间+实时秒数，去等宽字体、字号加大适配手机 */
+/* v3.8.y：底部版本块；2026-10-01（停更收口）收成静态一行，部署行/检测行样式随批退役 */
 .splash-ver {
-  display:flex; flex-direction:column; align-items:center; gap:3px;
-  line-height:1.5;
+  display:flex; flex-flow:row wrap; align-items:baseline; justify-content:center; gap:1px 8px;
+  line-height:1.4;
 }
-.splash-ver .sv-app { font-size:11.5px; font-weight:700; color:var(--ink); letter-spacing:.5px; }
-.splash-ver .sv-deploy { font-size:10.5px; color:var(--hint-ink); }
-/* #570：开屏新版检测行（ver-check.js）——检测中/失败灰、已是最新绿、有新版红加粗下划线可点 */
-.splash-ver .sv-check { font-size:10.5px; color:var(--hint-ink); }
-.splash-ver .sv-check.ok { color:#1f9d55; }
-.splash-ver .sv-check.stale { color:#e0523c; font-weight:700; }
-.splash-ver .sv-check.warn { opacity:.85; }
+.splash-ver .sv-app { font-size:11px; font-weight:700; color:var(--ink); letter-spacing:.5px; }
 /* v3.5.111：开屏公告卡片（白纸卡片，与全局简约风格一致）；v3.8.y：不再自滚，随 .splash-box 整页滚动 */
 .splash-notice {
-  margin:14px auto 0; width:min(322px, 100%); text-align:left;
-  background:var(--card-bg); border:1px solid rgba(0,0,0,.07);
-  border-radius:20px; padding:18px 18px 20px;
+  margin:16px auto 0; width:min(324px, 100%); text-align:left;
+  background:var(--card-bg); border:1px solid var(--sp-line);
+  border-radius:22px; padding:22px 20px 24px;
+  box-shadow:0 10px 32px rgba(0,0,0,.05);
   animation:splash-fade-up .6s ease .32s backwards;
 }
-.splash-notice-title { font-size:14px; font-weight:800; color:var(--ink); text-align:center; margin-bottom:5px; letter-spacing:1.5px; }
-.splash-notice-sub { font-size:10.5px; font-weight:600; color:var(--muted); text-align:center; margin-bottom:16px; letter-spacing:1.5px; }
-.splash-notice-list p { font-size:11.5px; line-height:1.75; color:var(--soft-ink); }
+.splash-notice-title { font-size:15px; font-weight:800; color:var(--ink); text-align:center; margin-bottom:6px; letter-spacing:2px; }
+.splash-notice-sub { font-size:10.5px; font-weight:600; color:var(--muted); text-align:center; margin-bottom:18px; letter-spacing:1.5px; }
+.splash-notice-list p { font-size:12px; line-height:1.8; color:var(--soft-ink); }
 /* v3.8.x：公告版式层级——黑白简约语义变量（明/暗主题分别取值）：
    章节标题(黑竖条+加粗) > 子标题 > 编号条目(浅灰圆标) > 子列表项(·前缀) */
-.splash { --sp-ink:#111111; --sp-soft:rgba(17,17,17,.07); }
-[data-theme="dark"] .splash { --sp-ink:#e8e8e8; --sp-soft:rgba(255,255,255,.09); }
-/* 顶部提示块（App 说明 / 系统预设字卡等引导内容） */
-.splash-tip {
-  margin:0 0 12px; padding:10px 14px 11px 16px;
-  background:var(--sp-soft); border-left:3px solid var(--sp-ink); border-radius:8px;
-}
-.splash-tip p { color:var(--soft-ink); line-height:1.75; }
-.splash-tip p + p { margin-top:6px; }
-.splash-tip .splash-tip-h { color:var(--ink); font-weight:800; font-size:12px; }
-/* v3.8.z：必读摘要——深色卡片置顶，承载必读内容，视觉上最醒目 */
-.splash-summary {
-  margin:0 0 14px; padding:12px 14px 13px 14px;
-  background:var(--sp-soft); border-left:3px solid var(--sp-ink); border-radius:8px;
-}
-.splash-summary-title { font-size:12px; font-weight:800; color:var(--ink); margin-bottom:7px; letter-spacing:.6px; }
-.splash-summary p { font-size:11.5px; line-height:1.75; color:var(--soft-ink); }
-.splash-summary p + p { margin-top:6px; }
+.splash { --sp-ink:#111111; --sp-soft:rgba(17,17,17,.055); --sp-line:rgba(17,17,17,.08); --sp-glow:rgba(17,17,17,.045); }
+[data-theme="dark"] .splash { --sp-ink:#e8e8e8; --sp-soft:rgba(255,255,255,.075); --sp-line:rgba(255,255,255,.12); --sp-glow:rgba(255,255,255,.05); }
+/* v8.44 #1216（2026-09-25 用户直派「必读摘要全部删掉」）：那份置顶「必读摘要」卡片连同样式整块删除，
+   渲染侧的同批拆掉（见 clock.js）。必读口径从此只有两处——开屏最顶必读卡组 ＋ 第一页目录章节；
+   补回第三份必然分叉，勿再添加。 */
 /* v3.26.x #575（用户 2026-09-16 反馈）：开屏「新手上路 3 步」蓝色引导卡已整块删除（DOM 在 template.html
    同批撤除），此处 .splash-onboard* 样式一并清掉。新手引导改由 onboarding.js 弹层承担，勿再补回。 */
-/* v3.27.x：防骗置顶声明——固定在公告最顶部，防收费诈骗醒目提示 */
+/* v3.27.x：防骗置顶声明——固定在公告最顶部，防收费诈骗醒目提示；
+   #611 后极简改版：整框描边改「淡底 + 左侧竖条」，减少视觉噪音 */
 .splash-alert {
-  margin:0 0 14px; padding:10px 14px 11px 14px;
-  background:var(--sp-soft); border:1.5px solid var(--sp-ink); border-radius:8px;
+  margin:0 0 14px; padding:12px 15px 13px 16px;
+  background:var(--sp-soft); border-left:3px solid var(--sp-ink); border-radius:12px;
 }
 .splash-alert .splash-alert-t {
-  font-size:12px; font-weight:800; color:var(--sp-ink); letter-spacing:.5px; margin-bottom:5px;
+  font-size:12px; font-weight:800; color:var(--sp-ink); letter-spacing:.5px; margin-bottom:6px;
+  display:flex; align-items:center; gap:7px;
 }
-.splash-alert .splash-alert-t::before { content:"!"; display:inline-block; width:15px; height:15px; line-height:15px; text-align:center; margin-right:5px; border-radius:50%; background:var(--sp-ink); color:#fff; font-size:11px; font-weight:800; vertical-align:-2px; }
-.splash-alert p { font-size:12px; line-height:1.7; color:var(--soft-ink); }
+.splash-alert .splash-alert-t::before { content:""; width:6px; height:6px; flex:none; border-radius:2px; background:var(--sp-ink); }
+.splash-alert p { font-size:12px; line-height:1.75; color:var(--soft-ink); }
+.splash-alert p + p { margin-top:6px; }
 .splash-alert strong { color:var(--ink); font-weight:800; }
 /* v3.27.x #315b：免责声明——红色警示形态，比防骗/署名卡更醒目（未成年人禁止使用） */
 .splash-alert.splash-disclaimer {
-  padding:12px 14px 13px;
-  background:#fdecec; border:2px solid #d23430; border-radius:10px;
-  box-shadow:0 2px 8px rgba(210,52,48,.18);
+  padding:13px 15px 14px 16px;
+  background:#fdecec; border-left:3px solid #d23430; border-radius:12px;
 }
-.splash-alert.splash-disclaimer .splash-alert-t { color:#c22b27; font-size:13.5px; letter-spacing:1px; }
+.splash-alert.splash-disclaimer .splash-alert-t { color:#c22b27; font-size:13px; letter-spacing:1px; }
 .splash-alert.splash-disclaimer .splash-alert-t::before { background:#c22b27; }
-.splash-alert.splash-disclaimer p { color:#7a1d1a; font-size:13px; font-weight:700; line-height:1.75; }
-.splash-alert.splash-disclaimer strong { color:#c22b27; font-weight:900; }
+.splash-alert.splash-disclaimer p { color:#7a1d1a; font-size:12.5px; font-weight:700; line-height:1.8; }
+.splash-alert.splash-disclaimer strong { color:#c22b27; font-weight:800; }
 [data-theme="dark"] .splash-alert.splash-disclaimer { background:rgba(210,52,48,.16); border-color:#e05555; box-shadow:none; }
 [data-theme="dark"] .splash-alert.splash-disclaimer .splash-alert-t { color:#ff8080; }
 [data-theme="dark"] .splash-alert.splash-disclaimer .splash-alert-t::before { background:#ff8080; color:#3a0d0d; }
 [data-theme="dark"] .splash-alert.splash-disclaimer p { color:#f0c6c6; }
 [data-theme="dark"] .splash-alert.splash-disclaimer strong { color:#ff8080; }
 /* v3.26.x：开屏最顶·使用前提卡——蓝色警示形态（字卡传讯/纯代码/无 AI/不是小手机，先了解再用） */
-.splash-alert.splash-what { background:#e8f0fc; border:2px solid #3a6fc4; border-radius:10px; }
-.splash-alert.splash-what .splash-alert-t { color:#27538f; }
-.splash-alert.splash-what .splash-alert-t::before { background:#3a6fc4; }
-.splash-alert.splash-what p { color:#1e3a5f; font-size:13px; font-weight:700; line-height:1.75; }
-.splash-alert.splash-what strong { color:#27538f; font-weight:900; }
-[data-theme="dark"] .splash-alert.splash-what { background:rgba(58,111,196,.16); border-color:#6f9bde; }
-[data-theme="dark"] .splash-alert.splash-what .splash-alert-t { color:#a8c6f0; }
-[data-theme="dark"] .splash-alert.splash-what .splash-alert-t::before { background:#a8c6f0; color:#0e2240; }
-[data-theme="dark"] .splash-alert.splash-what p { color:#c8daf4; }
-[data-theme="dark"] .splash-alert.splash-what strong { color:#a8c6f0; }
-/* v3.33.x：开屏最顶·禁带「小手机 tag」恶意扩圈——红色强警示形态，比免责卡更醒目（置 #splash-notice 首位） */
-.splash-alert.splash-tagban {
-  padding:13px 15px 14px;
-  background:#fdeaea; border:2.5px solid #d23430; border-radius:10px;
-  box-shadow:0 3px 10px rgba(210,52,48,.22);
-}
-.splash-alert.splash-tagban .splash-alert-t { color:#c22b27; font-size:14px; letter-spacing:1px; }
-.splash-alert.splash-tagban .splash-alert-t::before { background:#c22b27; }
-.splash-alert.splash-tagban p { color:#7a1d1a; font-size:13px; font-weight:700; line-height:1.75; }
-.splash-alert.splash-tagban strong { color:#c22b27; font-weight:900; }
-[data-theme="dark"] .splash-alert.splash-tagban { background:rgba(210,52,48,.18); border-color:#ff6b66; box-shadow:none; }
-[data-theme="dark"] .splash-alert.splash-tagban .splash-alert-t { color:#ff9090; }
-[data-theme="dark"] .splash-alert.splash-tagban .splash-alert-t::before { background:#ff6b66; color:#3a0d0d; }
-[data-theme="dark"] .splash-alert.splash-tagban p { color:#f4cccc; }
-[data-theme="dark"] .splash-alert.splash-tagban strong { color:#ff9090; }
+/* v8.29 #976：使用前提卡撤掉专属蓝色（全站强调色 6→4，用户直派「颜色太乱」）——不再写颜色，
+   回落 .splash-alert 默认灰族（底/竖条/标题/正文全走 var(--sp-*) 语义变量）；只保留原字号度量，避免版面跳动。
+   文案一字未改；data-anti-scam="w" 标记保留（clock.js 不认领该标记） */
+.splash-alert.splash-what p { font-size:12.5px; font-weight:700; line-height:1.8; }
 /* v3.27.x #319：防未成年人·系统内置字卡锁卡——琥珀警示形态 + 解锁动作按钮 */
-.splash-alert.splash-cardlock { background:#fdf3e0; border:2px solid #c07f1f; }
+.splash-alert.splash-cardlock { background:#fdf3e0; border-left:3px solid #c07f1f; border-radius:12px; padding:13px 15px 14px 16px; }
 .splash-alert.splash-cardlock .splash-alert-t { color:#9a6410; }
 .splash-alert.splash-cardlock .splash-alert-t::before { background:#9a6410; }
 .splash-alert.splash-cardlock p { color:#6b4a0e; }
-.cardlock-actions { margin-top:9px; display:flex; gap:8px; flex-wrap:wrap; }
+/* #1273：禁选手势收在动作区容器上（一行覆盖两颗按钮，且与并行批 #1220 挂在 .cardlock-btn 内的
+   那两行不撞 needle）。判据是 CSS 生效事实：user-select / -webkit-touch-callout 可继承，
+   touch-action 虽不继承但按规范会与各祖先的值求交＝容器上的 manipulation 对子树里的按钮同样生效
+   （禁掉双击缩放等待与长按识别候选，长按不再吞掉这一次点按）。 */
+.cardlock-actions { margin-top:9px; display:flex; gap:8px; flex-wrap:wrap; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:manipulation; }
 .cardlock-btn {
   appearance:none; border:1.5px solid #9a6410; background:#9a6410; color:#fff;
   font-size:12.5px; font-weight:800; padding:7px 14px; border-radius:8px; letter-spacing:.5px;
@@ -248,6 +286,37 @@ html { margin:0; padding:0; }
 .cardlock-state { font-size:12px; font-weight:700; color:#9a6410; margin-top:8px; min-height:1em; }
 [data-theme="dark"] .splash-alert.splash-cardlock { background:rgba(192,127,31,.15); border-color:#d99a3a; }
 [data-theme="dark"] .splash-alert.splash-cardlock .splash-alert-t { color:#eebb60; }
+/* 2026-10-01 必读卡组两张新卡专属配色（作者直派补备份/数据不互通两卡）：
+   原「安卓浏览器」（#738）与「iPhone 添加到主屏幕」（#991）两卡样式已随卡收进公告目录同批撤除；
+   本批两张新卡沿用 #976 定的两族形态参数——备份卡＝琥珀「需要你操作」族（同系统内置字卡锁）、
+   数据不互通卡＝橙「须知/提醒」族（同停更公告）。哨兵 needle 取 minify 后的单行形态 */
+.splash-alert.splash-backup { background:#fdf3e0; border-left:3px solid #c07f1f; border-radius:12px; padding:13px 15px 14px 16px; }
+.splash-alert.splash-backup .splash-alert-t { color:#9a6410; font-size:13px; letter-spacing:1px; }
+.splash-alert.splash-backup .splash-alert-t::before { background:#9a6410; }
+.splash-alert.splash-backup p { color:#6b4a0e; font-size:12.5px; font-weight:700; line-height:1.8; }
+.splash-alert.splash-backup p + p { margin-top:6px; }
+.splash-alert.splash-backup strong, .splash-alert.splash-backup b { color:#9a6410; font-weight:800; }
+[data-theme="dark"] .splash-alert.splash-backup { background:rgba(192,127,31,.15); border-color:#d99a3a; }
+[data-theme="dark"] .splash-alert.splash-backup .splash-alert-t { color:#eebb60; }
+[data-theme="dark"] .splash-alert.splash-backup .splash-alert-t::before { background:#eebb60; color:#3a2504; }
+[data-theme="dark"] .splash-alert.splash-backup p { color:#ecd9b0; }
+[data-theme="dark"] .splash-alert.splash-backup strong, [data-theme="dark"] .splash-alert.splash-backup b { color:#eebb60; }
+.splash-alert.splash-storesplit {
+  padding:13px 15px 14px 16px;
+  background:#fff3e6; border-left:3px solid #e8590c; border-radius:12px;
+}
+.splash-alert.splash-storesplit .splash-alert-t { color:#c2410c; font-size:13px; letter-spacing:1px; }
+.splash-alert.splash-storesplit .splash-alert-t::before { background:#e8590c; }
+.splash-alert.splash-storesplit p { color:#8a3d05; font-size:12.5px; font-weight:700; line-height:1.8; }
+.splash-alert.splash-storesplit strong { color:#c2410c; font-weight:800; }
+[data-theme="dark"] .splash-alert.splash-storesplit { background:rgba(232,89,12,.16); border-color:#ff8a3d; box-shadow:none; }
+/* v8.29 #991：真·可点 file input（surface 层，device.js mochiFilePickSurface）的原生小按钮要藏掉——
+   元素本身保持可见（opacity:1 + 真实尺寸，见 device.js 里的内联样式），只藏它的可见外观：
+   不支持该伪元素的旧内核回退为 font-size:0 + 透明前景/背景，同样看不见。
+   注意：不要试图改成 display:none / opacity:0 / 1px clip —— 那正是 #717/#738 那族
+   「不可见 input 被内核拒绝激活」的写法，本层存在的意义就是「手指能物理点到真 input」。 */
+input.mochi-pick-surface::file-selector-button { display:none; }
+input.mochi-pick-surface::-webkit-file-upload-button { display:none; }
 [data-theme="dark"] .splash-alert.splash-cardlock .splash-alert-t::before { background:#eebb60; color:#3a2504; }
 [data-theme="dark"] .splash-alert.splash-cardlock p { color:#ecd9b0; }
 [data-theme="dark"] .cardlock-btn { background:#d99a3a; border-color:#d99a3a; color:#3a2504; }
@@ -259,16 +328,16 @@ html { margin:0; padding:0; }
 .splash.under-modal { z-index:80; }
 /* 章节容器：编号在章节内重新从 1 开始；章节间拉开间距；折叠章节样式 */
 .splash-sec-wrap { counter-reset: notice; }
-.splash-sec-wrap + .splash-sec-wrap { margin-top:12px; }
+.splash-sec-wrap + .splash-sec-wrap { margin-top:16px; }
 /* v3.8.y：开屏公告「书签目录」——可折叠入口：默认收起，点头展开竖排章节索引 */
 .splash-toc {
-  margin:0 0 14px;
-  border:1px solid var(--line); border-radius:12px; overflow:hidden;
+  margin:0 0 16px;
+  border:1px solid var(--sp-line); border-radius:14px; overflow:hidden;
   background:var(--card-bg);
 }
 .splash-toc-head {
   display:flex; align-items:center; justify-content:space-between; gap:8px;
-  width:100%; padding:12px 14px;
+  width:100%; padding:13px 15px;
   font-size:13px; font-weight:800; letter-spacing:.5px;
   color:var(--ink); background:transparent; border:0; text-align:left;
   cursor:pointer; user-select:none; -webkit-tap-highlight-color:transparent;
@@ -280,13 +349,13 @@ html { margin:0; padding:0; }
   font-size:11px; line-height:1; color:var(--muted); transition:transform .25s ease;
 }
 .splash-toc.open .splash-toc-chev { transform:rotate(180deg); }
-.splash-toc-body { display:none; border-top:1px solid var(--line); counter-reset: toc; }
+.splash-toc-body { display:none; border-top:1px solid var(--sp-line); counter-reset: toc; }
 .splash-toc.open .splash-toc-body { display:block; }
 .splash-toc-chip {
   display:flex; align-items:center; gap:10px;
-  width:100%; padding:11px 14px;
+  width:100%; padding:12px 15px;
   font-size:12px; font-weight:700; line-height:1.2; letter-spacing:.4px;
-  color:var(--muted); background:transparent; border:0; border-bottom:1px solid var(--line);
+  color:var(--muted); background:transparent; border:0; border-bottom:1px solid var(--sp-line);
   text-align:left; cursor:pointer; user-select:none; -webkit-tap-highlight-color:transparent;
   transition:color .2s ease, background .2s ease;
 }
@@ -303,11 +372,11 @@ html { margin:0; padding:0; }
 .splash-toc-chip.active::before { color:var(--sp-ink); }
 /* v3.8.y：可折叠章节：标题可点击，点击展开/折叠细节内容 */
 .splash-sec-collapsible {
-  border-radius:12px; overflow:hidden;
-  background:var(--sp-soft); border:1px solid rgba(0,0,0,.05);
-  scroll-margin-top:10px; /* 书签跳转时顶部留白，避免贴边 */
+  border-radius:14px; overflow:hidden;
+  background:var(--sp-soft); border:1px solid var(--sp-line);
+  scroll-margin-top:12px; /* 书签跳转时顶部留白，避免贴边 */
 }
-[data-theme="dark"] .splash-sec-collapsible { border-color:rgba(255,255,255,.06); }
+[data-theme="dark"] .splash-sec-collapsible { border-color:var(--sp-line); }
 .splash-sec-collapsible .splash-sec {
   margin:0; padding:13px 14px; cursor:pointer; /* 右侧加内边距，避免折叠箭头贴边被圆角裁切 */
   user-select:none; -webkit-tap-highlight-color:transparent;
@@ -329,13 +398,13 @@ html { margin:0; padding:0; }
 /* 章节标题：黑色竖条 + 加粗 */
 .splash-sec {
   display:flex; align-items:center; gap:9px;
-  margin-bottom:9px; font-size:13px; font-weight:800; color:var(--ink); letter-spacing:.5px;
+  margin-bottom:10px; font-size:13.5px; font-weight:800; color:var(--ink); letter-spacing:.5px;
 }
-.splash-sec::before { content:""; width:3px; height:14px; border-radius:2px; background:var(--sp-ink); flex-shrink:0; }
+.splash-sec::before { content:""; width:3px; height:15px; border-radius:2px; background:var(--sp-ink); flex-shrink:0; }
 /* 子标题（如「为什么必须附上型号和浏览器：」） */
-.splash-sub { margin:12px 0 6px; font-size:11.5px; font-weight:800; color:var(--ink); letter-spacing:.5px; }
+.splash-sub { margin:14px 0 7px; font-size:11.5px; font-weight:800; color:var(--ink); letter-spacing:.5px; }
 /* 编号条目：浅灰圆角数字标 */
-.splash-item { counter-increment:notice; position:relative; padding-left:23px; margin-bottom:9px; line-height:1.75; }
+.splash-item { counter-increment:notice; position:relative; padding-left:24px; margin-bottom:10px; line-height:1.75; }
 .splash-item:last-child { margin-bottom:0; }
 .splash-item::before {
   content:counter(notice);
@@ -345,11 +414,12 @@ html { margin:0; padding:0; }
   background:var(--sp-soft); color:var(--sp-ink);
   font-size:10px; font-weight:800;
 }
-/* 高亮条目：关键提醒用显眼橙色加粗标出（如「基础疑问可直接问 AI」）；
-   双选择器压过 .splash-notice-list p / .splash-summary p 的软墨色 */
-.splash-notice-list .splash-hl, .splash-summary .splash-hl { color:#e8590c; font-weight:800; }
+/* 高亮条目：关键提醒用显眼橙色加粗标出（如「基础疑问可直接问 AI」）；压过 .splash-notice-list p 的软墨色 */
+.splash-notice-list .splash-hl { color:#e8590c; font-weight:800; }
+/* #1024 观感（用户 2026-09-22 选定「橙色加粗只留给真正的红线，同色同重等于没有重点」）口径不变：
+   章节正文里要显眼就写 .splash-hl，其余保持正文墨色。 */
 /* 子列表项：黑色 · 前缀，与编号条目文字对齐 */
-.splash-bullet { position:relative; padding-left:23px; margin-bottom:6px; line-height:1.7; }
+.splash-bullet { position:relative; padding-left:24px; margin-bottom:7px; line-height:1.75; }
 .splash-bullet::before {
   content:"·"; position:absolute; left:8px; top:-1px;
   font-size:15px; font-weight:800; color:var(--sp-ink); line-height:1.6;
@@ -358,11 +428,11 @@ html { margin:0; padding:0; }
    v3.5.120：数据加载完成前按钮 hidden 不显示（clock.js 控制），
    加载期间显示 .splash-loading 提示，就绪后按钮才出现 */
 .splash-enter {
-  display:inline-block; margin-top:14px; padding:11px 40px;
+  display:inline-block; margin-top:16px; padding:11px 44px;
   background:var(--btn-bg); color:var(--btn-ink); font-size:13px; font-weight:700;
-  border-radius:99px; letter-spacing:2px; cursor:pointer;
+  border-radius:99px; letter-spacing:3px; cursor:pointer;
   -webkit-tap-highlight-color:transparent; user-select:none;
-  box-shadow:0 3px 10px rgba(0,0,0,.12);
+  box-shadow:0 8px 22px rgba(0,0,0,.16);
   transition:opacity .35s ease, transform .12s ease;
 }
 .splash-enter:active { opacity:.75; transform:scale(.97); }
@@ -371,14 +441,14 @@ html { margin:0; padding:0; }
 .splash-enter[hidden] { display:none; }
 /* 未滑到底时的提示文字（按钮置灰 + 提示滑动） */
 .splash-enter-hint {
-  margin-top:16px; font-size:11px; color:var(--hint-ink); letter-spacing:1px;
+  margin-top:8px; font-size:11px; color:var(--hint-ink); letter-spacing:1px;
 }
 .splash-enter-hint[hidden] { display:none; }
 /* #315c：年龄确认勾选行——label 包裹整行可点，checkbox 原生控件保证可访问性与举证形态 */
 .splash-age {
   display:flex; align-items:flex-start; gap:7px;
-  margin-top:12px; padding:0 6px;
-  font-size:11px; line-height:1.5; color:var(--hint-ink);
+  margin-top:8px; padding:0 6px;
+  font-size:11px; line-height:1.4; color:var(--hint-ink);
   cursor:pointer; -webkit-tap-highlight-color:transparent; user-select:none;
 }
 .splash-age input[type="checkbox"] {
@@ -386,17 +456,67 @@ html { margin:0; padding:0; }
   accent-color:var(--btn-bg); cursor:pointer;
 }
 .splash-age[hidden] { display:none; }
+/* #1453：勾选行内「查看免责声明」锚点——点它滚回上面那张免责卡（clock.js 接线）。
+   红色沿用免责卡的警示红族（浅色 #c22b27；暗色覆写在 dark.css）；margin-left:auto 靠行尾，
+   不挤占勾选文案的换行宽度。只做查看入口，与门控无关（未勾选仍进不去） */
+.splash-age-view {
+  flex:none; margin-left:auto; padding-left:8px;
+  color:#c22b27; font-weight:700; text-decoration:underline; text-underline-offset:2px;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+}
+/* 折叠公告按钮：勾选已读后显示，点击折叠/展开详细说明章节（置顶必读卡与品牌卡始终保留） */
+.splash-fold-toggle {
+  margin:8px auto 0; padding:6px 18px; text-align:center;
+  font-size:13px; color:var(--hint-ink); cursor:pointer;
+  border:1px solid var(--card-border,#ddd); border-radius:8px;
+  background:var(--card-bg,#f8f8f8); -webkit-tap-highlight-color:transparent;
+  user-select:none;
+}
+.splash-fold-toggle[hidden] { display:none; }
+.splash-box.splash-folded .splash-notice { display:none; }
 /* v3.8.y：底部操作区——「点击进入」按钮（居中，间距由卡片 padding 控制） */
 .splash-btns {
   display:flex; align-items:center; justify-content:center; gap:10px;
-  margin-top:14px;
+  margin-top:10px;
 }
 .splash-btns .splash-enter { margin-top:0; }
 /* 加载提示（非按钮，不可点） */
 .splash-loading {
-  margin-top:16px; font-size:12px; color:var(--hint-ink); letter-spacing:1px;
+  margin-top:10px; font-size:12px; color:var(--hint-ink); letter-spacing:1px;
 }
+/* #716：加载中省略号步进动画——大数据桌面（IDB 41MB 级）恢复期给「缓冲感」，
+   纯 width 步进不触发重排层级、开销可忽略；数据就绪该行 hidden 后动画随之无成本 */
+.splash-loading::after {
+  content:'···';
+  display:inline-block; width:0; overflow:hidden; vertical-align:bottom;
+  text-align:left; letter-spacing:1px;
+  animation:splashDots 1.2s steps(3,end) infinite;
+}
+@keyframes splashDots { 0% { width:0; } 100% { width:3.2em; } }
 .splash-loading[hidden] { display:none; }
+/* #657：开屏等待较久时的一行原因说明——用户把开屏慢当 bug，就地解释比让他翻公告有效。
+   小字 + 次级色限宽，不抢上面那句加载提示的视线 */
+.splash-loading-sub {
+  margin:7px auto 0; max-width:264px;
+  font-size:10.5px; line-height:1.55; letter-spacing:.2px;
+  color:var(--hint-ink); opacity:.9;
+}
+.splash-loading-sub[hidden] { display:none; }
+/* #785：进入应用后的「数据还在读取」占位（idb.js mochiLoadingHtml 出这块）。
+   与开屏那行同族但不抢视线：次级色小字居中，省略号复用 splashDots 步进动画。
+   真没有内容时各页出 .ta-empty 等终态文案，两者必须一眼可分——慢回填机器上
+   先读空值却陈述成「还没有收到信」，用户会当数据丢了来报 bug。 */
+.mochi-data-loading {
+  margin:18px auto; padding:2px 12px; max-width:280px;
+  font-size:12px; line-height:1.6; letter-spacing:.5px; text-align:center;
+  color:var(--hint-ink); opacity:.85;
+}
+.mochi-data-loading::after {
+  content:'···';
+  display:inline-block; width:0; overflow:hidden; vertical-align:bottom;
+  text-align:left; letter-spacing:1px;
+  animation:splashDots 1.2s steps(3,end) infinite;
+}
 /* v3.26.x：数据加载较慢时的「仍要进入」逃生口——弱化样式（小字、下划线、次级色），
    表明是"非推荐、数据可能不全"的非常规入口，与主按钮区分 */
 .splash-force-enter {
@@ -426,10 +546,13 @@ html { margin:0; padding:0; }
 .splash-mandatory-title { font-size:15px; font-weight:800; color:var(--ink); letter-spacing:1.5px; }
 .splash-mandatory-sub { margin-top:6px; font-size:10.5px; font-weight:600; color:var(--muted); letter-spacing:1px; line-height:1.6; }
 /* 公告卡片：深色卡片 + 左侧竖条（复用 --sp-ink/--sp-soft 语义变量，明暗主题自适应） */
+/* v8.35 #1182 白屏根治：本卡原带 splash-fade-up 入场淡入（0% 帧＝全透明）。#911 后台暂停
+   （body.mochi-bg-pause 把所有动画 paused）会把「点击后才显示」的本页动画冻在 0% 帧＝5 张卡
+   恒透明＝第二页整页白屏且滑不到底进不去（部分内核 hidden 误判时前台也中招）。强制阅读页
+   观感零价值、可见性却成了硬依赖，入场动画整行移除；勿回流（build.mjs 配 absent 哨兵）。 */
 .splash-mandatory-card {
   margin-bottom:14px; padding:13px 15px 14px;
   background:var(--sp-soft); border-left:3px solid var(--sp-ink); border-radius:10px;
-  animation:splash-fade-up .5s ease backwards;
 }
 .splash-mandatory-date { font-size:10px; font-weight:700; color:var(--hint-ink); letter-spacing:1px; margin-bottom:6px; }
 .splash-mandatory-h { font-size:13.5px; font-weight:800; color:var(--ink); letter-spacing:.5px; margin-bottom:9px; }
@@ -440,8 +563,22 @@ html { margin:0; padding:0; }
 .splash-mandatory-body .mnum::before { content:"·"; position:absolute; left:3px; top:0; color:var(--sp-ink); font-weight:800; }
 /* 落款标签（右对齐小灰字） */
 .splash-mandatory-body .mtag { text-align:right; font-size:10.5px; color:var(--hint-ink); margin-top:10px; }
+/* v8.44 #1215b（2026-09-25 用户「最新的放最顶上默认打开，其他的折叠起来」）：更早公告的整体折叠块。
+   原生 details/summary，零 JS、零动画——本页可见性绝不许再依赖动画播完（#1182 白屏教训，build.mjs 有 absent 哨兵）；
+   收起时正文仍在 DOM 里（textContent / 页内查找都拿得到），只是不占阅读高度；
+   左侧竖条用次级灰（--hint-ink）＝视觉上让位于默认展开的最新一批；变量与 .splash-mandatory-card 同一套，明暗主题自适应。 */
+.splash-mandatory-fold { margin-bottom:14px; }
+.splash-mandatory-fold-sum {
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  padding:12px 15px; font-size:11.5px; font-weight:700; letter-spacing:.3px; color:var(--ink);
+  background:var(--sp-soft); border-left:3px solid var(--hint-ink); border-radius:10px;
+  cursor:pointer; list-style:none; -webkit-tap-highlight-color:transparent;
+}
+.splash-mandatory-fold-sum::-webkit-details-marker { display:none; }
+.splash-mandatory-fold-sum::after { content:"▾"; font-size:11px; color:var(--hint-ink); }
+.splash-mandatory-fold[open] > .splash-mandatory-fold-sum { margin-bottom:12px; }
+.splash-mandatory-fold[open] > .splash-mandatory-fold-sum::after { content:"▴"; }
 .splash-mandatory-end { text-align:center; font-size:11px; color:var(--hint-ink); letter-spacing:2px; padding:2px 0 4px; }
-.splash-mandatory-note { margin-top:14px; padding:10px 12px; font-size:11px; line-height:1.7; color:var(--hint-ink); background:var(--card-soft, rgba(0,0,0,0.03)); border-radius:8px; }
 /* 底部确认区（常驻不随内容滚动）：提示 + 确认按钮 */
 .splash-mandatory-foot {
   width:min(322px, 100%); margin:0 auto; box-sizing:border-box;
@@ -484,7 +621,17 @@ html { margin:0; padding:0; }
      否则 calc(100dvh-48px) 无效、高度回退内容撑开（底部又截断） */
   height:min(844px, calc(100dvh - 48px));
   height:min(844px, calc(100vh - 48px));
-  border-radius:44px; padding:16px 18px 18px;
+  /* FIX 2026-09-19 #815 整屏空白地板（与机型/内核无关的结构性下限）：键盘期 .phone 的高度由
+     mobile-adapt.js 按 visualViewport.height 逐帧写内联值，而部分内核（QQ 浏览器 X5、国产壳）
+     在键盘弹出/收起动画期会瞬时上报 0 或极小值——内联高被写没＝整壳塌成一条，用户看到的正是
+     「要输入文字的时候屏幕空白、还一闪一闪」。JS 侧写高点散布十余处（#794 已据此否决过加
+     偏移轴），逐处钳值必漂移，故在 CSS 单点收口：min-height 永远压过内联 height，地板取
+     min(120px, 18 视口高) —— 矮屏/小窗按比例缩，绝不挡住真实键盘停靠（真键盘最多占布局视口
+     约六成，剩余远高于此地板）。老内核不认 dvh：后写的那条被整条丢弃，退回 vh 版（同 #690
+     /#762 的退化阶梯套路）。 */
+  min-height:min(120px, 18vh);
+  min-height:min(120px, 18dvh);
+  border-radius:44px; padding:16px calc(18px + var(--mochi-side-adj,0px)) 18px;
   display:flex; flex-direction:column;
   /* v3.26.x #399：整壳是【永不滚动】的裁剪框——overflow:clip 让 .phone 不再是滚动
      容器，内核「滚进视野」的滚动链到此为止（回信页整壳被内核滚走的根因见 .ce-ghost
@@ -509,14 +656,32 @@ html { margin:0; padding:0; }
      （收键盘动画/内核 vv 上报有延迟）露出的那一条由「大片灰底」变成与页面同色，观感
      不突兀；桌面宽屏外壳不在此媒体查询内，模拟器灰底照旧。零机型分支、纯视觉兜底。 */
   html, body { padding:0; min-height:100vh; min-height:100svh; min-height:100dvh; background:var(--bg-b, #fff); }
+  /* FIX 2026-09-27 #1340 竖屏形态的文档不变量：根不可滚、壳顶对齐（与机型／内核无关）。
+     #185（iPad 独立应用「文档可滚时橡皮筋把整页来回拽＝滑动位置会飞、一弹一弹」）与
+     #537（iOS 覆盖形态「flex 居中把 .phone 整块挪走 31px＝顶部重叠＋底部白带」）早就各自
+     量到过同一处物理后果，但两道收口都写死在 iOS standalone 的选择器上；竖屏浏览器形态
+     （inner==vv、.phone==100dvh、只有 overflow-x 被锁）从来没有这一对约束，于是壳与视口
+     之间只要差出一格——内核 dvh 滞留、#916 过期内联钉高、键盘残留、用户手调偏移——那一格
+     既成白带又成可拖走量，同一缺陷在红米／OPPO／小米15 上分别长成「页面可以上下滑飞出屏
+     幕」「全屏也会有空白」「顶部白条」。本批把它升成形态无关的不变量：整页是永不滚动的
+     裁剪框（#399 早已把 .phone 定为裁剪框、纵向滚动只属于 .page／#chat-body，根却是漏的）。
+     顶对齐＝差出来的那一格一律留在下沿：上沿是状态栏与返回键，永不该动；旧写法居中时同一
+     格被劈成上下两条（实测 762→822 那 2~3s 里顶 45／底 15）。
+     健康态里两条都是空操作：.phone 与 body 同为 100dvh、彼此相等，既不居中位移也无
+     可滚量——只在两者 disagreement（＝正在发病）时起作用＝零观感回归。
+     刻意排除 .ios-pwa-standalone：那一路的形态（覆盖／保留／iPad）各有一条自己的高度与
+     锁法（#114/#148/#185/#537 的针都在那里），本批不越过去动它＝iOS 主屏幕零变化。 */
+  html:not(.ios-pwa-standalone), html:not(.ios-pwa-standalone) body { overflow:hidden; align-items:flex-start; }
   .phone {
     /* v3.5.139：显式声明——padding(0 18px 18px) 必须算进 100dvh 内，
        否则实际高度超视口、底部导航栏/组件被截 */
     box-sizing:border-box;
-    width:100vw; height:100vh; height:100svh; height:100dvh;
+    width:100vw; height:100vh;
     border-radius:0; box-shadow:none;
-    padding:0 18px 18px;
+    padding:0 calc(18px + var(--mochi-side-adj,0px)) 18px;
   }
+  /* #853：svh/dvh 收进 @supports（老 WebKit 计算期作废机制，见上） */
+  @supports (height: 100dvh) { .phone { height:100svh; height:100dvh; } }
   .statusbar {
     /* v3.5.127：max 兜底——真全屏挖孔屏 env() 返回 0 时保留 14px 最小留白。
        v3.28.x #114：优先用 JS 实测的 --mochi-safe-top（iOS standalone 下
@@ -536,12 +701,17 @@ html { margin:0; padding:0; }
 /* #542：同 @media(max-width:900px)——UA 桌面伪装兜底形态 body 底色也跟 .phone（--bg-b），
    键盘收缩露出的那一条不再是大片灰底 */
 html.force-mobile, html.force-mobile body { padding:0; min-height:100vh; min-height:100svh; min-height:100dvh; background:var(--bg-b, #fff); }
+/* #1340：同一条文档不变量——force-mobile 复刻的就是上方竖屏形态（手机伪装桌面 UA 时媒体
+   查询不命中、只能靠这个类复刻），漏一份就等于「桌面站点」模式下整页照旧可被拖走 */
+html.force-mobile:not(.ios-pwa-standalone), html.force-mobile:not(.ios-pwa-standalone) body { overflow:hidden; align-items:flex-start; }
 html.force-mobile .phone {
   box-sizing:border-box;
-  width:100vw; height:100vh; height:100svh; height:100dvh;
+  width:100vw; height:100vh;
   border-radius:0; box-shadow:none;
-  padding:0 18px 18px;
+  padding:0 calc(18px + var(--mochi-side-adj,0px)) 18px;
 }
+/* #853：svh/dvh 收进 @supports（老 WebKit 计算期作废机制，见上） */
+@supports (height: 100dvh) { html.force-mobile .phone { height:100svh; height:100dvh; } }
 html.force-mobile .statusbar {
   padding-top:max(calc(14px + var(--mochi-safe-top, env(safe-area-inset-top, 0px))), 14px);
   padding-bottom:10px;
@@ -565,30 +735,31 @@ html.force-mobile #page-chat { background: var(--page-bg-grad); }
 html.force-mobile button, html.force-mobile .app, html.force-mobile .set-row,
 html.force-mobile .tab, html.force-mobile .msg, html.force-mobile .feed-post,
 html.force-mobile .mail-item { -webkit-tap-highlight-color:transparent; }
-/* v3.9.x：桌面卡片缩放在手机端禁用（同 home.css @media(max-width:900px) 块，
-   force-mobile 下该媒体查询不命中，此处兜底；选择器跨域引用 home.css 类名但不改其逻辑）
-   v3.16.x：选择器随 home.css 同步——三页统一 .page-slide 缩放，兜底也统一 */
-html.force-mobile .page-slide,
-html.force-mobile .deco-widget, html.force-mobile .mini-card, html.force-mobile .checkin,
-html.force-mobile .weekend-box, html.force-mobile .music-widget,
-html.force-mobile .memo-card, html.force-mobile .mood-card, html.force-mobile .week-card,
-html.force-mobile .desk-period, html.force-mobile .app-grid, html.force-mobile .mini-row { zoom:1; }
+/* v3.9.x：桌面卡片缩放在手机端禁用——#707 起改由 JS 类门控兜底（personalize.js
+   syncDeskZoomClass：宽窗>900px 且非平板且缩放值≠1 才挂 html.desk-zoom-font/card），
+   手机端根本不产生 zoom 声明，此处原 html.force-mobile 的 zoom:1 重置块已删——
+   zoom:1 的声明本身也会把子树带进 WebKit 新 zoom 实现的继承/布局路径
+   （iOS 卡顿红线，见 home.css #707 注释） */
 
 /* v3.5.139：真全屏（Fullscreen API / PWA display_override 直启）时 .phone 铺满整个窗口——
    桌面 F11 等全屏由 fullscreen.js 加 .fs-active 类触发；PWA 安装直启走 display-mode 媒体查询。
    作用：壁纸（.phone 背景图）随之盖满全屏（电脑上包括模拟器两侧灰底），
    且 .phone 占满 100dvh 后底部导航栏/桌面组件必然完整显示，不再被固定高度推出屏幕。 */
 .fs-active .phone, .fs-css-active .phone {
-  width:100vw; height:100vh; height:100svh; height:100dvh;
+  width:100vw; height:100vh;
   max-width:none; border-radius:0; box-shadow:none;
-  padding:0 18px 18px;
+  padding:0 calc(18px + var(--mochi-side-adj,0px)) 18px;
 }
+/* #853：svh/dvh 收进 @supports（老 WebKit 计算期作废机制，见上） */
+@supports (height: 100dvh) { .fs-active .phone, .fs-css-active .phone { height:100svh; height:100dvh; } }
 @media (display-mode: fullscreen) {
   .phone {
-    width:100vw; height:100vh; height:100svh; height:100dvh;
+    width:100vw; height:100vh;
     max-width:none; border-radius:0; box-shadow:none;
-    padding:0 18px 18px;
+    padding:0 calc(18px + var(--mochi-side-adj,0px)) 18px;
   }
+  /* #853：svh/dvh 收进 @supports（老 WebKit 计算期作废机制，见上） */
+  @supports (height: 100dvh) { .phone { height:100svh; height:100dvh; } }
 }
 
 /* v3.7.x：iOS PWA standalone（添加到主屏幕）+ black-translucent 下，100dvh 不包含
@@ -616,10 +787,22 @@ html.force-mobile .desk-period, html.force-mobile .app-grid, html.force-mobile .
    :not(.ios-pwa-standalone) 是必需的：本选择器特异性 (0,2,1) 高于下方
    .ios-pwa-standalone .phone 的 (0,2,0)，不加守卫会把 v3.15.x 的 standalone 100vh
    修复压回去；standalone 没有浏览器工具条，本就不需要这条 */
+/* #853：vh 基线先行——老 WebKit（iOS<15.4）上下面 dvh 版整条不可见（@supports 为假），
+   落本条：--mochi-ios-h 是 syncVvFit 实测 px、恒 ≤ 视口高，min 的第二个操作数用 vh 与
+   dvh 等效（首个操作数恒是更小的实测 px，vh 版只在属性缺位的瞬态生效）；现代内核
+   @supports 版后置胜出、生效声明与改动前一致 */
+html.ios-vv-fit:not(.ios-pwa-standalone) .phone,
+html.tablet.ios-vv-fit:not(.ios-pwa-standalone) .phone { height:min(var(--mochi-ios-h, 100vh), 100vh); }
+@supports (height: 100dvh) {
 html.ios-vv-fit:not(.ios-pwa-standalone) .phone,
 html.tablet.ios-vv-fit:not(.ios-pwa-standalone) .phone { height:min(var(--mochi-ios-h, 100dvh), 100dvh); }
+}
+.ios-pwa-standalone .phone,
+html.tablet.ios-pwa-standalone .phone { height:min(100vh, var(--mochi-ios-h, 100vh)); }
+@supports (height: 100dvh) {
 .ios-pwa-standalone .phone,
 html.tablet.ios-pwa-standalone .phone { height:min(100vh, var(--mochi-ios-h, 100dvh)); }
+}
 /* v3.27.x：iOS PWA standalone + ios-fs-active（已隐藏模拟状态栏）下，视口 innerHeight
    即完整可视高，100vh 却等于 screen.height（含被隐藏状态栏区）→ .phone 超出视口、
    body 可滚、桌面顶部/底部各被裁（iPhone17 Edge 反馈"图标按钮显示不全"）。
@@ -678,7 +861,11 @@ html.ios-pwa-standalone body { background: var(--bg-b); }
    min-height:0 必带：上方 html,body{min-height:100vh} 的 100vh 在 iOS=整块物理屏，
    不归零会把 body 顶高到 956，与 .phone 之间又生出居中位移。 */
 html.ios-pwa-standalone.ios-cover-top,
-html.ios-pwa-standalone.ios-cover-top body { height:var(--mochi-ios-h, 100dvh); min-height:0; align-items:flex-start; }
+html.ios-pwa-standalone.ios-cover-top body { height:var(--mochi-ios-h, 100vh); min-height:0; align-items:flex-start; }
+/* #853：dvh 兜底收进 @supports——老 WebKit 上键盘会话期 var 被摘除时该声明会把 body 高度
+   作废成 auto（容器塌陷＝覆盖形态整页居中位移复发）；100vh 版先行兜住（该形态仅 iOS
+   standalone 覆盖形态命中，iPad/保留形态 env=0 不相干）；现代内核 dvh 版胜出＝与改动前一致 */
+@supports (height: 100dvh) { html.ios-pwa-standalone.ios-cover-top body { height:var(--mochi-ios-h, 100dvh); } }
 /* v3.7.x：display-mode: standalone 媒体查询底色兜底（不依赖 fullscreen.js 加类）——
    iOS/安卓从主屏幕打开 PWA 时该媒体查询恒为真；若 JS 层 inIosStandalone 检测
    （navigator.standalone / matchMedia standalone）因任何原因失败、ios-pwa-standalone
@@ -864,10 +1051,13 @@ html.tablet .phone {
      640/820 限宽居中——多台 iPad 用户反馈「四边不贴合」；横屏同改见下方媒体查询。
      内容阅读宽度由内部组件自行约束（横屏气泡 460px 封顶规则保留） */
   width:100vw; max-width:none; flex-shrink:0;
-  height:100vh; height:100svh; height:100dvh;
+  height:100vh;
   border-radius:0; box-shadow:none;
-  padding:0 18px 18px;
+  padding:0 calc(18px + var(--mochi-side-adj,0px)) 18px;
 }
+/* #853：svh/dvh 收进 @supports（老 WebKit 计算期作废机制，见上）——iOS<15.4 平板落
+   上方 ios-vv-fit 的 vh 基线（--mochi-ios-h 实测 px），本条只在其缺位瞬态兜底 */
+@supports (height: 100dvh) { html.tablet .phone { height:100svh; height:100dvh; } }
 html.tablet .phone.no-statusbar { padding:0; }
 html.tablet .statusbar {
   padding-top:max(calc(14px + var(--mochi-safe-top, env(safe-area-inset-top, 0px))), 14px);
@@ -893,11 +1083,9 @@ html.tablet .phone .page.full .chat-head { padding-top:calc(10px + var(--mochi-s
 html.tablet .phone .page.full { padding-bottom:0; }
 html.tablet #page-chat { background:var(--page-bg-grad); }
 html.tablet .tabbar { margin-bottom:var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px)); }
-/* 平板不应用桌面缩放（zoom 是 iOS 卡顿红线；平板按手机端体验处理，与竖屏一致） */
-html.tablet .page-slide { zoom:1; }
-html.tablet .deco-widget, html.tablet .mini-card, html.tablet .checkin,
-html.tablet .weekend-box, html.tablet .music-widget, html.tablet .memo-card,
-html.tablet .mood-card, html.tablet .week-card, html.tablet .desk-period, html.tablet .app-grid, html.tablet .mini-row { zoom:1; }
+/* 平板不应用桌面缩放——#707 起由 JS 类门控保证（syncDeskZoomClass 对 isTablet 永不挂
+   html.desk-zoom-font/card，zoom 声明不存在），原 html.tablet 的 zoom:1 重置已删：
+   声明 zoom:1 本身也会让平板子树进 WebKit 新 zoom 实现的路径（iOS 卡顿红线） */
 /* 平板大屏：桌面图标放大、消息气泡限宽（避免整行过长） */
 html.tablet .app .app-ico { width:64px; height:64px; }
 html.tablet .app .app-name { font-size:12px; }
@@ -1124,7 +1312,6 @@ html.ios-cover-top .phone .statusbar {
 .modal-textarea.ce-box {
   max-height:38vh;
   overflow-y:auto;
-  -webkit-overflow-scrolling:touch;
   overscroll-behavior:auto;
 }
 /* v3.25.x：长文只读弹窗（诊断信息）——宽版 + 放大多行框，避免窄小而难核对；
@@ -1141,7 +1328,9 @@ html.ios-cover-top .phone .statusbar {
    输入框视觉上「往上滑」（iPhone16P/iOS26 Safari 批量导入弹窗报障）。顶对齐后
    弹窗位置锚定顶部（安全区上边距兜底），高度变化只影响底边，输入区不再移动 */
 .modal-mask.modal-kb-dock { align-items: flex-start; }
-.modal-mask.modal-kb-dock .modal { margin-top: max(10px, env(safe-area-inset-top)); }
+/* FIX 2026-09-18 #718：env 补 ,0px 内定值——不支持 env 的老内核整条 max() 失效＝键盘期顶对齐
+   弹窗丢上边距贴死状态栏；与全站 var(--mochi-safe-*, env(..., 0px)) 双兜底口径对齐 */
+.modal-mask.modal-kb-dock .modal { margin-top: max(10px, env(safe-area-inset-top, 0px)); }
 .modal-swatches { display:flex; flex-wrap:wrap; gap:12px; margin-top:4px; }
 .modal-swatches[hidden] { display:none; }
 .modal-pills { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
@@ -1155,7 +1344,7 @@ html.ios-cover-top .phone .statusbar {
    胶囊行溢出仍先在行内滚，到边界放行给 .modal */
 .modal-group-chips {
   display:flex; flex-wrap:wrap; gap:8px; margin-top:4px;
-  max-height:36vh; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  max-height:36vh; overflow-y:auto;
   overscroll-behavior:auto;
 }
 .modal-group-chips[hidden] { display:none; }
@@ -1250,6 +1439,14 @@ html.ios-cover-top .phone .statusbar {
   margin-bottom:14px; white-space:pre-wrap; word-break:break-word;
 }
 .modal-static[hidden] { display:none; }
+/* FIX 2026-09-25 #1266：长说明弹窗的正文框也要「高度上限 + 框内滚动」——备份提醒（pwa.js 每天
+   进桌面必弹的那一层）正文实量 715px，而弹窗整体被 .modal 的 max-height:min(78vh,100%-24px) 截断，
+   胶囊行与「确定」排在正文之后落在裁剪区外（390×844 实测胶囊 rect.top 873、「确定」923 ＞ 视口 844，
+   elementFromPoint 取不到＝点不着），而 v3.25.x 按用户偏好隐藏了 .modal 的滚动条＝看不见也滑不着，
+   于是这一层遮罩长期在场＝用户所见「整屏发灰、页面按钮按不动」（iPhone 12 Pro Max／iOS 16.6 Safari
+   实报，多机型同现＝纯布局事实，零机型／零 UA 分支）。与 .modal-textarea.ce-box（v3.23.x）、
+   .modal-group-chips（#295）同一族做法；#612 口径保留 overscroll-behavior:auto，框内滚到边界仍放行给 .modal */
+.modal-static { max-height:38vh; overflow-y:auto; overscroll-behavior:auto; }
 
 /* ===== PWA 安装按钮 / iOS 提示 ===== */
 .pwa-install {
@@ -1281,12 +1478,54 @@ html.ios-cover-top .phone .statusbar {
 }
 .ver-update-bar[hidden] { display:none; }
 .ver-update-bar .vub-txt { font-weight:600; }
+/* v3.26.x #714：电脑端宽屏（>900px，桌面模拟器外壳形态）视口 fixed 浮层锚回手机壳——
+   手机上「视口=手机壳」，fixed 通栏条/贴边钮贴边即贴壳；电脑上视口 1440+，同样写法会
+   落到浏览器窗口边缘＝「按钮飞出屏幕」（用户实报）。壳几何（v3.5.139 布局推导）：
+   壳中线=视口中线、壳宽 390 ⇒ 壳左右沿=50%±195px；body padding24+双轴 flex 居中、
+   壳高 min(844px,100dvh-48px) ⇒ 壳上/下沿距视口沿=max(24px, 50vh-422px)。
+   :not 链排除满屏形态（html.force-mobile 伪装兜底 / .fs-active 等真全屏时
+   .phone=100vw，贴视口边=贴壳，此时锚回 390 反而错位）。老内核不识 max()/嵌套
+   calc/:not 链时整条声明丢弃、回退原视口贴边（同改动前宽屏表现）；
+   ≤900px 手机不进查询、零影响。 */
+@media (min-width: 901px) {
+  /* #717：:not(.tablet) 排除平板——html.tablet 时 .phone=100vw 全宽铺满（无 390 外壳），
+     视口贴边即贴壳；不排除会把浮层锚到「幽灵外壳」挤到平板屏幕中央（iPad 横屏 1180×820
+     实测 vub 落 395..785、群设置整页仅 390 宽；iPad Pro 竖屏 1024 同命中） */
+  html:not(.force-mobile):not(.tablet):not(.fs-active):not(.fs-css-active) .ver-update-bar { top: max(24px, 50vh - 422px); left: calc(50% - 195px); right: calc(50% - 195px); }
+  html:not(.force-mobile):not(.tablet):not(.fs-active):not(.fs-css-active) .pwa-install, html:not(.force-mobile):not(.tablet):not(.fs-active):not(.fs-css-active) .pwa-ios-hint { right: calc(50% - 179px); bottom: calc(max(24px, 50vh - 422px) + 16px); }
+}
 .ver-update-bar .vub-act {
   flex-shrink:0; padding:5px 14px; border-radius:99px;
   background:var(--card-bg); color:var(--ink); font-weight:700; cursor:pointer;
   -webkit-tap-highlight-color:transparent;
 }
 .ver-update-bar .vub-act:active { opacity:.8; }
+/* #1199：顶条里的裸 <b>（pwa.js「点此重试」等动态条）不参与 flex 压缩——中文按字断行，
+   被压到 min-content 就是一列竖排字（用户实报「去看怎么清」竖在屏幕边上、后面的关闭键整个
+   被挤出屏幕＝「弹窗无法关闭」）。同 chat-main.css:808 #306 那条「竖排字的根因」一个形状。 */
+.ver-update-bar > b { flex:none; white-space:nowrap; }
+/* #1199 内存回收警告条：文案长＋三个动作，横排必然挤爆。改成文案独占一行、动作另起一行，
+   「×」绝对定位钉右上角（不进 flex 流），任何字号/机型下都可见可点。
+   ⚠ 这里刻意不重写 display/width：#mem-warn-bar 的 ID 权重高于 .ver-update-bar[hidden]，
+   一旦在本条里写 display 就会打掉「点 × 收起」的能力（＝本次要修的 bug 原地复发）。 */
+#mem-warn-bar { flex-wrap:wrap; padding-right:48px; }
+#mem-warn-bar .vub-txt { flex:1 1 100%; }
+#mem-warn-bar #mem-warn-x { position:absolute; top:calc(9px + var(--mochi-safe-top, env(safe-area-inset-top, 0px))); right:10px; min-width:30px; text-align:center; font-size:18px; line-height:26px; }
+
+/* v3.3x.x：备份提醒顶条醒目配色——「数据被设备自动清空」是唯一没法用代码挽回的风险，
+   这条必须比版本更新条更抢眼（用户直派：人话提醒颜色要显眼）。红橙渐变底＋白字加粗＋
+   白底红字按钮；只钉 #backup-remind-bar 这一个 id，版本更新条/数据加载条等复用
+   .ver-update-bar 的顶条形态完全不变。明暗主题都用实色，不依赖主题变量。 */
+#backup-remind-bar { background:linear-gradient(90deg,#e8382c,#f26a1b); box-shadow:0 4px 18px rgba(232,56,44,.45); }
+#backup-remind-bar .vub-txt { color:#fff; font-weight:800; }
+#backup-remind-bar .vub-act { background:#fff; color:#c92a1f; }
+/* 通用弹窗的警示形态（openModal opts.warn）：红描边＋红标题＋红底说明块＋左侧红竖条，
+   正文只给「**…** 圈出的重点」上色（.modal-static-key，需配 opts.staticEmph）。
+   整段正文同染红＝满屏皆重点（用户反馈「备份里的文字全都变成红色了」），故正文回到普通说明色。 */
+.modal.modal--warn { border-color:#e8382c; box-shadow:0 20px 50px rgba(232,56,44,.3); }
+.modal.modal--warn .modal-title { color:#e8382c; }
+.modal.modal--warn .modal-static { background:rgba(232,56,44,.1); border:1px solid rgba(232,56,44,.35); border-left:4px solid #e8382c; }
+.modal.modal--warn .modal-static .modal-static-key { color:#c92a1f; font-weight:700; }
 
 /* ===== 手机端：弹层/半框内部滚动到边界不再穿透滚动下层页面（安卓/iOS 常见问题） ===== */
 .poke-card-scroll, .tc-body, .mg-list, .emoji-groups,
@@ -1341,3 +1580,11 @@ html.ios-cover-top .phone .statusbar {
 /* FIX 2026-09-13 #387 媒体池令牌缺数据占位（media-pool 观察器打标）——公用库跨设备共享
    不带池键时令牌解不出图，纯白不可辨；置灰+占位尺寸诚实可见，导入完整备份后自动恢复 */
 img.media-tok-missing { background: rgba(0,0,0,.06); min-width: 48px; min-height: 48px; object-fit: contain; opacity: .5; }
+
+/* v3.26.x #707 屏幕微调·整体位移轴（mobile-adapt.js mochiScreenAdj 写 var）：
+   整页相对偏移，治「某些屏幕整体位置偏上/偏下导致顶部或底部被遮挡」。正=下移、负=上移。
+   .phone 本就 position:relative（base.css 顶部主规则），top 位移不改文档流、无缩放（技术红线只禁 zoom/scale） */
+.phone { top: var(--mochi-shift-adj, 0px); }
+
+/* FIX 2026-09-20 #913 手机发烫收口②：切后台全局暂停动画的落点（mobile-adapt.js 在 document.hidden 时挂类；回前台移除即刻恢复） */
+body.mochi-bg-pause *, body.mochi-bg-pause *::before, body.mochi-bg-pause *::after { animation-play-state: paused !important; }

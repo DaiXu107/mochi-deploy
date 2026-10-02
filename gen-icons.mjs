@@ -1,5 +1,8 @@
 // ===== 生成 PWA 图标（白底 + 深色 mochi 文字）=====
-// 用法：node gen-icons.mjs  → 生成 src/pwa/icon-192.png、icon-512.png、icon-180.png、icon-maskable-512.png
+// ⚠️ 已停用（2026-09-18）：线上图标已换为画布设计的「mochi / 字卡传讯」两行版，
+//    源文件直接放在 src/pwa/ 和项目根目录。重跑本脚本会把新图标覆盖回旧像素字母版！
+//    如确需重新生成，先从 icon-backup-20260918/ 对照旧版样式。
+// 用法（已废弃）：node gen-icons.mjs  → 生成 src/pwa/icon-192.png、icon-512.png、icon-180.png、icon-maskable-512.png
 import { deflateSync } from 'node:zlib';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

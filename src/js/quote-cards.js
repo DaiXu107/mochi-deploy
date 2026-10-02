@@ -18,18 +18,18 @@
 
   // 默认情话库（与桌面今日情话一致）
   const DEFAULT_QUOTES = [
-    '我偏爱你。', '我只对你这样。', '过来，让我抱一下。', '别走，再陪我一会儿。',
-    '你是我的例外。', '今天也很喜欢你。', '你在，我就安心。', '我舍不得你。',
-    '我想和你待久一点。', '你是我想留下的人。', '我想把你留在身边。', '你可以一直依赖我。',
-    '不用猜，我就是喜欢你。', '你对我很重要。', '来我身边。', '我想一直站在你这边。',
-    '你可以多依赖我一点。', '我喜欢你看着我的时候。', '我喜欢你待在我身边。', '你来了，我就不想走了。',
-    '再靠近一点。', '让我抱抱你。', '今天也想见你。', '我想陪着你。',
-    '我希望你一直在。', '你可以把我当成你的归处。', '我想成为你最先想到的人。', '我想把我的偏爱都给你。',
-    '你不用和任何人比较。', '在我这里，你一直是特别的。', '我怎么可能舍得丢下你。', '你回来，我就高兴。',
-    '我等你，不是因为没事做。', '我只是想陪你。', '我喜欢你需要我的样子。', '你不用一个人撑着。',
-    '累了就来找我。', '不管什么时候，你都可以来找我。', '我想听你多说一会儿。', '我还想和你聊很久。',
-    '今天也想把时间留给你。', '我有很多话想告诉你。', '其实我一直都在想你。', '你不在的时候，我会想你。',
-    '我喜欢你在我身边的感觉。', '只要是你，久一点也没关系。'
+    '我偏爱你', '我只对你这样', '过来，让我抱一下', '别走，再陪我一会儿',
+    '你是我的例外', '今天也很喜欢你', '你在，我就安心', '我舍不得你',
+    '我想和你待久一点', '你是我想留下的人', '我想把你留在身边', '你可以一直依赖我',
+    '不用猜，我就是喜欢你', '你对我很重要', '来我身边', '我想一直站在你这边',
+    '你可以多依赖我一点', '我喜欢你看着我的时候', '我喜欢你待在我身边', '你来了，我就不想走了',
+    '再靠近一点', '让我抱抱你', '今天也想见你', '我想陪着你',
+    '我希望你一直在', '你可以把我当成你的归处', '我想成为你最先想到的人', '我想把我的偏爱都给你',
+    '你不用和任何人比较', '在我这里，你一直是特别的', '我怎么可能舍得丢下你', '你回来，我就高兴',
+    '我等你，不是因为没事做', '我只是想陪你', '我喜欢你需要我的样子', '你不用一个人撑着',
+    '累了就来找我', '不管什么时候，你都可以来找我', '我想听你多说一会儿', '我还想和你聊很久',
+    '今天也想把时间留给你', '我有很多话想告诉你', '其实我一直都在想你', '你不在的时候，我会想你',
+    '我喜欢你在我身边的感觉', '只要是你，久一点也没关系'
   ];
   function toast(msg) {
     let t = document.getElementById('cc-toast');
@@ -106,6 +106,61 @@
   // 供桌面「今日情话」使用：当天固定一条（自定义库优先）
   // v3.6.x：关闭「使用系统预设」后只从用户添加的情话里抽；没有用户自定义则返回空（桌面显示默认兜底文案）
   // v3.6.x：单卡开关过滤——用户关闭的预设句（quote-off:*）不参与抽取
+  // FIX 2026-09-28 #1371d：这本账一直是「JSON.parse(同步读数 || 空) → 改 → store.set(整包)」，
+  // 而 #1361 写下「这是最后两本」时漏了它。同步读空在这本账上有三种真实来路（#1361n 已逐条记过）：
+  // 收藏/字卡包被压缩令牌化压回 200KB 以下⇒大键那三格证据看不见、这一格的 LS 副本被主动剥掉、
+  // 启动回填整轮 bail out。旧写法把「没读到」折叠成 [] ⇒ 删一条／加几条之后整包写回＝库里那一本
+  // 被这一发顶掉＝用户所见「自定义字卡没了」。这里不新造尺子：判据用数据层那一句
+  // xyPackageEmptyRead（#1361n），取回走现成的 idbHydrateKey 三态（true 取回合并／null 库里确认
+  // 没有／false 这一发没读到），没读到就暂存这一发退避重试、绝不落笔（favPending／myeGateRetry
+  // 同款）。暂存的是「这一发要做的动作」而不是「算出来的那一份表」——取回后作用在真读到的那一本上，
+  // 所以删除不会把补回来的旧条目又塞回去。零机型／零 UA 分支。
+  let qcQueue = [], qcBusy = false, qcTry = 0, qcAuth = false;
+  function qcFullKey() { return (window.activePrefix ? window.activePrefix() : 'xy-home-v2:default') + ':' + KEY; }
+  function qcRun() {
+    const ops = qcQueue; qcQueue = [];
+    let out = getCustom();
+    try { ops.forEach(op => { const r = op(out); if (Array.isArray(r)) out = r; }); } catch (e) { return false; }
+    store.set(KEY, JSON.stringify(out));
+    try { renderMineList(); updateEntryCount(); } catch (e) {}
+    return true;
+  }
+  function qcFlush() {
+    if (qcBusy || !qcQueue.length) return;
+    // 读数非空＝这一发有权威；读空但库里已经回过话（true 取回落地／null 确认没有）同样有权威——
+    // 少了后半句，新用户（库里真没这一键）会被闸永远挡在门外＝#1342「不把闸门变成存不进去」那条约束
+    if (!window.xyPackageEmptyRead || !window.xyPackageEmptyRead(store, KEY) || qcAuth) { qcRun(); return; }
+    if (!window.idbHydrateKey) { qcRun(); return; } // 没有 IDB 这一层＝同步层就是全部真相
+    qcBusy = true;
+    window.idbHydrateKey(qcFullKey()).then(ok => {
+      qcBusy = false;
+      if (ok === false) {
+        // 这一发还是没读到：宁可让用户稍后再点一次，也不拿空表顶掉库里那一本
+        if (qcTry < 4) {
+          qcTry++;
+          try { window.__qcBlindHold = (window.__qcBlindHold || 0) + 1; } catch (e) {}
+          setTimeout(qcFlush, 1500 * qcTry);
+        } else { qcQueue = []; try { window.__qcBlindDrop = (window.__qcBlindDrop || 0) + 1; } catch (e2) {} }
+        return;
+      }
+      qcAuth = true; // true＝库里那一本已灌回同步层；null＝健康连接确认没有——两者之后「空」才是答案
+      qcTry = 0; qcFlush();
+    }, () => {
+      // 整发被拒（连接都开不出来）＝这一发没读到，走与 ok===false 同一档退避——直接重发会原地打转
+      qcBusy = false;
+      if (qcTry < 4) {
+        qcTry++;
+        try { window.__qcBlindHold = (window.__qcBlindHold || 0) + 1; } catch (e) {}
+        setTimeout(qcFlush, 1500 * qcTry);
+      } else { qcQueue = []; try { window.__qcBlindDrop = (window.__qcBlindDrop || 0) + 1; } catch (e2) {} }
+    });
+  }
+  // 返回 true＝已当场落笔；false＝先取回库里那一本再落（调用方据此如实措辞，不许谎报「已保存」）
+  function qcWrite(op) {
+    qcQueue.push(op);
+    qcFlush();
+    return !qcQueue.length;
+  }
   window.getQuoteOfDay = function () {
     const useDefault = getUseDefault();
     const custom = getCustom();
@@ -204,12 +259,17 @@
     el.innerHTML = html;
     el.querySelectorAll('.ta-del').forEach(b => {
       b.addEventListener('click', () => {
-        const list = getCustom();
-        list.splice(Number(b.dataset.idx), 1);
-        store.set(KEY, JSON.stringify(list));
-        renderMineList();
-        updateEntryCount();
-        toast('已删除');
+        const target = getCustom()[Number(b.dataset.idx)];
+        if (!target) return;
+        // #1371d：按内容认亲、只删第一条＝取回后作用在真读到的那一本上（旧下标在补回的那一发里不成立）
+        const landed = qcWrite(function (arr) {
+          let gone = false;
+          return arr.filter(x => {
+            if (!gone && x.t === target.t && String(x.grp || '') === String(target.grp || '')) { gone = true; return false; }
+            return true;
+          });
+        });
+        toast(landed ? '已删除' : '正在取回本地库存，稍等会自动删除');
       });
     });
     bindCqGroupOps();
@@ -255,11 +315,14 @@
         } else if (b.dataset.op === 'rm') {
           window.cardGroups.removeFlow(g.name, ok => {
             if (!ok) return;
-            const list = getCustom();
-            list.forEach(x => { if (x.grp === gid) x.grp = ''; });
-            store.set(KEY, JSON.stringify(list));
+            // #1371d：整包写回改走闸——这一发的动作作用在「真读到的那一本」上，读空时先取回再落
+            const landed = qcWrite(function (arr) {
+              arr.forEach(x => { if (x.grp === gid) x.grp = ''; });
+              return arr;
+            });
             saveGroups(groups.filter(x => x.id !== gid));
             refreshGrpSelect();
+            if (!landed) toast('正在取回本地库存，稍等会自动清除该组内容');
             renderMineList();
             toast('已删除分组「' + g.name + '」');
           });
@@ -301,17 +364,19 @@
       const grpSel = document.getElementById('cq-batch-grp');
       const parsed = window.cardGroups.parseCatVal(grpSel ? grpSel.value : '');
       if (!parsed) { toast('请先选择分组'); return; }
-      const list = getCustom();
-      items.forEach(it => {
-        const x = { t: it };
-        if (parsed.grp) x.grp = parsed.grp;
-        list.push(x);
+      // #1371d：添加走闸＝动作作用在取回来的那一本上，读空时不把「没读到」当「库里没有」再整包顶掉
+      const landed = qcWrite(function (arr) {
+        items.forEach(it => {
+          const x = { t: it };
+          if (parsed.grp) x.grp = parsed.grp;
+          arr.push(x);
+        });
+        return arr;
       });
-      store.set(KEY, JSON.stringify(list));
       if (ta) ta.value = '';
       renderMineList();
       updateEntryCount();
-      toast('已添加 ' + items.length + ' 句今日情话');
+      toast(landed ? '已添加 ' + items.length + ' 句今日情话' : '正在取回本地库存，稍等会自动添加 ' + items.length + ' 句');
     });
   }
   // v3.7.x：「＋分组」按钮（我添加的情话卡片标题行）

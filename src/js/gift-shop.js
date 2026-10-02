@@ -18,6 +18,15 @@
     clearTimeout(t._timer); t._timer = setTimeout(function () { t.className = 'cc-toast'; }, 2000);
   }
   function closeTc() { const m = document.getElementById('tc-mask'); if (m) m.hidden = true; }
+  // FIX 2026-09-21 #983 用户要求：在聊天里送礼物（聊天页「心意集市」面板挑一件）时，成交不再弹
+  // 黑色提示浮层（#cc-toast 黑底白字，见 chat-pages.css 的 #cc-toast / 本文件 toast()）；从聊天
+  // 「TA 的心愿」卡片点【送 TA】同理。口径与 #517「领取联系人红包不再弹黑色浮层」一致——礼物卡
+  // 就是回执：卡片就地转「已送出」、礼物气泡同时飞进聊天，黑色浮层只是重复打扰。
+  // 判据取「聊天页此刻是否在眼前」（市集/心意柜/桌面点进来时 openPage 隐藏全部 .page，看不到
+  // 那张卡，那里照旧保留「已送出」提示）。勿改成无条件删 toast：市集页面上没有任何回执。
+  function chatOnScreen() {
+    try { const p = document.getElementById('page-chat'); return !!(p && !p.hidden); } catch (e) { return false; }
+  }
   function fmtTime(tm) { const d = new Date(tm); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
   function fenToYuan(fen) { const y = fen / 100; if (y >= 100000) return (y / 10000).toFixed(1) + '万'; if (y >= 1000) return y.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ','); return y.toFixed(2); }
 
@@ -208,10 +217,16 @@
   }
 
   // v3 扩库新增「两个世界」分类（世界观商品：字卡沟通 / 隔空陪伴 / 体感 / 梦境）；
-  // v3 十批新增「饮品」分类（把散在各地的喝的归拢 + 新增特调）
-  const CATS = ['花束', '甜品', '饮品', '美食', '饰品', '星空', '两个世界', '出行', '娱乐', '关怀', '情侣用品', '日常用品'];
-  const CAT_ICON = { '花束': '🌸', '甜品': '🍰', '饮品': '🧋', '美食': '🍜', '饰品': '💍', '星空': '⭐', '两个世界': '🌗', '出行': '✈️', '娱乐': '🎟️', '关怀': '🤗', '情侣用品': '💑', '日常用品': '🧴' };
-  const CAT_COLOR = { '花束': '#fce4ec', '甜品': '#fff3e0', '饮品': '#ffe0b2', '美食': '#fff9c4', '饰品': '#f3e5f5', '星空': '#e8eaf6', '两个世界': '#e0f7fa', '出行': '#e1f5fe', '娱乐': '#e1bee7', '关怀': '#e0f2f1', '情侣用品': '#fce4ec', '日常用品': '#f1f8e9' };
+  // v3 十批新增「饮品」分类（把散在各地的喝的归拢 + 新增特调）；
+  // #859 新增「药品医护」分类（用户反馈「心意市里只有感冒药，缺日常用的药和手受伤要用的」）——
+  // 医药类原先散在 82 件的大「日常用品」里、总共只有 4 件，既翻不到也搜不全（搜「药」只命中感冒药）。
+  // 现单独成类：常备药按病症命名（退烧药/消炎药/止痛药/胃药/止咳糖浆…），外伤处理补齐
+  // （碘伏/医用棉签/纱布绷带/跌打药酒/冰袋…），类目名带「药」，搜索直接能筛出整柜。
+  // #870 再追加两类的理由都是「原来的家太挤、且不成套」：节日食品散在 48 件的「美食」里（中秋月饼还单独
+  // 躺在「甜品」），过什么节就得翻一大类；美妆个护在「日常用品」78 件里只有护手霜/润唇膏/香皂/洗浴套装 4 件。
+  const CATS = ['花束', '甜品', '饮品', '美食', '饰品', '星空', '两个世界', '出行', '娱乐', '关怀', '情侣用品', '日常用品', '药品医护', '节日节令', '美妆个护'];
+  const CAT_ICON = { '花束': '🌸', '甜品': '🍰', '饮品': '🧋', '美食': '🍜', '饰品': '💍', '星空': '⭐', '两个世界': '🌗', '出行': '✈️', '娱乐': '🎟️', '关怀': '🤗', '情侣用品': '💑', '日常用品': '🧴', '药品医护': '💊', '节日节令': '🧧', '美妆个护': '💄' };
+  const CAT_COLOR = { '花束': '#fce4ec', '甜品': '#fff3e0', '饮品': '#ffe0b2', '美食': '#fff9c4', '饰品': '#f3e5f5', '星空': '#e8eaf6', '两个世界': '#e0f7fa', '出行': '#e1f5fe', '娱乐': '#e1bee7', '关怀': '#e0f2f1', '情侣用品': '#fce4ec', '日常用品': '#f1f8e9', '药品医护': '#ffebee', '节日节令': '#fff8e1', '美妆个护': '#fce4ec' };
   window.GIFT_CAT_COLOR = CAT_COLOR;
   // v3.15.x 二调：价格带对齐红包金额体系（¥5.2/13.14/52/77.77/131.4/334.4/520/888.88/999.99/1314/5200）——
   // 零花档（≤¥15）= 一局小游戏的量级；日常档 ¥16~99 = 一两天游戏+花园收入；
@@ -325,15 +340,15 @@
     { id: 'g_walk', name: '陪你散步', emoji: '🚶', price: 0.00, cat: '关怀', wish: '饭后走一走，牵手那种' },
     { id: 'g_lullaby', name: '哄睡电台', emoji: '🎶', price: 0.00, cat: '关怀', wish: '念到你睡着为止' },
     { id: 'g_eyemask', name: '蒸汽眼罩', emoji: '😌', price: 12.90, cat: '日常用品', wish: '戴上睡个好觉，梦里我来找你' },
-    { id: 'g_lipbalm', name: '润唇膏', emoji: '💄', price: 25.00, cat: '日常用品', wish: '嘴唇干干的，怎么亲嘛' },
+    { id: 'g_lipbalm', name: '润唇膏', emoji: '💄', price: 25.00, cat: '美妆个护', wish: '嘴唇干干的，怎么亲嘛' },
     { id: 'g_thermos', name: '保温杯', emoji: '🍵', price: 39.00, cat: '日常用品', wish: '装上热水，胃暖了心就稳' },
     { id: 'g_plant', name: '小绿植', emoji: '🪴', price: 32.00, cat: '日常用品', wish: '养着它，像我们养这段日子' },
-    // v3 扩库二批：正常世界一般日用刚需品（全部归「日常用品」）
-    { id: 'g_handcream', name: '护手霜', emoji: '🧴', price: 29.90, cat: '日常用品', wish: '手好好养着，牵起来才舒服' },
-    { id: 'g_soap', name: '香皂', emoji: '🧼', price: 12.00, cat: '日常用品', wish: '洗手的时候，顺便想想我' },
+    // v3 扩库二批：正常世界一般日用刚需品（全部归「日常用品」；创可贴/口罩/感冒药 #859 起移入「药品医护」）
+    { id: 'g_handcream', name: '护手霜', emoji: '🧴', price: 29.90, cat: '美妆个护', wish: '手好好养着，牵起来才舒服' },
+    { id: 'g_soap', name: '香皂', emoji: '🧼', price: 12.00, cat: '美妆个护', wish: '洗手的时候，顺便想想我' },
     { id: 'g_wipes', name: '柔软纸巾', emoji: '🧻', price: 8.80, cat: '日常用品', wish: '鼻子娇气的人，正好用得上' },
-    { id: 'g_bandaid', name: '创可贴', emoji: '🩹', price: 5.00, cat: '日常用品', wish: '磕磕碰碰的，有我呢' },
-    { id: 'g_mask', name: '口罩', emoji: '😷', price: 9.90, cat: '日常用品', wish: '人多的地方，戴好再出门' },
+    { id: 'g_bandaid', name: '创可贴', emoji: '🩹', price: 5.00, cat: '药品医护', wish: '磕磕碰碰的，有我呢' },
+    { id: 'g_mask', name: '口罩', emoji: '😷', price: 9.90, cat: '药品医护', wish: '人多的地方，戴好再出门' },
     { id: 'g_powerbank', name: '充电宝', emoji: '🔋', price: 59.00, cat: '日常用品', wish: '随时满格，不怕联系不上我' },
     { id: 'g_cable', name: '数据线', emoji: '⚡', price: 19.90, cat: '日常用品', wish: '新的给你，别再将就用旧的' },
     { id: 'g_canvasbag', name: '帆布包', emoji: '👜', price: 49.00, cat: '日常用品', wish: '能装下零食，也装下好心情' },
@@ -343,10 +358,10 @@
     { id: 'g_bear', name: '玩偶熊', emoji: '🧸', price: 69.00, cat: '日常用品', wish: '我不在的时候，它替我值班' },
     { id: 'g_humid', name: '加湿器', emoji: '💧', price: 99.00, cat: '日常用品', wish: '屋里润一点，嗓子舒服一点' },
     { id: 'g_lunchbox', name: '保温饭盒', emoji: '🍱', price: 79.00, cat: '日常用品', wish: '中午也要吃口热乎的' },
-    { id: 'g_pill', name: '感冒药', emoji: '💊', price: 22.00, cat: '日常用品', wish: '抽屉里备着，用不上最好' },
+    { id: 'g_pill', name: '感冒药', emoji: '💊', price: 22.00, cat: '药品医护', wish: '抽屉里备着，用不上最好' },
     { id: 'g_phonestand', name: '手机支架', emoji: '📱', price: 25.00, cat: '日常用品', wish: '追剧空出来的手，用来牵我' },
-    // v3 扩库三批：正常日用生活刚需品（全部归「日常用品」）
-    { id: 'g_thermo', name: '体温计', emoji: '🌡️', price: 12.00, cat: '日常用品', wish: '不舒服先量一量，别硬扛' },
+    // v3 扩库三批：正常日用生活刚需品（全部归「日常用品」；体温计 #859 起移入「药品医护」）
+    { id: 'g_thermo', name: '体温计', emoji: '🌡️', price: 12.00, cat: '药品医护', wish: '不舒服先量一量，别硬扛' },
     { id: 'g_clipper', name: '指甲刀', emoji: '✂️', price: 9.90, cat: '日常用品', wish: '指甲勤剪，细节要干净' },
     { id: 'g_storage', name: '收纳箱', emoji: '📦', price: 35.00, cat: '日常用品', wish: '杂物收整齐，房间清爽' },
     { id: 'g_luggage', name: '行李箱', emoji: '🧳', price: 199.00, cat: '日常用品', wish: '想去哪，拉上就走' },
@@ -417,7 +432,7 @@
     { id: 'g_wrap', name: '卷饼', emoji: '🌯', price: 13.00, cat: '美食', wish: '料塞得满满的，管饱' },
     { id: 'g_salad', name: '沙拉', emoji: '🥗', price: 28.00, cat: '美食', wish: '吃草也要开开心心的' },
     { id: 'g_pretzel', name: '碱水结', emoji: '🥨', price: 10.00, cat: '美食', wish: '拧成结的小想念' },
-    { id: 'g_mooncake', name: '月饼', emoji: '🥮', price: 12.00, cat: '甜品', wish: '中秋那一口，提前补给你' },
+    { id: 'g_mooncake', name: '月饼', emoji: '🥮', price: 12.00, cat: '节日节令', wish: '中秋那一口，提前补给你' },
     { id: 'g_beads', name: '手串', emoji: '📿', price: 39.00, cat: '饰品', wish: '一颗一颗，都数成平安' },
     { id: 'g_sunglasses', name: '太阳镜', emoji: '🕶️', price: 79.00, cat: '饰品', wish: '防晒防眩光，酷是附赠的' },
     { id: 'g_crystal', name: '水晶手链', emoji: '🔮', price: 55.00, cat: '饰品', wish: '粉水晶，招桃花的那种' },
@@ -464,7 +479,7 @@
     { id: 'g_mirror', name: '梳妆镜', emoji: '🪞', price: 45.00, cat: '日常用品', wish: '出门前看一眼，今天也很美' },
     { id: 'g_sweater', name: '毛衣', emoji: '🧶', price: 129.00, cat: '日常用品', wish: '织得慢，但暖得很久' },
     // v3 扩库八批：送给对方的日常生活用品（全部归「日常用品」）
-    { id: 'g_bathset', name: '洗浴套装', emoji: '🛀', price: 49.00, cat: '日常用品', wish: '从头发到脚趾，都香香的' },
+    { id: 'g_bathset', name: '洗浴套装', emoji: '🛀', price: 49.00, cat: '美妆个护', wish: '从头发到脚趾，都香香的' },
     { id: 'g_mosquito', name: '驱蚊套装', emoji: '🦟', price: 19.00, cat: '日常用品', wish: '夏天睡整觉，不被嗡嗡吵' },
     { id: 'g_keyboard', name: '机械键盘', emoji: '⌨️', price: 129.00, cat: '日常用品', wish: '打字再忙，也要记得回我' },
     { id: 'g_books', name: '一套好书', emoji: '📚', price: 89.00, cat: '日常用品', wish: '睡前读几页，我藏在故事里' },
@@ -531,7 +546,61 @@
     { id: 'g_legquarter', name: '大鸡腿饭', emoji: '🍖', price: 22.00, cat: '美食', wish: '整只鸡腿，就盖在你饭上' },
     { id: 'g_taco', name: '塔可', emoji: '🌮', price: 16.00, cat: '美食', wish: '馅料满满，一口一个' },
     { id: 'g_baguette', name: '法棍', emoji: '🥖', price: 10.00, cat: '美食', wish: '外皮脆脆的，敲着响' },
-    { id: 'g_bagel', name: '贝果', emoji: '🥯', price: 12.00, cat: '美食', wish: '嚼劲十足，配奶油更好' }
+    { id: 'g_bagel', name: '贝果', emoji: '🥯', price: 12.00, cat: '美食', wish: '嚼劲十足，配奶油更好' },
+    // #859「药品医护」分类（用户反馈「心意市里只有感冒药，缺日常用的药和手受伤要用的」）：
+    // 常备药按「哪儿不舒服」命名，外伤处理按「受伤那一步」配齐——消毒（碘伏）→ 上药（跌打药酒）
+    // → 包扎（棉签/纱布/创可贴）→ 消肿（冰袋），配一句当日留言；价格走日常档，随手就能买。
+    { id: 'g_medfever', name: '退烧药', emoji: '💉', price: 18.00, cat: '药品医护', wish: '烧到难受才吃，吃完好好睡' },
+    { id: 'g_medanti', name: '消炎药', emoji: '🧪', price: 26.00, cat: '药品医护', wish: '伤口发炎别硬扛，按时吃' },
+    { id: 'g_medpain', name: '止痛药', emoji: '🩺', price: 20.00, cat: '药品医护', wish: '疼得睡不着就吃一片，别忍着' },
+    { id: 'g_medstomach', name: '胃药', emoji: '🫙', price: 24.00, cat: '药品医护', wish: '胃不舒服冲一包，别空着肚子' },
+    { id: 'g_medcough', name: '止咳糖浆', emoji: '🍯', price: 19.00, cat: '药品医护', wish: '咳得厉害喝一口，甜的润嗓子' },
+    { id: 'g_medthroat', name: '润喉糖', emoji: '🍬', price: 9.90, cat: '药品医护', wish: '嗓子哑了含一颗，今天少说话' },
+    { id: 'g_medeye', name: '眼药水', emoji: '💧', price: 16.00, cat: '药品医护', wish: '看久了滴一滴，眼睛也要歇' },
+    { id: 'g_medfloral', name: '花露水', emoji: '🌿', price: 14.00, cat: '药品医护', wish: '夏天蚊子多，出门前喷一点' },
+    { id: 'g_medvc', name: '维生素C', emoji: '🍊', price: 46.00, cat: '药品医护', wish: '一天一片，少感冒一次是一次' },
+    { id: 'g_medhuoxiang', name: '藿香正气水', emoji: '🥃', price: 12.00, cat: '药品医护', wish: '中暑头晕喝一支，苦但管用' },
+    { id: 'g_mediodine', name: '碘伏', emoji: '🧴', price: 12.00, cat: '药品医护', wish: '破皮先消毒，这两天别沾水' },
+    { id: 'g_medswab', name: '医用棉签', emoji: '🧷', price: 6.00, cat: '药品医护', wish: '换药的时候用得着，我来' },
+    { id: 'g_medgauze', name: '纱布绷带', emoji: '🩼', price: 15.00, cat: '药品医护', wish: '包好了别乱动，明天我换药' },
+    { id: 'g_medliniment', name: '跌打药酒', emoji: '🍶', price: 32.00, cat: '药品医护', wish: '磕青了要揉开，手给我，我来揉' },
+    { id: 'g_medice', name: '冰袋', emoji: '🧊', price: 8.00, cat: '药品医护', wish: '肿起来先冰一会儿，别急着揉' },
+    // #870 经期关怀（用户点名要补的一组）：疼的时候真正用得上的四件，配合经期记录用
+    { id: 'g_periodtea', name: '红糖姜茶', emoji: '🫖', price: 15.00, cat: '药品医护', wish: '疼的时候喝一口，热的' },
+    { id: 'g_periodwarm', name: '暖宝宝贴', emoji: '🔥', price: 9.90, cat: '药品医护', wish: '贴在小肚子上，别硬扛' },
+    { id: 'g_periodbag', name: '热水袋', emoji: '♨️', price: 26.00, cat: '药品医护', wish: '灌满热水，抱着它躺下' },
+    { id: 'g_periodpad', name: '痛经贴', emoji: '💗', price: 12.90, cat: '药品医护', wish: '贴一片，疼会轻一点' },
+    // #870 节日节令：一年里会到的日子各备一份（原来只有中秋的月饼，端午/元宵/春节/腊八全空）
+    { id: 'g_festzongzi', name: '粽子', emoji: '🫔', price: 12.00, cat: '节日节令', wish: '端午的咸蛋黄，挑最大的给你' },
+    { id: 'g_festtangyuan', name: '汤圆', emoji: '🍡', price: 13.14, cat: '节日节令', wish: '一人一半，团团圆圆' },
+    { id: 'g_festniangao', name: '年糕', emoji: '🍥', price: 16.00, cat: '节日节令', wish: '年年高一点点，我们一起' },
+    { id: 'g_festlaba', name: '腊八粥', emoji: '🥣', price: 10.00, cat: '节日节令', wish: '腊八这天，先把胃暖上' },
+    { id: 'g_festjiaozi', name: '手工饺子', emoji: '🥟', price: 22.00, cat: '节日节令', wish: '一起包的，歪的也算数' },
+    { id: 'g_festqingtuan', name: '青团', emoji: '🍃', price: 9.00, cat: '节日节令', wish: '把春天包进去，甜的那种' },
+    { id: 'g_festgingerbread', name: '圣诞姜饼', emoji: '🍪', price: 18.00, cat: '节日节令', wish: '咬一口，冬天就甜了' },
+    // #870 美妆个护：原来这一类几乎空白（只有护手霜/润唇膏/香皂/洗浴套装，还都埋在「日常用品」里）
+    { id: 'g_beautylip', name: '口红', emoji: '💋', price: 128.00, cat: '美妆个护', wish: '涂上它，我多说两句好听的' },
+    { id: 'g_beautyperfume', name: '香水', emoji: '🫧', price: 268.00, cat: '美妆个护', wish: '喷一点，走近了才闻得到' },
+    { id: 'g_beautyfacial', name: '面膜', emoji: '🧖', price: 89.00, cat: '美妆个护', wish: '敷着别动，这十五分钟归我' },
+    { id: 'g_beautysun', name: '防晒霜', emoji: '☀️', price: 78.00, cat: '美妆个护', wish: '太阳再大，也先护着你' },
+    { id: 'g_beautybody', name: '身体乳', emoji: '💧', price: 68.00, cat: '美妆个护', wish: '洗完澡记得涂，滑滑的好抱' },
+    { id: 'g_beautyhair', name: '护发精油', emoji: '🌿', price: 96.00, cat: '美妆个护', wish: '头发顺了，扎起来也好看' },
+    { id: 'g_beautynail', name: '美甲套装', emoji: '💅', price: 68.00, cat: '美妆个护', wish: '指甲换个新颜色，给我看看' },
+    { id: 'g_beautybrush', name: '化妆刷', emoji: '🖌️', price: 45.00, cat: '美妆个护', wish: '刷子在手里，你最好看' },
+    { id: 'g_beautyshadow', name: '眼影盘', emoji: '🎨', price: 99.00, cat: '美妆个护', wish: '画个亮一点的，今天要出门' },
+    { id: 'g_beautycotton', name: '化妆棉', emoji: '🧽', price: 12.00, cat: '美妆个护', wish: '卸干净再睡，别懒' },
+    // #870 关怀补两件经期场景的服务型礼物（便宜但最实用，跟「揉揉肩」同类）
+    { id: 'g_bellyrub', name: '帮你揉肚子', emoji: '🫳', price: 0.00, cat: '关怀', wish: '手搓热了，揉到你不疼' },
+    { id: 'g_liedown', name: '陪你躺一天', emoji: '🛋️', price: 0.00, cat: '关怀', wish: '什么都不干，就躺着陪你' },
+    // #870 花束补齐（原来只有 8 件，是全库最少的分类）
+    { id: 'g_lily', name: '百合', emoji: '🌺', price: 25.00, cat: '花束', wish: '百年好合，说的就是我们' },
+    { id: 'g_carnation', name: '康乃馨', emoji: '🏵️', price: 15.00, cat: '花束', wish: '温柔的话，都包在这朵里' },
+    { id: 'g_hydrangea', name: '绣球', emoji: '💮', price: 68.00, cat: '花束', wish: '一整球，圆圆满满给你' },
+    { id: 'g_lotus', name: '荷花', emoji: '🪷', price: 26.00, cat: '花束', wish: '清清淡淡，也很好看' },
+    { id: 'g_champagne', name: '香槟玫瑰', emoji: '🥂', price: 66.00, cat: '花束', wish: '颜色像香槟，看一眼就想庆祝' },
+    { id: 'g_driedflower', name: '干花束', emoji: '🥀', price: 12.00, cat: '花束', wish: '干了也不扔，和心意一样耐放' },
+    { id: 'g_ginkgo', name: '银杏叶', emoji: '🍁', price: 8.80, cat: '花束', wish: '秋天第一片，夹进你的书里' },
+    { id: 'g_dandelion', name: '蒲公英', emoji: '🍃', price: 6.60, cat: '花束', wish: '吹散之前，愿望都归你' }
   ];
   const DEF_IDS = {};
   DEF_GIFTS.forEach(function (g) { DEF_IDS[g.id] = 1; });
@@ -554,6 +623,28 @@
   const GIFTS_KEY = 'market-gifts'; // 旧各桌面商品库键（仅迁移读取用）
   function customLoad() { try { const a = JSON.parse((GSTORE && GSTORE.get(CUSTOM_KEY)) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
   function customSave(a) { if (GSTORE) GSTORE.set(CUSTOM_KEY, JSON.stringify(a)); }
+  // #1488 大键冷读闸：market-custom 带图后是 >200KB 的 IDB-only 大键（xyStore.set 大键分支主动
+  // 摘掉 LS 副本），冷启动回填未轮到／切后台被按体积放掉／iOS 回收重开时，同步读就是 null——
+  // 那是「没读到」，不是「没有」；此刻拿空账整包写回＝把库里整本商品库顶掉（用户视角＝上传的
+  // 商品刷新后全消失，再传一次就只剩新传那件，永远攒不起来；iPhone 15／iOS 18.6.2 Safari 实报，
+  // 安卓／桌面同链路）。判据只有数据层那一句 awaitingBigKey（零机型／零 UA）；出口也是数据层
+  // 现成的：值读回（内存/LS 有值）或健康连接确认库里真无此键（大键缺席裁决）即自动放行，
+  // 不把这道闸变成新的「存不进去」。与信箱／朋友圈／字卡库／美化方案同一族，本页最后接闸。
+  function customReadUnconfirmed() {
+    try { return !!(GSTORE && typeof GSTORE.awaitingBigKey === 'function' && GSTORE.awaitingBigKey(CUSTOM_KEY)); } catch (e) { return false; }
+  }
+  function customWriteBlocked() {
+    try { if (window.xyBigWriteBlocked && window.xyBigWriteBlocked(GSTORE, CUSTOM_KEY, '心意集市商品库')) return true; } catch (e) {}
+    return false;
+  }
+  function customAwaitBack(cb) {
+    try { if (GSTORE && GSTORE.requestBigKey) GSTORE.requestBigKey(CUSTOM_KEY); } catch (e) {}
+    try { if (GSTORE && GSTORE.whenBigKeyBack) GSTORE.whenBigKeyBack(CUSTOM_KEY, function () { try { cb(); } catch (e0) {} }); } catch (e1) {}
+  }
+  function marketRerenderBoth() {
+    try { if (marketPage && !marketPage.hidden) renderMarket(); } catch (e0) {}
+    try { const gp = document.getElementById('chat-gift-panel'); if (gp && !gp.hidden) giftPanelRerender(); } catch (e1) {}
+  }
   function giftsLoad() {
     const dead = {}, ov = {}, customs = [];
     customLoad().forEach(function (c) {
@@ -570,7 +661,7 @@
     });
     return out.concat(customs);
   }
-  function deleteGift(id) {
+  function deleteGift(id) { if (customWriteBlocked()) return;
     const customs = customLoad();
     const idx = customs.findIndex(function (x) { return x && x.id === id; });
     if (DEF_IDS[id]) {
@@ -581,11 +672,96 @@
     }
     customSave(customs);
   }
+  // #858 商品数据包（用户 2026-09-19 直派「心意集市：可以导入数据和导出数据」）——只装
+  // 「我自己上传的商品」这一样，不装默认商品、不装对默认商品的修改/删除记录（别人的删除标记
+  // 搬过来会删掉本机默认商品），也不装心意币/心愿单/心意柜。上传时的图片已经是内嵌 data:URL
+  // （compressGiftImg 压到 480px JPEG），所以一个文件即自带全部图片、换机可还原。
+  const GOODS_PACK_APP = 'mochi-market-goods';
+  const GOODS_IMG_MAX = 1200000;   // 单件图片上限（base64 字符数，约 900KB 原图）
+  const GOODS_PACK_MAX = 3145728;  // 商品库总量上限（含图片）；超出的条目本次不导入，而不是撑爆本地存储
+  function customMine() {
+    return customLoad().filter(function (c) { return c && c.id && !c.del && !c.base; });
+  }
+  // 判重特征：名字/价格/分类/emoji + 图片长度与头尾（整串比较＝把每张几十 KB 的 base64 全塞进 set 键）
+  function goodsSig(g) {
+    const img = String((g && g.img) || '');
+    return [g && g.name, g && g.price, g && g.cat, g && g.emoji, img.length, img.slice(0, 48), img.slice(-24)].join('\u0001');
+  }
+  function freshGid(used) {
+    let id;
+    do { id = 'g_custom_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7); } while (used[id]);
+    return id;
+  }
+  // 单件归一：坏条目一律丢弃，绝不把非法值写进商品库（外来文件的 name/price/cat/emoji/img 都不可信）
+  function cleanGoods(x) {
+    if (!x || typeof x !== 'object' || Array.isArray(x)) return null;
+    if (x.del || x.base) return null;
+    const name = String(x.name == null ? '' : x.name).replace(/\s+/g, ' ').trim().slice(0, 20);
+    if (!name) return null;
+    const price = Math.round(Math.max(0, Math.min(99999999, Number(x.price) || 0)) * 100) / 100;
+    const cat = CATS.indexOf(String(x.cat || '')) >= 0 ? String(x.cat) : '关怀';
+    const emoji = String(x.emoji == null ? '' : x.emoji).trim().slice(0, 8) || '🎁';
+    const wish = String(x.wish == null ? '' : x.wish).trim().slice(0, 60) || '送给你';
+    let img = String(x.img == null ? '' : x.img);
+    if (!/^data:image\//i.test(img) || img.length > GOODS_IMG_MAX) img = ''; // 只收本地上传的内嵌图，外链/超大图丢弃
+    const id = /^g_custom_[A-Za-z0-9_]+$/.test(String(x.id || '')) ? String(x.id) : '';
+    return { id: id, name: name, emoji: emoji, img: img, price: price, cat: cat, wish: wish };
+  }
+  // 兼容三种文件：本页导出的 {goods:[…]} / 裸数组 / 「功能数据」整包（商品在 keys['xy-home-v2:market-custom']）
+  function goodsFromPack(data) {
+    if (!data || typeof data !== 'object') return null;
+    let arr = null;
+    if (Array.isArray(data)) arr = data;
+    else if (Array.isArray(data.goods)) arr = data.goods;
+    else if (Array.isArray(data.items)) arr = data.items;
+    else if (data.keys && typeof data.keys === 'object' && !Array.isArray(data.keys)) {
+      const raw = data.keys['xy-home-v2:market-custom'];
+      if (Array.isArray(raw)) arr = raw;
+      else if (typeof raw === 'string') { try { const p = JSON.parse(raw); if (Array.isArray(p)) arr = p; } catch (e) {} }
+    }
+    return (arr && arr.length) ? arr : null;
+  }
+  // 合并进商品库：同 id 同内容＝已有（跳过）；同 id 不同内容＝同一个文件的更新版（就地更新）；
+  // 同内容不同 id＝同一件商品（跳过，导入两次不会翻倍）；其余新增（id 撞车就重新发号）。
+  function mergeGoods(existing, incoming) {
+    const list = existing.slice();
+    const byId = Object.create(null), bySig = Object.create(null);
+    list.forEach(function (c, i) {
+      if (!c || !c.id) return;
+      byId[c.id] = i;
+      if (!c.del && !c.base) bySig[goodsSig(c)] = i;
+    });
+    let added = 0, updated = 0, skipped = 0, bad = 0, over = 0, bytes = 0;
+    try { bytes = JSON.stringify(list).length; } catch (e) { bytes = 0; }
+    incoming.forEach(function (raw) {
+      const g = cleanGoods(raw);
+      if (!g) { bad++; return; }
+      const sig = goodsSig(g);
+      if (sig in bySig) { skipped++; return; }
+      const at = g.id ? byId[g.id] : undefined;
+      // 同 id 且同名字＝这一件商品的更新版（改价/换图后重新导出再导入）→ 就地更新；
+      // 同 id 却不是同一个名字（别人导出的包撞了号）→ 当新商品发新号，宁可贵一件也不覆盖已有数据
+      const hit = (at != null && list[at] && !list[at].del && !list[at].base && String(list[at].name) === g.name) ? at : -1;
+      let item = g;
+      if (hit < 0) {
+        item = Object.assign({}, g);
+        if (!item.id || byId[item.id] != null) item.id = freshGid(byId);
+      }
+      let size = 0;
+      try { size = JSON.stringify(item).length; } catch (e) { size = 0; }
+      if (bytes + size > GOODS_PACK_MAX) { over++; return; }
+      bytes += size;
+      if (hit < 0) { list.push(item); byId[item.id] = list.length - 1; bySig[sig] = list.length - 1; added++; }
+      else { list[hit] = item; bySig[sig] = hit; updated++; }
+    });
+    return { list: list, added: added, updated: updated, skipped: skipped, bad: bad, over: over };
+  }
+
   // 一次性迁移：把各桌面旧的 market-gifts（整库快照）里的自定义商品并入全局库，
   // 桌面上删过的默认商品记删除标记。幂等（market-migrated 标记 + id 去重），
   // 模块加载跑一次合并 LS；mochi-restore-done（IDB 回填完）后未打标记再跑一次
   function migrateMarketGlobal(setMark) {
-    if (!GSTORE || GSTORE.get(MIGRATE_KEY)) return;
+    if (!GSTORE || GSTORE.get(MIGRATE_KEY)) return; if (customReadUnconfirmed()) return; // #1488 读不全＝这一跑既不并也不落标记，restore-done 再来一趟
     const customs = customLoad();
     const seen = {};
     customs.forEach(function (c) { if (c && c.id) { seen[c.id] = 1; if (c.del) seen['del:' + c.id] = 1; } });
@@ -619,7 +795,7 @@
   }
   // 救援：迁移若在扩库前跑过，新默认商品被误标 del → 幂等清一次（每批独立标记键）
   function rescueBatch(ids, mark) {
-    if (!GSTORE || GSTORE.get(mark)) return;
+    if (!GSTORE || GSTORE.get(mark)) return; if (customReadUnconfirmed()) return; // #1488 同款：空读不清标不发号
     const customs = customLoad();
     let changed = false;
     for (let i = customs.length - 1; i >= 0; i--) {
@@ -638,6 +814,59 @@
   function boxLoad() { try { const s = store(); if (!s) return []; return JSON.parse(s.get(BOX_KEY) || '[]'); } catch (e) { return []; } }
   function boxSave(a) { const s = store(); if (s) s.set(BOX_KEY, JSON.stringify(a)); }
 
+  // #985：聊天礼物卡上的「领取态 / 追加回复」以**心意柜记录为单一事实源**，卡片只存 giftBoxId 指针。
+  // 为什么不写回聊天记录本身：心意柜是同步小键写入（可靠），而聊天大包对「改已有记录的字段」表达
+  // 不出增量——实测无头连回两条后记录里只剩后一条、甚至第一条当场从卡片上消失（基线合并把修改盖
+  // 回去），用户视角就是「我的回复自己消失了」。渲染侧按 id 查这张记忆化表（同 #588 taWishIds 口径，
+  // 每件礼物一次 JSON.parse 变成每轮一次），所有写入路径都 invalidate。
+  let _boxMeta = null;
+  function boxMetaInvalidate() { _boxMeta = null; }
+  // #1029：同一条回复被写两遍留下的**历史脏数据**清理（用户 2026-09-22 实报「送礼物后联系人追加
+  // 回复，同样的回复内容，礼物卡片里会重复变成两次」，红米 K70 Via 浏览器）。旧实现同一拍里连写
+  // 两次（同 who、同文本、ts 差 0~1ms），存量心意柜记录里就留着这样的成对条目；本批已修写入侧，
+  // 但**已经写进去的那一对**不会自己消失，卡片与心意柜仍会显示两行。判据收得很紧：只吞「相邻、
+  // 同 who、同文本、时间差 ≤1s」的条目——用户自己连回两句一样的话、TA 两次独立回话（间隔都以秒
+  // 计）都不会被吞。读侧（卡片经 giftGiftMeta、心意柜经 boxReplies）过滤；写侧 boxAttachReply 顺
+  // 手归一化，所以存量数据一旦再有新回复就彻底干净了。
+  // 判据按 who 分档（#1029 附4 收紧：用户实报「卡片里回复变成两条内容且重复」，而旧版那次双写的
+  // 第二笔走的是跨桌面异步链，实测可能隔几秒才落，1 秒窗口会漏）：
+  //  · who='ta'：TA 对**这件礼物**的自动回话设计上只有一条 ⇒ 同文本相邻即视为同一次投递的重复，
+  //    窗口放到 10 分钟（覆盖任何延迟写入），不再要求「1 秒内」。
+  //  · who='me'：我自己写的回复可能有意重复（同一句写两遍）⇒ 只吞 1 秒内的双提交。
+  const GIFT_REPLY_DUP_MS = 1000;
+  const GIFT_REPLY_TA_DUP_MS = 10 * 60 * 1000;
+  function boxReplyDupWindow(who) { return who === 'me' ? GIFT_REPLY_DUP_MS : GIFT_REPLY_TA_DUP_MS; }
+  function boxDedupeReplies(list) {
+    if (!Array.isArray(list)) return [];
+    const out = [];
+    for (let i = 0; i < list.length; i++) {
+      const r = list[i];
+      if (!r) continue;
+      const prev = out.length ? out[out.length - 1] : null;
+      if (prev && prev.who === r.who && String(prev.text) === String(r.text) &&
+          Math.abs((Number(prev.ts) || 0) - (Number(r.ts) || 0)) <= boxReplyDupWindow(r.who)) continue;
+      out.push(r);
+    }
+    return out;
+  }
+  function boxMetaMap() {
+    if (_boxMeta) return _boxMeta;
+    const m = {};
+    try {
+      const list = boxLoad();
+      if (Array.isArray(list)) list.forEach(function (it) {
+        if (!it || !it.id) return;
+        m[it.id] = { claimed: it.claimed === 0 ? 0 : (it.claimed === 1 ? 1 : null), replies: boxDedupeReplies(it.replies) };
+      });
+    } catch (e) {}
+    _boxMeta = m;
+    return m;
+  }
+  window.giftGiftMeta = function (boxId) {
+    if (!boxId) return null;
+    try { return boxMetaMap()[boxId] || null; } catch (e) { return null; }
+  };
+
   // v3.26.x 心愿单：市集「许愿—实现」闭环——我加心愿，TA 按概率买下送我；TA 也会把想要的
   // 加进自己的心愿单（我可买下送 TA），还能自己买礼物收进自己的心意柜（giftbox side 'self'）。
   // 心愿数据 per-cid（与心意柜同 namespace）；设置全局（GSTORE，与 market-custom 同 namespace）
@@ -646,6 +875,17 @@
   const WL_SETTINGS_KEY = 'market-wl-settings';
   const WL_MAX = 30;
   function clampPct(v, def) { const n = Math.round(Number(v)); return (n >= 0 && n <= 100) ? n : def; }
+  // #1437：次数型设置（每天最多 N 张／次）专用钳位——上限由调用方给，坏值与越界一律回默认
+  function clampCount(v, def, max) { const n = Math.floor(Number(v)); return (n >= 0 && n <= max) ? n : def; }
+  // #848 三档模式取值校验（0=系统预设话术 / 1=和正常聊天一样回复 / 2=混合），坏值回默认
+  function clampMode(v, def) { const n = Math.round(Number(v)); return (n === 0 || n === 1 || n === 2) ? n : def; }
+  // #848「TA 回什么」三档（与红包领后捎话 rp-thx-mode 同口径，两套各自存键、互不影响）
+  const GIFT_REPLY_MODES = [{ label: '系统预设话术', value: 0 }, { label: '像正常聊天一样回复', value: 1 }, { label: '混合', value: 2 }];
+  function giftReplyModeLabel(v) {
+    const n = clampMode(v, 1);
+    for (let i = 0; i < GIFT_REPLY_MODES.length; i++) { if (GIFT_REPLY_MODES[i].value === n) return GIFT_REPLY_MODES[i].label; }
+    return '像正常聊天一样回复';
+  }
   // #585：设置口径版本。旧记录没有 wlVer 标记——见 wlSettingsUpgrade 的处置说明。
   const WL_VER = 2;
   function wlSettingsRaw() {
@@ -656,7 +896,15 @@
     // #539 giftInOn「TA 送我礼物」总开关：默认 1=允许联系人给我送礼物（用户 2026-09-15 要求默认开启）；
     // #312 时代显式关过（存 0）的用户保持关闭不动，只有从未设置过的用户才落到新默认。
     // giftInPct=「TA 送我礼物」随机送礼概率（默认 5，旧实现写死 5% 无处可调）。
-    return { wlVer: WL_VER, giftInOn: s.giftInOn === 0 ? 0 : 1, giftInPct: clampPct(s.giftInPct, 5), wlOn: s.wlOn === 0 ? 0 : 1, wlBuyPct: clampPct(s.wlBuyPct, 20), wlAddPct: clampPct(s.wlAddPct, 15), selfOn: s.selfOn === 0 ? 0 : 1, selfPct: clampPct(s.selfPct, 10) };
+    // #660 wishChatOn「TA 的心愿发到聊天」总开关：默认 1=开（用户 2026-09-17 要求默认开启）；
+    // wishChatPct=TA 把商品加进自己心愿单时，顺带把这份心愿发进聊天的概率（默认 60）。
+    // #1437 wishChatDayMax=这份心愿卡**每天最多发几张**（默认 3，0~20，0＝只默默加心愿单不发卡）。
+    // 用户 2026-09-29 报「感觉联系人一直在买东西」：①④ 与 ② 各有 3 次/天的额度，唯独 ③ 的发卡
+    // 环节从来没被任何闸管过，额度耗尽后每个判定机会只剩它一条能走，越到当天后段越只冒「要东西」的卡。
+    // #848 giftReplyOn「我送礼后 TA 回一句」总开关：默认 1=开（用户 2026-09-19 要求默认开启，
+    // 同 wishChatOn 口径——只有显式存 0 才关）；giftReplyPct=送出一份礼物后 TA 回话的概率（默认 60）；
+    // giftReplyMode=回什么（0=系统预设话术 / 1=和正常聊天一样回复 / 2=混合），默认 1。
+    return { wlVer: WL_VER, giftInOn: s.giftInOn === 0 ? 0 : 1, giftInPct: clampPct(s.giftInPct, 5), wlOn: s.wlOn === 0 ? 0 : 1, wlBuyPct: clampPct(s.wlBuyPct, 20), wlAddPct: clampPct(s.wlAddPct, 15), wishChatOn: s.wishChatOn === 0 ? 0 : 1, wishChatPct: clampPct(s.wishChatPct, 60), wishChatDayMax: clampCount(s.wishChatDayMax, 3, 20), selfOn: s.selfOn === 0 ? 0 : 1, selfPct: clampPct(s.selfPct, 10), selfChatOn: s.selfChatOn === 0 ? 0 : 1, giftReplyOn: s.giftReplyOn === 0 ? 0 : 1, giftReplyPct: clampPct(s.giftReplyPct, 60), giftReplyMode: clampMode(s.giftReplyMode, 1) };
   }
   function wlSettingsSave(st) { if (GSTORE) GSTORE.set(WL_SETTINGS_KEY, JSON.stringify(st)); }
   // #585 设置口径一次性升级（用户 2026-09-16 报「联系人从来不会买礼物送到聊天」，根因之一）：
@@ -693,12 +941,21 @@
   //   ＝每开一次心意市集/聊天送礼面板就 302 次 parse（无头实测开面板明显慢半拍）。
   //   只在读侧缓存「id 集合」，不动 wishLoad 语义（避免缓存到数组后被写方原地改动产生别名 bug）；
   //   失效点挂在 wishSave 上——WL_TA_KEY 的全部写路径都走 wishSave（已核对无直写 set）。
+  // #660：缓存必须按桌面打标——心愿单是 per-cid 数据而缓存是模块级变量，切联系人后旧集合
+  //   会张冠李戴（市集「☆ TA许愿的」角标、聊天「TA 的心愿」卡片的待买/已送出判定都按新桌面
+  //   的数据读，却拿到上一个桌面的 id）。原先只有 wishSave 会清缓存，切桌面不清。
   let _taWishIds = null;
+  let _taWishIdsFor = '';
+  function taWishIdsFor() {
+    try { return (window.activePrefix ? window.activePrefix() : '') || String(window.__activeCid || ''); } catch (e) { return ''; }
+  }
   function taWishIds() {
-    if (!_taWishIds) {
+    const tag = taWishIdsFor();
+    if (!_taWishIds || _taWishIdsFor !== tag) {
       const ids = new Set();
       wishLoad(WL_TA_KEY).forEach(function (x) { if (x && x.giftId) ids.add(x.giftId); });
       _taWishIds = ids;
+      _taWishIdsFor = tag;
     }
     return _taWishIds;
   }
@@ -710,9 +967,101 @@
     wishSave(WL_MY_KEY, a.slice(0, WL_MAX));
     return true;
   }
-  function wishTaRemove(id) { wishSave(WL_TA_KEY, wishLoad(WL_TA_KEY).filter(function (x) { return x.giftId !== id; })); }
+  // #1316：清单被消费掉这一刻同时通知聊天「这件心愿兑现了」——聊天把该商品的每张心愿卡记上 wishSent
+  //   并按新数据重画。三扇门（聊天心愿卡／市集「☆ 心愿单」面板的送 TA／直接买下 TA 正许愿的那件）
+  //   都汇到这一个收口，所以只在这里挂一次；聊天侧函数缺席时静默跳过（渲染仍按实时数据判定，不更坏）。
+  function wishTaRemove(id) { wishSave(WL_TA_KEY, wishLoad(WL_TA_KEY).filter(function (x) { return x.giftId !== id; })); try { if (window.chatWishSettled) window.chatWishSettled(id); } catch (e) {} }
+  // #826（用户 2026-09-19 报「提示 XX 把礼物加进了 TA 的心愿单，点进心愿单却没看到」）：
+  // 提示说的是 TA 那一栏，而市集「☆ 心愿单」入口硬停在我的那栏，中间没有任何指引。现在按
+  // 「上次看过之后 TA 新许的愿」计未读，用来给入口挂数字、并决定面板落在哪个标签。
+  // 已读时间戳是 per-cid 键；未读直接从快照自带的 tm 推导（不另存计数器——买掉/移除条目都
+  // 不会错位）。首次无键时把当时的最新一条记成已读，免得老用户升级后一屏全是红点。
+  const WL_TA_SEEN_KEY = 'gift-wishlist-ta-seen';
+  function taWishUnread() {
+    const list = wishLoad(WL_TA_KEY);
+    const newest = list.reduce(function (m, x) { return Math.max(m, Number(x && x.tm) || 0); }, 0);
+    try {
+      const s = store(); if (!s) return 0;
+      const raw = s.get(WL_TA_SEEN_KEY);
+      if (raw === null) { s.set(WL_TA_SEEN_KEY, String(newest)); return 0; }
+      const seen = Number(raw) || 0;
+      return list.filter(function (x) { return (Number(x && x.tm) || 0) > seen; }).length;
+    } catch (e) { return 0; }
+  }
+  function taWishMarkSeen() { try { const s = store(); if (s) s.set(WL_TA_SEEN_KEY, String(Date.now())); } catch (e) {} }
 
-  function cardPool() { const pool = []; try { const d = window.DEFAULT_CARD_DATA; if (d && d.main) { d.main.forEach(function (c) { if (c && c[1]) c[1].forEach(function (x) { if (x) pool.push(x); }); }); } } catch (e) {} return pool; }
+  // #660「TA 的心愿发到聊天」（用户 2026-09-17：把商品放进清单时有概率发到聊天里，让我给 TA 买）：
+  // TA 把商品加进自己的心愿单那一刻，按设置概率把这份心愿作为一张卡片发进聊天。
+  // 卡片自带商品快照字段（商品日后被改/删不影响已发出的卡片），渲染在 chat.js 的
+  // special:'wish' 分支；「待买 / 已送出」不写进记录——聊天渲染时按 TA 心愿单的实时数据判
+  // （买下即 wishTaRemove），省掉一次跨文件的记录状态回写。
+  function wishChatPush(gift) {
+    try {
+      if (!gift || !gift.id || !window.chatAddGift) return false;
+      // #1341（复核 #1180）：本函数对调用方承诺的是「卡片真的发出去了」——旧写法无论投递成败都
+      // return true，于是被限流闸拦掉时那份「TA 把 X 加进了心愿单」的回落提示也跟着被吞＝用户既
+      // 看不见卡也不知道 TA 许了愿。开闸时先问额度（同一同步 tick，判据不会漂），没额度就返回
+      // false，让调用方照旧给提示。
+      if (window.chatRateLimitFull && window.chatRateLimitFull()) return false;
+      const wishText = '想要「' + (gift.name || '这个') + '」';
+      window.chatAddGift({
+        side: 'in', special: 'wish',
+        text: wishText,
+        wishGiftId: gift.id, wishGiftName: gift.name, wishGiftEmoji: gift.emoji,
+        wishGiftImg: gift.img || '', wishGiftPrice: gift.price, wishGiftCat: gift.cat,
+        wishGiftWish: gift.wish || '送给你', wishTs: Date.now()
+      });
+      // #915：心愿卡后台漏弹补通知——addRec notable 路只在页面隐藏时弹系统通知；
+      // 后台冻结的触发链回前台补跑才生成卡片（此刻已可见），若不补发，用户永远等不到
+      // 这类「切出去期间该弹的」弹窗。仅「刚从 ≥1 分钟真后台回来」且不停在聊天页时补发，
+      // 走 bg-keep 同一套去重闸门（同内容刚见过/刚弹过照样吞）。
+      try {
+        if (window.bgLateCatchup && window.bgLateCatchup() && window.bgNotifyCheck) {
+          const cp = document.getElementById('page-chat');
+          if (!(cp && !cp.hidden)) window.bgNotifyCheck(wishText, Date.now(), { name: partnerName() + '的心愿', late: true, kind: 'wish' });
+        }
+      } catch (e) {}
+      return true;
+    } catch (e) { return false; }
+  }
+  // 聊天渲染「TA 的心愿」卡片时问「这件还在 TA 的心愿单里吗」——读不到就当还在（宁可多显示
+  // 一次【送 TA】也不要凭空宣告已送出）。
+  window.giftTaWishHas = function (id) { try { return taWishIds().has(id); } catch (e) { return true; } };
+  // 聊天里点【送 TA】的入口：复用市集购买弹窗（同一扣款 + 心意柜 + 聊天送礼链路），
+  // 成交后回调让 chat.js 把卡片就地转「已送出」（DOM 与下标在 chat.js 手里，本文件不碰聊天记录）。
+  window.giftBuyFromWishCard = function (rec, done) {
+    if (!rec || !rec.wishGiftId) return false;
+    if (!taWishIds().has(rec.wishGiftId)) { toast(partnerName() + ' 的心愿单里已经没有这件啦'); return false; }
+    openBuyDialog({
+      id: rec.wishGiftId, name: rec.wishGiftName || '礼物', emoji: rec.wishGiftEmoji || '🎁',
+      img: rec.wishGiftImg || '', price: Number(rec.wishGiftPrice || 0), cat: rec.wishGiftCat || '',
+      wish: rec.wishGiftWish || '送给你'
+    }, { fromTaWish: true, onDone: done });
+    return true;
+  };
+
+  // FIX 2026-09-30 #1498 礼物寄语同样必须过闸：本池原先直接扫 DEFAULT_CARD_DATA.main 全量，
+  //   完全不认字卡库的逐张关闭（dc-off-main:<文案>）与整组停用（dc-groups-off.main）——
+  //   用户把主字卡关掉后，TA 送礼物/许愿时仍会把它们随机拼进寄语（1~5 张，见 taWish），
+  //   症状即用户报障「设置了禁止使用的字卡，联系人还是能使用」（多机型同现，与机型/浏览器无关）。
+  //   判据与聊天回复池同一条（isDefaultCardOff，一条同时认单卡闸与整组闸），零机型分支。
+  //   全关后 pool 为空 → taWish 的 `if (pool.length && ...)` 自然不拼卡，只留礼物自带寄语。
+  function cardPool() {
+    const pool = [];
+    try {
+      const d = window.DEFAULT_CARD_DATA;
+      const off = window.isDefaultCardOff;
+      if (d && d.main) {
+        d.main.forEach(function (c) {
+          if (c && c[1]) c[1].forEach(function (x) { if (x && !(off && off('main', x))) pool.push(x); });
+        });
+      }
+    } catch (e) {}
+    return pool;
+  }
+  // #1498 只读探针（与 window.__replyPoolDiag / __tiBankInfo 同款用途）：礼物寄语池现在的真实内容，
+  //   供诊断与行为尺读取「被禁的主字卡是否还被拼进寄语」。不写任何键。
+  window.__giftCardPool = function () { try { return cardPool(); } catch (e) { return []; } };
   function taWish(gift) {
     let wish = (gift && gift.wish) || '送给你';
     const pool = cardPool();
@@ -725,13 +1074,25 @@
     return wish;
   }
 
+  // #985（用户 2026-09-21 直派「这个回复没有加到联系人领取礼物的卡片里，也没有加到心意柜的
+  // 卡片里」＋「新增联系人送我礼物时的礼物卡片，我可以点击领取…同样可以点击这个卡片追加回复，
+  // 这条回复可以在我领取卡片里和发送到聊天消息里，同样可以添加到心意柜的卡片里」）：
+  // 心意柜记录新增 replies（这件礼物上的回复，双方都能追加）与 claimed（仅 side:'in' 的真礼物：
+  // 0=待领取、1=已领取）。**存量记录没有 claimed 字段＝旧版自动收下的，一律当已领取**（渲染侧
+  // 只认 `claimed === 0` 才显示待领取），绝不把历史礼物翻成待领取。
   function boxEntry(gift, side, wish) {
-    return { id: 'gb_' + Date.now() + '_' + Math.floor(Math.random() * 1000), giftId: gift.id, name: gift.name, emoji: gift.emoji, img: gift.img || '', price: gift.price, cat: gift.cat, wish: wish, side: side, tm: Date.now() };
+    const e = { id: 'gb_' + Date.now() + '_' + Math.floor(Math.random() * 1000), giftId: gift.id, name: gift.name, emoji: gift.emoji, img: gift.img || '', price: gift.price, cat: gift.cat, wish: wish, side: side, tm: Date.now(), replies: [] };
+    if (side === 'in') e.claimed = 0;
+    return e;
   }
   function recordBox(gift, side, wish) {
     const box = boxLoad();
-    box.unshift(boxEntry(gift, side, wish));
+    const entry = boxEntry(gift, side, wish);
+    box.unshift(entry);
     boxSave(box);
+    boxMetaInvalidate();
+    // #985：把记录本身回给调用方——聊天里那张礼物卡要靠它的 id 与心意柜互指（回复/领取两处同步）
+    return entry;
   }
   window.recordGiftBox = recordBox;
   // #585：向【指定联系人】的心意柜写记录。用途在「TA 送我」礼物的投递延迟窗（1.5~4s）里
@@ -761,8 +1122,154 @@
     let box = [];
     try { box = JSON.parse(s.get(BOX_KEY) || '[]'); } catch (e) { box = []; }
     if (!Array.isArray(box)) box = [];
-    box.unshift(boxEntry(gift, side, wish));
+    const entry = boxEntry(gift, side, wish);
+    box.unshift(entry);
     s.set(BOX_KEY, JSON.stringify(box));
+    boxMetaInvalidate();
+    return entry;
+  }
+  // #985：往「某件心意柜礼物」上追加一条回复。cid 允许跨桌面——TA 收礼回话有 0.9~2.4s 延迟窗，
+  // 用户可能已切桌面，而礼物与心意柜都绑在原桌面（同 #585 投递延迟窗的跨桌面口径）。
+  // who='ta'（TA 收礼后的回话）/ 'me'（我在卡片上回的一句）。找不到那件礼物就静默返回 false。
+  function boxAttachReply(cid, boxId, who, text) {
+    if (!boxId || !text) return false;
+    const s = boxStoreFor(cid);
+    let box = [];
+    try { box = JSON.parse(s.get(BOX_KEY) || '[]'); } catch (e) { box = []; }
+    if (!Array.isArray(box)) return false;
+    for (let i = 0; i < box.length; i++) {
+      const it = box[i];
+      if (it && it.id === boxId) {
+        if (!Array.isArray(it.replies)) it.replies = [];
+        // #1029：写入前顺手把旧版「同拍双写」留下的成对重复归一化——存量记录借这一次追加自我愈合
+        it.replies = boxDedupeReplies(it.replies);
+        it.replies.push({ who: who === 'me' ? 'me' : 'ta', text: String(text), ts: Date.now() });
+        try { s.set(BOX_KEY, JSON.stringify(box)); } catch (e2) {}
+        boxMetaInvalidate();
+        return true;
+      }
+    }
+    return false;
+  }
+  window.giftBoxAttachReply = function (boxId, who, text, cid) {
+    try { return boxAttachReply(cid || (window.__activeCid || 'default'), boxId, who, text); } catch (e) { return false; }
+  };
+  // #985：聊天卡片上点了【领取】→ 心意柜那件同步记「已领取」（跨桌面按 cid 写回）
+  function boxMarkClaimed(cid, boxId) {
+    if (!boxId) return false;
+    const s = boxStoreFor(cid);
+    let box = [];
+    try { box = JSON.parse(s.get(BOX_KEY) || '[]'); } catch (e) { box = []; }
+    if (!Array.isArray(box)) return false;
+    for (let i = 0; i < box.length; i++) {
+      const it = box[i];
+      if (it && it.id === boxId) {
+        it.claimed = 1;
+        try { s.set(BOX_KEY, JSON.stringify(box)); } catch (e2) {}
+        boxMetaInvalidate();
+        return true;
+      }
+    }
+    return false;
+  }
+  window.giftBoxMarkClaimed = function (boxId, cid) {
+    try { return boxMarkClaimed(cid || (window.__activeCid || 'default'), boxId); } catch (e) { return false; }
+  };
+  // #985：卡片上的领取/回复落库后，心意柜页开着就地重画（现读现画、幂等；没开着什么都不做）
+  window.giftBoxLiveRefresh = function () {
+    try { if (giftboxPage && !giftboxPage.hidden) renderBox(); } catch (e) {}
+  };
+
+  // #848：我送礼后 TA 的回应话术池（0 档/混合档用）。心愿兑现那套单独拎出来——
+  // 「你把我许的愿买了」比普通「谢谢」更贴场景，命中时优先走这一套。
+  const GIFT_REPLY_GENERIC = ['哇，谢谢亲爱的～', '你怎么知道我想要这个！', '收到啦，超喜欢❤', '破费啦，我好好收着', '嘿嘿，被你宠到了', '这份我喜欢，收下啦', '已经摆进心意柜最上层了'];
+  const GIFT_REPLY_WISH = ['我的心愿被你实现啦！', '真的买下啦…说好不让你乱花钱的', '许愿时没想过真能收到，谢谢～', '心愿单少了一件，开心值满格', '你记得我的心愿，这个最戳我'];
+  // #848：送出礼物后 TA 按概率回一句（市集/心意柜/聊天心愿卡【送 TA】任一途径都经 buyAndSend）。
+  // 门控读「心意集市和心意柜设置」：giftReplyOn 总开关（默认开）+ giftReplyPct 概率（默认 60）
+  // + giftReplyMode 内容来源（0=系统预设话术 / 1=和正常聊天一样回复 / 2=混合，默认 1）。
+  // 聊天式那一档走 window.genChatStyleReply（与互动卡「接聊天字卡」同一管线：字卡→兜底→词典拼字），
+  // 生成失败回落到预设池，绝不发空气泡。
+  // #1029 附3：同一次回话只投一次。写入（礼物卡＋心意柜）与**聊天里那条消息**算同一次投递，
+  // 重复投递一律整条吞掉、只留第一条。为什么要再加这层：boxDedupeReplies 只管记录侧（卡片与心意
+  // 柜），聊天气泡不在它的范围内——这条链一旦被触发两次（旧版同拍双写、内核上点按/定时器重复触发），
+  // 聊天里就会出现两条一模一样的气泡（用户实报「联系人是直接追加回复了两条，而且是一模一样的，
+  // 就是消息重复了啊」）。判据＝同一件礼物（同一个 giftBoxId）、同 who、同文本，窗口见 boxReplyDupWindow。
+  function boxReplyDup(cid, boxId, who, text) {
+    if (!boxId || !text) return false;
+    try {
+      const s = boxStoreFor(cid);
+      let box = []; try { box = JSON.parse(s.get(BOX_KEY) || '[]'); } catch (e) { return false; }
+      if (!Array.isArray(box)) return false;
+      const want = who === 'me' ? 'me' : 'ta';
+      for (let i = 0; i < box.length; i++) {
+        const it = box[i];
+        if (!it || it.id !== boxId) continue;
+        const list = boxDedupeReplies(it.replies);
+        const last = list.length ? list[list.length - 1] : null;
+        if (last && last.who === want && String(last.text) === String(text) &&
+            Math.abs(Date.now() - (Number(last.ts) || 0)) <= boxReplyDupWindow(want)) return true;
+        return false;
+      }
+    } catch (e) {}
+    return false;
+  }
+  function deliverGiftReply(cid, chatRec, txt, useChatStyle) {
+    if (!txt) return false;
+    const boxId = chatRec && chatRec.giftBoxId;
+    const sameDesk = (window.__activeCid || 'default') === cid;
+    if (boxId && boxReplyDup(cid, boxId, 'ta', txt)) return false;   // 这次投递已经投过 → 连聊天那条一起吞
+    var wrote = false;
+    if (sameDesk && window.chatGiftAttachReplyTo && chatRec) {
+      try { wrote = window.chatGiftAttachReplyTo(cid, chatRec.ts, 'ta', txt, chatRec) === true; } catch (eRA) {}
+    }
+    try { if (!wrote && boxId) wrote = boxAttachReply(cid, boxId, 'ta', txt) === true; } catch (eRB) {}
+    if (!wrote && !sameDesk && window.chatGiftAttachReplyTo && chatRec) {
+      try { window.chatGiftAttachReplyTo(cid, chatRec.ts, 'ta', txt, chatRec); } catch (eRD) {}
+    }
+    try { if (boxId && sameDesk && window.giftBoxLiveRefresh) window.giftBoxLiveRefresh(); } catch (eRC) {}
+    if (sameDesk) {
+      // 聊天式那档带「正在输入…」过渡，观感与普通回复一致（同红包领后捎话）
+      if (useChatStyle && window.chatAddInTyped) window.chatAddInTyped(txt, { silent: true });
+      else if (window.chatAddIn) window.chatAddIn(txt, { silent: true });
+    } else if (window.chatAppendDeskRec) {
+      // 投递延迟窗里切了桌面：回应属于原桌面的聊天，切回即可见（同 deliverInGift 跨桌面补投口径）
+      window.chatAppendDeskRec(cid, { side: 'in', text: txt });
+    }
+    return true;
+  }
+  // 回归脚本入口（同 window.chatAddInTyped 口径）：产品里没有任何入口能对同一件礼物重复投递，
+  // 所以「同一次只发一次」这条只能从这里驱动验证。
+  window.__giftDeliverReply = function (cid, chatRec, txt, useChatStyle) {
+    try { return deliverGiftReply(cid || (window.__activeCid || 'default'), chatRec, txt, useChatStyle); } catch (e) { return false; }
+  };
+
+  function giftReplyFeedback(gift, chatRec) {
+    const st = wlSettings();
+    if (!st.giftReplyOn) return;
+    if (Math.random() * 100 >= clampPct(st.giftReplyPct, 60)) return;
+    // 心愿是否仍挂在 TA 心愿单上必须在 wishTaRemove 之前问（调用方在 buyAndSend 返回后才移除）
+    let satisfied = false;
+    try { satisfied = taWishIds().has(gift.id); } catch (e) {}
+    const preset = function () { return pick(satisfied ? GIFT_REPLY_WISH : GIFT_REPLY_GENERIC); };
+    const mode = clampMode(st.giftReplyMode, 1);
+    const useChatStyle = mode === 1 || (mode === 2 && Math.random() < 0.4);
+    const cid = window.__activeCid || 'default';
+    setTimeout(function () {
+      try {
+        let txt = '';
+        if (useChatStyle && window.genChatStyleReply) txt = String(window.genChatStyleReply() || '').trim();
+        if (!txt) txt = preset();
+        if (!txt) return;
+        // #985：这句回话不只是聊天里的一条消息——同时贴到「我送出」那张礼物卡与心意柜那件礼物上
+        // （用户直派「这个回复没有加到联系人领取礼物的卡片里，也没有加到心意柜的卡片里」）。
+        // #1029：这句回话**只落一份**——旧实现先走 chatGiftAttachReplyTo（它内部已经写过心意柜）
+        // 又紧跟一次 boxAttachReply，实测心意柜记录里出现两条一模一样的回复、重进聊天后卡片上也是
+        // 同样的两行（用户视角＝「一句话被记了两遍」）。现在：同一桌面交给 chatGiftAttachReplyTo
+        // （写柜＋就地补卡片），它认不出那张卡时才按已知的 giftBoxId 兜底写柜；已切桌面时直接用
+        // giftBoxId 写柜（卡片下次渲染从柜里读，照样看得见），不再多走一趟跨桌面读改写。
+        deliverGiftReply(cid, chatRec, txt, useChatStyle);
+      } catch (e) {}
+    }, randInt(900, 2400));
   }
 
   function buyAndSend(gift, side, wish) {
@@ -772,10 +1279,16 @@
     if (side === 'out') { w.myBalance -= priceFen; }
     else { w.systemBalance -= priceFen; }
     walletSet(w);
-    const rec = { side: side, special: 'gift', giftId: gift.id, giftName: gift.name, giftEmoji: gift.emoji, giftImg: gift.img || '', giftPrice: gift.price, giftWish: wish, giftCat: gift.cat, ts: Date.now() };
+    const rec = { side: side, special: 'gift', rateAllow: true, giftId: gift.id, giftName: gift.name, giftEmoji: gift.emoji, giftImg: gift.img || '', giftPrice: gift.price, giftWish: wish, giftCat: gift.cat, ts: Date.now() };
+    // #985：先落心意柜记录再发卡片，并把记录 id 写进卡片——两处靠 giftBoxId 互指（卡片上追加的
+    // 回复要同步到心意柜那件礼物，反之亦然）
+    const entry = recordBox(gift, side, wish);
+    if (entry && entry.id) rec.giftBoxId = entry.id;
     if (window.chatAddGift) window.chatAddGift(rec); else if (window.chatAddIn) window.chatAddIn('', { special: 'gift' });
-    recordBox(gift, side, wish);
     if (window.logFish) window.logFish();
+    // #848：我送出给 TA 的这一刻起，TA 有概率回一句（走当前桌面的聊天，延迟里切桌面则补投）
+    // #985：这句回话拿到之后同时贴到「我送出」那张礼物卡与心意柜那件礼物上（传 rec 给它认领）
+    if (side === 'out') giftReplyFeedback(gift, rec);
     return true;
   }
 
@@ -783,10 +1296,16 @@
   // 不发聊天消息、概率（默认 10%）比 ④（默认 5%）高一倍、判定还排在前——实测（每天 30 条
   // 消息）隐身自买平均每天吃掉 2.0 次额度、81% 的日子把额度吃满，④ 当天再不可能触发，
   // 用户视角就是「TA 一直在买礼物，但从没送到聊天里」。现在：
-  //   AUTO_DAILY_PREFIX = 送我（心愿兑现 ① + 随机送礼 ④，都进聊天），上限 3/天
+  //   AUTO_DAILY_PREFIX = 送我（心愿兑现 ① + 随机送礼 ④，都进聊天），上限 3/天，设置项 giftInPct 那条
   //   SELF_DAILY_PREFIX = TA 给自己买 ②（不进聊天），独立上限 3/天，互不挤占
+  // #1437 第三本账：WISHCHAT_DAILY_PREFIX = ③「TA 的心愿发到聊天」那张卡片，原实现**从来没被任何
+  // 额度管过**（①②④ 各有上限，③ 只受概率与 WL_MAX 清单长度约束）。后果是当天前两本账吃满之后，
+  // 每个判定机会只剩 ③ 一条能走，越到后段越只冒「要我买」的卡（用户 2026-09-29 报「感觉联系人一直
+  // 在买东西」）。现在按「只数发进聊天的卡」计额度：TA 照样往自己心愿单里攒（清单不受限），只是发卡
+  // 每天最多 wishChatDayMax 张（默认 3，可在心意柜设置里调，0＝不发卡）。
   const AUTO_DAILY_PREFIX = 'ml2_gift_daily_';
   const SELF_DAILY_PREFIX = 'ml2_selfbuy_daily_';
+  const WISHCHAT_DAILY_PREFIX = 'ml2_wishchat_daily_';
   function dayCount(prefix) { const s = store(); return Number(s && s.get(prefix + todayKey())) || 0; }
   function dayIncr(prefix) { const s = store(); if (s) s.set(prefix + todayKey(), String(dayCount(prefix) + 1)); }
   // #585：投递「TA 送我」礼物。掷中时锁定 cid，1.5~4s 后的投递窗里若用户已切到别的桌面，
@@ -798,13 +1317,19 @@
   function deliverInGift(cid, gift, wish, delayMs) {
     setTimeout(function () {
       try {
-        const rec = { side: 'in', special: 'gift', giftId: gift.id, giftName: gift.name, giftEmoji: gift.emoji, giftImg: gift.img || '', giftPrice: gift.price, giftWish: wish, giftCat: gift.cat, ts: Date.now() };
+        // #985：联系人送我的礼物卡只带 giftBoxId（与心意柜那件互指）——**领取态与追加回复都存在
+        // 心意柜记录里**（单一事实源，见 giftGiftMeta 的注释），卡片渲染时按这个 id 查。礼物本身
+        // 照旧立刻进心意柜：用户选定「数据不丢＋状态仪式」，没点领取只是卡片/柜子上标「待领取」，
+        // 绝不因为没点而丢礼物。
+        const rec = { side: 'in', special: 'gift', rateAllow: true, giftId: gift.id, giftName: gift.name, giftEmoji: gift.emoji, giftImg: gift.img || '', giftPrice: gift.price, giftWish: wish, giftCat: gift.cat, ts: Date.now() };
         if ((window.__activeCid || 'default') === cid) {
+          const entry = recordBox(gift, 'in', wish);
+          if (entry && entry.id) rec.giftBoxId = entry.id;
           if (window.chatAddGift) window.chatAddGift(rec);
-          recordBox(gift, 'in', wish);
         } else {
+          const entryAt = recordBoxAt(cid, gift, 'in', wish);
+          if (entryAt && entryAt.id) rec.giftBoxId = entryAt.id;
           if (window.chatAppendDeskRec) window.chatAppendDeskRec(cid, rec);
-          recordBoxAt(cid, gift, 'in', wish);
         }
         if (window.logFish) window.logFish();
       } catch (e) {}
@@ -816,11 +1341,18 @@
   // 设置有「心意集市和心意柜设置」里可开关/自定义概率
   // ⓪ 总开关「TA 送我礼物」（giftInOn）：关闭时 ①④ 都不触发（TA 给自己买 ②、加自己心愿单 ③ 不受限）
   window.maybeAutoGift = function () {
+    // #1015 夜间静默：TA 自动送礼（扣 TA 余额发生在投递前）必须在源头拦，总闸拦消息会造成
+    // 「扣了钱没礼物」；心愿单兑现/自买/加心愿同链一并停。周期计数不推进，7:00 后照常。
+    if (window.nightModeActive && window.nightModeActive()) return;
     const st = wlSettings();
     const myCid = window.__activeCid || 'default';
     const giftCapped = dayCount(AUTO_DAILY_PREFIX) >= 3;
     const selfCapped = dayCount(SELF_DAILY_PREFIX) >= 3;
     const gifts = giftsLoad(); if (!gifts.length) return;
+    // #1341（复核 #1180）：与上面那道夜间闸同一条口径——①②④ 的扣款、占额度与「把 TA 的心愿从清单里
+    // 消费掉」都发生在投递之前，额度满时整轮不生成；放在总闸那一侧拦，落下来的就是 #585 当年量过的
+    // 现场：「钱花了、心愿单空了、额度占了，礼物却既没进聊天也没进心意柜」。
+    if (window.chatRateLimitFull && window.chatRateLimitFull()) return;
     // ① 心愿单兑现：TA 买下我心愿单里的礼物送我（扣 TA 余额；先移除心愿防连击重复买）
     if (st.wlOn && st.giftInOn && !giftCapped) {
       const myWl = wishLoad(WL_MY_KEY);
@@ -844,12 +1376,19 @@
       w0.systemBalance -= Math.round((gift0.price || 0) * 100); walletSet(w0);
       dayIncr(SELF_DAILY_PREFIX);
       setTimeout(function () {
+        // selfChatOn（用户 2026-09-21 要求，默认开）：TA 给自己买的礼物也发一张礼物卡到聊天，
+        // 带 giftSelf 标记让 chat.js 渲染成「XX 自己买的」；心意柜记录不变（仍进 TA 自己买的）。
+        const chatRec = { side: 'in', special: 'gift', rateAllow: true, giftId: gift0.id, giftName: gift0.name, giftEmoji: gift0.emoji, giftImg: gift0.img || '', giftPrice: gift0.price, giftWish: wish0, giftCat: gift0.cat, giftSelf: 1, ts: Date.now() };
         if ((window.__activeCid || 'default') === myCid) {
-          recordBox(gift0, 'self', wish0);
-          toast(partnerName() + ' 给自己买了「' + gift0.name + '」，收进了 TA 的心意柜');
+          const entrySelf = recordBox(gift0, 'self', wish0);
+          if (entrySelf && entrySelf.id) chatRec.giftBoxId = entrySelf.id; // #985：卡片与心意柜互指（同 buyAndSend）
+          if (st.selfChatOn && window.chatAddGift) window.chatAddGift(chatRec);
+          else toast(partnerName() + ' 给自己买了「' + gift0.name + '」，收进了 TA 的心意柜');
         } else {
-          // 已切桌面：记录仍回原桌面（不弹 toast，避免串到别的联系人脸上）
-          recordBoxAt(myCid, gift0, 'self', wish0);
+          // 已切桌面：记录与聊天卡仍回原桌面（不弹 toast，避免串到别的联系人脸上）
+          const entrySelfAt = recordBoxAt(myCid, gift0, 'self', wish0);
+          if (entrySelfAt && entrySelfAt.id) chatRec.giftBoxId = entrySelfAt.id;
+          if (st.selfChatOn && window.chatAppendDeskRec) window.chatAppendDeskRec(myCid, chatRec);
         }
       }, randInt(1500, 4000));
       return;
@@ -864,7 +1403,17 @@
         const giftW = pick(poolW);
         taWl.unshift(wishSnap(giftW));
         wishSave(WL_TA_KEY, taWl.slice(0, WL_MAX));
-        toast(partnerName() + ' 把「' + giftW.name + '」加进了 TA 的心愿单');
+        // #660：加进清单的同一刻按概率把这份心愿发进聊天（让我给 TA 买）。已发卡片就不再叠
+        // 一条 toast（卡片本身就是提示）；开关关闭 / 概率没中 / 聊天链路不可用时回落旧提示。
+        // #1437：发卡这一环另有第三本账——每天最多 st.wishChatDayMax 张（默认 3，心意柜设置可调）。
+        // 额度只数**真发进聊天**的那几张（wishChatPush 返回真才记账，被限流闸退回的不算），TA 往自己
+        // 心愿单里攒多少不受限；额度用完那一刻起连回落的 toast 一并收住——当天已经被告知过三回，换个
+        // 黑浮层继续要东西还是噪音（作者点的口径：静默）。
+        const quotaLeft = dayCount(WISHCHAT_DAILY_PREFIX) < st.wishChatDayMax;
+        const pushed = !!(quotaLeft && st.wishChatOn && Math.random() * 100 < st.wishChatPct && wishChatPush(giftW));
+        if (pushed) dayIncr(WISHCHAT_DAILY_PREFIX);
+        else if (quotaLeft) toast(partnerName() + ' 把「' + giftW.name + '」加进了 TA 的心愿单\n市集下方「☆ 心愿单」可查看');
+        try { syncWishBadge(); } catch (e) {}
         return;
       }
     }
@@ -919,12 +1468,19 @@
       wishBtn.textContent = '✓ 已在心愿单';
       toast('已加入我的心愿单');
     });
+    // #1029 附3：一记点按只送一件——部分国产内核/触屏上同一次点按会派发两次 click（同 #1017 实测
+    // 一记点按触发两次的口径），那会送出两件一模一样的礼物、顺带换来两句一模一样的 TA 回话。
+    let sentOnce = false;
     if (okBtn) okBtn.addEventListener('click', function () {
+      if (sentOnce) return;
       const wish = (wishEl && wishEl.value || '').trim() || (gift.wish || '心意');
+      sentOnce = true;
       if (buyAndSend(gift, 'out', wish)) {
         // 任何途径买下 TA 正许愿的礼物都算心愿兑现：送出即从 TA 心愿单移除（礼物进 TA 的心意柜「收到的」）
         wishTaRemove(gift.id);
-        closeTc(); toast('已送出');
+        closeTc(); if (!chatOnScreen()) toast('已送出');
+        // #660：从聊天「TA 的心愿」卡片点进来的，成交后让聊天把那张卡就地转「已送出」
+        if (opts.onDone) { try { opts.onDone(); } catch (e) {} }
       }
     });
     if (cancelBtn) cancelBtn.addEventListener('click', closeTc);
@@ -950,25 +1506,28 @@
     if (!window.openTCPanel) { toast('稍后再试'); return; }
     const my = wishLoad(WL_MY_KEY);
     const ta = wishLoad(WL_TA_KEY);
+    const taNew = taWishUnread();
     const list = wishTab === 'my' ? my : ta;
     const stG = wlSettings();
     const hint = wishTab === 'my'
-      ? (stG.giftInOn
+      ? (taNew ? '有 ' + taNew + ' 条是 ' + esc(partnerName()) + ' 新许的愿——点上方「' + esc(partnerName()) + ' 的心愿单」这一栏看。\n' : '')
+        + (stG.giftInOn
         ? '在市集点开商品选「加入心愿单」即可许愿（不花钱）。' + esc(partnerName()) + ' 会按概率买下送你，礼物进「心意柜-收到的」并从心愿单移除；概率在「心意集市和心意柜设置」里可调。'
         : '在市集点开商品选「加入心愿单」即可许愿（不花钱）。「TA 送我礼物」总开关当前关闭，TA 不会买下心愿；想恢复去「心意集市和心意柜设置」打开。')
-      : '这里是 ' + esc(partnerName()) + ' 许的愿望（TA 逛市集时也会按概率把想要的加进来）。点「送 TA」买下送出：礼物进聊天和 TA 的心意柜-收到的，并自动从心愿单移除；市集里 TA 正许愿的商品也会标出来。';
+      : '这里是 ' + esc(partnerName()) + ' 许的愿望（TA 逛市集时也会按概率把想要的加进来，并有概率把这份心愿发一张卡片到聊天提醒你）。点「送 TA」买下送出：礼物进聊天和 TA 的心意柜-收到的，并自动从心愿单移除；市集里 TA 正许愿的商品也会标出来。';
     const emptyTxt = wishTab === 'my'
       ? '心愿单还是空的<br>去心意市集挑一件，点「加入心愿单」'
       : (esc(partnerName()) + ' 还没许愿<br>TA 逛市集时会自己加进来');
     const html =
       '<div class="wish-tabs">' +
         '<button class="wish-tab' + (wishTab === 'my' ? ' sel' : '') + '" data-wtab="my" type="button">我的心愿单 (' + my.length + ')</button>' +
-        '<button class="wish-tab' + (wishTab === 'ta' ? ' sel' : '') + '" data-wtab="ta" type="button">' + esc(partnerName()) + ' 的心愿单 (' + ta.length + ')</button>' +
+        '<button class="wish-tab' + (wishTab === 'ta' ? ' sel' : '') + '" data-wtab="ta" type="button">' + esc(partnerName()) + ' 的心愿单 (' + ta.length + ')' + (taNew ? '<i class="wish-badge">' + taNew + '</i>' : '') + '</button>' +
       '</div>' +
       '<div class="wish-hint">' + hint + '</div>' +
       (list.map(function (it) { return wishRowHtml(it, wishTab); }).join('') || '<div class="gift-empty">' + emptyTxt + '</div>') +
       '<div class="gs-help">【使用说明】<br>· 心愿单只是许愿，不花钱；TA 按概率买下送你后自动移除。<br>· 「TA 的心愿单」里的礼物可点「送 TA」买下送出（正常聊天送礼 + 心意柜记录）。<br>· TA 的相关行为可在「心意集市和心意柜设置」里开关与自定义概率。</div>';
     window.openTCPanel('心愿单', html);
+    if (wishTab === 'ta') { taWishMarkSeen(); try { syncWishBadge(); } catch (e) {} }
     document.querySelectorAll('#tc-body [data-wtab]').forEach(function (b) {
       b.addEventListener('click', function () { wishTab = b.dataset.wtab; renderWishPanel(); });
     });
@@ -999,9 +1558,19 @@
       '<div class="gs-row"><div class="gs-lab">心愿单功能<span class="gs-sub">TA 买我的心愿单礼物送我 / TA 把想要的加进自己的心愿单</span></div><div class="gs-switch' + (st.wlOn ? ' on' : '') + '" data-gsw="wlOn"></div></div>' +
       '<div class="gs-row"><div class="gs-lab">TA 买下我的心愿单概率</div><div class="gs-numwrap"><input class="gs-num" data-gsn="wlBuyPct" type="number" min="0" max="100" inputmode="numeric" value="' + st.wlBuyPct + '"><span class="gs-pct">%</span></div></div>' +
       '<div class="gs-row"><div class="gs-lab">TA 加进自己心愿单概率</div><div class="gs-numwrap"><input class="gs-num" data-gsn="wlAddPct" type="number" min="0" max="100" inputmode="numeric" value="' + st.wlAddPct + '"><span class="gs-pct">%</span></div></div>' +
+      // #660：TA 把商品放进自己清单那一刻，有概率把这份心愿发到聊天（我点卡片上的【送 TA】一键买下）
+      '<div class="gs-row"><div class="gs-lab">TA 的心愿发到聊天<span class="gs-sub">TA 把商品加进自己心愿单时，按概率把这份心愿发一张卡片到聊天，你点【送 TA】即可买下送出；默认开启</span></div><div class="gs-switch' + (st.wishChatOn ? ' on' : '') + '" data-gsw="wishChatOn"></div></div>' +
+      '<div class="gs-row"><div class="gs-lab">TA 心愿发到聊天概率</div><div class="gs-numwrap"><input class="gs-num" data-gsn="wishChatPct" type="number" min="0" max="100" inputmode="numeric" value="' + st.wishChatPct + '"><span class="gs-pct">%</span></div></div>' +
+      // #1437：发卡这一环的每日上限（作者 2026-09-29 点口径「这个也要有上限，并且可以在心意柜设置里调整」）
+      '<div class="gs-row"><div class="gs-lab">TA 心愿卡每天最多<span class="gs-sub">只数发进聊天的张数，0~20、默认 3；TA 往自己心愿单里攒多少不受限。用完当天不再发卡、也不弹提示</span></div><div class="gs-numwrap"><input class="gs-num" data-gsn="wishChatDayMax" type="number" min="0" max="20" inputmode="numeric" value="' + st.wishChatDayMax + '"><span class="gs-pct">张</span></div></div>' +
+      // #848：我送礼给 TA 之后 TA 的回应对（心愿兑现与普通送礼同一入口，走聊天）
+      '<div class="gs-row"><div class="gs-lab">我送礼后 TA 回一句<span class="gs-sub">总开关：我送出的每一份礼物（市集、心意柜、TA 心愿卡上点【送 TA】都算）都有概率换 TA 回一句；默认开启</span></div><div class="gs-switch' + (st.giftReplyOn ? ' on' : '') + '" data-gsw="giftReplyOn"></div></div>' +
+      '<div class="gs-row"><div class="gs-lab">TA 回一句概率</div><div class="gs-numwrap"><input class="gs-num" data-gsn="giftReplyPct" type="number" min="0" max="100" inputmode="numeric" value="' + st.giftReplyPct + '"><span class="gs-pct">%</span></div></div>' +
+      '<div class="gs-row"><div class="gs-lab">TA 回什么<span class="gs-sub">点一下切换</span></div><div class="gs-pick" id="gs-gift-reply-mode" data-v="' + st.giftReplyMode + '">' + giftReplyModeLabel(st.giftReplyMode) + '</div></div>' +
       '<div class="gs-row"><div class="gs-lab">TA 自己买礼物<span class="gs-sub">买给自己的礼物收进「心意柜-TA 自己买的」</span></div><div class="gs-switch' + (st.selfOn ? ' on' : '') + '" data-gsw="selfOn"></div></div>' +
+      '<div class="gs-row"><div class="gs-lab">TA 自买礼物发到聊天<span class="gs-sub">TA 给自己买的礼物同时发一张礼物卡到聊天，方便你查看；默认开启</span></div><div class="gs-switch' + (st.selfChatOn ? ' on' : '') + '" data-gsw="selfChatOn"></div></div>' +
       '<div class="gs-row"><div class="gs-lab">TA 自己买概率</div><div class="gs-numwrap"><input class="gs-num" data-gsn="selfPct" type="number" min="0" max="100" inputmode="numeric" value="' + st.selfPct + '"><span class="gs-pct">%</span></div></div>' +
-      '<div class="gs-help">【使用说明】<br>· TA 送我礼物：总开关，默认开启；关闭后 TA 不会买礼物送你（心愿单兑现与随机送礼都不触发）；TA 给自己买礼物、加自己的心愿单不受影响，我送礼给 TA 也不受影响。<br>· TA 送我礼物概率：TA 每次心动时主动从市集挑一份送你的概率（进聊天 +「心意柜-收到的」），0~100 自定义。<br>· 我的心愿单：市集点开商品选「加入心愿单」许愿（不花钱）；TA 按概率直接买下送你，礼物进「心意柜-收到的」，心愿单自动移除。<br>· TA 的心愿单：TA 会把想要的加进来；点「送 TA」买下送出，礼物进 TA 的心意柜-收到的并自动移除该心愿。市集里 TA 正许愿的商品会标出「☆ TA许愿的」，从这里进也行。<br>· TA 自己买：TA 按概率给自己买礼物，收进「心意柜-TA 自己买的」，不发聊天消息。<br>· 概率=每次触发（我发消息后）TA 采取该行动的概率，0~100 自定义；「TA 送我礼物」（心愿单兑现＋随机送礼）每天最多 3 次，「TA 自己买礼物」另有独立额度、两者互不挤占；关掉开关即完全关闭对应行为。</div>';
+      '<div class="gs-help">【使用说明】<br>· TA 送我礼物：总开关，默认开启；关闭后 TA 不会买礼物送你（心愿单兑现与随机送礼都不触发）；TA 给自己买礼物、加自己的心愿单不受影响，我送礼给 TA 也不受影响。<br>· TA 送我礼物概率：TA 每次心动时主动从市集挑一份送你的概率（进聊天 +「心意柜-收到的」），0~100 自定义。<br>· 我的心愿单：市集点开商品选「加入心愿单」许愿（不花钱）；TA 按概率直接买下送你，礼物进「心意柜-收到的」，心愿单自动移除。<br>· TA 的心愿单：TA 会把想要的加进来；点「送 TA」买下送出，礼物进 TA 的心意柜-收到的并自动移除该心愿。市集里 TA 正许愿的商品会标出「☆ TA许愿的」，从这里进也行。<br>· TA 的心愿发到聊天：TA 把商品加进自己心愿单的那一刻，按概率把这份心愿发一张卡片到聊天（默认开启、默认 60%，另外每天最多 3 张——上面「TA 心愿卡每天最多」可调）。卡片上点【送 TA】就能买下送出，送完卡片自动变「已送出」；关掉开关、概率调 0，或当天张数用完，TA 就只默默加进心愿单、不再发卡片也不弹提示（心愿仍可在心意柜「看看 TA 的心愿单」里看到）。<br>· 我送礼后 TA 回一句：我送出的每一份礼物都有概率让 TA 回一句（默认开启、默认 60%），市集、心意柜、TA 心愿卡上点【送 TA】都算；这份礼物正好是 TA 心愿单里许着的，话术走「心愿兑现」那一套。「TA 回什么」三档＝只用系统预设话术 / 和正常聊天一样回复（走字卡与词典管线，带「正在输入…」）/ 混合（约六成预设、四成聊天式）；关掉开关或概率调 0，TA 就只默默收下礼物、不再回话（礼物照常进 TA 的心意柜）。<br>· TA 自己买：TA 按概率给自己买礼物，收进「心意柜-TA 自己买的」；「TA 自买礼物发到聊天」默认开着，买完会同时发一张礼物卡到聊天（关掉那枚开关就只进柜子、聊天里看不到）。<br>· 概率=每次触发（我发消息后）TA 采取该行动的概率，0~100 自定义；每日三本账各记各的、互不挤占＝「TA 送我礼物」（心愿单兑现＋随机送礼）最多 3 次、「TA 自己买礼物」最多 3 次、「TA 心愿卡发到聊天」最多 3 张（这枚在上面可调）；关掉开关即完全关闭对应行为。</div>';
     window.openTCPanel('心意集市和心意柜设置', html);
     document.querySelectorAll('#tc-body [data-gsw]').forEach(function (sw) {
       sw.addEventListener('click', function () {
@@ -1017,12 +1586,15 @@
         const cur = wlSettings();
         const key = inp.dataset.gsn;
         const n = Math.round(Number(inp.value));
+        // #1437：这一格里既有 0~100 的概率、也有 0~20 的张数，封顶一律问输入框自己的 max（别处已写死），
+        // 免得多出一套「面板收 0~100、引擎按 0~20 钳」的双头口径——那种写法会让人以为 50 生效了。
+        const hi = Number(inp.max) || 100;
         // #585：非法输入不再静默写成 0——0 等于把该行为永久关闭，而「清空输入框再失焦」
         // 是最容易踩到的（Number('')===0 会被旧实现判成合法并保存），旧实现还把框改成 '0'
         // 让人以为已经生效。现在恢复原值并就地说明，避免用户以为「调过了」其实关掉了整条路径。
-        if (String(inp.value).trim() === '' || !isFinite(n) || n < 0 || n > 100) {
+        if (String(inp.value).trim() === '' || !isFinite(n) || n < 0 || n > hi) {
           inp.value = String(cur[key]);
-          toast('请填 0~100 的整数');
+          toast('请填 0~' + hi + ' 的整数');
           return;
         }
         cur[key] = n;
@@ -1030,6 +1602,23 @@
         toast('已保存');
       });
     });
+    // #848「TA 回什么」三档：非布尔开关也不走 data-gsw/data-gsn，单独绑一次 pills
+    const modeEl = document.getElementById('gs-gift-reply-mode');
+    if (modeEl && window.openModal) {
+      modeEl.addEventListener('click', function () {
+        const cur = wlSettings();
+        window.openModal('我送礼后 TA 回什么', '', function (v) {
+          const n = Math.round(Number(v));
+          if (n !== 0 && n !== 1 && n !== 2) return;
+          const next = wlSettings();
+          next.giftReplyMode = n;
+          wlSettingsSave(next);
+          modeEl.textContent = giftReplyModeLabel(n);
+          modeEl.dataset.v = String(n);
+          toast('已保存');
+        }, { noInput: true, pill: String(clampMode(cur.giftReplyMode, 1)), pills: GIFT_REPLY_MODES.map(function (m) { return { label: m.label, value: String(m.value) }; }) });
+      });
+    }
   }
 
   let giftPanel = null;
@@ -1113,6 +1702,13 @@
     const el = document.getElementById(containerId); if (!el) return;
     const list = filterGifts(gifts);
     const q = normTxt(searchText).trim();
+    // #797：商品库走 IDB 回填，未完成时不把空值说成「还没有商品」（诱导重添＝回填后重复）
+    // #1488：回填排队与大键没取回都不把空读说成「还没有商品」（诱导重传＝重复）；后者顺手请一次库、值回来补一刀重渲
+    if (!list.length && !q && (customReadUnconfirmed() || (window.mochiDataPending && window.mochiDataPending()))) {
+      el.innerHTML = window.mochiLoadingHtml('礼物商品');
+      if (customReadUnconfirmed()) customAwaitBack(marketRerenderBoth);
+      return;
+    }
     const emptyTxt = q ? ('没找到「' + q + '」相关商品') : '还没有商品，点下方添加';
     el.innerHTML = list.map(function (g) { return giftItemHtml(g, manage); }).join('') || '<div class="gift-empty">' + esc(emptyTxt) + '</div>';
     el.querySelectorAll('.gift-item').forEach(function (b) {
@@ -1164,27 +1760,159 @@
   }
   function closeGiftPanel() { if (giftPanel) giftPanel.hidden = true; }
   window.openGiftPanel = openGiftPanel;
+  // FIX 2026-09-20 #906：点面板外关闭（与帮我决定/多人决定同批核查出的同族缺口）；判据见 chat.js mochiSheetOutsideClose
+  // giftPanel 要等首次 openGiftPanel 才赋值，绑定时直接取模板静态节点
+  if (window.mochiSheetOutsideClose) window.mochiSheetOutsideClose(document.getElementById('chat-gift-panel'), closeGiftPanel);
 
   let marketPage = null, marketManage = false;
   function renderMarket() {
     syncGiftNames();
     const bal = document.getElementById('market-balance'); if (bal) bal.textContent = walletText();
-    const addBtn = document.getElementById('market-add'); if (addBtn) addBtn.textContent = marketManage ? '完成' : '+ 添加商品';
+    const addBtn = document.getElementById('market-add'); if (addBtn) addBtn.textContent = marketManage ? '完成' : '＋ 上传商品';
     const mgBtn = document.getElementById('market-manage'); if (mgBtn) mgBtn.textContent = marketManage ? '完成' : '管理';
     const resetBtn = document.getElementById('market-reset');
     if (resetBtn) resetBtn.hidden = !(marketManage && customLoad().some(function (c) { return c && (c.del || c.base); }));
     renderGiftCats('market-cats', 'icon', renderMarket);
     renderGiftGrid('market-grid', giftsLoad(), function (g) { openBuyDialog(g); }, marketManage);
+    renderMineCard();
+    syncWishBadge();
+  }
+  // #826：入口把「TA 有几条新愿望」摆在用户必然经过的地方（市集底部），不必先开面板再翻标签
+  function syncWishBadge() {
+    const btn = document.getElementById('market-wish');
+    if (!btn) return;
+    const n = taWishUnread();
+    btn.innerHTML = '☆ 心愿单' + (n ? '<i class="wish-badge">' + n + '</i>' : '');
+  }
+  // #797：回填完成补渲——只重画当前开着的两个礼物面（giftPanelRerender/renderMarket 均现读现画幂等）
+  if (window.mochiOnDataReady) window.mochiOnDataReady(function () {
+    try { boxMetaInvalidate(); } catch (e) {}   // #985：导入回填后卡片状态按新存储重读
+    try { const gp = document.getElementById('chat-gift-panel'); if (gp && !gp.hidden) giftPanelRerender(); } catch (e) {}
+    try { if (marketPage && !marketPage.hidden) renderMarket(); } catch (e) {}
+  });
+
+  // #858：市集页最上方的「我的心意商品」块——上传入口 + 商品数据导入导出。原入口只是底部
+  // 那排灰色胶囊里的「+ 添加商品」（5 颗挤在一起），用户实报「好多人不知道有这个功能」，
+  // 故把上传做成 hero 正下方的深色主按钮（进页即见），并把它的商品库单独备份/搬运用两个
+  // 小胶囊放在同一块里——「上传 → 导出/导入」在同一个视觉单元里，不用去设置里翻。
+  function renderMineCard() {
+    const el = document.getElementById('market-mine');
+    if (!el) return;
+    const pend = customReadUnconfirmed(); // #1488：读取中不许谎报「还没上传过商品」（诱导重传＝重复）
+    const n = customMine().length;
+    el.innerHTML =
+      '<button class="market-mine-add" id="market-mine-add" type="button">' +
+        '<span class="market-mine-ico">＋</span>' +
+        '<span class="market-mine-txt">上传我的商品<em>用自己的照片当礼物，放进市集就能送</em></span>' +
+      '</button>' +
+      '<div class="market-mine-foot">' +
+        '<span class="market-mine-cnt" id="market-mine-cnt">' + (pend ? '商品库读取中…（存储正忙，马上回来）' : (n ? '已上传 ' + n + ' 件自定义商品' : '还没上传过商品（默认商品不用上传）')) + '</span>' +
+        '<button class="market-mine-mini" id="market-mine-export" type="button">导出商品数据</button>' +
+        '<button class="market-mine-mini" id="market-mine-import" type="button">导入商品数据</button>' +
+      '</div>';
+  }
+  function packBytes(s) { try { return new Blob([s]).size; } catch (e) { return String(s || '').length; } }
+  function packSizeText(n) {
+    if (n > 1048576) return (n / 1048576).toFixed(1) + ' MB';
+    if (n > 1024) return Math.round(n / 1024) + ' KB';
+    return n + ' B';
+  }
+  function packDay() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function marketGoodsJson(items) {
+    const parts = ['{"app":"' + GOODS_PACK_APP + '","version":"1.0","kind":"market-goods","exportTime":"' + new Date().toISOString() + '","goods":['];
+    items.forEach(function (g, i) {
+      if (i) parts.push(',');
+      parts.push(JSON.stringify({ id: g.id, name: g.name, emoji: g.emoji, img: g.img || '', price: g.price, cat: g.cat, wish: g.wish }));
+    });
+    parts.push(']}');
+    return parts.join('');
+  }
+  function exportMarketGoods() {
+    const items = customMine();
+    if (!items.length && customReadUnconfirmed()) { toast('商品库还没读全（存储正忙）：等几秒再导出'); customAwaitBack(marketRerenderBoth); return; } // #1488
+    if (!items.length) { toast('还没有自定义商品，点上面「上传我的商品」先加一件'); return; }
+    const json = marketGoodsJson(items);
+    const bytes = packBytes(json);
+    if (!window.openModal) return;
+    window.openModal('导出商品数据？', '', function () {
+      const fname = 'mochi心意商品_' + packDay() + '.json';
+      if (window.mochiExportFile) window.mochiExportFile(json, fname, '导出商品数据');
+      else toast('导出功能暂不可用，请稍后再试');
+    }, { noInput: true, staticText: [
+      '将把这 ' + items.length + ' 件自定义商品（含图片）导出成一个文件，约 ' + packSizeText(bytes) + '。',
+      '文件里只有你上传的商品：默认商品、对默认商品的修改与删除、心意币、心愿单、心意柜记录都不包含。',
+      '在别的手机或桌面用「导入商品数据」选这个文件即可还原；同一件商品（名字/分类/价格/图片都一样）会自动跳过，不会翻倍。'
+    ].join('\n') });
+  }
+  // 选文件 → 读文本 → 校验 → 报「新增/更新/跳过几件」→ 按选择合并写入
+  function readPickText(file) {
+    return new Promise(function (resolve) {
+      if (!file) { resolve(''); return; }
+      if (typeof file.text === 'function') { file.text().then(resolve).catch(function () { viaReader(); }); return; }
+      viaReader();
+      function viaReader() {
+        try {
+          const r = new FileReader();
+          r.onload = function () { resolve(String(r.result || '')); };
+          r.onerror = function () { resolve(''); };
+          r.readAsText(file, 'utf-8');
+        } catch (e) { resolve(''); }
+      }
+    });
+  }
+  function importMarketGoods() {
+    if (!window.mochiFilePick) { toast('导入功能暂不可用，请稍后再试'); return; }
+    window.mochiFilePick({
+      id: 'market-goods-import-pick', accept: window.mochiDataPickAccept, // #1413：与整机导入同一份并集（窄串会让转存后改了类型的备份灰显）
+      onFiles: function (files) {
+        const f = files && files[0];
+        if (!f) { toast('没有取到文件，请再选一次'); return; }
+        readPickText(f).then(function (text) {
+          let data = null;
+          try { data = JSON.parse(text || 'null'); } catch (e) {}
+          const raw = goodsFromPack(data);
+          if (!raw) { toast('这个文件里没有商品数据'); return; }
+          if (customWriteBlocked()) return; // #1488 读不全先按住：这一发读出来的计划必是错的
+          const plan = mergeGoods(customLoad(), raw);
+          if (!plan.added && !plan.updated) {
+            toast(plan.skipped ? ('这 ' + plan.skipped + ' 件商品都已在你的商品库里，没有新增') : '文件里没有可导入的商品');
+            return;
+          }
+          const lines = ['从文件里读到 ' + raw.length + ' 件商品：新增 ' + plan.added + ' 件'
+            + (plan.updated ? '、更新 ' + plan.updated + ' 件' : '')
+            + (plan.skipped ? '、跳过已存在的 ' + plan.skipped + ' 件' : '') + '。'];
+          if (plan.bad) lines.push('另有 ' + plan.bad + ' 件格式不对（缺名字 / 不是商品数据），已忽略。');
+          if (plan.over) lines.push('还有 ' + plan.over + ' 件会让商品库体积过大，本次没有导入（可删掉一些旧商品再导一次）。');
+          lines.push('导入后你的默认商品、心意币、心愿单、心意柜记录都不受影响。');
+          if (!window.openModal) return;
+          window.openModal('导入商品数据？', '', function (v) {
+            const replace = (v === 'replace');
+            // 换库模式：只留下对默认商品的修改/删除记录，自定义商品清空后再装文件里的
+            const base = replace ? customLoad().filter(function (c) { return c && (c.del || c.base); }) : customLoad();
+            const done = mergeGoods(base, raw);
+            try { customSave(done.list); } catch (e) { toast('导入失败：本地存储写入出错，先清理一些旧商品再试'); return; }
+            closeTc();
+            renderMarket();
+            toast(replace ? ('已替换为文件里的 ' + (done.added + done.updated) + ' 件商品') : ('已导入 ' + done.added + ' 件商品'));
+          }, { noInput: true, staticText: lines.join('\n'), pill: 'merge', pills: [
+            { label: '合并（已有的保留，缺的补上）', value: 'merge' },
+            { label: '先清空我的商品再导入', value: 'replace' }
+          ] });
+        });
+      }
+    });
   }
 
   // ---- 商品图片上传（自定义商品可传实拍图，未传回退 emoji）----
   // 持久化隐藏 file input（初始化创建一次、永久挂 body）——安卓 Edge 等对
   // 「点击时动态创建 input + 立即 click()」会静默忽略合成点击（同头像上传修复结论）
+  // FIX 2026-09-18 #755：样式由 offscreen+opacity:0 换标准 sr-only clip（#717/#738 已验证：
+  // 部分内核对不可见 input 的激活更苛刻，clip 写法命中区为零、不挡点击且更兼容）。
   let gmImg = '';
   const gmImgInput = document.createElement('input');
   gmImgInput.id = 'gm-img-input';
   gmImgInput.type = 'file'; gmImgInput.accept = 'image/*';
-  gmImgInput.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;';
+  gmImgInput.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:1;margin:0;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;';
   // 初始化即挂 body（同 chat-settings headInput：创建一次、永久挂载、每次复用）
   try { document.body.appendChild(gmImgInput); } catch (e) {}
   gmImgInput.onchange = function () {
@@ -1192,40 +1920,16 @@
     gmImgInput.value = '';
     if (!f) return;
     if (!/^image\//.test(f.type || '')) { toast('请选择图片文件'); return; }
-    const reader = new FileReader();
-    reader.onload = function () {
-      compressGiftImg(String(reader.result || '')).then(function (data) {
-        if (!data) { toast('图片处理失败，换一张试试'); return; }
-        gmImg = data;
-        renderGmImgRow();
-      });
-    };
-    reader.onerror = function () { toast('图片读取失败'); };
-    reader.readAsDataURL(f);
-  };
-  // 压缩到 480px JPEG（白底防透明变黑），失败返回 null（同字卡库口径：不回退存原图）
-  function compressGiftImg(dataUrl) {
-    return new Promise(function (resolve) {
-      if (typeof dataUrl !== 'string' || dataUrl.length > 8 * 1024 * 1024) { resolve(null); return; }
-      const img = new Image();
-      img.onload = function () {
-        try {
-          if (img.width * img.height > 26000000) { resolve(null); return; }
-          const scale = Math.min(1, 480 / Math.max(img.width, img.height));
-          const w = Math.max(1, Math.round(img.width * scale));
-          const h = Math.max(1, Math.round(img.height * scale));
-          const c = document.createElement('canvas');
-          c.width = w; c.height = h;
-          const ctx = c.getContext('2d');
-          ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h);
-          ctx.drawImage(img, 0, 0, w, h);
-          resolve(c.toDataURL('image/jpeg', 0.85));
-        } catch (e) { resolve(null); }
-      };
-      img.onerror = function () { resolve(null); };
-      img.src = dataUrl;
+    if (!window.mochiImgIngest) { toast('图片处理组件没加载上（缓存过旧或离线），请重新打开页面再试'); return; }
+    // FIX 2026-09-25 #1270：File 直接进闸（不再先读成多 MB base64 字符串），失败按回执分说
+    window.mochiImgIngest(f, { maxSide: 480, quality: 0.85, mime: 'image/jpeg', opaque: true, tag: 'gm-img' }).then((r) => {
+      if (!r || r.st !== 'ok' || !r.data) { toast(window.mochiImgIngestMiss(r, '礼物图片')); return; }
+      gmImg = r.data;
+      renderGmImgRow();
     });
-  }
+  };
+  // 旧 compressGiftImg（480px JPEG 白底、内含「base64 超 8MB 先拒 ＋ 解码后超 2600 万像素再拒」）
+  // 已由 #1270 的统一解码闸取代（口径不变：480px／JPEG 0.85／白底），此处不再留第二份实现。
   function gmImgRowHtml() {
     return '<div class="gm-img-row">' +
       '<div class="gm-img-prev" id="gm-img-prev">' + (gmImg ? '<img src="' + esc(gmImg) + '" alt="">' : '🖼️') + '</div>' +
@@ -1240,7 +1944,11 @@
   }
   function bindGmImgRow() {
     const pick = document.getElementById('gm-img-pick');
-    if (pick) pick.addEventListener('click', function () { try { gmImgInput.click(); } catch (e) { toast('无法打开相册，请重试'); } });
+    // FIX 2026-09-20 #920：激活腿改走全站统一三腿（showPicker→click；小米系对合成 click 静默不弹）
+    if (pick) pick.addEventListener('click', function () { window.mochiFilePickFire(gmImgInput, { onFail: function () { toast('无法打开相册，请重试'); } }); });
+    // FIX 2026-09-27 #1323：这颗按钮全站只有「合成腿」一条路（连 label 都没有），而它每次重渲都重新
+    // 绑一遍＝正适合在绑定处幂等补装真层（模具见 device.js #1323；宿主就是上面那个常驻 input）。
+    if (pick && window.mochiFilePickDoor) window.mochiFilePickDoor(pick, { owner: gmImgInput });
     const clr = document.getElementById('gm-img-clear');
     if (clr) clr.addEventListener('click', function () { gmImg = ''; renderGmImgRow(); });
   }
@@ -1287,7 +1995,7 @@
       } else {
         customs.push(item);
       }
-      customSave(customs); closeTc(); renderMarket(); toast('已保存');
+      if (customWriteBlocked()) { customAwaitBack(marketRerenderBoth); return; } customSave(customs); closeTc(); marketRerenderBoth(); toast('已保存'); // #1540：marketRerenderBoth＝市集页＋开着的聊天送礼面板都重画（面板里新加的商品立刻可见）
     });
     if (cancelBtn) cancelBtn.addEventListener('click', closeTc);
   }
@@ -1303,6 +2011,22 @@
     const gwBtn = document.getElementById('gift-wish-ta');
     if (gwBtn) gwBtn.textContent = '看看 ' + pn + ' 的心愿单';
   }
+  // #985：心意柜侧的回复与领取状态（卡片与心意柜共用同一批渲染口径，见下方 giftReplRows/boxReplies）
+  // who='ta' 显示联系人名、who='me' 显示「我」；只认有正文字段的项，脏数据不渲染。
+  function boxReplies(it) {
+    if (!it || !Array.isArray(it.replies)) return [];
+    // #1029：心意柜侧同样过一遍去重（与卡片侧 giftGiftMeta 共用 boxDedupeReplies＝同一口径）
+    return boxDedupeReplies(it.replies.filter(function (r) { return r && typeof r.text === 'string' && r.text; }));
+  }
+  function boxWhoLabel(who) { return who === 'me' ? '我' : partnerName(); }
+  function boxReplyRows(it) {
+    return boxReplies(it).map(function (r) {
+      return '<div class="giftbox-repl-row"><span class="giftbox-repl-who">' + esc(boxWhoLabel(r.who)) + '</span><span class="giftbox-repl-tx">' + esc(r.text) + '</span></div>';
+    }).join('');
+  }
+  // 待领取只认显式 claimed===0（存量记录没有该字段＝旧版自动收下，不显示待领取）
+  function boxPending(it) { return !!(it && it.side === 'in' && it.claimed === 0); }
+
   function renderBox() {
     syncGiftNames();
     const list = boxLoad();
@@ -1323,20 +2047,48 @@
     });
     const show = (boxTab === 'in' ? inList : boxTab === 'out' ? outList : selfList).slice().sort(function (a, b) { return b.tm - a.tm; });
     const el = document.getElementById('giftbox-list'); if (!el) return;
-    el.innerHTML = show.map(function (it) {
+    // #1403：按条删除（作者「用户又不一定要保存那么多记录。这种无限变长的记录还需要有单独的删除功能」）。
+    // 只删选中的这一件、走既有 boxSave 写回路并 invalidate 那张 #985 的回复记忆表。连带效果如实记一笔：
+    // 聊天里那张礼物卡的「领取态/回复」以柜记录为单一事实源（#985），删掉柜里这件＝卡上的回复失去来源——
+    // 这本来就是「删这一条」的语义，所以确认框里必须回显「删的是哪一件」（件名由 mochiHistDel 带过去）。
+    window.mochiHistDelBind(el, {
+      title: '删除这件心意？',
+      onDel: function (id) {
+        const left = boxLoad().filter(function (x) { return String(x.id) !== String(id); });
+        boxSave(left);
+        boxMetaInvalidate();
+        renderBox();
+        if (typeof window.toast === 'function') window.toast('已从心意柜删除这一件');
+      }
+    });
+    // #1403：作者「无限变长的记录还需要有单独的删除功能」＋「每天只显示当天的，其他按月折叠」。
+    // 折叠走站内唯一那把尺子 window.mochiHistFold（idb.js，口径接 #1053），按条删除复用现成的
+    // boxSave 写回路（xyStore.set 内含 LS＋idbSet 双写）——只删选中的这一件，不做整柜清空、
+    // 也不靠封顶裁条；卡片自己的「点开详情」监听由删除件在捕获阶段拦下，点删除不会顺手弹详情。
+    const rows = show.map(function (it) { return { ts: Number(it.tm) || 0, html: (function () {
       const from = it.side === 'in' ? esc(partnerName()) + ' 送我' : it.side === 'self' ? esc(partnerName()) + ' 自己买的' : '我 送 ' + esc(partnerName());
       return '<div class="giftbox-card" data-id="' + esc(it.id) + '">' +
         '<div class="giftbox-card-top">' +
+          window.mochiHistDel(it.id, it.name) +
           '<div class="giftbox-emoji">' + giftMedia(it, 'giftbox-emoji-img') + '</div>' +
         '</div>' +
         '<div class="giftbox-card-body">' +
           '<div class="giftbox-name">' + esc(it.name) + '</div>' +
           '<div class="giftbox-price">¥' + Number(it.price || 0).toFixed(2) + '</div>' +
           '<div class="giftbox-wish">"' + esc(it.wish || '心意') + '"</div>' +
+          // #985：心意柜卡片上也能看到「这件礼物上的回复」与领取状态（用户要求回复同样要加到心意柜
+          // 的卡片里；卡片与柜子共用同一份 replies 数据，聊天里追加的回复立刻反映到这里）
+          (boxPending(it) ? '<div class="giftbox-pending">待领取</div>' : '') +
+          (boxReplies(it).length ? '<div class="giftbox-repls">' + boxReplyRows(it) + '</div>' : '') +
           '<div class="giftbox-meta">' + esc(from) + ' · ' + esc(fmtTime(it.tm)) + '</div>' +
         '</div>' +
       '</div>';
-    }).join('') || '<div class="gift-empty">' + (boxTab === 'in' ? (esc(partnerName()) + ' 还没送你礼物<br>' + (window.taFit ? window.taFit('他偶尔会主动从市集挑一份给你，耐心等等') : '他偶尔会主动从市集挑一份给你，耐心等等')) : boxTab === 'self' ? (esc(partnerName()) + ' 还没给自己买过礼物<br>TA 偶尔会按概率给自己挑一件，收进自己的心意柜') : ('你还没送出礼物<br>去心意市集挑一份送给 ' + esc(partnerName()) + ' 吧')) + '</div>';
+    })() }; });
+    el.innerHTML = window.mochiHistFold(rows, {
+      key: 'gift-' + boxTab,
+      empty: '<div class="gift-empty">' + (boxTab === 'in' ? (esc(partnerName()) + ' 还没送你礼物<br>' + (window.taFit ? window.taFit('他偶尔会主动从市集挑一份给你，耐心等等') : '他偶尔会主动从市集挑一份给你，耐心等等')) : boxTab === 'self' ? (esc(partnerName()) + ' 还没给自己买过礼物<br>TA 偶尔会按概率给自己挑一件，收进自己的心意柜') : ('你还没送出礼物<br>去心意市集挑一份送给 ' + esc(partnerName()) + ' 吧')) + '</div>',
+      todayEmpty: '<div class="dc-h-day-empty">今天没有新的心意</div>'
+    });
     el.querySelectorAll('.giftbox-card').forEach(function (c) {
       c.addEventListener('click', function () {
         const it = list.find(function (x) { return x.id === c.dataset.id; });
@@ -1349,8 +2101,39 @@
             '<div class="gb-detail-price">¥' + Number(it.price || 0).toFixed(2) + '</div>' +
             '<div class="gb-detail-wish">"' + esc(it.wish || '心意') + '"</div>' +
             '<div class="gb-detail-meta">' + esc(from) + ' · ' + esc(fmtTime(it.tm)) + '</div>' +
+            // #985：详情里给回复一个完整段落（不截断），并标出待领取状态
+            (boxPending(it) ? '<div class="giftbox-pending gb-detail-pending">待领取</div>' : '') +
+            (boxReplies(it).length
+              ? '<div class="gb-detail-repl-title">这件礼物上的回复</div><div class="gb-detail-repls">' + boxReplyRows(it) + '</div>'
+              : '') +
+            // #1530：详情里的【领取】——心意柜自己成为可领取面。过去领取动作只挂在聊天礼物卡上
+            //（#985），聊天卡被删掉／丢了 giftBoxId／聊天清空后，柜里这件永远「待领取」且无路可领
+            //（用户报障「心意柜里的礼物显示待领取，无法点击领取」，多机型同现＝逻辑缺口不是机型问题）。
+            // 领取态单一事实源仍是柜记录：走 giftBoxMarkClaimed 既有写回路（按当前桌面 cid 落盘），
+            // 领完就地换徽标＋重画列表；屏上聊天卡重画与聊天留痕由 chat.js 的 chatGiftClaimSync 补
+            //（有卡补卡、无卡只留痕）。删除件的监听在列表卡捕获阶段，详情面板在 #tc-body 里互不影响。
+            (boxPending(it) ? '<div class="gb-detail-claim"><button class="msg-gift-claim" type="button" data-gb-claim="' + esc(it.id) + '">领取</button></div>' : '') +
           '</div>';
         window.openTCPanel('心意柜', html);
+        // #1530：绑定开在 openTCPanel 之后（innerHTML 已换届，按钮是真节点）；同一详情至多一个领取钮
+        const claimBtn = (function () {
+          const b = document.querySelector('#tc-body button[data-gb-claim]');
+          return (b && b.dataset.gbClaim === String(it.id)) ? b : null;
+        })();
+        if (claimBtn) claimBtn.addEventListener('click', function () {
+          if (!boxPending(it)) return; // 已领取＝幂等（旧面板残留按钮也不重复记账）
+          if (!window.giftBoxMarkClaimed || !window.giftBoxMarkClaimed(it.id)) {
+            if (typeof window.toast === 'function') window.toast('暂时领不了，稍后再试');
+            return;
+          }
+          renderBox(); // 柜列表就地转已领取（待领取徽标消失、统计不变）
+          const done = document.createElement('span');
+          done.className = 'msg-gift-got';
+          done.textContent = '✓ 已领取';
+          claimBtn.replaceWith(done);
+          if (typeof window.toast === 'function') window.toast('已领取');
+          try { if (window.chatGiftClaimSync) window.chatGiftClaimSync(it.id, it.name); } catch (eCS) {}
+        });
       });
     });
   }
@@ -1432,16 +2215,17 @@
         '<div class="market-hero">' +
 
           '<div class="market-hero-title">心意市集</div>' +
-          '<div class="market-hero-sub">挑一份心意，跨越两个世界送给你</div>' +
+          '<div class="market-hero-sub">挑一份心意，跨越两个世界送给 TA</div>' +
           '<div class="market-balance" id="market-balance"></div>' +
         '</div>' +
+        '<div class="market-mine" id="market-mine"></div>' +
         '<div class="market-cats" id="market-cats"></div>' +
         searchRowHtml('market-search') +
         '<div class="market-grid" id="market-grid"></div>' +
         '<div class="market-foot">' +
           '<button class="market-tool" id="market-wish" type="button">☆ 心愿单</button>' +
           '<button class="market-tool" id="market-manage" type="button">管理</button>' +
-          '<button class="market-tool" id="market-add" type="button">+ 添加商品</button>' +
+          '<button class="market-tool" id="market-add" type="button">＋ 上传商品</button>' +
           '<button class="market-tool" id="market-settings" type="button">设置</button>' +
           '<button class="market-tool" id="market-reset" type="button" hidden>恢复默认商品</button>' +
         '</div>' +
@@ -1449,14 +2233,23 @@
     host.appendChild(marketPage);
     document.getElementById('market-back').addEventListener('click', backHome);
     bindSearchRow('market-search', renderMarket);
-    document.getElementById('market-wish').addEventListener('click', function () { wishTab = 'my'; renderWishPanel(); });
+    // #858 我的心意商品：按钮走委托（renderMineCard 每次重画换节点，委托才不用重绑）
+    const mineBox = document.getElementById('market-mine');
+    if (mineBox) mineBox.addEventListener('click', function (e) {
+      const b = e.target && e.target.closest ? e.target.closest('button') : null;
+      if (!b || !b.id) return;
+      if (b.id === 'market-mine-add') openAddGiftForm(null);
+      else if (b.id === 'market-mine-export') exportMarketGoods();
+      else if (b.id === 'market-mine-import') importMarketGoods();
+    });
+    document.getElementById('market-wish').addEventListener('click', function () { wishTab = taWishUnread() ? 'ta' : 'my'; renderWishPanel(); });
     document.getElementById('market-settings').addEventListener('click', openGiftSettings);
     document.getElementById('market-add').addEventListener('click', function () { if (marketManage) { marketManage = false; renderMarket(); return; } openAddGiftForm(null); });
     document.getElementById('market-manage').addEventListener('click', function () { marketManage = !marketManage; renderMarket(); });
     document.getElementById('market-reset').addEventListener('click', function () {
       if (!window.openModal) return;
       window.openModal('恢复默认商品？（清除对默认商品的修改/删除记录，自定义商品保留）', '', function () {
-        customSave(customLoad().filter(function (c) { return c && !c.del && !c.base; }));
+        if (customWriteBlocked()) return; customSave(customLoad().filter(function (c) { return c && !c.del && !c.base; }));
         renderMarket(); toast('已恢复默认');
       }, { noInput: true });
     });
@@ -1535,6 +2328,7 @@
     // FIX 2026-09-15 #540：切联系人后立即重写心意市集/心意柜里写死过名字的静态文案；
     // 页面若正开着顺带重渲（数据列表走动态 store 已隔离，重渲只为文案与列表同时落到新桌面）。
     document.addEventListener('contact-switched', function () {
+      try { boxMetaInvalidate(); } catch (e) {}   // #985：切桌面后卡片状态按新桌面重读
       try { syncGiftNames(); } catch (e) {}
       try { if (giftboxPage && !giftboxPage.hidden) renderBox(); } catch (e) {}
       try { if (marketPage && !marketPage.hidden) renderMarket(); } catch (e) {}
@@ -1555,6 +2349,18 @@
         const catsNode2 = document.getElementById('gift-cats');
         if (catsNode2) catsNode2.insertAdjacentHTML('beforebegin', '<div class="gift-wish-row" id="gift-wish-entry"><button id="gift-wish-ta" type="button">☆ 看看 ' + esc(partnerName()) + ' 的心愿单</button></div>');
       }
+      // #1540：聊天送礼面板的标题就叫「心意集市 · TA」，但「上传我的商品」入口过去只存在于
+      // 桌面图标进的那个全屏市集页（#858）——用户在聊天里打开这个同名面板找「自己添加商品」
+      // 自然扑空（报障「心意集市自己添加商品的按钮不见了」＝同名面缺入口，不是按钮被删；
+      // 多机型同报＝逻辑缺口非机型问题，与 #1530 心意柜补领取同族收口）。入口走 wish-entry
+      // 同款「init 注入一次」模式；表单直接复用 openAddGiftForm（#tc-mask 层，#1323/#1230
+      // 拾取门由 openTCPanel 换届自动补装），保存后 marketRerenderBoth 让面板网格就地出新商品。
+      if (!document.getElementById('gift-mine-entry')) {
+        const catsNode3 = document.getElementById('gift-cats');
+        if (catsNode3) catsNode3.insertAdjacentHTML('beforebegin', '<div class="gift-mine-row" id="gift-mine-entry"><button id="gift-mine-add" type="button">＋ 上传我的商品</button></div>');
+      }
+      const mineAddBtn = document.getElementById('gift-mine-add');
+      if (mineAddBtn) mineAddBtn.addEventListener('click', function () { openAddGiftForm(null); });
       const gwBtn = document.getElementById('gift-wish-ta');
       if (gwBtn) gwBtn.addEventListener('click', function () {
         closeGiftPanel();

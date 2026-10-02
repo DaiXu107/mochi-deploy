@@ -44,18 +44,38 @@
   const modeSel = document.getElementById('m3-mode'); // #453 简单/道具模式
   const partnerNameEl = document.getElementById('m3-partner-name');
 
-  const N = 8, KIND_N = 6;
+  // N/KIND_N = 当前难度棋盘边长/配色数（newGame 按 DIFFS 设置；缺省 8×8/6 色＝旧行为，
+  // 未开局时 __m3Debug 纯函数按 8×8 夹具调用的既有契约不变）
+  let N = 8, KIND_N = 6;
   const GAP = 3;                 // 格间距（fitBoard 哨兵表达式依赖）
   const SWAP_MS = 170, POP_MS = 220, FALL_MS = 300;  // 交换/消除/下落动画时长
-  const KINDS = ['🍓', '🍋', '🍇', '🔔', '⭐', '🎈'];
+  const KINDS = ['🍓', '🍋', '🍇', '🔔', '⭐', '🎈', '🍀', '💎'];   // 前 6 款顺序不动（旧档牌面），后 2 款供王者/传奇
   const BOMB_BASE = 10;    // 10+c = 该色炸弹（💥，被消除炸 3×3）
   const RAINBOW = 20;      // 彩虹（🌈）
   const LINE_H = 30, LINE_V = 40; // 30+c / 40+c = 该色直线道具（↔️被消除清整行 / ↕️清整列）#453
+  // 「更多牌」扩展批：新增王者 10×10 / 传奇 12×12 两档（含更大棋盘与更多配色）。
+  // 旧三档 8×8/6 色/目标分原样保留（verify-match3-* 契约）；KINDS 上限 8 ＜ BOMB_BASE，值域分档不碰撞
   const DIFFS = {
-    casual: { target: 300, coin: 520, label: '🌱 休闲 · 300 分' },
-    normal: { target: 600, coin: 1314, label: '🌙 普通 · 600 分' },
-    hard:   { target: 1000, coin: 5200, label: '⭐ 挑战 · 1000 分' }
+    casual: { target: 300, coin: 520, size: 8, kinds: 6, label: '🌱 休闲 · 300 分' },
+    normal: { target: 600, coin: 1314, size: 8, kinds: 6, label: '🌙 普通 · 600 分' },
+    hard:   { target: 1000, coin: 5200, size: 8, kinds: 6, label: '⭐ 挑战 · 1000 分' },
+    king:   { target: 2000, coin: 13140, size: 10, kinds: 7, label: '👑 王者 · 10×10 · 2000 分' },
+    legend: { target: 3500, coin: 33440, size: 12, kinds: 8, label: '🏆 传奇 · 12×12 · 3500 分' }
   };
+  // 难度下拉由 DIFFS 生成（并行批常占用 template.html；档位清单以本文件为唯一事实源）
+  function syncDiffSel() {
+    if (!diffSel) return;
+    const want = String(diffSel.value || 'normal');
+    diffSel.innerHTML = '';
+    for (const k in DIFFS) {
+      const o = document.createElement('option');
+      o.value = k; o.textContent = DIFFS[k].label;
+      if (k === want) o.selected = true;
+      diffSel.appendChild(o);
+    }
+    if (!DIFFS[want]) diffSel.value = 'normal';
+  }
+  syncDiffSel();
   const THINK_LINES = ['TA正在找能消的……', 'TA扫视着棋盘', 'TA歪头想了想'];
   const TURN_MIN = 900, TURN_VAR = 800;
 
@@ -107,9 +127,12 @@
   let thinkT = null;
 
   function newState(diff, mode) {
+    const d = DIFFS[diff] || DIFFS.normal;
+    N = d.size; KIND_N = d.kinds;   // 「更多牌」扩展批：棋盘边长/配色数随难度（KINDS 前 6 款顺序不变，旧档牌面零漂移）
     return {
       diff: diff,
-      target: DIFFS[diff].target,
+      target: d.target,
+      size: d.size, kinds: d.kinds,
       grid: [],                // grid[r][c]：0..5 颜色 / 10+c 炸弹 / 20 彩虹 / 30+c,40+c 直线道具
       mode: mode === 'item' ? 'item' : 'simple', // #453 简单(默认,无道具)/道具
       taMode: null,            // #301 TA 出手风格 serious/normal/sandbag/blunder（FIX 2026-09-15 #481 与 st.mode 道具开关分家）
@@ -138,8 +161,11 @@
   function saveStats(s) { try { localStorage.setItem(statsKey(), JSON.stringify(s)); } catch (e) {} }
 
   // ---- 三消规则（纯函数，__m3Debug 复用） ----
+  // 「更多牌」扩展批：纯函数一律以传入 grid 的边长为准（不读全局 N）——
+  // 大盘档开过一局后 N 会变，旧 verify 夹具仍按 8×8 直调这些函数，必须不受影响。
   // 找出全部 ≥3 同色直线（行/列，彩虹不参与），返回 run 列表
   function findRuns(grid) {
+    const N = grid.length;
     const runs = [];
     for (let r = 0; r < N; r++) {
       let run = 1;
@@ -173,6 +199,7 @@
   function findMatches(grid) {
     const runs = findRuns(grid);
     if (!runs.length) return null;
+    const N = grid.length;
     const mark = [];
     for (let r = 0; r < N; r++) mark.push(new Array(N).fill(false));
     runs.forEach((run) => run.cells.forEach((p) => { mark[p[0]][p[1]] = true; }));
@@ -180,6 +207,8 @@
   }
   // 从种子格出发的完整消除（含炸弹 3×3 连锁引爆）；返回被清格子列表
   function clearWithSpecials(grid, seeds) {
+    const N = grid.length;
+    const inb = (r, c) => r >= 0 && r < N && c >= 0 && c < N;
     const cleared = [];
     const seen = [];
     for (let r = 0; r < N; r++) seen.push(new Array(N).fill(false));
@@ -187,7 +216,7 @@
     seeds.forEach((p) => { seen[p[0]][p[1]] = true; });
     while (queue.length) {
       const p = queue.shift();
-      if (!inBoard(p[0], p[1]) || seen[p[0]][p[1]] === 'done') continue;
+      if (!inb(p[0], p[1]) || seen[p[0]][p[1]] === 'done') continue;
       seen[p[0]][p[1]] = 'done';
       cleared.push([p[0], p[1]]);
       const v = grid[p[0]][p[1]];
@@ -200,7 +229,7 @@
       } else if (v >= BOMB_BASE && v < RAINBOW) {
         for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
           const rr = p[0] + dr, cc = p[1] + dc;
-          if (inBoard(rr, cc) && !seen[rr][cc]) { seen[rr][cc] = true; queue.push([rr, cc]); }
+          if (inb(rr, cc) && !seen[rr][cc]) { seen[rr][cc] = true; queue.push([rr, cc]); }
         }
       }
     }
@@ -208,6 +237,7 @@
   }
   // 重力补落：每列非空值下沉、顶部补随机新格（新格全是普通色）
   function collapse(grid) {
+    const N = grid.length;
     let moved = false;
     for (let c = 0; c < N; c++) {
       let write = N - 1;
@@ -241,6 +271,7 @@
   }
   // 枚举全部相邻交换后能产生消除的步（TA 决策 / 死锁检测 / 提示共用）；彩虹不入枚举
   function allMoves(grid) {
+    const N = grid.length;
     const out = [];
     const dirs = [[0, 1], [1, 0]];
     for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
@@ -462,11 +493,74 @@
     return maxDist;
   }
   function updateInfo() {
+    if (!st) return;
+    // #799 道具提醒：模式与提示余量常驻信息条。下拉只写「道具」两字，切完盘面毫无变化，
+    // 用户会以为点一下就是在使用道具；对局中改下拉只对下一局生效，更得当场见得到。
     if (infoEl) infoEl.innerHTML =
       '<span>🎯 ' + st.score + ' / ' + st.target + '</span>' +
       '<span>你 ' + st.myScore + '</span>' +
       '<span>' + T('TA') + ' ' + st.taScore + '</span>' +
-      '<span>💕 ' + chemNow() + '</span>';
+      '<span>' + modeLabel(st.mode) + '</span>' +
+      '<span>💡 提示×' + st.hints + '</span>' +
+      '<span>💕 ' + chemNow() + '</span>' +
+      (st.started && !st.over && firstProp()
+        ? '<span class="m3-prop-live">⚡ ' + PROP_TIP[firstProp()].ico + ' 在场上·' + PROP_TIP[firstProp()].use + '即引爆</span>' : '') +
+      (st.started && !st.over && (st.mode !== nextMode() || st.diff !== nextDiff())
+        ? '<span class="m3-mode-pending">⚠ 已选' + pendingLabels().join(' · ') + '，点这里立刻重开一局换上</span>' : '');
+    syncPropBtns();
+  }
+  // #1030 「重开一局才换」以前是一句执行不了的指令：对局中面板上没有任何别的重开入口
+  // （开局覆盖层已隐藏、结束游戏只在通关结算出现、✕ 只关面板不清棋局），用户切完下拉
+  // 除了打满目标分或换联系人，永远进不了道具模式（实测：切 item → ✕ → 重进，st.mode 仍 simple
+  // 且开局按钮不可达）。所以把这句红字做成按钮：点它就按当前下拉就地重开一局。
+  // 难度下拉同属这个陷阱（切了也只对下一局生效），一并挂进同一颗红字。
+  if (infoEl) infoEl.addEventListener('click', (e) => {
+    const t = e.target && e.target.closest && e.target.closest('.m3-mode-pending');
+    if (!t) return;
+    e.stopPropagation();
+    newGame();
+  });
+  // 头部下拉所指的「下一局」难度（值不在 DIFFS 里就当作没改，不挂红字）
+  function nextDiff() { return diffSel && DIFFS[diffSel.value] ? diffSel.value : st.diff; }
+  function nextMode() { return modeSel && modeSel.value === 'item' ? 'item' : 'simple'; }
+  function modeLabel(m) { return m === 'item' ? '💣 道具模式' : '🌿 简单模式'; }
+  // 红字要列出「下一局和现在不一样的那几项」（可能只切了难度、也可能两个都切）
+  function pendingLabels() {
+    const out = [];
+    if (st.mode !== nextMode()) out.push(modeLabel(nextMode()));
+    if (st.diff !== nextDiff()) out.push(DIFFS[nextDiff()].label);
+    return out;
+  }
+  // 道具按钮：手机端没有 title 悬浮提示，余量与用法写进可点的按钮本身
+  function syncPropBtns() {
+    if (hintBtn) {
+      hintBtn.title = '道具·提示：点亮当前最赚的一步（本局剩 ' + st.hints + '/3 次）';
+      hintBtn.classList.toggle('game-prop-off', !(st.hints > 0));
+    }
+  }
+  // 场上第一颗没引爆的道具（值域分档：直线道具 30+/40+ 必须先于彩虹判——裸写 >= RAINBOW 会把直线当彩虹）
+  function firstProp() {
+    if (!st || st.mode !== 'item' || !st.grid) return null;
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+      const v = st.grid[r][c];
+      if (v < 0) continue;
+      if (v >= LINE_V) return 'line-v';
+      if (v >= LINE_H) return 'line-h';
+      if (isRainbow(v)) return 'rainbow';
+      if (v >= BOMB_BASE) return 'bomb';
+    }
+    return null;
+  }
+  // 短标签给常驻信息条、整句给回合状态行（半框里状态行在棋盘下方，窄屏常被挤出可视区）
+  const PROP_TIP = {
+    'line-v': { ico: '↕️', use: '交换进三连', line: '↕️ 纵向道具在场上：把它交换进三连，整列都消掉' },
+    'line-h': { ico: '↔️', use: '交换进三连', line: '↔️ 横向道具在场上：把它交换进三连，整行都消掉' },
+    'rainbow': { ico: '🌈', use: '跟任意一格交换', line: '🌈 彩虹在场上：跟任意一格交换，就清光那种颜色' },
+    'bomb': { ico: '💥', use: '交换进三连', line: '💥 炸弹在场上：把它交换进三连，周围 3×3 一起炸开' }
+  };
+  function propOnBoardTip() {
+    const k = firstProp();
+    return k ? PROP_TIP[k].line : null;
   }
   function chemNow() {
     const total = st.myScore + st.taScore;
@@ -491,7 +585,10 @@
   function dot(side) { return '<i class="c4-dot ' + (side === 1 ? 'c4-dot-you' : 'c4-dot-ta') + '"></i>'; }
   function showTurnStatus() {
     if (!statusEl || !st || st.over) return;
-    setStatus(st.turn === 1 ? dot(1) + '你的回合：点一格再点相邻一格交换' : T(THINK_LINES[0]));
+    if (st.turn !== 1) { setStatus(T(THINK_LINES[0])); return; }
+    // #799 场上有未引爆的道具时，回合提醒直接说清怎么用（生成的那一秒气泡一闪而过，玩家常错过）
+    const tip = propOnBoardTip();
+    setStatus(tip ? tip : dot(1) + '你的回合：点两格或滑动交换 · 💡 提示剩 ' + st.hints + ' 次');
   }
 
   // ---- 对局流程 ----
@@ -524,7 +621,7 @@
       st.lock = false;
     }, animMs(35 * (2 * N - 2) + 260));
     st.turn = 1;
-    setStatus(dot(1) + '你的回合：点一格或滑动相邻格交换');
+    showTurnStatus();
   }
   // 交换后完整结算：彩虹交换走特殊分支；普通路径四连生成炸弹、五连生成彩虹（仅首段）
   // 动画时序：滑动交换 → 每段「消除爆开 → 下落补位」→ 连锁，全部走完才解锁
@@ -648,7 +745,9 @@
     const seeds = [[rbPos[0], rbPos[1]]];
     const colors = [];
     if (both) {
-      const pool = [0, 1, 2, 3, 4, 5].sort(() => Math.random() - 0.5).slice(0, 2);
+      const poolAll = [];
+      for (let i = 0; i < KIND_N; i++) poolAll.push(i);
+      const pool = poolAll.sort(() => Math.random() - 0.5).slice(0, 2);
       pool.forEach((c2) => colors.push(c2));
       seeds.push([other[0], other[1]]);
     } else {
@@ -814,13 +913,21 @@
     setStatus('🎉 达成目标！默契 ' + chem);
     // 写聊天系统消息 + TA 随机回应
     try {
-      if (window.chatAddSystem) window.chatAddSystem(T('消消乐') + ' · 达成 ' + st.score + ' 分 · 默契 ' + chem, { special: 'match3' });
+      // #891：带结构化结算负载（chat.js 小游戏卡片渲染；{ta} 由渲染侧按当前昵称展开）
+      const m3Stats = ['🎯 达成 ' + st.score + ' / ' + st.target + ' 分', '💕 默契 ' + chem + ' · 你 ' + st.myScore + ' · {ta} ' + st.taScore,
+        '累计通关 ' + s.clears + ' 局 · 历史最佳默契 ' + s.bestChem].concat(coinLine ? [coinLine] : []).concat(dr ? ['🌠 掉落限定摆件「' + dr.ico + ' ' + dr.name + '」'] : []);
+      if (window.chatAddSystem) window.chatAddSystem(T('消消乐') + ' · 达成 ' + st.score + ' 分 · 默契 ' + chem, { special: 'match3', game: {
+        name: '消消乐',
+        outcome: 'clear',
+        result: '目标达成，通关啦！',
+        stats: m3Stats
+      } });
       const fb = ['通关啦，配合不错。', '我们好默契呀。', '再来一局？'];
       const pool = window.getInteractPool ? window.getInteractPool('游戏平局·回应', fb) : fb;
-      const say = pool[Math.floor(Math.random() * pool.length)] || fb[0];
+      const say = pool.length ? pool[Math.floor(Math.random() * pool.length)] : ''; // #1515 整组停用＝静默（消消乐）
       // FIX 2026-09-16：800ms 内切联系人桌面，回应会发进新桌面——回调前校验命名空间未变
       const cidAtEnd = prefix();
-      setTimeout(() => {
+      if (say) setTimeout(() => {
         if (prefix() !== cidAtEnd) return;
         try { if (window.chatAddIn) window.chatAddIn(say, { silent: true }); } catch (e) {}
       }, 800);
@@ -841,8 +948,9 @@
     showOverlay('消消乐',
       '<div class="c4-start-tip">和 ' + T('TA') + ' 轮流交换相邻两格<br>凑成同款三连就消除，一起冲到目标分</div>' +
       '<div class="c4-start-note">' + (itemMode
-        ? '💣 道具模式：↔️↕️ 四连直线→清整行/整列 · L/T 交叉→💥炸弹 · 五连→🌈彩虹'
-        : '🌿 简单模式：经典三消、无道具（想出道具就在上方切「💣 道具」）') +
+        ? '💣 道具模式：凑四连→↔️/↕️ · L/T 交叉→💥 · 五连→🌈；道具是消出来的，不是点一下就用——再把它交换进三连才自动引爆'
+        : '🌿 简单模式：经典三消、无道具（想玩道具：上方下拉切「💣 道具」，再开一局才生效）') +
+      '<br>🧰 道具 💡 提示：每局 3 次，点亮当前最赚的一步（点右上角 💡）' +
       '<br>🎲 ' + T('TA') + '每回合状态随机——最优步 / 前五挑一 / 放水 / 手滑</div>' +
       (s.clears > 0 ? '<div class="pong-end-stat">累计通关 ' + s.clears + ' 局 · 历史最佳默契 ' + s.bestChem + '</div>' : ''),
       s.clears > 0 ? '再来一局' : '开始对局');
@@ -913,16 +1021,32 @@
   if (closeBtn) closeBtn.addEventListener('click', (e) => { e.stopPropagation(); closePanel(); });
   if (diffSel) diffSel.addEventListener('change', () => {
     const s = loadStats(); s.lastDiff = diffSel.value; saveStats(s);
+    // #1030 难度切完以前只写档、零回响（和 #799 之前的模式下拉同一个毛病）：对局中必须当场看到红字
+    if (st && st.started && !st.over) {
+      setStatus('下一局是' + ((DIFFS[diffSel.value] || DIFFS.normal).label) + '，点信息条红字立刻重开换');
+      updateInfo();
+    }
   });
-  if (modeSel) modeSel.addEventListener('change', () => {
-    const s = loadStats(); s.lastMode = modeSel.value === 'item' ? 'item' : 'simple'; saveStats(s);
-  });
+  if (modeSel) {
+    // #799 「💣 道具」四个字太容易被读成「点这里使用道具」
+    modeSel.title = '模式开关（不是道具按钮）：切成「💣 道具」后，新开的这局才会消出道具；道具要靠交换引爆';
+    modeSel.addEventListener('change', () => {
+      const s = loadStats(); s.lastMode = modeSel.value === 'item' ? 'item' : 'simple'; saveStats(s);
+      // #799 切模式必须当场有回响：下拉上只有「💣 道具」两个字，不解释就会被当成「点一下使用道具」
+      setStatus(s.lastMode === 'item'
+        ? '💣 道具模式已选：凑四连/L·T 交叉/五连时自动掉 ↔️↕️ 💥 🌈，再把它交换进三连就引爆（不是手动点用）'
+        : '🌿 简单模式已选：纯经典三消，不生成任何道具');
+      if (st && st.started && !st.over) { taSay('本局是' + modeLabel(st.mode) + '，点红字立刻重开换'); updateInfo(); }
+      else if (overlayEl && !overlayEl.hidden) showStartOverlay();   // 覆盖层开着：说明文字跟着模式换
+    });
+  }
   if (hintBtn) hintBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     if (!st || !st.started || st.over || st.lock || st.turn !== 1) return;
     // FIX 2026-09-16：提示原先无限次（linkup 是 ×3）——补每局 3 次上限
-    if (!(st.hints > 0)) { taSay('提示次数用完啦'); sfxBad(); return; }
+    if (!(st.hints > 0)) { taSay('💡 提示用完啦，重开一局才恢复'); sfxBad(); return; }
     st.hints--;
+    updateInfo();
     const moves = allMoves(st.grid);
     if (!moves.length) return;
     moves.sort((x, y) => y.gain - x.gain);
@@ -945,7 +1069,7 @@
     let name = T('TA');
     try {
       const s = window.activeStore && window.activeStore();
-      name = (s && (s.get('cs-lbl-partner') || s.get('lbl-partner'))) || name;
+      name = (s && (s.get('lbl-partner') || s.get('cs-lbl-partner'))) || name;
     } catch (e) {}
     if (partnerNameEl) partnerNameEl.textContent = name;
   }
@@ -1034,6 +1158,8 @@
     reshuffle: reshuffle,
     colorOf: colorOf,
     isRainbow: isRainbow,
+    showTurnStatus: showTurnStatus,
+    updateInfo: updateInfo,
     BOMB_BASE: BOMB_BASE,
     RAINBOW: RAINBOW,
     LINE_H: LINE_H,

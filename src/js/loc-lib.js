@@ -30,7 +30,9 @@
     return v === null ? true : v === '1';
   }
   // 单卡开关：loc-off-<cat>:<text> = '1' 表示关闭
-  function isOff(cat, text) { return store.get('loc-off-' + cat + ':' + text) === '1'; }
+  // #1315：整类停用叠在同一出口（共用件 window.presetGroup，键 pg-groups-off；CATS 九个分类各是一个
+  //   「分组」）——sysCards/入口角标/本页列表都走这个判据，逐张开关存值一字不动。
+  function isOff(cat, text) { return store.get('loc-off-' + cat + ':' + text) === '1' || !!(window.presetGroup && window.presetGroup.isOff('loc', cat)); }
   function setOff(cat, text, off) { store.set('loc-off-' + cat + ':' + text, off ? '1' : '0'); }
   // ---- 自定义位置卡（我的添加） ----
   // v3.13.x：老版本位置面板自定义存 loc-custom（字符串数组）——首次读取时迁移进 loc-lib-custom
@@ -61,8 +63,13 @@
   function saveCustom(list) {
     // 兼容字符串数组（位置面板旧逻辑直接传 ['xxx']）→ 统一转对象数组存储
     const arr = (list || []).map(x => typeof x === 'string' ? { t: x } : x).filter(x => x && x.t != null);
+    // #1519：我的添加（整包读-改-写）。库读不全时把空/半份表整包写回＝自定义位置卡被清空，
+    //   判据与文案同 ta-ask（xyBigWriteBlocked 拦下时照实 toast、绝不落笔；回填后再点一次即可）
+    // #1520：回传布尔＝调用方知道这一发有没有真落笔（被拦时保留输入框、不报成功）
+    if (window.xyBigWriteBlocked && window.xyBigWriteBlocked(store, CUSTOM_KEY, '位置卡库')) return false;
     store.set(CUSTOM_KEY, JSON.stringify(arr));
     try { if (window.idbSet) window.idbSet(window.activePrefix() + ':' + CUSTOM_KEY, JSON.stringify(arr)); } catch (e) {}
+    return true;
   }
   // ---- 位置面板词源（字符串数组，仅启用的） ----
   // 系统预设某分类启用字卡（总开关关 → 空；单卡关闭 → 剔除）
@@ -125,6 +132,14 @@
   window.locLibEggText = eggText;
   window.locLibEggEnabled = eggEnabled;
   window.locLibIsOff = isOff;
+  // #1315：按「文案属于哪个分类」反查一次闸——供不过 isOff 出口的内置字面量用（自动换位那条
+  //   陪伴句数组就是硬编码的，停用「状态/感知」后照样发＝开关是装饰）。
+  window.locLibTextOff = function (text) {
+    for (let i = 0; i < CATS.length; i++) {
+      if ((LIB[CATS[i]] || []).indexOf(text) >= 0 && isOff(CATS[i], text)) return true;
+    }
+    return false;
+  };
   window.locLibSetOff = setOff;
   window.locLibGetUseDefault = getUseDefault;
   window.locLibSenseGroup = senseGroup;
@@ -164,6 +179,16 @@
       tip.textContent = '系统预设位置卡已关闭（位置面板只显示「我的添加」）。开启上方开关即可恢复使用。';
       listEl.appendChild(tip);
       return;
+    }
+    // #1315：整类停用条——九个分类各是一个「分组」，旧版只能一条条点掉
+    if (window.presetGroup) {
+      const barBox = document.createElement('div');
+      barBox.innerHTML = window.presetGroup.catBar('loc', cat, LABEL[cat] || cat);
+      const bar = barBox.firstElementChild;
+      if (bar) {
+        listEl.appendChild(bar);
+        window.presetGroup.bindBar(bar, 'loc', cat, function () { renderSysList(); updateEntryCount(); });
+      }
     }
     (LIB[cat] || []).forEach(x => {
       const off = isOff(cat, x);
@@ -218,7 +243,7 @@
       b.addEventListener('click', () => {
         const list = getCustom();
         list.splice(Number(b.dataset.idx), 1);
-        saveCustom(list);
+        if (saveCustom(list) === false) return; // #1520：同上
         renderMineList();
         toast('已删除');
       });
@@ -276,7 +301,7 @@
             if (!ok) return;
             const list = getCustom();
             list.forEach(x => { if (x.grp === gid) x.grp = ''; });
-            saveCustom(list);
+            if (saveCustom(list) === false) return; // #1520：拦下＝这一发没落笔，不动分组账也不报成功
             saveGroups(groups.filter(x => x.id !== gid));
             refreshGrpSelect();
             renderMineList();
@@ -341,7 +366,7 @@
         if (parsed && parsed.grp) x.grp = parsed.grp;
         list.push(x);
       });
-      saveCustom(list);
+      if (saveCustom(list) === false) return; // #1520：拦下＝输入框原样保留（用户才有料可「再点一次」）
       if (ta) ta.value = '';
       switchTab2('mine');
       toast('已添加 ' + items.length + ' 条位置卡');

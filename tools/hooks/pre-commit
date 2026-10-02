@@ -1,0 +1,33 @@
+#!/bin/sh
+# mochi pre-commit 钩子（v3.27.x，防覆盖修复）
+# 提交前自动跑 node build.mjs --check-sentinels：src/ 里任何已登记修复的
+# 逻辑锚点被删（= 修复被并行改动/整块重写覆盖），本次提交直接被拒绝。
+# 这是把哨兵防线从「记得跑」变成「不跑不让提交」——修复覆盖在提交时就
+# 被截住，而不是等构建者收口或 CI 才发现。
+#
+# 跳过方式（紧急逃生口，需在 commit message 里说明原因）：
+#   git commit --no-verify -m "..."
+#
+# 本地无 node 时钩子自动放行（如纯文档提交机器）。
+
+# 没改 src/ 就不用检查（纯文档/配置提交快速放行）
+if ! git diff --cached --name-only | grep -q '^src/'; then
+  exit 0
+fi
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "⚠️  未找到 node，跳过 pre-commit 哨兵检查（请手动跑 node build.mjs --check-sentinels）"
+  exit 0
+fi
+
+echo "[pre-commit] 哨兵检查中（node build.mjs --check-sentinels）…"
+node build.mjs --check-sentinels
+code=$?
+if [ $code -ne 0 ]; then
+  echo ""
+  echo "❌ 提交被拒绝：src/ 修复锚点缺失（上方 ❌ 条目 = 有修复被覆盖/删除）。"
+  echo "   处置：恢复被删的修复代码，或确认该修复已被有意取代并同步更新 build.mjs 的 FIX_SENTINELS。"
+  echo "   紧急逃生口：git commit --no-verify（须在 commit message 说明原因）。"
+  exit 1
+fi
+exit 0

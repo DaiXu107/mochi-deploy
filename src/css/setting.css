@@ -92,6 +92,30 @@
   font-size:13px; font-weight:700; letter-spacing:1px;
   padding:8px 2px 8px; color:var(--muted);
 }
+/* v3.44.x：回复设置·聊天 二级分类 tab（回复与主动 / 字卡与概率 / 拼字造句）——小一号胶囊 */
+.rps-tabs {
+  display:flex; gap:6px; padding:2px 14px 8px; flex-shrink:0;
+  overflow-x:auto; scrollbar-width:none; -ms-overflow-style:none;
+}
+.rps-tabs::-webkit-scrollbar { display:none; }
+.rps-tab {
+  flex:0 0 auto; white-space:nowrap; padding:6px 12px; font-size:12px; font-weight:600;
+  border:1px solid rgba(0,0,0,.1); background:rgba(0,0,0,.04); color:#666;
+  border-radius:10px; cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.rps-tab.sel { background:var(--ink); color:#fff; border-color:var(--ink); }
+.rps-panel[hidden] { display:none; }
+[data-theme="dark"] .rps-tab { background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.14); color:#bbb; }
+[data-theme="dark"] .rps-tab.sel { background:var(--btn-bg); color:var(--btn-ink); border-color:var(--btn-bg); }
+/* #595b：回复设置页「字卡使用状态自检」快捷按钮（整行） */
+.rps-quick { padding:0 14px 8px; }
+.rps-quick-btn {
+  width:100%; padding:10px 12px; font-size:13px; font-weight:600; font-family:inherit;
+  border:1px solid rgba(0,0,0,.1); background:rgba(0,0,0,.03); color:var(--ink);
+  border-radius:12px; cursor:pointer; -webkit-tap-highlight-color:transparent;
+}
+.rps-quick-btn:active { background:rgba(0,0,0,.07); }
+[data-theme="dark"] .rps-quick-btn { background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.14); color:#eee; }
 /* #370b：字卡·拼字 父分组标题——比普通 gs-title 更醒目，作为多个拼字/造句子分组的收纳壳 */
 .gs-sec { margin-bottom:2px; }
 .gs-sec-head {
@@ -121,8 +145,9 @@
 [data-theme="dark"] #qs-diag .qsdiag-okline { color:#4ade80; }
 [data-theme="dark"] #qs-diag .qsdiag-blocked { color:#f87171; background:rgba(239,68,68,.14); }
 /* #390：词典独立页「防未成年人锁定」提示条——锁定时词典场景开关全开也无效，红条在词典页当场讲清因果（同 qsdiag 红条视觉） */
-.dict-lock-hint { margin:8px 12px 0; font-size:11px; font-weight:600; color:#b3261e; background:rgba(220,38,38,.1); border-radius:8px; padding:6px 9px; line-height:1.6; }
-[data-theme="dark"] .dict-lock-hint { color:#f87171; background:rgba(239,68,68,.14); }
+/* #961：字卡库顶部「字卡太多、不常用词典建议关掉」提醒条复用同一条红色提示视觉（默认聊天字卡页与词典页各一条） */
+.dict-lock-hint, .dc-size-hint { margin:8px 12px 0; font-size:11px; font-weight:600; color:#b3261e; background:rgba(220,38,38,.1); border-radius:8px; padding:6px 9px; line-height:1.6; }
+[data-theme="dark"] .dict-lock-hint, [data-theme="dark"] .dc-size-hint { color:#f87171; background:rgba(239,68,68,.14); }
 .gs-row {
   display:flex; align-items:center; justify-content:space-between; gap:10px;
   padding:12px 14px; border-bottom:1px solid rgba(0,0,0,.05);
@@ -140,6 +165,55 @@
 .gs-row .tag:hover, .gs-row .tag:focus-visible { background:rgba(0,0,0,.06); border-color:rgba(0,0,0,.12); outline:none; }
 [data-theme="dark"] .gs-row .tag { color:#aaa; border-color:rgba(255,255,255,.14); background:rgba(255,255,255,.06); }
 [data-theme="dark"] .gs-row .tag:hover, [data-theme="dark"] .gs-row .tag:focus-visible { background:rgba(255,255,255,.1); border-color:rgba(255,255,255,.2); }
+/* v8.29 #978：设置页「本机能不能用」的变灰与替代指引。原 #964 的静态平台胶囊（「仅安卓」/
+   「仅 iPhone」）已撤除——那三条胶囊的真实前提都不是手机系统（后台通知＝Chromium 内核 +
+   https + 通知权限；离线消息提醒＝Chromium + 添加到主屏幕；顶部避让修正＝添加到主屏幕的独立
+   应用形态），静态标平台两个方向都会误导：桌面 Chromium 用户被「仅安卓」劝退（其实能用），
+   iPhone 浏览器形态的用户被「仅 iPhone」叫去开一个空开关。现在只保留「本机不满足条件 →
+   变灰 + 给替代入口」，判定在 personalize.js 的 initUseMark。.plat-off 只变灰、绝不 disabled
+   开关——device.js 的平台 / 形态判定都有失手面（OPPO/Via 伪装 iPhone、桌面版网站模式），
+   识别失手的用户必须仍能点到这个开关。 */
+.set-row.plat-off .txt, .gs-row.plat-off > span { opacity:.6; }
+.plat-hint .plat-go {
+  display:inline-block; margin-left:6px; padding:2px 9px; border-radius:9px; font-weight:700;
+  cursor:pointer; color:#2f6fd0; background:rgba(47,111,208,.12);
+}
+[data-theme="dark"] .plat-hint .plat-go { color:#8ab4f8; background:rgba(138,180,248,.16); }
+@keyframes platFlash { 0% { background:rgba(47,111,208,.18); } 100% { background:rgba(47,111,208,0); } }
+.set-row.plat-flash, .gs-row.plat-flash { animation:platFlash 1.5s ease-out 1; }
+/* #848 设置行右侧「档位胶囊」——非布尔的多档选择（如红包捎话内容三档），点一下弹 pills */
+.gs-pick {
+  flex-shrink:0; font-size:12px; font-weight:600; color:var(--ink); line-height:1.4; white-space:nowrap;
+  border:1px solid rgba(0,0,0,.1); background:rgba(0,0,0,.04); border-radius:99px; padding:6px 12px;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+}
+.gs-pick:active { background:rgba(0,0,0,.09); }
+[data-theme="dark"] .gs-pick { color:#ddd; border-color:rgba(255,255,255,.16); background:rgba(255,255,255,.07); }
+[data-theme="dark"] .gs-pick:active { background:rgba(255,255,255,.13); }
+/* #650 多字卡「拼接符号」多选 chips——药丸复用 .gs-row .tag，选中态对齐 .rps-tab.sel；
+   .dis＝「拼接随机标点」总开关关闭时置灰（仍可点，方便提前配好符号池） */
+.ppy-chips { display:flex; flex-wrap:wrap; gap:6px 6px; justify-content:flex-end; max-width:62%; }
+/* FIX 2026-09-17 #694：选中态原先写成 .ppy-chip.sel（特异性 0,2,0），被上面那条
+   `.gs-row .tag:hover`（0,3,0；暗色 0,4,0）压过——手指点上去 :hover 常驻，选中底色/字色
+   当场被换成 hover 的浅灰，用户看到「点亮。没颜色变化、再点关也没变化」（用户实报）。
+   这里把选中态整体提到 hover 之上（连 :hover/:focus-visible 变体一起写死），
+   `.dis` 置灰语义不变。 */
+.ppy-chips .ppy-chip.sel,
+.ppy-chips .ppy-chip.sel:hover,
+.ppy-chips .ppy-chip.sel:focus-visible { background:var(--ink,#111); color:#fff; border-color:var(--ink,#111); }
+[data-theme="dark"] .ppy-chips .ppy-chip.sel,
+[data-theme="dark"] .ppy-chips .ppy-chip.sel:hover,
+[data-theme="dark"] .ppy-chips .ppy-chip.sel:focus-visible { background:var(--btn-bg,#eee); color:var(--btn-ink,#111); border-color:var(--btn-bg,#eee); }
+.ppy-chip.dis { opacity:.45; }
+/* #712 自定义拼接符号：chip 内右侧「×」删除钮（仅自定义 chip 有，内置只能开关不能删）＋
+   「＋」添加钮虚线边框与内置 chip 区分；删除钮继承 chip 文字色，选中/未选中都有对比 */
+.ppy-chip .ppy-x { font-style:normal; margin-left:5px; padding:0 1px; opacity:.5; }
+.ppy-chip.sel .ppy-x, .ppy-chip.sel:hover .ppy-x { opacity:.85; }
+.ppy-chips .ppy-chip#ppy-add { border-style:dashed; }
+/* FIX 2026-09-18 #727：`.gs-row{display:flex}` 会压过 UA 的 `[hidden]{display:none}`
+   （同款坑已见 chat-main.css .poke-tools / chat-pages.css .cc-tab / setting.css .storage-clear）
+   ——「标识抽取方式」行靠 hidden 切换显隐（点亮 ≥2 枚才出），不补这条会永远显示。 */
+.gs-row[hidden] { display:none; }
 /* v3.33.x #523：时间入口按钮 + 自绘日期/时间选择器（替代原生 datetime-local——原生弹层在部分
    设备/桌面预览下锚点不受控、会飘出手机框甚至屏幕外。同类先例：批量导入的目标分组原生 select 改自绘胶囊） */
 .deadline-btn {
@@ -220,6 +294,11 @@
 .storage-cat-warn { margin:2px 0 9px; padding:8px 10px; border-radius:10px; background:rgba(232,90,90,.12); font-size:11px; line-height:1.6; color:#e85a5a; }
 .storage-clear { display:block; width:100%; margin-top:12px; padding:12px; border:none; border-radius:14px; background:var(--ink); color:var(--bg-b,#fff); font-size:14px; font-weight:600; font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent; }
 .storage-clear:active { opacity:.85; }
+/* FIX 2026-09-16 #618：上面的 display:block 是作者样式，会盖过 UA 的 [hidden]{display:none}，
+   使任何 class="storage-clear" 且带 hidden 的按钮（如自检页「应用所选」#card-audit-apply、
+   存储页「立即持久存储」/「一键清理」）按 hidden 显隐完全失效——按钮永远可见、点它只提示
+   「请先勾选」→ 用户以为「批量修复没用」。用同特异度更高的规则把 hidden 语义补回来。 */
+.storage-clear[hidden] { display:none; }
 
 /* ===== 字卡使用状态自检（设置→工具 #row-card-audit / card-audit.js） =====
    语义色走变量，暗色在下方 [data-theme="dark"] 覆盖；不用内联色值，保证明暗可读。 */

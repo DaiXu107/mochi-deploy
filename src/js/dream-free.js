@@ -8,7 +8,8 @@
 //   comma  25%  词间隙加逗号（如「今天也要，好好爱自己」）；
 //   space  25%  词间隙加空格（与词典拼字单气泡同味道）。
 // 词边界来自内置词典（DEFAULT_CARD_DATA.dict「词库*」分组，正向最大匹配切词）。
-// 入库规则（#324）：多联系人 80% 进公用库 / 20% 进专属库；单联系人 100% 专属库。
+// 入库规则（#324，2026-09-16 #622 起不再按联系人数量分档）：一律按 mjf-pub（存公用库概率，
+// 默认 80）分库——0=全专属 / 100=全公用 / 80=80% 公用 + 20% 专属，多联系人、单联系人都一样。
 // 设置项（回复设置 → 聊天 tab「梦角自由造句」组）：mjf-en（#513 起默认开）、mjf-prob（默认 20%）。
 // #413 语料来源扩展（默认=全部字卡，三源可选+权重可调）：
 //   mjf-src-cc 自定义聊天字卡（默认开，原唯一语料）/ mjf-src-def 默认聊天字卡（默认开）/
@@ -241,6 +242,49 @@
     const out = toks.slice(0, gi).join('') + sep + toks.slice(gi).join('');
     return out !== str ? out : null;
   }
+  // FIX 2026-09-21 #953 句尾标点收口：原各手法要么把句尾标点剥掉（recallCut/suffix/addtail/tailcut
+  // 都先 replace 掉尾标点，recall 截断后尾巴标点也没了），要么只在词间插逗号/空格（comma/space），
+  // 结果造出的句子清一色没有句尾标点（用户实报「梦角自由造句没有使用标点符号」）。在出句唯一
+  // 收口点统一补：句尾已有标点（中英文句读/波浪/省略/引号括号收尾）原样保留，否则按权重掷一个
+  // 句尾标点。
+  // FIX 2026-09-21 #953b 用户直派「使用标点符号也可以修改或关闭」——标点改由回复设置驱动：
+  //   mjf-punct = 0 → 完全不补（回到 #317 原味，出句保持截断后的裸文本）；
+  //   mjf-punct-pool（reply-mjf-punct-pool 原串，非数值键）非空 → 用它当候选池；空格/| 分隔，
+  //   没写分隔符时按字符拆（「。！？」＝三个候选）；空/解析不出 → 内置默认池。
+  // FIX 2026-09-29 #1396 用户直派「这里的可用标点（空格分隔）与多字卡那套拼接符号不一样＝设计
+  //   不完整」——设置侧换成与 #650/#712 同款 chips 池（内置含空格/换行、可加自定义、至少一枚），
+  //   整池存 reply-mjf-punct-set＝JSON [{s,on}]，只取 on===1 当候选、等概率。判定顺序＝先认新池
+  //   （用户点过 chip 才有），没有再走上面 #953 那条旧链（旧原串 → 内置默认池），所以从没动过
+  //   这颗开关的设备出句分布一字不变（含默认池里句号写三遍的偏置）。
+  const END_PUNCT_OK = /[。．！？!?~～…，、,.;；:：）)”’"]/;
+  const END_PUNCT_DEFAULT = ['。', '。', '。', '~', '！', '……'];
+  function poolFromSet(rawSet) {
+    let arr = null;
+    try { arr = JSON.parse(String(rawSet)); } catch (e) { return null; }
+    if (!Array.isArray(arr)) return null;
+    const out = arr.filter(it => it && typeof it.s === 'string' && it.s && it.s.length <= 6 && it.on === 1)
+      .map(it => it.s).slice(0, 20);
+    return out.length ? out : null;
+  }
+  function endPunctPool(c) {
+    if (c && Number(c['mjf-punct']) === 0) return null; // 关＝不补标点
+    if (c && c['mjf-punct-set']) {
+      const sel = poolFromSet(c['mjf-punct-set']);
+      if (sel) return sel;
+    }
+    const raw = c && c['mjf-punct-pool'] != null ? String(c['mjf-punct-pool']).trim() : '';
+    if (!raw) return END_PUNCT_DEFAULT;
+    let arr = raw.split(/[\s|]+/).filter(Boolean);
+    if (arr.length < 2) arr = Array.from(raw.replace(/[\s|]+/g, ''));
+    arr = arr.filter(x => x.length <= 6).slice(0, 20);
+    return arr.length ? arr : END_PUNCT_DEFAULT;
+  }
+  function withEndPunct(txt, c) {
+    const pool = endPunctPool(c);
+    if (!pool || !txt || typeof txt !== 'string') return txt;
+    if (END_PUNCT_OK.test(txt.charAt(txt.length - 1))) return txt;
+    return txt + pool[Math.floor(Math.random() * pool.length)];
+  }
   // 抽句门：c = replyCfg()。命中返回 { text: 新句, src: 源卡 }；关闭/未命中/造不出返回 null。
   window.dreamFreePick = function (c) {
     try {
@@ -271,15 +315,18 @@
         } else {
           mode = pickOf(['cutfill', 'comma', 'space', 'suffix', 'tailcut']);
         }
-        const txt = rebuild(s, mode, material);
+        const txt = withEndPunct(rebuild(s, mode, material), c);
         if (txt && txt !== s) { lastSrc = s; return { text: txt, src: s }; }
       }
       return null;
     } catch (e) { return null; }
   };
-  // 造句结果入库（#324 分库规则 / #364 概率可调）：多联系人时按回复设置 mjf-pub
-  // （存公用库概率，默认 80%）进公用库、其余进当前联系人专属库；
-  // 只有一个桌面联系人时 100% 进专属库（公用库没有分享对象，全部留专属），不受该设置影响。
+  // 造句结果入库（#324 分库规则 / #364 概率可调 / #622 单联系人同样可调）：
+  // 一律按回复设置 mjf-pub（存公用库概率，默认 80%）分库——0=100% 进当前联系人专属库、
+  // 100=100% 进公用库、其余按该概率掷（如 80=80% 公用 / 20% 专属）。
+  // FIX 2026-09-16 #622：原实现只在「多联系人」时生效（单联系人固定 100% 专属），
+  // 用户点名要能自己把造句 100% 归公用 / 100% 归专属 / 80-20 分流——故去掉 cids>1 门，
+  // 单联系人同样认这个设置（放到公用库＝以后每个桌面的联系人都能用，用户明确要的语义）。
   // 写 cc-groups 的 mjfree 分类「梦角自由造句」分组（chatcard.js window.ccAppendCards，
   // 写守卫/去重/持久化复用；scope 'public'|'own' 双作用域）
   window.dreamFreeSave = function (txt) {
@@ -287,23 +334,19 @@
       const v = String(txt == null ? '' : txt);
       if (!v || v.indexOf('data:') === 0 || v.indexOf('|||') >= 0) return false;
       if (!window.ccAppendCards) return false;
-      let cids = 1;
-      try {
-        const set = new Set([window.__activeCid || 'default']);
-        (window.getContacts && window.getContacts() || []).forEach(c => { if (c && c.id) set.add(c.id); });
-        cids = set.size;
-      } catch (e) { cids = 1; }
       let pubProb = 80;
       try {
         const c = window.replyCfg && window.replyCfg();
         const n = c ? Number(c['mjf-pub']) : NaN;
         if (c && c['mjf-pub'] != null && c['mjf-pub'] !== '' && Number.isFinite(n)) pubProb = Math.max(0, Math.min(100, n));
       } catch (e) {}
-      const usePublic = cids > 1 && Math.random() * 100 < pubProb;
+      const usePublic = Math.random() * 100 < pubProb;
       return !!window.ccAppendCards('mjfree', '梦角自由造句', [v], usePublic ? 'public' : 'own');
     } catch (e) { return false; }
   };
   // 暴露切词/造句（verify 脚本与排查用）
   window.dreamFreeSegment = segment;
   window.dreamFreeRebuild = rebuild;
+  // #1396 句尾标点池现读现出（verify 尺子用它判「新池/旧串/默认池」三条链，不必掷几百次赌分布）
+  window.dreamFreePunctPool = endPunctPool;
 })();

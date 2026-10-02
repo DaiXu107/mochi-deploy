@@ -374,9 +374,15 @@
     const el = document.getElementById('cal-my-message');
     if (!el) return;
     const msg = store.get('cal-my-' + selDate);
-    el.textContent = msg || (selDate === todayStr() ? '今天想说点什么...' : '这一天没有留下留言');
+    el.textContent = msg || (selDate === todayStr() ? '今天想说点什么...' : calEmptyTxt('这一天没有留下留言'));
     const btn = document.getElementById('cal-edit-btn');
     if (btn) btn.hidden = selDate !== todayStr();
+  }
+
+  // #785：慢回填机器上这里读到的空值不代表「没有」——回填完成前统一说「正在读取」，
+  // 完成后的终态文案（各调用点给的「这一天没有…」）才由 ready 补渲那次说出来。
+  function calEmptyTxt(finalTxt) {
+    return (window.mochiDataPending && window.mochiDataPending()) ? window.mochiLoadingText() : finalTxt;
   }
 
   // v3.9.x：每日小记（TA 的情话 / 我的备忘 / 我的心情）——按选中日期只读查看。
@@ -408,7 +414,7 @@
         if (!qt && selDate === todayStr()) {
           try { qt = (window.getQuoteOfDay && window.getQuoteOfDay()) || ''; } catch (e) {}
         }
-        qEl.textContent = (qt || (selDate === todayStr() ? '今天还没有情话' : '这一天没有留下情话'));
+        qEl.textContent = (qt || calEmptyTxt(selDate === todayStr() ? '今天还没有情话' : '这一天没有留下情话'));
         if (qEl.textContent && window.taFit) qEl.textContent = window.taFit(qEl.textContent);
       }
     }
@@ -416,9 +422,9 @@
     const memo = isFuture ? '' : (store.get('memo-' + selDate) || histOnDay('memo-history').join('；'));
     const mood = isFuture ? '' : (store.get('today-mood-' + selDate) || histOnDay('mood-history').join('；'));
     const memoEl = document.getElementById('cal-memo');
-    if (memoEl) memoEl.textContent = isFuture ? futureTip : (memo || '这一天没有备忘');
+    if (memoEl) memoEl.textContent = isFuture ? futureTip : (memo || calEmptyTxt('这一天没有备忘'));
     const moodEl = document.getElementById('cal-mood');
-    if (moodEl) moodEl.textContent = isFuture ? futureTip : (mood || '这一天没有记录心情');
+    if (moodEl) moodEl.textContent = isFuture ? futureTip : (mood || calEmptyTxt('这一天没有记录心情'));
     // 摸鱼值 / 工作值（双方当天值）：fish-day-add / work-day-add 按天记录。
     // 注意 fishDayKey 的日期格式是 YYYY-M-D（无补零），需归一化后与 selDate（YYYY-MM-DD）匹配；
     // 今天读实时 day-fish-*/day-work-* 键（与桌面周末面板一致），历史日期读按天记录。
@@ -459,7 +465,7 @@
         const lines = [];
         if (fm || ft || isToday) lines.push('摸鱼值　' + myName + ' +' + fm + ' · ' + taName + ' +' + ft);
         if (wm || wt || isToday) lines.push('工作值　' + myName + ' +' + wm + ' · ' + taName + ' +' + wt);
-        statsEl.textContent = lines.length ? lines.join('\n') : '这一天没有摸鱼 / 工作记录';
+        statsEl.textContent = lines.length ? lines.join('\n') : calEmptyTxt('这一天没有摸鱼 / 工作记录');
       }
     }
   }
@@ -475,9 +481,16 @@
     try { md = window.moodDiaryToday ? window.moodDiaryToday() : null; } catch (e) { md = null; }
     const nm = store.get('lbl-partner') || 'TA';
     if (taLabel) taLabel.textContent = nm + '（心情日记）';
-    if (mineEl) mineEl.textContent = (md && md.mine) ? (md.mine.e + ' ' + md.mine.n) : '今天还没记心情';
-    if (taEl) taEl.textContent = (md && md.ta) ? (md.ta.e + ' ' + md.ta.n) : '今天还没有互动';
+    if (mineEl) mineEl.textContent = (md && md.mine) ? (md.mine.e + ' ' + md.mine.n) : calEmptyTxt('今天还没记心情');
+    // FIX 2026-09-28 #1353h~i：用户实报「日历上也不显示TA的心情」——开页那一刻本机那份聊天还没读回来
+    //   （大历史只带尾部窗口／LS 快照失效／刚被系统回收），旧写法把「这一发什么也没读到」当成「今天没互动」
+    //   直接宣布终态，而聊天读回来后这一行不会重画＝整场挂着那句谎话。改：不知道就说「正在读取」，
+    //   并记下日子那一刻（mood-interact-recorded，mood-diary 里唯一一处广播）补渲一次。判据零机型／零 UA。
+    if (taEl) taEl.textContent = (md && md.ta) ? (md.ta.e + ' ' + md.ta.n)
+      : ((md && md.taUnknown) ? (window.mochiLoadingText ? window.mochiLoadingText() : calEmptyTxt('今天还没有互动')) : calEmptyTxt('今天还没有互动'));
   }
+  // 记下「哪天有过互动」的那一刻补渲入口卡（同一句判据的落地端；日历页不在屏上时下一次进入照样现读现画）
+  document.addEventListener('mood-interact-recorded', function () { try { renderMoodEntry(); } catch (e) {} });
 
   function render() {
     try { ensureFishHeat(); } catch (e) {} // 摸鱼/工作「当日统计」随 selDate 切换刷新
@@ -518,15 +531,18 @@
     const nameEl = document.getElementById('cal-mood-name');
     if (nameEl) nameEl.textContent = e ? e.mood : '未来';
     const descEl = document.getElementById('cal-mood-desc');
-    if (descEl) descEl.textContent = e ? (window.taFit ? window.taFit(e.desc) : e.desc) : '这一天还没有内容';
+    if (descEl) descEl.textContent = e ? (window.taFit ? window.taFit(e.desc) : e.desc) : calEmptyTxt('这一天还没有内容');
     const actEl = document.getElementById('cal-activity');
     if (actEl) actEl.textContent = e ? (window.taFit ? window.taFit(e.activity) : e.activity) : '—';
     const msgEl = document.getElementById('cal-message');
-    if (msgEl) msgEl.textContent = e ? (window.taFit ? window.taFit(calCleanMsg(e.message)) : calCleanMsg(e.message)) : '这一天还没有留言';
+    if (msgEl) msgEl.textContent = e ? (window.taFit ? window.taFit(calCleanMsg(e.message)) : calCleanMsg(e.message)) : calEmptyTxt('这一天还没有留言');
     renderMyMessage();
     renderDayNotes(dd, isFuture);
     renderGrid();
   }
+  // #785：回填真完成时补渲一次——慢机器/走「仍要进入」时首屏停在「正在读取…」，靠它收敛
+  //（补渲回调内部的 try/catch 在 mochiOnDataReady 里，此处不再包一层）
+  if (window.mochiOnDataReady) window.mochiOnDataReady(render);
 
   // ===== 日历页·摸鱼/工作「当日统计」条状图 =====
   // 数据源 fish-day-add / work-day-add（历史通过）+ 当天实时 day-fish-*/day-work-*。

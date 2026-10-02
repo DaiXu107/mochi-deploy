@@ -46,7 +46,6 @@
   flex:1; min-height:0; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none;
   padding:6px 18px; display:flex; flex-direction:column; gap:14px;
   background:transparent; position:relative;
-  -webkit-overflow-scrolling:touch;
   /* v3.5.124锛氭粴鍔ㄨ竟鐣屼笉绌块€忊€斺€旀秷鎭尯婊氬埌椤?搴曚笉鍐嶅甫鍔ㄩ〉闈紙鍚《閮ㄦ爮锛夋粴鍔?*/
   overscroll-behavior:contain;
   /* v3.6.x锛氬己鍒剁嫭绔嬪悎鎴愬眰鈥斺€旈儴鍒嗘墜鏈烘祻瑙堝櫒锛堣€?WebKit/鍥戒骇鍐呮牳锛夊湪鐐瑰嚮杈撳叆鏍忋€?     閿洏寮瑰嚭銆?phone 琚攣瀹氫负 fixed 涓旈珮搴﹂鍙樼殑鐬棿锛屾粴鍔ㄥ鍣ㄧ粯鍒跺眰澶辨晥锛?     娑堟伅鍖哄唴瀹逛粛鍦?DOM 閲屽嵈涓嶇粯鍒?鈫?鑱婂ぉ椤电櫧灞忥紙鍙戦€佹秷鎭Е鍙戦噸鎺掑悗鎵嶆仮澶嶏級銆?     translateZ(0) 璁╂秷鎭尯濮嬬粓鏈夌嫭绔嬬粯鍒跺眰锛涚幇浠ｆ祻瑙堝櫒瀵规粴鍔ㄥ鍣ㄨ嚜鍔ㄥ缓灞傦紝
@@ -60,13 +59,26 @@
 .chat-loading {
   position:absolute; left:50%; top:38%; transform:translate(-50%,-50%);
   z-index:5; pointer-events:none;
+  transition:opacity .16s ease;
 }
+/* FIX 2026-09-23 #1057：加载提示收场走淡出（原先 hidden 瞬间撤＝用户眼里的「闪一下」）；
+   且真在加载而屏上又是上一个桌面的残留时，整块遮掉消息区——visibility 而非 display/opacity，
+   保留滚动几何（不伤 #1039 进页首帧贴底），用户看到的是「加载卡片＋干净底」。 */
+.chat-loading-out { opacity:0; }
+#page-chat.chat-loading-cover .chat-body { visibility:hidden; }
 .chat-loading-card {
   background:rgba(255,255,255,.95); border:1px solid rgba(0,0,0,.1);
   border-radius:12px; padding:14px 18px; min-width:190px;
   display:flex; flex-direction:column; gap:8px; align-items:center;
   box-shadow:0 4px 16px rgba(0,0,0,.08);
 }
+/* 幽灵气泡：三行左右错落的占位条（呼吸动画），让加载态读起来像设计而不是卡住的进度条 */
+.chat-loading-ghost { display:flex; flex-direction:column; gap:6px; width:150px; }
+.chat-loading-ghost i { display:block; height:16px; border-radius:9px; background:#e6e6e6; animation:chatGhostPulse 1.4s ease-in-out infinite; }
+.chat-loading-ghost i:nth-child(1) { width:62%; }
+.chat-loading-ghost i:nth-child(2) { width:80%; align-self:flex-end; animation-delay:.18s; }
+.chat-loading-ghost i:nth-child(3) { width:44%; animation-delay:.36s; }
+@keyframes chatGhostPulse { 0%, 100% { opacity:.45; } 50% { opacity:.95; } }
 .chat-loading-bar {
   width:150px; height:5px; border-radius:3px; background:#e9e9e9; overflow:hidden; position:relative;
 }
@@ -104,6 +116,14 @@
 }
 .msg-in .msg-bubble { background: var(--msg-in-bg, #ffffff); color: var(--msg-in-ink, #111111); }
 .msg-out .msg-bubble { background: var(--msg-out-bg, #111111); color: var(--msg-out-ink, #ffffff); }
+/* FIX 2026-09-19 #817 一加8T 自带浏览器（HeyTapBrowser，Chrome/115 系）实报「打字的
+   消息发出去后变竖排（一字一行）」，多机型同现——撤掉上一批（2026-09-18 颜文字批）给
+   气泡正文 span 加的全局保留空白模式：消息列表是「列容器 align-self 收缩 + 行内 flex」
+   的内容自适应宽度链，部分内核遇到保留换行的预格式化文本时会把自适应宽误算成最小内容
+   宽（一个字符），气泡被压成竖排。空格保护下移到内容层：chat.js 的 escTxtBr 把连续
+   多个空格转成等量 &nbsp;（所有内核都不折叠、不切断，与机型无关），单个空格保持正常
+   断行机会＝健康引擎零视觉变化。输入框 .chat-input 是块级满宽布局、不吃内容自适应宽，
+   其自身保留空白模式保留不动。引用块 .msg-quote-text 的既有同款规则同理不受此链影响。 */
 
 /* 消息入场动画：仅新增消息（非批量渲染）时触发。
    柔和上浮淡入——用「指数减速」曲线（ease-out-quint，起步快、末端自然落定）取代
@@ -143,13 +163,30 @@
   position:absolute;
   /* v3.26.x：贴在气泡内部左上角（top:2px/left:4px），与默认 padding 11px/14px 配合
      落在气泡内边距阔围内不压文字。用户反馈「半溢出气泡外侧 -3px/-3px」会飞出气泡，改回气泡内。*/
-  top:2px; left:4px;
+  /* FIX 2026-09-18 #728：位置可微调——用户上传自定义气泡 CSS 后 padding 变了，硬编码
+     的 2px/4px 就偏了、甚至被气泡边缘裁掉/压住文字。改为「基准 + 偏移变量」叠加，
+     用户可在 聊天设置→美化→标识位置 或 边看边调→微调 里自己校准。
+     基线 2px/4px 原样保留＝未设置（--msg-mark-x/y 未定义时 calc 回退 0）零变化。 */
+  top:calc(2px + var(--msg-mark-y, 0px)); left:calc(4px + var(--msg-mark-x, 0px));
   width:10px; height:10px;
   color:#ff4d6a;
   pointer-events:none;
   z-index:5;
   display:block;
   /* v3.26.x：移除双层 drop-shadow 投影（白色发光+黑色投影）。浅色气泡上黑色投影呈灰色阴影，用户反馈删掉 */
+}
+/* FIX 2026-09-18 #727：主动发送标识的「文本形态」（内置星星/月亮/闪光/小爪 + 用户自定义标识）
+   与 .msg-hi-heart 同位置同语义（气泡内部左上角、不压文字）——爱心仍走 SVG，其余走文本节点。
+   字号取 9px 略小于爱心 10px（文本有自带行高留白，等宽会显得更大）；line-height:1 防撑高气泡。
+   #728：与爱心共用同一组偏移变量，两种形态一起校准（同一用户场景、不该分开调）。 */
+.msg-hi-mark {
+  position:absolute;
+  top:calc(2px + var(--msg-mark-y, 0px)); left:calc(4px + var(--msg-mark-x, 0px));
+  font-size:9px; line-height:1;
+  color:#ff4d6a;
+  pointer-events:none;
+  z-index:5;
+  display:block;
 }
 
 /* 澶村儚鍒楋細澶村儚 + 鏃堕棿杞达紙鏃堕棿鍦ㄥご鍍忓簳涓嬶級 */
@@ -167,31 +204,32 @@
 /* 姘旀场涓嬫柟锛氭椂闂翠粠澶村儚鍒楃Щ鍒版皵娉′笅娌匡紙缁濆瀹氫綅鐩稿娑堟伅琛岋紝琛屽唴鍙暀澶村儚锛?*/
 body.cs-time-under-bubble .msg { position:relative; }
 body.cs-time-under-bubble .msg-side .msg-time {
-  position:absolute; top:calc(100% + 3px); padding:2px 8px; border-radius:10px;
+  position:absolute; top:calc(100% + 3px + var(--msg-time-dy, 0px)); padding:2px 8px; border-radius:10px;
   background:rgba(0,0,0,.05); opacity:.6; letter-spacing:.3px; z-index:2;
 }
-body.cs-time-under-bubble .msg-in .msg-side .msg-time { right:0; }
-body.cs-time-under-bubble .msg-out .msg-side .msg-time { left:0; }
+body.cs-time-under-bubble .msg-in .msg-side .msg-time { right:calc(0px - var(--msg-time-dx, 0px)); }
+body.cs-time-under-bubble .msg-out .msg-side .msg-time { left:calc(0px + var(--msg-time-dx, 0px)); }
 /* 鏃堕棿姘旀场锛氬ご鍍忎笌鏃堕棿骞舵帓锛屾椂闂磋兌鍥婂湪澶村儚澶栦晶锛堣创杩戝睆骞曡竟涓€渚э級锛岀旱鍚戝眳涓?*/
 body.cs-time-bubble .msg-side { display:flex; flex-direction:row; align-items:center; gap:8px; }
 body.cs-time-bubble .msg-side .msg-time {
   padding:3px 8px; border-radius:10px; background:rgba(0,0,0,.05);
   opacity:.6; letter-spacing:.3px;
+  transform:translate(var(--msg-time-dx, 0px), var(--msg-time-dy, 0px));
 }
 /* 姘旀场澶栦晶鎮诞锛氬皬鑳跺泭娴湪姘旀场澶栦晶涓婅锛堣创杩戝睆骞曡竟閭ｄ竴瑙掞級 */
 body.cs-time-float .msg { position:relative; }
 body.cs-time-float .msg-side .msg-time {
-  position:absolute; top:-4px; padding:2px 8px; border-radius:10px;
+  position:absolute; top:calc(-4px + var(--msg-time-dy, 0px)); padding:2px 8px; border-radius:10px;
   background:rgba(0,0,0,.06); opacity:.65; letter-spacing:.3px; z-index:2;
 }
-body.cs-time-float .msg-in .msg-side .msg-time { right:-4px; }
-body.cs-time-float .msg-out .msg-side .msg-time { left:-4px; }
+body.cs-time-float .msg-in .msg-side .msg-time { right:calc(-4px - var(--msg-time-dx, 0px)); }
+body.cs-time-float .msg-out .msg-side .msg-time { left:calc(-4px + var(--msg-time-dx, 0px)); }
 /* 娑堟伅涓婃柟灞呬腑锛氭暣琛屾媺婊★紝鏃堕棿鑳跺泭灞呬腑鎮诞鍦ㄦ秷鎭笂鏂癸紙绫讳技绯荤粺鏃堕棿鍒嗛殧鏉★級 */
 body.cs-time-center .msg { position:relative; padding-top:18px; width:100%; max-width:100%; }
 body.cs-time-center .msg-in { justify-content:flex-start; }
 body.cs-time-center .msg-out { justify-content:flex-end; }
 body.cs-time-center .msg-side .msg-time {
-  position:absolute; top:0; left:50%; transform:translateX(-50%);
+  position:absolute; top:calc(0px + var(--msg-time-dy, 0px)); left:50%; transform:translateX(-50%) translateX(var(--msg-time-dx, 0px));
   padding:2px 10px; border-radius:10px; background:rgba(0,0,0,.05);
   opacity:.6; letter-spacing:.3px;
 }
@@ -407,6 +445,26 @@ body.cs-time-divider .msg-time-divider { display:flex; }
 }
 .chat-ask-actions { display:flex; gap:8px; }
 .chat-ask-actions .cc-tool { flex:1; }
+/* ===== #1188 邀请记录（「邀请TA」半框顶部）：今天直列、更早按日折叠、日期组分页 ===== */
+.chat-ask-hist { margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed rgba(0,0,0,.12); }
+.chat-ask-hist[hidden] { display:none; } /* 只靠 hidden 收起，别让别的规则盖掉 */
+.chat-ask-hist-bar { display:flex; align-items:center; justify-content:space-between; }
+.chat-ask-hist-toggle { font-size:13px; font-weight:700; color:var(--ink); cursor:pointer; user-select:none; padding:6px 4px; }
+.chat-ask-hist-toggle:active { opacity:.7; }
+.chat-ask-hist-clear { font-size:11px; color:var(--muted); cursor:pointer; border:none; background:none; padding:6px 6px; font-family:inherit; }
+.chat-ask-hist-clear:active { color:#a33; }
+.chat-ask-hist-list { margin-top:6px; display:flex; flex-direction:column; gap:6px; }
+.chat-ask-hist-list[hidden] { display:none; } /* display:flex 会覆盖 hidden，需补此规则才能折叠（同 .div-chat-hist-list 教训） */
+.chat-ask-hist-list .tc-listitem { padding:8px 10px; margin-bottom:0; }
+.ih-day { font-size:11px; font-weight:700; color:var(--muted); }
+.ih-day-btn { display:block; width:100%; text-align:left; border:1px solid rgba(0,0,0,.09); border-radius:10px; padding:9px 12px; background:rgba(255,255,255,.6); color:var(--ink); font-size:11px; font-weight:700; font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.ih-day-btn:active { background:rgba(0,0,0,.05); }
+.ih-caret { float:right; font-weight:400; color:var(--muted); }
+.ih-more { display:block; width:100%; border:1px dashed rgba(0,0,0,.18); border-radius:10px; padding:10px 12px; background:none; color:var(--ink); font-size:12px; font-weight:600; font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.ih-more:active { background:rgba(0,0,0,.05); }
+.ih-ok { color:#2e7d32; font-weight:600; }
+.ih-no { color:#a33; font-weight:600; }
+.ih-nu { color:var(--muted); }
 
 /* 鑱婂ぉ椤靛崰鍗滃崐妗嗭紙v3.5.53锛夛細妯″紡/寮犳暟鍒囨崲 + 鎶界墝缁撴灉锛屽鐢?.div-* 鍗＄墖鏍峰紡 */
 #chat-divine-body .div-modes-wrap,
@@ -450,7 +508,10 @@ body.cs-time-divider .msg-time-divider { display:flex; }
   position:relative;
 }
 .chat-input {
-  flex:1; min-width:0; border:none; outline:none; background:transparent;
+  /* #949：输入框保底 4em 可用宽——开着「我可发送语音」＋「批量发送」后输入栏两侧按钮变多，
+     窄屏（360px 级）上按钮一像素不让会把 min-width:0 的输入框压成 0 宽＝无法输入；
+     有了保底后挤压由 .ch-input-btn 的 30px 收缩下限与窄屏档间距收紧消化。 */
+  flex:1; min-width:4em; border:none; outline:none; background:transparent;
   font-size:15px; font-family:inherit; color:var(--ink);
   /* v3.5.127锛歝ontenteditable div 鐗堣緭鍏ユ鈥斺€擟hrome 涓嶅 contenteditable
      寮广€岃嚜鍔ㄥ～鍏呫€嶆潯锛坕nput 鏃犺濡備綍閮戒細琚瘑鍒垚琛ㄥ崟瀛楁锛夈€傝ˉ榻?div 鐗?     闇€瑕佺殑鎺掔増锛氳楂樺榻愩€侀暱鏂囨湰鎹㈣銆佽秴楂樻粴鍔ㄣ€?     v3.6.x锛氫笉鍐嶅姞 -webkit-user-modify:read-write-plaintext-only鈥斺€?     iOS Safari 瀵瑰畠鏀寔鏈?bug锛堥儴鍒嗙増鏈細闃绘 contenteditable 杈撳叆/閿洏锛夛紝
@@ -461,8 +522,15 @@ body.cs-time-divider .msg-time-divider { display:flex; }
 }
 .chat-input::-webkit-scrollbar { display:none; }
 /* 绌哄唴瀹规椂鏄剧ず placeholder锛坈ontenteditable 鏃?placeholder 灞炴€э紝鐢?:empty 浼厓绱狅級 */
-.chat-input:empty::before {
-  content:attr(data-ph); color:#b5b5b5; pointer-events:none;
+.chat-input:empty::before,
+#page-chat .chat-input:empty::before,
+#page-group-chat .chat-input:empty::before {
+  /* v8.35 #1026：提示文字颜色/显隐交给聊天设置（:root 上的 --chat-ph-ink / --chat-ph-visibility，单聊与群聊共用一份）。
+     两条 id 前缀选择器不是冗余——dark.css 的 [data-theme="dark"] .chat-input:empty::before 与
+     group-chat.css 的 .gc-input:empty:before 权重都不低于裸类选择器且加载在后，不带 id 压不住它们。
+     隐藏用 visibility 而非 display：占位符继续占位，输入栏这一排的几何一字不动。 */
+  content:attr(data-ph); color:var(--chat-ph-ink, var(--hint-ink)); pointer-events:none;
+  visibility:var(--chat-ph-visibility, visible);
 }
 .chat-send {
   outline:none; cursor:pointer; flex-shrink:0;
@@ -489,9 +557,89 @@ body.cs-time-divider .msg-time-divider { display:flex; }
 .page.full .chat-body { padding: 14px 18px 28px; } /* v3.5.48 搴曢儴鐣欑櫧鍔犲ぇ锛氭渶鍚庝竴鏉℃秷鎭笉璐磋緭鍏ユ爮 */
 .page.full .chat-input-row { margin: 8px 18px 16px; }
 
+/* #655：留白参与 flex 布局，消息区随栏位内移缩短；不改安全区或键盘定位。
+   #708：inset 支持负值双向——正值仍走留白高度（max 取正部），负值走负 margin
+   （min 取负部）：顶栏上移＝::before 负 margin-bottom 把整列内容上提（底栏由
+   flex:1 的消息区锚在原地）；底栏下移＝输入栏负 margin-bottom 让 margin-box
+   变短、自身越过容器底沿（#page-chat overflow:hidden 裁掉超出），消息区随之
+   伸长。全程仍是 flex 布局（无 transform/zoom）。
+   底栏基准 margin 分环境：宽屏悬浮 16px（chat-main 顶部 .page.full 规则）/
+   ≤900px 通栏、force-mobile、tablet 均 0px（base.css）——用 --cs-input-mb-base
+   按环境镜像后叠加负向偏移，避免 ID 特异性覆盖把 16px 基准打没。 */
+#page-chat::before, #page-chat::after { content:''; display:block; flex-shrink:0; }
+#page-chat::before {
+  height:max(var(--cs-head-inset, 0px), 0px);
+  margin-bottom:min(var(--cs-head-inset, 0px), 0px);
+}
+#page-chat::after { height:max(var(--cs-input-inset, 0px), 0px); }
+#page-chat > .chat-input-row {
+  --cs-input-mb-base:16px;
+  margin-bottom:calc(var(--cs-input-mb-base, 0px) + min(var(--cs-input-inset, 0px), 0px));
+}
+@media (max-width: 900px) {
+  #page-chat > .chat-input-row { --cs-input-mb-base:0px; }
+}
+html.force-mobile #page-chat > .chat-input-row { --cs-input-mb-base:0px; }
+html.tablet #page-chat > .chat-input-row { --cs-input-mb-base:0px; }
+#page-chat { --cs-bar-rgb:255,255,255; }
+[data-theme="dark"] #page-chat { --cs-bar-rgb:30,30,30; }
+/* #731：栏位底色读「生效值」变量（--cs-*-opacity-ink）——聊天美化「壁纸延伸到顶栏/输入栏」
+   打开时由 JS 把它写成 0，壁纸就从栏位底下透上来（#762 起壁纸画在 #page-chat 的常驻子层
+   #cs-bg-layer 上，该层与页面同盒、含栏位区）。未打开时该变量不存在，回落到 --cs-*-opacity（默认 .92）＝外观与改造前一致；
+   写法上保持「一律走 var(--cs-*-opacity-ink, var(--cs-*-opacity, .92))」，让 verify-chat-surfaces
+   的既有锚点与新开关共存（旧的「不透明度 0%」路径照旧生效）。 */
+#page-chat > .chat-head { background:rgba(var(--cs-bar-rgb), var(--cs-head-opacity-ink, var(--cs-head-opacity, .92))); }
+#page-chat > .chat-input-row { background:rgba(var(--cs-bar-rgb), var(--cs-input-opacity-ink, var(--cs-input-opacity, .92))); }
+#page-chat .msg-in .msg-bubble { background:var(--cs-in-surface, var(--msg-in-bg, #ffffff)); }
+#page-chat .msg-out .msg-bubble { background:var(--cs-out-surface, var(--msg-out-bg, #111111)); }
+
+/* #762 聊天壁纸常驻图层（#cs-bg-layer，由 chat-settings.js 创建）——手机端「铺满裁剪」档给
+   lvh 下限：键盘压矮 .phone（#750 症状「打字时图变小」）与地址栏自动收起涨落 dvh（#751 症状
+   「莫名其妙放大」）都改不动这一层的盒 ⇒ cover 缩放比恒定、且永不露底（多出的一截由
+   #page-chat 的 overflow:hidden 裁掉，层顶边钉在页面顶 ⇒ 打字期间看到的壁纸与打字前逐像素相同）。
+   为什么是 lvh 而不是 dvh/svh：dvh 正是抖动源（随地址栏涨落）；svh 偏小，地址栏收起时按它折算
+   会露底；lvh 是设备常量（浏览器 UI 全隐时的大视口）＝按「最大可见区域」铺满。
+   三处通栏形态同口径（.phone 都是 100dvh）：≤900px 真机、html.force-mobile、html.tablet；
+   宽屏模拟器外壳不加下限——那里没有键盘内联高也没有 dvh 涨落，height:100% 就是精确盒。
+   老内核（Chromium<87 / Safari<14.1）不认 lvh ⇒ 退回 100vh（安卓/iOS 的 vh 语义即「UI 全隐的
+   大视口」，同口径）；两条声明分写，不认识的那条被整条丢弃（同 #690 老内核兜底套路）。 */
+@media (max-width: 900px) {
+  #page-chat.cs-bg-fill #cs-bg-layer { min-height:100vh; min-height:100lvh; }
+}
+html.force-mobile #page-chat.cs-bg-fill #cs-bg-layer,
+html.tablet #page-chat.cs-bg-fill #cs-bg-layer { min-height:100vh; min-height:100lvh; }
+
+/* #765 壁纸层提独立合成层（iOS 卡顿收口）：这一层不参与 .chat-body 的滚动，但不提层时它和
+   顶栏/输入栏/typing 行同属一个绘制层——聊天页每次内容变化（新消息、打字行显隐、图片解码回填）
+   的失效区都会波及它，引擎要把整张 cover 位图重新缩放＋光栅一遍（位图越大越贵，正是「设了聊天
+   壁纸之后发消息/滚动发涩」的来路）。translateZ(0) 让它自成一帧缓冲，内容变化只重绘内容层。
+   用 translateZ(0) 而不是 will-change：老 WebKit 不认 will-change（与本文件 #690 老内核兜底同口径）。
+   代价＝一块全屏纹理内存（约 1.3MB），且只在设了壁纸时存在（未设时该层 display:none，不成层）。 */
+#cs-bg-layer { transform:translateZ(0); }
+
+/* #781 稳定盒扩到四档，且不再依赖视口单位（真 WebKit 实测补的洞）：
+   上面 #762 的下限写着 `min-height:100lvh`，前提是「lvh 是设备常量」。这个前提只在
+   「键盘不缩布局视口」的内核成立——iOS 装成 PWA（standalone）以及走 resizes-content 的
+   内核会把布局视口整个压矮，此时 vh/lvh/dvh/svh 一起跟着缩（实测视口 844→470 时四个单位
+   全读到 470）⇒ 下限一起塌，打字时壁纸换一个比例（用户实报「全部手机都这样」）。
+   另一半更直接：#762 的下限只挂在 .cs-bg-fill 上，「完整显示」档键盘期整图从
+   390x740 缩到 245x464。本块把下限按「有壁纸」这个条件挂（.cs-bg-on 由 chat-settings.js
+   写），四档一律；高度取 max(视口单位, JS 实测的 --cs-bg-h) —— --cs-bg-h 是「确实没有键盘
+   时」的页面高，视口单位缩了它也还在。
+   三条声明分写＝退化阶梯，不认识的那条被整条丢弃：老内核只剩 100vh（同 #690/#762 套路），
+   不认 lvh 但认 max() 的内核用 100vh 版，都认的内核按大视口 lvh 版。
+   与 #762 那两条同特异性（2 ID + 1 类），写在后面才赢——所以这个类不能省。 */
+@media (max-width: 900px) {
+  #page-chat.cs-bg-on > #cs-bg-layer { min-height:100vh; min-height:max(100vh, var(--cs-bg-h, 0px)); min-height:max(100lvh, var(--cs-bg-h, 0px)); }
+}
+html.force-mobile #page-chat.cs-bg-on > #cs-bg-layer,
+html.tablet #page-chat.cs-bg-on > #cs-bg-layer { min-height:100vh; min-height:max(100vh, var(--cs-bg-h, 0px)); min-height:max(100lvh, var(--cs-bg-h, 0px)); }
+
 /* 杈撳叆鏍忓浘鏍囨寜閽紙鏇村鍔熻兘 / 琛ㄦ儏鍖咃級 */
 .ch-input-btn {
-  width:38px; height:38px; border-radius:50%; cursor:pointer; flex-shrink:0;
+  /* #949：flex-shrink 放开（收缩下限 30px 保持可点）——输入栏按钮偏多＋窄屏时按钮先于输入框收缩，
+     不再把 flex:1 的输入框挤成 0 宽；宽屏空间富余时永不触发，外观零变化。 */
+  width:38px; height:38px; border-radius:50%; cursor:pointer; flex-shrink:1; min-width:30px;
   background:rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.1);
   color:#555; box-shadow:0 1px 4px rgba(0,0,0,.04);
   display:flex; align-items:center; justify-content:center;
@@ -499,6 +647,12 @@ body.cs-time-divider .msg-time-divider { display:flex; }
 }
 .ch-input-btn:active { background:rgba(0,0,0,.08); }
 .ch-input-btn svg { width:20px; height:20px; }
+/* #949：窄屏档——间距与发送键内边距收紧，配合按钮收缩下限，
+   360px 屏开满「语音＋批量」后输入框仍保有 4em 以上可用宽（单聊/群聊两排同吃）。 */
+@media (max-width: 480px) {
+  .chat-input-row { gap:5px; padding:12px 8px 12px 10px; }
+  .chat-send { padding:12px 16px; }
+}
 
 /* 鎷嶄竴鎷?/ 鎹㈠ご鍍忥細灞呬腑鐏板瓧灏忓崱鐗囷紙鍙€夐檮甯︿竴寮犲ご鍍忓浘锛?*/
 .msg-poke {
@@ -664,6 +818,21 @@ body.cs-time-divider .msg-time-divider { display:flex; }
   z-index:70; padding:14px 16px 14px;
 }
 .poke-card[hidden] { display:none; }
+/* FIX 2026-09-20 #907 表情包面板(#emoji-panel)/头像互动半框(#avlib-card)「每次打开图片闪一下
+   重新加载」残留根因（红米 K80 Chrome 实报、用户明说其他设备型号也有；#457/#508/#509/#662/#692/
+   #704/#716 七轮只收口了「重建节点」与「解码没完就显示」，这条一直没人管）：面板平时挂
+   display:none——浏览器对 display:none 子树里的已解码位图**主动回收**，重开时全部 img 要从零
+   重新解码（节点一个没换照样闪，#662 已实证「节点身份测不出」）。收口＝这两枚 hidden 态改
+   keep-alive：保持渲染树在场（visibility:hidden＋pointer-events:none＝不可见不可点，行为与
+   display:none 等价），已解码位图不再因 display:none 被整批回收，重开 decode() 立即兑现＝零闪。
+   只限这两枚用户报障面，其余 .poke-card 家族（拍一拍/红包/游戏对局等）维持 display:none 不动
+   （防对局/通话面板 hidden 期间产生无谓的图加载与解码开销）。 */
+#emoji-panel[hidden], #avlib-card[hidden] { display:flex; visibility:hidden; pointer-events:none; }
+/* FIX 2026-09-22 #1011 同族第二个可见来源：池令牌（@@m:<hash>）被写进 src 到池把真载荷写回之间，
+   浏览器把它当相对 URL 发请求→404→该格画裂图/alt 文案，随后真图落地又是第二次视觉变化（面板滚动
+   到未解析的格子时同样可见）。令牌态这一格先不画（占位盒保留，布局不跳），真载荷写回后选择器自然
+   不再命中、图原样出现；池确缺数据时 #397 会把 src 换成「图片缺失」占位 SVG（不命中本规则）照旧可见。 */
+#emoji-list img[src^="@@m:"] { opacity: 0; }
 /* v3.25.x：横屏/矮视口（小米15 Pro 横屏全屏等，CSS 高约 384px）下 48% 放不下
    我的拍一拍 tab 的固定行（tabs+分组栏+输入 footer），内容溢出面板底边=UI 错乱 */
 @media (max-height:560px) {
@@ -689,6 +858,11 @@ body.cs-time-divider .msg-time-divider { display:flex; }
 /* 鏌ュ矖鍗婃锛氬唴瀹瑰皯锛岀缉灏忛珮搴︼紙鍙绾充笁琛屾棩甯?+ 鏇存柊鏃堕棿锛?*/
 #ck-panel { height:auto; max-height:56%; }
 #ck-panel .poke-card-scroll { min-height:0; max-height:none; }
+/* v3.26.x #875：矮屏抬起上限。入口从「全宽次要按钮」改成功能卡后比原来高 14px，而矮屏下
+   #ck-panel 的 56% 上限本就装不满内容——实测纯 HEAD 在 320×568 就需滚 47px、360×640 需 7px
+   （入口已被裁在滚动区外），改后恶化到 77px / 22px。矮屏抬到 72%：卡片仍是 height:auto，
+   内容不足时高度不变，只在放不下时不再把入口裁到可视区外；高屏（>700px）行为一字未动。 */
+@media (max-height:700px) { #ck-panel { max-height:72%; } }
 /* 甯垜鍐冲畾鍗婃锛氬唴瀹瑰锛岃皟澶ч珮搴︼紙鏈緭鍏ユ椂琛ㄥ崟涔熷畬鏁存樉绀猴紝涓嶇敤婊戝姩锛?*/
 #chat-decision-panel { height:auto; max-height:68%; }
 #chat-decision-panel .poke-card-scroll { min-height:0; max-height:none; }
@@ -743,6 +917,14 @@ body.cs-time-divider .msg-time-divider { display:flex; }
   background:#f4f4f5; -webkit-appearance:none; appearance:none; box-shadow:none;
 }
 .poke-input:focus { border-color:var(--ink); background:#fff; }
+/* FIX 2026-09-16 #621：安卓 mobile-adapt 把输入框转成 .ce-box 后占位文字继承 .ce-box 的
+   white-space:pre-wrap（且 contenteditable 吃 base.css 的 16px），长占位（「输入拍一拍文字，
+   如：拍了拍你的脸蛋」16px 自然宽约 272px ＞ 输入框内宽约 155px）折成两行，超出定高 40px
+   的框底（.ce-box overflow 默认 visible）＝用户所见「文字超出输入框」。单行截断 + 省略号，
+   与原生 input 占位表现一致（同 setting.css .theme-search 修法） */
+.poke-input.ce-box:empty::before {
+  display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
 /* 存入：把输入的文字保存到当前选中的分组（描边次级按钮，与发送区分） */
 .poke-input-save {
   flex-shrink:0; height:40px; border:1px solid rgba(0,0,0,.18); border-radius:11px;
@@ -972,6 +1154,51 @@ body.cs-time-divider .msg-time-divider { display:flex; }
 .emoji-item:active { background:rgba(0,0,0,.05); }
 .emoji-item img { width:82%; height:82%; object-fit:contain; border-radius:0; display:block; }
 .emoji-empty { text-align:center; color:#c0c0c0; font-size:12px; padding:30px 0; }
+/* v3.26.x #636 表情包面板【颜文字】【emoji】分类：分类行（JS 注入 .emoji-cats，chip 复用 .emoji-g-chip）+ 文字网格 */
+.emoji-cats {
+  display:flex; gap:6px; overflow-x:auto; padding:0 2px 8px;
+  flex-shrink:0; scrollbar-width:none; -ms-overflow-style:none;
+}
+.emoji-cats::-webkit-scrollbar { display:none; }
+/* 分类 chip 独立类名：不与 .emoji-g-chip 混用，避免面板级 .emoji-g-chip 选择器把分类行误当分组（verify-emoji-recent 教训） */
+.emoji-cat-chip {
+  flex:0 0 auto; padding:7px 14px; font-size:12px; border-radius:99px;
+  border:1px solid rgba(0,0,0,.1); background:rgba(255,255,255,.92);
+  color:#666; cursor:pointer; font-family:inherit; font-weight:600;
+  -webkit-tap-highlight-color:transparent;
+}
+.emoji-cat-chip.sel { background:var(--ink); color:#fff; border-color:var(--ink); }
+[data-theme="dark"] .emoji-cat-chip { background:var(--dark-hover); border-color:var(--dark-border-12); color:var(--dark-soft); }
+[data-theme="dark"] .emoji-cat-chip.sel { background:var(--btn-bg); color:var(--btn-ink); border-color:var(--btn-bg); }
+.emoji-grid.emoji-grid-text { grid-template-columns:repeat(2, 1fr); }
+.emoji-grid.emoji-grid-emoji { grid-template-columns:repeat(4, 1fr); }
+#emoji-list .emoji-grid.emoji-grid-text { grid-template-columns:repeat(2, 1fr); }
+#emoji-list .emoji-grid.emoji-grid-emoji { grid-template-columns:repeat(4, 1fr); }
+.emoji-grid-text .emoji-item { aspect-ratio:auto; min-height:54px; padding:9px 6px; }
+/* FIX 2026-09-17 #666（用户直派）：emoji 子分类的网格同时挂 .emoji-grid-text 与 .emoji-grid-emoji
+   （chat.js renderEmojiTextGroup 的 className），而这条 2n 去右线规则是给「文字 2 列」网格用的、
+   特异性(0,3,0) 高于 .emoji-item:nth-child(4n)(0,2,0)——在 4 列 emoji 网格里第 2 格的右线（即
+   中间那两格之间的竖线）也被摘掉＝每行中间缺一条线。加 :not(.emoji-grid-emoji) 收窄作用域后，
+   4 列网格重新由 4n 规则管（行尾去线），2 列文字网格行为不变。 */
+.emoji-grid-text:not(.emoji-grid-emoji) .emoji-item:nth-child(2n) { border-right:none; }
+.emoji-text-item { font-size:13px; line-height:1.4; word-break:break-all; text-align:center; white-space:pre-wrap; }
+.emoji-grid-emoji .emoji-text-item { font-size:25px; line-height:1.2; word-break:keep-all; }
+/* #691i: click-mode toggle button shown inside the kaomoji/emoji categories
+   (same key as the row in chat settings; main line = current behavior, sub line = what tapping switches to) */
+.emoji-text-mode {
+  display:flex; flex-direction:column; align-items:stretch; gap:2px;
+  width:100%; flex:0 0 auto; box-sizing:border-box;
+  margin:0 0 8px; padding:8px 11px; border-radius:10px;
+  border:1px solid rgba(0,0,0,.12); background:rgba(255,255,255,.92);
+  color:var(--ink); font-family:inherit; text-align:left; cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.emoji-text-mode[hidden] { display:none; }
+.emoji-text-mode:active { background:rgba(0,0,0,.05); }
+.emoji-text-mode .etm-main { font-size:12px; font-weight:700; }
+.emoji-text-mode .etm-sub { font-size:10px; line-height:1.35; font-weight:500; color:var(--muted); }
+[data-theme="dark"] .emoji-text-mode { background:var(--dark-hover); border-color:var(--dark-border-12); }
+[data-theme="dark"] .emoji-text-mode:active { background:rgba(255,255,255,.1); }
 
 /* v3.11.x锛氭壒閲忓彂閫侀潰鏉库€斺€斿鐢?.poke-card 搴曢儴鍗婃甯冨眬 */
 .batch-card { max-height:62%; }
@@ -1057,7 +1284,7 @@ body.cs-time-divider .msg-time-divider { display:flex; }
   color:inherit; opacity:.6; margin-bottom:2px;
 }
 .msg-quote-text {
-  color:inherit; opacity:.8; word-break:break-word;
+  color:inherit; opacity:.8; word-break:break-word; white-space:pre-wrap;
   /* 超长内容（旧数据里的 base64 引用）最多两行，不铺满整屏；
      inline-block 而非 -webkit-box，保持与 .msg-quote-imgs 同行排布 */
   display:inline-block; vertical-align:top; max-width:100%;
@@ -1161,6 +1388,28 @@ body.cs-time-divider .msg-time-divider { display:flex; }
 .msg-inplace .ip-opt-row.sel { border-color:var(--ink); background:rgba(0,0,0,.04); font-weight:600; }
 .msg-inplace .ip-opt-row .ip-opt-t { min-width:0; }
 .msg-inplace .ip-opt-row .ip-opt-reply { flex-shrink:0; font-size:12px; opacity:.6; }
+/* #1415 多选题就地作答：整行点一下＝勾上/取消（左边缘那枚方框是「勾没勾」的唯一读数），
+   勾完必须再点底下那枚「提交」才算落地——单选题是点一下就答，两拍只在多选题上出现。 */
+.msg-inplace .ip-opt-chk { justify-content:flex-start; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.msg-inplace .ip-opt-chk .ip-opt-t { flex:1 1 auto; text-align:left; }
+.msg-inplace .ip-opt-chk .ip-opt-reply { margin-left:auto; }
+.msg-inplace .ip-opt-box {
+  position:relative; flex:none; width:16px; height:16px; margin-right:9px;
+  box-sizing:border-box; border:1.5px solid rgba(0,0,0,.3); border-radius:5px; background:#fff;
+}
+.msg-inplace .ip-opt-chk.on { border-color:var(--ink); background:rgba(0,0,0,.04); font-weight:600; }
+.msg-inplace .ip-opt-chk.on .ip-opt-box { border-color:var(--ink); background:var(--ink); }
+.msg-inplace .ip-opt-chk.on .ip-opt-box::after {
+  content:''; position:absolute; left:4px; top:1px; width:4px; height:8px;
+  border:solid #fff; border-width:0 2px 2px 0; transform:rotate(45deg);
+}
+.msg-inplace .ip-multi-submit {
+  display:block; width:100%; margin-top:2px; padding:10px 12px; border:none; border-radius:10px;
+  background:var(--ink); color:#fff; font-size:13px; font-weight:600; cursor:pointer;
+  font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.msg-inplace .ip-multi-submit:active { opacity:.85; }
+.msg-inplace .ip-multi-submit:disabled { opacity:.42; cursor:default; }
 
 /* ===== TA鐨勮闂?===== */
 /* 鑱婂ぉ閲岀殑璇㈤棶鍗＄墖 */
@@ -1192,7 +1441,7 @@ body.cs-time-divider .msg-time-divider { display:flex; }
 .msg-survey-list { display:flex; flex-direction:column; gap:10px; margin-top:10px; }
 .msg-survey-item { font-size:13px; color:var(--ink); line-height:1.5; }
 .msg-survey-q { font-weight:600; word-break:break-word; }
-.msg-survey-opts { display:flex; flex-wrap:nowrap; justify-content:center; gap:6px; margin-top:6px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.msg-survey-opts { display:flex; flex-wrap:nowrap; justify-content:center; gap:6px; margin-top:6px; overflow-x:auto; }
 /* 选项观感对齐单题作答的选项 chip（.msg-inplace .ip-chip：白底 + 细边 + 墨色字），
    不再用灰色小标签；TA 选中的那个加 .sel 高亮（同 .ip-opt-row.sel 口径） */
 .msg-survey-opt {
@@ -1202,7 +1451,12 @@ body.cs-time-divider .msg-time-divider { display:flex; }
 }
 .msg-survey-opt.sel { border-color:var(--ink); font-weight:700; }
 .msg-survey-a { font-size:12px; font-weight:600; color:#3b7a4e; margin-top:4px; word-break:break-word; }
-.msg-survey-tip { font-size:11px; color:var(--muted); margin-top:8px; }
+/* #1005 卡片可点暗示（用户直派「需要暗示这个卡片可以点击」）：提示行文案本就写着「点击查看…」，
+   这里再补两处视觉信号——行尾一枚右向箭头，以及整张卡的按压反馈（同 .rps-choice:active 口径）。
+   收藏心形改为「点卡片才浮现」后，卡片必须自己把「我能点」摆出来。 */
+.msg-survey-tip { font-size:11px; color:var(--muted); margin-top:8px; display:flex; align-items:center; justify-content:center; gap:3px; }
+.msg-survey-chev { font-size:13px; line-height:1; opacity:.75; transform:translateY(-.5px); }
+.msg-survey-card:active { transform:translateY(1px); box-shadow:0 1px 3px rgba(0,0,0,.05); }
 
 /* ===== TA鐨勫皬闂 ===== */
 /* 鑱婂ぉ閲岀殑閫夋嫨棰樺崱鐗?*/
@@ -1226,7 +1480,8 @@ body.cs-time-divider .msg-time-divider { display:flex; }
   -webkit-tap-highlight-color:transparent;
 }
 .msg-ask-card.show-fav .msg-fav-heart,
-.msg-choose-card.show-fav .msg-fav-heart {
+.msg-choose-card.show-fav .msg-fav-heart,
+.msg-survey-card.show-fav .msg-fav-heart {
   display:inline-flex; animation:favFadeIn .18s ease;
 }
 @keyframes favFadeIn { from { opacity:0; transform:translateY(2px); } to { opacity:1; transform:none; } }
@@ -1238,7 +1493,8 @@ body.cs-time-divider .msg-time-divider { display:flex; }
   display:none; -webkit-tap-highlight-color:transparent;
 }
 .msg-ask-card.show-fav .msg-fav-time,
-.msg-choose-card.show-fav .msg-fav-time {
+.msg-choose-card.show-fav .msg-fav-time,
+.msg-survey-card.show-fav .msg-fav-time {
   display:block; animation:favFadeIn .18s ease;
 }
 
@@ -1247,15 +1503,19 @@ body.cs-time-divider .msg-time-divider { display:flex; }
 .msg-voice {
   display:flex; align-items:center; gap:8px; min-width:150px; max-width:220px;
 }
+/* #1487 播放钮的图标色／描边／底纹一律取「所在气泡自己的字色」（color:inherit + currentColor）：
+   气泡字色是 #536 对比度自愈之后真正落在屏上的那个色，钮跟着它翻深翻浅才不会和气泡底色撞色。 */
 .msg-voice-play {
   flex-shrink:0; width:30px; height:30px; border-radius:50%;
-  border:1px solid rgba(0,0,0,.15); background:rgba(0,0,0,.05);
-  color:var(--ink); cursor:pointer;
+  border:1px solid currentColor; background:transparent;
+  color:inherit; cursor:pointer;
+  position:relative; isolation:isolate;
   display:flex; align-items:center; justify-content:center;
-  transition:transform .12s ease, background .15s ease, border-color .15s ease, color .15s ease;
+  transition:transform .12s ease;
 }
+.msg-voice-play::before { content:''; position:absolute; inset:0; border-radius:50%; z-index:-1; background:currentColor; opacity:.16; transition:opacity .15s ease; }
 .msg-voice-play svg { width:13px; height:13px; }
-.msg-voice-play.playing { background:var(--ink); color:#fff; border-color:var(--ink); }
+.msg-voice-play.playing::before { opacity:.5; }
 /* 点按互动反馈：按下微缩；播放中三角换暂停双竖条（录制面板试听钮/群聊语音同款双图标） */
 .msg-voice-play:active { transform:scale(.85); }
 .msg-voice-play .voice-ico-pause { display:none; }
@@ -1265,7 +1525,7 @@ body.cs-time-divider .msg-time-divider { display:flex; }
   display:flex; align-items:flex-end; gap:2px; height:18px; flex:1;
 }
 .msg-voice-wave i {
-  width:3px; border-radius:2px; background:var(--ink); opacity:.4;
+  width:3px; border-radius:2px; background:currentColor; opacity:.45;
   height:40%; animation:voiceWave .9s ease-in-out infinite alternate;
   animation-play-state:paused;
 }
@@ -1361,7 +1621,9 @@ body.cs-time-divider .msg-time-divider { display:flex; }
 /* ===== 瀹藉睆锛圥C 娴忚鍣ㄩ瑙堬紝>900px锛夛細閫氳瘽灏忔鏀惰繘 .phone 妯℃嫙妗?=====
    v3.10.x锛氭洿澶氬姛鑳介潰鏉?.poke-card 鍚勫姛鑳藉崐妗?琛ㄦ儏鍖呴潰鏉垮凡鍦ㄥ熀纭€瑙勫垯閲岀粺涓€鏀?   position:absolute锛堥敭鐩樺仠闈?+ 瀹藉睆閿氬畾涓€娆¤В鍐筹級锛屾澶勫彧鍓?.call-mini鈥斺€?   瀹冨熀纭€瑙勫垯浠嶆槸 fixed锛堟嫋鍔ㄥ畾浣嶅潗鏍囨寜瑙嗗彛璁＄畻锛岀湡鏈轰笉鍔級锛屽灞忎笅 .phone 鏄?   灞呬腑妯℃嫙妗嗭紝fixed 浼氶敋瀹氥€愭祻瑙堝櫒绐楀彛銆戞帀鍒版墜鏈烘澶栵紝鏁呬粎绐勫睆澶栨敼 absolute銆?   html:not(.force-mobile) 鎺掗櫎銆屾墜鏈轰吉瑁呮闈?UA銆嶅満鏅紙涓嶅姩鐪熸満琛屼负锛夈€?*/
 @media (min-width: 901px) {
-  html:not(.force-mobile) .call-mini {
+  /* #717：:not(.tablet)——平板 .phone=100vw 全宽铺满且原点=视口原点，fixed 与 JS 拖拽视口坐标
+     语义一致（大屏手机），不跟随 390 外壳 absolute 化 */
+  html:not(.force-mobile):not(.tablet) .call-mini {
     position:absolute;
   }
 }
@@ -1426,7 +1688,9 @@ body.cs-time-divider .msg-time-divider { display:flex; }
   padding:9px 14px; font-size:13px; font-weight:600;
   border:1px solid rgba(0,0,0,.12); border-radius:12px;
   background:#fff; color:var(--ink); cursor:pointer; font-family:inherit;
-  -webkit-tap-highlight-color:transparent; transition:all .15s ease;
+  -webkit-tap-highlight-color:transparent;
+  /* #722 transition:all 收敛为状态实际变化的属性（防未来布局属性被卷进逐帧 reflow，iOS 敏感） */
+  transition:background .15s ease, color .15s ease, border-color .15s ease, transform .15s ease;
 }
 .rp-amt.sel { background:#111; color:#fff; border-color:#111; }
 .rp-amt:active { transform:translateY(1px); }
@@ -1533,9 +1797,30 @@ body.cs-time-divider .msg-time-divider { display:flex; }
 .rp-head-set:active { background:rgba(0,0,0,.05); }
 .rp-settings { padding:2px 0 0; }
 .rp-settings[hidden], .rp-balance[hidden] { display:none; }
+/* FIX 2026-09-20 #923 红包「设置」整区画到面板外、手机上直接超出屏幕（用户直派「设置里有字超出
+   这个页面了」，明确说明不是某一款机型的特例）。根因＝该区不在 .poke-card-scroll 里（打开设置时
+   那个滚动容器反而被隐藏），自己又不是滚动容器：实测内容高 810~860px，而面板受 .poke-card
+   max-height:48% 只有 273~439px（320×568 ~ 412×915 四档视口都量过），overflow 默认 visible ⇒
+   从第三组标题起的行整块溢出面板底边，「完成」按钮落在屏幕外 278~544px＝看不见也点不到。
+   修法＝让它成为面板这根 flex 列的弹性滚动子项（min-height:0 才能真正收缩），面板封顶不变、
+   内容在里面滚；overscroll-behavior:contain 与 base.css 那批弹层滚动容器同口径，防滚到边界
+   穿透底层聊天页。零机型分支、不动面板结构与 JS。 */
+.rp-settings:not([hidden]) {
+  flex:1 1 auto; min-height:0;
+  overflow-y:auto; overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none; -ms-overflow-style:none;
+  padding-bottom:6px; /* 滚到底时「完成」与面板内底边留余量（实测贴边差 0.26px 会被裁） */
+}
+.rp-settings::-webkit-scrollbar { display:none; }
 .rp-settings-title {
   font-size:13px; font-weight:700; color:var(--ink);
   padding:6px 2px 10px; letter-spacing:.3px;
+}
+/* 红包半框设置区分两组（自动发红包 / 申请心意币）：第二组起加分隔线上间距 */
+.rp-settings-title ~ .rp-settings-title {
+  margin-top:10px; padding-top:12px;
+  border-top:1px solid var(--card-border,rgba(0,0,0,.08));
 }
 .rp-settings .set-row {
   background:rgba(0,0,0,.03); border-radius:14px; margin-bottom:8px; border-bottom:none;
@@ -1596,16 +1881,25 @@ body.cs-time-divider .msg-time-divider { display:flex; }
   transition:opacity .15s ease, background .15s ease, border-color .15s ease;
 }
 .voice-rec-btn {
+  position:relative; /* #722 呼吸圈走伪元素 */
   border:1.5px solid rgba(0,0,0,.18); background:transparent; color:var(--ink);
 }
 .voice-rec-btn:active { opacity:.7; }
 .voice-rec-btn.rec {
   background:#e5484d; border-color:transparent; color:#fff;
-  animation:voiceRecPulse 1.15s ease-in-out infinite;
 }
-@keyframes voiceRecPulse {
-  0%,100% { box-shadow:0 0 0 0 rgba(229,72,77,.35); }
-  50% { box-shadow:0 0 0 7px rgba(229,72,77,0); }
+/* #722 iOS 去无限 box-shadow 动画（阴影插值每帧重绘不进合成器＝录音全程持续重绘面）：
+   红圈静态烘焙在 ::after 上，只动 transform/opacity 合成属性，视觉同为扩散淡出呼吸圈 */
+.voice-rec-btn.rec::after {
+  content:''; position:absolute; inset:0; border-radius:inherit;
+  box-shadow:0 0 0 5px rgba(229,72,77,.35);
+  opacity:0; pointer-events:none;
+  animation:voiceRecPulseRing 1.15s ease-in-out infinite;
+}
+@keyframes voiceRecPulseRing {
+  0% { transform:scale(1); opacity:0; }
+  30% { opacity:1; }
+  100% { transform:scale(1.35); opacity:0; }
 }
 .voice-send-big {
   /* border 同 rec 保持 1.5px（透明）：Chromium 对 basis 0% 的 flex 按钮，一方有 border
@@ -1614,10 +1908,10 @@ body.cs-time-divider .msg-time-divider { display:flex; }
 }
 .voice-send-big:active { opacity:.85; }
 .voice-send-big[disabled] { opacity:.4; pointer-events:none; }
-/* 我发出的语音气泡落在深色 out 气泡上：播放钮/波形原是浅底深色系（为 in 侧设计），黑底上不可见 */
-.msg-out .msg-voice-play { background:rgba(255,255,255,.16); border-color:rgba(255,255,255,.35); color:#fff; }
-.msg-out .msg-voice-play.playing { background:#fff; color:#111; border-color:#fff; }
-.msg-out .msg-voice-wave i { background:#fff; opacity:.55; }
+/* #1487 out 侧不再钉死白色（旧写法为「深色气泡」写死 #fff）：把「我的消息底色」调成浅色时
+   #536 自愈只翻正文、翻不动这枚钉死的白，于是播放钮与波形和气泡底色同色＝整块隐形，
+   用户所见就是「语音发出去变成一条只有字的文字气泡、也没有地方点着听」。钮与波形改吃气泡自己的字色。 */
+.msg-out .msg-voice-play { color:inherit; }
 @media (prefers-reduced-motion: reduce) {
   .voice-card .voice-wave i, .voice-rec-btn.rec, .msg-voice-play { animation:none !important; transition:none !important; }
 }
@@ -1627,3 +1921,5 @@ body.cs-time-divider .msg-time-divider { display:flex; }
 [data-theme="dark"] .voice-card.recording .voice-wave i { opacity:.9; }
 [data-theme="dark"] .msg-voice-play.voice-play-btn { background:rgba(255,255,255,.1); border-color:rgba(255,255,255,.16); }
 [data-theme="dark"] .voice-rec-btn { border-color:rgba(255,255,255,.28); color:#fff; }
+
+

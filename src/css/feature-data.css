@@ -1,0 +1,43 @@
+﻿/* ===== 各功能数据 单独导出/导入/清空（设置 → 工具 → 各功能数据，feature-data.js） =====
+   为什么单独成文件：本页是数据层功能（AI-B 域），设置页主体样式在 setting.css（AI-A 域），
+   新功能自带样式不进别人文件，避免并行会话互相覆盖。 */
+.fd-intro { font-size:12.5px; line-height:1.75; color:#333; }
+.fd-intro b { font-weight:700; color:var(--ink,#111); }
+.fd-legend { font-size:11px; color:var(--muted,#777); line-height:1.7; margin-top:8px; }
+.fd-legend b { color:var(--ink,#111); font-weight:700; }
+.fd-group-title { font-size:12px; color:var(--muted,#777); font-weight:600; letter-spacing:.3px; margin:14px 4px 8px; }
+.fd-card { padding:4px 0; }
+.fd-row { padding:12px 14px; border-bottom:1px solid rgba(0,0,0,.05); }
+.fd-row:last-child { border-bottom:none; }
+.fd-head { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.fd-name { font-size:14px; font-weight:600; line-height:1.4; }
+.fd-scope { display:inline-block; padding:1px 8px; border-radius:9px; font-size:10px; font-weight:400;
+  border:1px solid rgba(0,0,0,.08); background:rgba(0,0,0,.03); color:var(--muted,#777); }
+.fd-scope.global { border-color:rgba(201,138,27,.35); background:rgba(201,138,27,.1); color:#a9731b; }
+.fd-count { margin-top:3px; font-size:11px; color:var(--muted,#777); }
+.fd-count.empty { opacity:.6; }
+.fd-desc { font-size:11.5px; color:var(--muted,#777); line-height:1.6; margin-top:3px; }
+.fd-btns { display:flex; gap:8px; margin-top:10px; }
+.fd-btn { flex:1 1 0; padding:9px 6px; border:none; border-radius:12px; background:var(--ink,#111); color:var(--bg-b,#fff);
+  font-size:12.5px; font-weight:600; font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.fd-btn:active { opacity:.85; }
+.fd-btn.danger { background:rgba(217,83,79,.12); color:#c0392b; }
+.fd-btn.danger:active { background:rgba(217,83,79,.2); }
+/* 暗色适配（本功能是数据页，跟着全局暗色走；不用内联色值，保证明暗可读） */
+[data-theme="dark"] .fd-intro { color:#d6d6d6; }
+[data-theme="dark"] .fd-intro b, [data-theme="dark"] .fd-legend b { color:#fff; }
+[data-theme="dark"] .fd-btn.danger { background:rgba(217,83,79,.22); color:#ff9a94; }
+[data-theme="dark"] .fd-scope { border-color:rgba(255,255,255,.14); background:rgba(255,255,255,.06); }
+
+/* ===== #679 功能页内的「数据管理」卡（feature-data.js 注入，data-fbar） =====
+   与集中页同一条引擎；卡片只在所属功能页可见时显示（showFdBars 按 page.hidden 切换）。 */
+.fd-fbar { margin:10px 12px; padding:12px 14px; }
+.fd-fbar-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.fd-fbar-name { font-size:13px; font-weight:600; color:var(--ink,#111); }
+.fd-fbar-go { border:none; background:transparent; color:var(--muted,#777); font-size:12px;
+  font-family:inherit; padding:4px 2px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.fd-fbar .fd-count { margin-top:4px; font-size:11px; color:var(--muted,#777); }
+.fd-fbar .fd-count.empty { opacity:.6; }
+.fd-fbar .fd-btns { margin-top:10px; }
+.fd-fbar[hidden] { display:none; }
+[data-theme="dark"] .fd-fbar-name { color:#fff; }

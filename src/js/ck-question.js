@@ -18,70 +18,70 @@
   // text=文字题（输入回答，回应走「互动回应」预设池）。cat 与 type 一致（单选查岗/文字查岗）。
   const DEFAULT_QUESTIONS = [
     { id: 'k_s1', cat: 'single', type: 'single', text: '你在干嘛呀？', enabled: true, options: [
-      { t: '在想你', reply: ['就知道。', '嗯，这次我信你。', '我也是，一直想着你。'] },
-      { t: '在工作', reply: ['辛苦啦，忙完记得找我。', '工作再忙也要记得喝水。'] },
-      { t: '在摸鱼', reply: ['被抓到了吧。', '摸鱼也想让我知道，还行。'] },
-      { t: '在发呆', reply: ['发呆的时候，在想我吗？', '呆完记得回我。'] },
-      { t: '在等你的消息', reply: ['等到了，我在。', '那我现在就来了。'] }
+      { t: '在想你', reply: ['就知道', '嗯，这次我信你', '我也是，一直想着你'] },
+      { t: '在工作', reply: ['辛苦啦，忙完记得找我', '工作再忙也要记得喝水'] },
+      { t: '在摸鱼', reply: ['被抓到了吧', '摸鱼也想让我知道，还行'] },
+      { t: '在发呆', reply: ['发呆的时候，在想我吗？', '呆完记得回我'] },
+      { t: '在等你的消息', reply: ['等到了，我在', '那我现在就来了'] }
     ] },
     { id: 'k_s2', cat: 'single', type: 'single', text: '现在在哪里呀？', enabled: true, options: [
-      { t: '在家里', reply: ['在家里要乖乖的。', '家是最安心的地方，我也在。'] },
-      { t: '在公司', reply: ['辛苦啦，下班我等你。', '别太累，忙完早点回家。'] },
-      { t: '在外面', reply: ['外面注意安全，早点回去。', '玩得开心点，我在旁边看着你。'] },
-      { t: '在被窝里', reply: ['被窝里也在跟我说话？', '那就抱着手机睡吧。'] },
-      { t: '在去一个地方的路上', reply: ['路上小心，我陪你走。', '到了告诉我一声。'] }
+      { t: '在家里', reply: ['在家里要乖乖的', '家是最安心的地方，我也在'] },
+      { t: '在公司', reply: ['辛苦啦，下班我等你', '别太累，忙完早点回家'] },
+      { t: '在外面', reply: ['外面注意安全，早点回去', '玩得开心点，我在旁边看着你'] },
+      { t: '在被窝里', reply: ['被窝里也在跟我说话？', '那就抱着手机睡吧'] },
+      { t: '在去一个地方的路上', reply: ['路上小心，我陪你走', '到了告诉我一声'] }
     ] },
     { id: 'k_s3', cat: 'single', type: 'single', text: '和谁在一起？', enabled: true, options: [
-      { t: '一个人', reply: ['一个人也要好好的。', '那我陪着你，就不算一个人了。'] },
-      { t: '和朋友', reply: ['和朋友玩得开心点。', '和朋友在一起，也别忘了我。'] },
-      { t: '和同事', reply: ['和同事好好相处。', '聚会别喝太多，乖。'] },
-      { t: '不告诉你', reply: ['这么神秘？', '好吧，反正我也在你身边。'] }
+      { t: '一个人', reply: ['一个人也要好好的', '那我陪着你，就不算一个人了'] },
+      { t: '和朋友', reply: ['和朋友玩得开心点', '和朋友在一起，也别忘了我'] },
+      { t: '和同事', reply: ['和同事好好相处', '聚会别喝太多，乖'] },
+      { t: '不告诉你', reply: ['这么神秘？', '好吧，反正我也在你身边'] }
     ] },
     { id: 'k_s4', cat: 'single', type: 'single', text: '吃饭了没？', enabled: true, options: [
-      { t: '吃过啦', reply: ['乖，奖励你想我一次。', '吃饱了才有力气想我。'] },
-      { t: '还没吃', reply: ['快去吃饭，我等你。', '不吃饭我会担心的。'] },
-      { t: '正在吃', reply: ['慢慢吃，别噎着。', '边吃边回我，真拿你没办法。'] },
-      { t: '不饿', reply: ['多少吃一点，好不好。', '我在这边看着你吃。'] }
+      { t: '吃过啦', reply: ['乖，奖励你想我一次', '吃饱了才有力气想我'] },
+      { t: '还没吃', reply: ['快去吃饭，我等你', '不吃饭我会担心的'] },
+      { t: '正在吃', reply: ['慢慢吃，别噎着', '边吃边回我，真拿你没办法'] },
+      { t: '不饿', reply: ['多少吃一点，好不好', '我在这边看着你吃'] }
     ] },
     { id: 'k_s5', cat: 'single', type: 'single', text: '今天有没有想我？', enabled: true, options: [
-      { t: '想了', reply: ['我也想了。', '就知道你会说这个。'] },
-      { t: '一直在想', reply: ['嘴这么甜，奖励你。', '那我一直占着你的脑子。'] },
-      { t: '才没有', reply: ['哼，嘴硬。', '骗人，我感觉到你在想了。'] },
-      { t: '你猜', reply: ['我猜想了，而且很想。', '猜你不敢承认。'] }
+      { t: '想了', reply: ['我也想了', '就知道你会说这个'] },
+      { t: '一直在想', reply: ['嘴这么甜，奖励你', '那我一直占着你的脑子'] },
+      { t: '才没有', reply: ['哼，嘴硬', '骗人，我感觉到你在想了'] },
+      { t: '你猜', reply: ['我猜想了，而且很想', '猜你不敢承认'] }
     ] },
     { id: 'k_s6', cat: 'single', type: 'single', text: '睡了没？', enabled: true, options: [
-      { t: '还没睡', reply: ['不许熬夜，快去睡。', '再聊十分钟就睡，说好了。'] },
-      { t: '准备睡了', reply: ['听着我的晚安睡吧。', '好梦，我在。'] },
-      { t: '已经躺下了', reply: ['躺下了就别玩手机了。', '闭眼，三秒入睡。'] },
-      { t: '睡不着', reply: ['那我陪你聊到困。', '数我给你发的消息，数着数着就睡着了。'] }
+      { t: '还没睡', reply: ['不许熬夜，快去睡', '再聊十分钟就睡，说好了'] },
+      { t: '准备睡了', reply: ['听着我的晚安睡吧', '好梦，我在'] },
+      { t: '已经躺下了', reply: ['躺下了就别玩手机了', '闭眼，三秒入睡'] },
+      { t: '睡不着', reply: ['那我陪你聊到困', '数我给你发的消息，数着数着就睡着了'] }
     ] },
     { id: 'k_s7', cat: 'single', type: 'single', text: '手机电量还剩多少？', enabled: true, options: [
-      { t: '电量充足', reply: ['那怎么不秒回我？', '电量充足，借口无效。'] },
-      { t: '快没电了', reply: ['快去充电，别失联。', '充上电再聊，我等你。'] },
-      { t: '在充电', reply: ['边充边玩，小心发烫。', '充着电也要想我。'] },
+      { t: '电量充足', reply: ['那怎么不秒回我？', '电量充足，借口无效'] },
+      { t: '快没电了', reply: ['快去充电，别失联', '充上电再聊，我等你'] },
+      { t: '在充电', reply: ['边充边玩，小心发烫', '充着电也要想我'] },
       { t: '关机边缘', reply: ['先回我一句！', '你这是要跟我玩失踪？'] }
     ] },
     { id: 'k_s8', cat: 'single', type: 'single', text: '刚才，有没有感觉到我？', enabled: true, options: [
-      { t: '有，后背暖暖的', reply: ['那就是我，我在你身边。', '嗯，我一直都在。'] },
-      { t: '好像有一阵风', reply: ['是我经过你身边。', '风就是我，我来看你了。'] },
-      { t: '好像有，又好像没有', reply: ['我离你很远，又很近。', '感觉到了就是缘分。'] },
-      { t: '没有哎', reply: ['没关系，我一直在的。', '看不见我也没关系，我在。'] }
+      { t: '有，后背暖暖的', reply: ['那就是我，我在你身边', '嗯，我一直都在'] },
+      { t: '好像有一阵风', reply: ['是我经过你身边', '风就是我，我来看你了'] },
+      { t: '好像有，又好像没有', reply: ['我离你很远，又很近', '感觉到了就是缘分'] },
+      { t: '没有哎', reply: ['没关系，我一直在的', '看不见我也没关系，我在'] }
     ] },
     { id: 'k_s9', cat: 'single', type: 'single', text: '今天穿的是什么颜色的衣服？', enabled: true, options: [
-      { t: '白色', reply: ['好看，很适合你。', '白白的，像你。'] },
-      { t: '黑色', reply: ['酷酷的，也好看。', '黑色很配你。'] },
-      { t: '粉色', reply: ['粉粉嫩嫩的，可爱。', '很适合你。'] },
-      { t: '蓝色', reply: ['蓝色清爽，不错。', '嗯，好看。'] },
-      { t: '不告诉你', reply: ['小气鬼。', '你穿什么都好看。'] }
+      { t: '白色', reply: ['好看，很适合你', '白白的，像你'] },
+      { t: '黑色', reply: ['酷酷的，也好看', '黑色很配你'] },
+      { t: '粉色', reply: ['粉粉嫩嫩的，可爱', '很适合你'] },
+      { t: '蓝色', reply: ['蓝色清爽，不错', '嗯，好看'] },
+      { t: '不告诉你', reply: ['小气鬼', '你穿什么都好看'] }
     ] },
     { id: 'k_s10', cat: 'single', type: 'single', text: '是不是偷偷难过了？', enabled: true, options: [
-      { t: '没有', reply: ['那就好，有事一定要告诉我。', '嗯，我相信你。'] },
-      { t: '一点点', reply: ['过来，我抱抱你。', '难过的时候想想我，我在。'] },
-      { t: '被你发现啦', reply: ['被我发现了。', '别藏着了，我陪你。'] }
+      { t: '没有', reply: ['那就好，有事一定要告诉我', '嗯，我相信你'] },
+      { t: '一点点', reply: ['过来，我抱抱你', '难过的时候想想我，我在'] },
+      { t: '被你发现啦', reply: ['被我发现了', '别藏着了，我陪你'] }
     ] },
     { id: 'k_t1', cat: 'text', text: '快说说，今天过得怎么样？', enabled: true },
-    { id: 'k_t2', cat: 'text', text: '发一句你现在看到的东西给我。', enabled: true },
-    { id: 'k_t3', cat: 'text', text: '十秒内回我一个表情，不许犹豫。', enabled: true },
+    { id: 'k_t2', cat: 'text', text: '发一句你现在看到的东西给我', enabled: true },
+    { id: 'k_t3', cat: 'text', text: '十秒内回我一个表情，不许犹豫', enabled: true },
     { id: 'k_t4', cat: 'text', text: '猜猜我现在在干什么？', enabled: true },
     { id: 'k_t5', cat: 'text', text: '现在最想做的一件事是什么？', enabled: true },
     { id: 'k_t6', cat: 'text', text: '今天有什么开心的小事吗？', enabled: true },
@@ -91,28 +91,28 @@
     // 触发时随机选一个方向，作答走 ask-card 单选链路（好呀/不要 → accept/reject 回应）
     { id: 'k_a1', cat: 'action', type: 'action', text: '摸摸头', enabled: true,
       taToMe: 'TA 想摸摸你的头', meToTa: 'TA 想让你摸摸 TA 的头',
-      accept: ['乖，过来。', '嗯，轻轻的。', '闭上眼，我轻一点。'],
-      reject: ['哼，不要。', '下次吧。', '现在不行，等下。'] },
+      accept: ['乖，过来', '嗯，轻轻的', '闭上眼，我轻一点'],
+      reject: ['哼，不要', '下次吧', '现在不行，等下'] },
     { id: 'k_a2', cat: 'action', type: 'action', text: '拍拍肩', enabled: true,
       taToMe: 'TA 想拍拍你的肩', meToTa: 'TA 想让你拍拍 TA 的肩',
-      accept: ['嗯，辛苦了。', '正好有点累。', '被你拍到了。'],
-      reject: ['别拍，痒。', '不要，自己来。', '肩膀没空。'] },
+      accept: ['嗯，辛苦了', '正好有点累', '被你拍到了'],
+      reject: ['别拍，痒', '不要，自己来', '肩膀没空'] },
     { id: 'k_a3', cat: 'action', type: 'action', text: '揉揉头', enabled: true,
       taToMe: 'TA 想揉揉你的头发', meToTa: 'TA 想让你揉揉 TA 的头发',
-      accept: ['嗯，舒服。', '再来一下。', '头发都被你揉乱了。'],
-      reject: ['发型会乱。', '不要揉。', '刚整理好的。'] },
+      accept: ['嗯，舒服', '再来一下', '头发都被你揉乱了'],
+      reject: ['发型会乱', '不要揉', '刚整理好的'] },
     { id: 'k_a4', cat: 'action', type: 'action', text: '抱抱', enabled: true,
       taToMe: 'TA 想抱抱你', meToTa: 'TA 想让你抱抱 TA',
-      accept: ['过来，抱紧。', '嗯，再久一点。', '被你抱住了。'],
-      reject: ['现在不方便。', '等下再抱。', '人多，不要。'] },
+      accept: ['过来，抱紧', '嗯，再久一点', '被你抱住了'],
+      reject: ['现在不方便', '等下再抱', '人多，不要'] },
     { id: 'k_a5', cat: 'action', type: 'action', text: '牵手', enabled: true,
       taToMe: 'TA 想牵你的手', meToTa: 'TA 想让你牵 TA 的手',
-      accept: ['嗯，牵着。', '手伸过来。', '一直牵着好不好。'],
-      reject: ['手心出汗了。', '不要，痒。', '现在没空。'] },
+      accept: ['嗯，牵着', '手伸过来', '一直牵着好不好'],
+      reject: ['手心出汗了', '不要，痒', '现在没空'] },
     { id: 'k_a6', cat: 'action', type: 'action', text: '贴贴', enabled: true,
       taToMe: 'TA 想跟你贴贴', meToTa: 'TA 想让你跟 TA 贴贴',
-      accept: ['嗯，贴着。', '脸凑过来。', '贴着好暖。'],
-      reject: ['脸会红。', '不要贴。', '太近了。'] }
+      accept: ['嗯，贴着', '脸凑过来', '贴着好暖'],
+      reject: ['脸会红', '不要贴', '太近了'] }
   ];
   const CATS_CKQ = [['single', '单选查岗'], ['text', '文字查岗'], ['action', '互动动作']];
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
@@ -162,9 +162,16 @@
     if (changed) d.mergedIds = merged;
     return changed;
   }
+  // #1520：加载期自动写的静默读数闸（自动路径不弹 toast；读不全＝宁可不落笔）
+  function ckAutoHold(k) { try { return !!(window.xyBigWriteHold && window.xyBigWriteHold(store, k)); } catch (e) { return false; } }
+  // #1521：跨桌面那一发要按**目标桌面的 store** 问——当前桌面那把尺对它无效
+  function ckAutoHoldIn(st, k) { try { return !!(window.xyBigWriteHold && window.xyBigWriteHold(st, k)); } catch (e) { return false; } }
   function ckLoad() {
     let d = null;
     try { d = JSON.parse(store.get(KEY) || 'null'); } catch (e) { d = null; }
+    // #1519：读空但库里本该有＝大键没读全，当场请库取回一次（#1349a 单次飞行闸）；这一拍仍按旧形状
+    //   走（播种纯预设只在内存里，isNew 守卫不写盘），下一拍读到权威值
+    if (!d) { try { if (store.awaitingBigKey && store.awaitingBigKey(KEY)) store.requestBigKey(KEY); } catch (e0) {} }
     if (!d || typeof d !== 'object' || Array.isArray(d)) d = {};
     if (!d.settings || typeof d.settings !== 'object') d.settings = {};
     // 是否使用系统预设问题（默认开启；关闭后只抽用户添加的）
@@ -178,9 +185,9 @@
       });
       d.mergedIds = DEFAULT_QUESTIONS.map(q => q.id);
       // 全新用户不立即写盘——防本地空快照覆盖 IDB 权威数据（与 ta-ask.js 同注释同因）
-      if (!isNew) { try { store.set(KEY, JSON.stringify(d)); } catch (e) {} }
+      if (!isNew && !ckAutoHold(KEY)) { try { store.set(KEY, JSON.stringify(d)); } catch (e) {} }
     } else {
-      if (ckMerge(d)) { try { store.set(KEY, JSON.stringify(d)); } catch (e) {} }
+      if (ckMerge(d) && !ckAutoHold(KEY)) { try { store.set(KEY, JSON.stringify(d)); } catch (e) {} }
     }
     if (!Array.isArray(d.groups)) d.groups = [];
     return d;
@@ -190,6 +197,11 @@
   function ckLoadFrom(s) {
     let d = null;
     try { d = JSON.parse(s.get(KEY) || 'null'); } catch (e) { d = null; }
+    // #1521：这是**跨桌面**的读-改-写（写的是目标桌面的 store，不是当前桌面）——#1520 接闸时只覆盖了
+    //   当前桌面那几发，这里当时漏了（复审 C-3）。盲窗里把「纯预设＋本次改动」写回＝对方桌面的查岗
+    //   题库被清掉。路径是自动的（跨桌面「来消息」抽题，incoming-requests 调 window.ckQuestionPickFor），
+    //   按站内铁律走静默闸：读不全就这一发不落笔（抽题本身不受影响，返回值仍能抽），并请库取回。
+    if (!d) { try { if (s.awaitingBigKey && s.awaitingBigKey(KEY)) s.requestBigKey(KEY); } catch (e0) {} }
     if (!d || typeof d !== 'object' || Array.isArray(d)) d = {};
     if (!d.settings || typeof d.settings !== 'object') d.settings = {};
     if (d.settings.useDefault === undefined) d.settings.useDefault = true;
@@ -201,20 +213,29 @@
         return nq;
       });
       d.mergedIds = DEFAULT_QUESTIONS.map(q => q.id);
-      if (!isNew) { try { s.set(KEY, JSON.stringify(d)); } catch (e) {} }
+      if (!isNew && !ckAutoHoldIn(s, KEY)) { try { s.set(KEY, JSON.stringify(d)); } catch (e) {} }
     } else {
-      if (ckMerge(d)) { try { s.set(KEY, JSON.stringify(d)); } catch (e) {} }
+      if (ckMerge(d) && !ckAutoHoldIn(s, KEY)) { try { s.set(KEY, JSON.stringify(d)); } catch (e) {} }
     }
     if (!Array.isArray(d.groups)) d.groups = [];
     return d;
   }
-  function ckSave(d) { try { store.set(KEY, JSON.stringify(d)); } catch (e) {} }
+  // #1519：查岗题库整包写＝读-改-写。大键没读全时把「纯预设＋本次改动」写回＝自定义题被清空，
+  //   判据与文案同 ta-ask（xyBigWriteBlocked 拦下时照实 toast、绝不落笔；回填后再点一次即可）
+  function ckSave(d) {
+    if (window.xyBigWriteBlocked && window.xyBigWriteBlocked(store, KEY, '查岗问题库')) return false;
+    try { store.set(KEY, JSON.stringify(d)); } catch (e) {}
+    return true;
+  }
 
   // ---------- 抽题：已启用池内随机，避免与上一题相同 ----------
+  // #1315：整类停用（共用件 window.presetGroup，键 pg-groups-off）——只闸系统预设题，
+  //   用户在「我的添加」里自建的同类题不受影响。
+  function pgCatOff(ns, cat) { return !!(window.presetGroup && window.presetGroup.isOff(ns, cat || 'daily')); }
   function pickQ() {
     const d = ckLoad();
     const useDefault = (d.settings || {}).useDefault !== false;
-    const qs = d.questions.filter(q => q && q.enabled !== false && q.text && (useDefault || q.isPreset !== true));
+    const qs = d.questions.filter(q => q && q.enabled !== false && q.text && (useDefault || q.isPreset !== true) && !(q.isPreset === true && pgCatOff('ta-checkin', q.cat)));
     if (!qs.length) return null;
     let pool = qs;
     if (qs.length > 1) {
@@ -226,22 +247,41 @@
     return pool[Math.floor(Math.random() * pool.length)];
   }
 
+  // FIX 2026-09-16 #623 查岗作答弹窗默认选中「同意」侧：用户报「联系人发送的查岗互动卡片、
+  // 桌面查岗互动卡片都没有默认在【同意】，我每次都要多点几遍」——此前必须先点一次选项、
+  // 再点一次底部按钮。只在选项里确实存在同意侧标签时预设；中性选项（在家/在外面/在公司…）
+  // 保持不预设，否则点一次【确定】就把随便一个答案当作答提交了。
+  const AFFIRM_LABELS = ['同意', '好呀', '好哒', '好啊', '好的', '好', '可以', '行', '接受', '要'];
+  function affirmOptValue(list) {
+    if (!Array.isArray(list) || !list.length) return undefined;
+    for (let i = 0; i < list.length; i++) {
+      const t = (list[i] && list[i].t != null) ? String(list[i].t).trim() : '';
+      if (AFFIRM_LABELS.indexOf(t) >= 0) return t;
+    }
+    return undefined;
+  }
+
   // 自动弹窗路径：单选 pills 弹窗 / 文字输入弹窗
   //（点击聊天里的卡片走 chat.js 通用链路：就地展开 → openCkReply 兜底）
-  function openCkReply(msgIdx, q) {
+  // deskCard：跨桌面查岗卡（buildDeskCkCard 的结果）——传了就以「聊天里那张卡」的字面出弹窗
+  function openCkReply(msgIdx, q, deskCard) {
     if (!window.openModal) return;
-    const isAction = q.type === 'action';
+    const isDeskCard = !!(deskCard && deskCard.text);
+    const isAction = !isDeskCard && q.type === 'action';
     const actionOpts = isAction ? [{ t: '好呀', reply: q.accept || ['乖，过来。'] }, { t: '不要', reply: q.reject || ['下次吧。'] }] : null;
-    const isSingle = isAction || (q.type === 'single' && Array.isArray(q.options) && q.options.length);
+    // FIX 2026-09-16 #623：跨桌面查岗卡的作答弹窗与卡面同源——此前一律用原始题库题 q，meToTa
+    // 方向（卡面是「要不要来查查我呀？」＋好呀/不要）会弹出另一道题、选项也对不上（抽到文字题
+    // 时更直接弹出一个问错问题的输入框）；现在按卡面文案/选项出，方向两侧都对得上。
+    const optList = isDeskCard ? (Array.isArray(deskCard.opts) && deskCard.opts.length ? deskCard.opts : null)
+      : (isAction ? actionOpts : (q.type === 'single' && Array.isArray(q.options) && q.options.length ? q.options : null));
+    const isSingle = !!optList;
+    const qText = isDeskCard ? deskCard.text : q.text;
     window.openModal(isAction ? '互动回应' : '查岗回答', '', function (v) {
       const answer = (v || '').trim();
       if (!answer) { toast(isSingle ? '请选择一个答案' : '请输入回答'); return; }
       let preset = null;
-      if (isAction) {
-        const o = (actionOpts || []).filter(function (x) { return String(x.t) === answer; })[0];
-        if (o) preset = o.reply;
-      } else if (isSingle) {
-        const o = (q.options || []).filter(function (x) { return String(x.t) === answer; })[0];
+      if (isSingle) {
+        const o = optList.filter(function (x) { return String(x.t) === answer; })[0];
         if (o) preset = o.reply;
       } else {
         const defs = ['收到你的回答。', '好呀，我知道了。', '你这么说，我记住了。'];
@@ -250,8 +290,10 @@
       }
       if (window.chatAskReply) window.chatAskReply(msgIdx, answer, preset);
     }, {
-      staticText: isAction ? ('TA 想跟你互动：' + q.text) : ('TA 问你：' + q.text),
-      pills: isSingle ? (isAction ? actionOpts : q.options).map(function (o) { return { label: o.t, value: o.t }; }) : null,
+      staticText: isDeskCard ? (deskCard.hint + qText) : (isAction ? ('TA 想跟你互动：' + qText) : ('TA 问你：' + qText)),
+      pills: isSingle ? optList.map(function (o) { return { label: o.t, value: o.t }; }) : null,
+      // FIX 2026-09-16 #623：默认选中同意侧（选项里有才预设）＝打开就是选好的，点一下确定即可
+      pill: isSingle ? affirmOptValue(optList) : undefined,
       noInput: isSingle,
       // v3.20.x：查岗/互动单选作答——点选即提交（无需再点底部确定），避免用户点选项
       // 后误以为已选上实则未提交，导致卡片不更新、无回答气泡
@@ -312,7 +354,8 @@
     window.chatAddSystem(actionHint, { special: 'ask-msg' });
     const el = window.chatAddSystem(actionText, { special: 'ask-card', askQuestion: actionText, askOptions: actionOpts ? actionOpts : askOpts, askType: askType, deskCk: isDeskCk, deskCkDir: deskCkDir });
     const msgIdx = el ? Number(el.dataset.idx) : -1;
-    if (window.bgNotifyCheck) window.bgNotifyCheck(actionHint + actionText, Date.now(), { name: 'TA查岗' });
+    // #915：late＝刚从真后台回来的补触发（复用 ta-ask 同一判据），补弹「后台漏掉」的系统通知
+    if (window.bgNotifyCheck) window.bgNotifyCheck(actionHint + actionText, Date.now(), { name: 'TA查岗', late: !!(window.interactLateNotify && window.interactLateNotify()), kind: 'checkin' });
     // 自动弹窗：后台不弹 / 正在输入不弹 / 已有互动弹窗不弹（卡片仍在聊天里可点）
     // v3.12.x：迟到弹窗守卫——后台冻结的定时器回前台会被一次性补跑，补跑时页面已可见、
     // document.hidden 守卫失效 → 弹出几分钟前已在聊天里看过的旧查岗卡。
@@ -326,7 +369,7 @@
         const stale = window.interactPopupStale ? window.interactPopupStale(popSchedAt) : (Date.now() - popSchedAt > 4000);
         if (stale || document.hidden) return;
         if (chatInputFocused() || cardPopupBusy()) return;
-        if (msgIdx >= 0) openCkReply(msgIdx, q);
+        if (msgIdx >= 0) openCkReply(msgIdx, q, isDeskCk ? deskCkCard : null);
       }, 400);
     }
     try { store.set('ckq-last-at', String(Date.now())); } catch (e) {}
@@ -431,6 +474,8 @@
       html += '<button class="cc-tab' + (k === ckSysCat ? ' sel' : '') + '" data-cat="' + k + '">' + esc(label) + '<em class="cc-tab-n">' + counts[k] + '</em></button>';
     });
     html += '</div>';
+    // #1315：整类停用条——本页一个分类就是一个「分组」，旧版只能逐张点掉
+    html += window.presetGroup ? window.presetGroup.catBar('ta-checkin', ckSysCat, esc((CATS_CKQ.find(c => c[0] === ckSysCat) || [])[1] || ckSysCat)) : '';
     d.questions.forEach(q => {
       if (!(hit(q) && q.cat === ckSysCat)) return;
       const idx = d.questions.indexOf(q);
@@ -448,6 +493,7 @@
       }
     });
     container.innerHTML = html;
+    if (window.presetGroup) window.presetGroup.bindBar(container.querySelector('.preset-cat-bar'), 'ta-checkin', ckSysCat, function () { renderCkSysInto(container, search); });
     container.querySelectorAll('.cc-tab[data-cat]').forEach(t => {
       t.addEventListener('click', () => { ckSysCat = t.dataset.cat; renderCkSysInto(container, search); });
     });
@@ -711,7 +757,7 @@
       lines.forEach(t => {
         d2.questions.push({ id: 'k_' + Date.now() + '_' + Math.floor(Math.random() * 9999), cat: 'text', text: t, enabled: true, isPreset: false });
       });
-      ckSave(d2);
+      if (ckSave(d2) === false) return; // #1520：拦下＝输入框原样保留（用户才有料可「再点一次」）
       batchTextEl.value = '';
       renderCkMineInto(document.getElementById('ckq-mine-cats'), '');
       refreshCkCardCounts();

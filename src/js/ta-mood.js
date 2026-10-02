@@ -31,7 +31,12 @@
     const v = ls.get('tm-enabled');
     return v === null ? true : v === '1';
   }
-  function isCardOff(g, c) { return ls.get('tm-off-' + g + ':' + c) === '1'; }
+  // #1315：整组停用叠在同一出口上（键 pg-groups-off / id 'tm'，共用件见 default-cards.js）——
+  //   选组处（:68/:85）与本函数导出的 isCardOff 全部自动跟上，组内逐张开关存值一字不改。
+  function isCardOff(g, c) {
+    if (window.presetGroup && window.presetGroup.isOff('tm', g)) return true;
+    return ls.get('tm-off-' + g + ':' + c) === '1';
+  }
   function setCardOff(g, c, off) { ls.set('tm-off-' + g + ':' + c, off ? '1' : '0'); }
 
   // ---- 冷却/历史（按桌面 store，天然隔离）----
@@ -104,6 +109,7 @@
   const list = document.getElementById('tm-list');
   const enabledEl = document.getElementById('tm-enabled');
   if (!list || !enabledEl) return;
+  list.classList.add('preset-list'); // #1315 分组开关样式锚（与 #926 那四个列表同一份 .preset-list 规则）
   enabledEl.checked = enabled();
   enabledEl.addEventListener('change', () => {
     ls.set('tm-enabled', enabledEl.checked ? '1' : '0');
@@ -168,10 +174,18 @@
     flat.forEach(it => {
       if (it.header) {
         const h = document.createElement('div');
-        h.className = 'cc-group-header';
-        h.innerHTML = '<span class="ccg-name">' + it.gname + '</span><span class="ccg-count">' + it.count + '</span>' +
-          '<span class="ccg-count" style="background:rgba(0,0,0,.03)">权重 ' + it.weight + '</span>';
+        // #1315：分组标题右侧整组开关——停用后本组心情卡不再主动分享（组内单卡开关存值不动）
+        const gOff = !!(window.presetGroup && window.presetGroup.isOff('tm', it.gname));
+        h.className = 'cc-group-header' + (gOff ? ' off' : '');
+        const badge = '<span class="ccg-count" style="background:rgba(0,0,0,.03)">权重 ' + it.weight + '</span>';
+        h.innerHTML = window.presetGroup
+          ? window.presetGroup.headerHTML('tm', it.gname, it.gname, it.count, badge)
+          : '<span class="ccg-name">' + it.gname + '</span><span class="ccg-count">' + it.count + '</span>' + badge;
         frag.appendChild(h);
+        if (window.presetGroup) window.presetGroup.bind(h, 'tm', it.gname, function (nowOff) {
+          renderTM();
+          toast(nowOff ? '已停用分组：' + it.gname + '（本组 ' + it.count + ' 张字卡不再使用）' : '已启用分组：' + it.gname);
+        });
         return;
       }
       const c = it.card;

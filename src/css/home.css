@@ -28,9 +28,27 @@
      重新盖住壁纸层；.page z-index:2 同值后到者胜（DOM 序在 .phone 里更靠后），
      页面内容不受影响。 */
   position:absolute; inset:0; z-index:2; pointer-events:none;
+  /* FIX 2026-09-17 #690：inset 简写是 2020 年才有的（Safari 14.1 / Chromium 87），
+     老内核整条丢弃 → 本层塌成 0×0（无头实测 390×844 → 0×0）→ 桌面「背景遮罩」
+     滑块怎么调都没有任何变化，用户当成功能坏了。同款兜底：先用四条长手 + 宽高
+     撑满，再让支持 inset 的内核用简写覆盖（两条同时写＝任一侧生效，零机型分支；
+     房内同款写法见 chat-pages.css 的 .poke-card.game-fs 注释）。 */
+  top:0; right:0; bottom:0; left:0; width:100%; height:100%;
   background:rgba(255,255,255,var(--desk-bg-mask-op,0));
   border-radius:inherit;
 }
+/* #765d 桌面壁纸层提独立合成层（与聊天壁纸层 #cs-bg-layer 的 #765a 同构收口）：这层不参与任何
+   页面滚动，但不提层时它与 .statusbar/.phone-bg-mask/首页内容同属一个绘制层——桌面每次内容变化
+   （换壁纸透明度过渡之外，还有卡片重绘、时钟/倒计时 textContent 更新、图标重排）的失效区都会
+   波及它，引擎要把整张全屏 cover 位图重新缩放＋光栅一遍；开了「背景模糊」时更贵——下面 #240 那条
+   `filter:blur()` 落在非合成层上＝每次失效都在绘制阶段重跑一次全屏模糊。提层后 GPU 只在真正需要
+   时重采样，blur 结果缓存成纹理。
+   ⚠️ 更正 #240 注释里的假设：「壁纸层是 #147 常驻合成层」不成立——WebKit 只在 opacity 过渡**期间**
+   临时提层，过渡结束纹理即释放，静止态它就是普通非合成层；要常驻必须自带提升线索。
+   选 translateZ(0) 不选 will-change：老 WebKit 不认 will-change（与本文件 #690 老内核兜底同口径）；
+   也**不是** zoom / scale（AGENTS.md iOS 红线只禁缩放类 transform，平移零成本）。
+   代价＝一块全屏纹理内存（约 1.3MB），只在设了桌面壁纸时存在（未设时该层 opacity:0 且无背景图）。 */
+#phone-bg-layer { transform:translateZ(0); }
 /* FIX 2026-09-07 #240：模糊载体从 mask 的 backdrop-filter 改为壁纸层自滤 filter。
    #219 提层后诊断样式全对（mask z2 + blur-on + backdrop computed 正确），但
    小米15Pro/Chrome 151 真机仍「模糊/遮罩调整无感」＝backdrop-filter 对 z1 兄弟
@@ -42,7 +60,22 @@
   filter:blur(var(--desk-bg-blur,0px));
   -webkit-filter:blur(var(--desk-bg-blur,0px));
   top:-24px !important; left:-24px !important; right:-24px !important; bottom:-24px !important;
+  /* #690：图层自带的宽高兜底（无头里 100%，老内核不认识 inset 时靠它撑满）必须让位——
+     四条长手定了 -24 外扩，若 width/height 仍为 100%，右/下两侧的外扩会被
+     「宽高优先于 right/bottom」吃掉，模糊边缘重新发虚（#240 修过的症状）。 */
+  width:auto !important; height:auto !important;
 }
+/* #976：滑页/切页期间暂停壁纸模糊——`#phone-bg-layer` 虽已提层，但全屏 blur 在滚动/页面切换
+   时仍会被引擎重新栅格化（iPhone 14PM 实测桌面翻页平均 271ms/帧、切页后单帧 2787ms）。
+   动起来时把模糊摘掉（运动中肉眼几乎无感），停下 150ms 后自动恢复，观感与静态一致。
+   仅作用在用户自己开了「背景模糊」的桌面（.desk-blur-on），未开模糊者零影响。 */
+html.desk-swiping .phone.desk-blur-on #phone-bg-layer { filter:none !important; -webkit-filter:none !important; }
+/* #1466 滑动期临时提层：与 #754 同一病灶的另一半——没开「整页背景」的桌面三张 .page-slide
+   不是独立合成层，翻页时新页瓦片现场栅格化＝滑动半路只画出一半（iPhone 15 Pro Max 实报
+   「别的页面屏幕只显示一半」；同机诊断切回桌面最慢 5539ms，与 #754 报障机同型号）。
+   desktop-slider.js 在起手（touchstart）到落定后 150ms 给容器挂 .swipe-warm，只有手势窗口
+   里有三张层的显存开销、停下即还——#1225 反对的「常驻」一字不沾。 */
+.desktop-pages.swipe-warm .page-slide { will-change: transform; }
 /* v3.6.x：桌面字号/卡片大小可调。
    ⚠️ iOS 卡顿红线（AGENTS.md / WORKLOG）：zoom 是 WebKit 已知卡顿源，会把元素踢出
    GPU 合成路径、滚动时每帧 CPU 重排重绘——只在桌面（>900px 模拟器/浏览器）生效，
@@ -55,14 +88,25 @@
    （含 .desk-period 经期卡、.mini-row 容器、.app-grid 图标组）——缩放时三页同步变化。
    ⚠️ .mini-card/.memo-card/.mood-card 不单独 zoom：它们嵌套在 .mini-row 内，
    若与容器都 zoom 会双重缩放（77→88.55→101.8），与单层缩放的 .week-card（89.1）
-   不一致；由 .mini-row 容器统一缩放一次。 */
-.page-slide { zoom:var(--desk-font-scale, 1); }
-.deco-widget, .mini-row, .checkin, .weekend-box, .music-widget,
-.week-card, .desk-period, .app-grid { zoom:var(--desk-card-scale, 1); }
+   不一致；由 .mini-row 容器统一缩放一次。
+   FIX 2026-09-17 #707（跨域改动声明见 WORKLOG）：两条 zoom 规则加 html.desk-zoom-font /
+   html.desk-zoom-card 前缀（personalize.js 挂类：宽窗>900px 且非平板且缩放值≠1 才挂）
+   ——Safari 18.2 起 WebKit 重写 zoom（标准化实现），官方自述「genuinely tricky」且
+   26.4 仍在修其性能/继承缺陷；值是 zoom:1 的声明本身也会让子树进 zoom 继承/布局路径。
+   原实现把 zoom:var() 无条件写在 .page-slide 与 11 类卡片上（手机端靠下方媒体查询
+   zoom:1 兜底）＝所有手机桌面整个子树常年带 zoom 声明参与样式解析。改后：手机/平板
+   默认零 zoom 声明；类缺省时选择器整条不匹配，视觉与原 zoom:1 完全一致。 */
+html.desk-zoom-font .page-slide { zoom:var(--desk-font-scale, 1); }
+html.desk-zoom-card .deco-widget, html.desk-zoom-card .mini-row, html.desk-zoom-card .checkin,
+html.desk-zoom-card .weekend-box, html.desk-zoom-card .music-widget,
+html.desk-zoom-card .week-card, html.desk-zoom-card .desk-period, html.desk-zoom-card .app-grid { zoom:var(--desk-card-scale, 1); }
+/* 桌面模拟器窗口拖窄（<900px）时仍不缩放（原手机端兜底语义，随 #707 加前缀保同特异性）；
+   真手机/平板不挂类，本块与其余 zoom 规则均不命中＝零声明 */
 @media (max-width: 900px) {
-  .page-slide,
-  .deco-widget, .mini-row, .checkin, .weekend-box, .music-widget,
-  .week-card, .desk-period, .app-grid { zoom:1; }
+  html.desk-zoom-font .page-slide,
+  html.desk-zoom-card .deco-widget, html.desk-zoom-card .mini-row, html.desk-zoom-card .checkin,
+  html.desk-zoom-card .weekend-box, html.desk-zoom-card .music-widget,
+  html.desk-zoom-card .week-card, html.desk-zoom-card .desk-period, html.desk-zoom-card .app-grid { zoom:1; }
 }
 
 /* 纪念日卡片（纯装饰：头像 + 爱心 + 纪念日；已禁止上传背景图）
@@ -92,11 +136,11 @@
 .deco-avatar .ring svg { width:34px; height:34px; }
 .deco-avatar .ring img { width:100%; height:100%; object-fit:cover; display:block; border-radius:var(--msg-av-radius, 50%); }
 /* 昵称：白底虚线描边胶囊，印章标签感 */
-.deco-avatar .lbl {
-  font-size:11px; color:#666; font-weight:600; letter-spacing:.5px;
-  background:#fff; border:1px solid rgba(0,0,0,.1);
-  padding:3px 13px; border-radius:99px; cursor:pointer;
-}
+/* FIX 2026-09-19 #821：#738 给 .deco-avatar 整盒铺的透明 label 激活层（absolute、z 自动）
+   盖住了昵称——点昵称命中的是 label＝弹相册、昵称弹窗永远出不来。抬一层让昵称回到
+   label 之上：点名=改昵称、点圆圈/其余区域=换头像，两条点击路径各归各。
+   规则收拢为单行＝哨兵 #821a 的 needle 是产物唯一单行片段（多行 needle 易碎）。 */
+.deco-avatar .lbl { font-size:11px; color:#666; font-weight:600; letter-spacing:.5px; background:#fff; border:1px solid rgba(0,0,0,.1); padding:3px 13px; border-radius:99px; cursor:pointer; position:relative; z-index:1; }
 .deco-avatar .lbl:hover { background:rgba(0,0,0,.04); }
 /* 中间爱心：直接显示爱心图标，无圆框 */
 .deco-heart {
@@ -200,7 +244,10 @@
   position:relative; /* v3.13.x：连击角标 .we-combo 绝对定位锚点 */
   display:flex; align-items:center; justify-content:space-between; gap:8px;
   border-radius:16px; padding:9px 12px; margin:0 0 14px; flex-shrink:0;
-  height:66px; box-sizing:border-box; overflow:hidden;
+  height:66px; box-sizing:border-box;
+  /* 连击角标 .we-combo 用 top:-9px 探出卡片上沿做「挂在圆角上」的观感，被 overflow:hidden 削掉上半截＝数值弹窗显示不全。
+     改用 overflow:clip + overflow-clip-margin：越界 16px 内可见（含角标阴影），溢出内容在边距外照常裁；老内核不认 clip→保留上行 hidden 回退（仅退回旧观感，不破功能） */
+  overflow:hidden; overflow:clip; overflow-clip-margin:16px;
   background:var(--widget-bg);
   box-shadow:0 4px 14px rgba(0,0,0,.05);
   opacity:var(--widget-opacity);
@@ -250,7 +297,14 @@
 .we-btn b { font-size:13px; }
 
 /* 应用图标 */
-.app-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px 8px; padding:2px 8px 6px; }
+/* FIX 2026-09-17 #690：gap 简写（grid 别名写进 `gap` 是 Safari 11.1/Chromium 66 起）
+   在老内核上被丢弃 → 图标行距/列距归零，图标挤成一坨（用户读成「桌面不正常」）。
+   grid-gap 与其完全同义、老内核也认，两条同写＝谁认用谁，现代内核取值一致。 */
+/* v3.26.x #707 屏幕微调·桌面轴：全屏（fs-active/ios-fs-active）隐藏状态栏后桌面内容整体
+   偏上（该偏移量各机型安全区不同），用户在 设置→信息诊断→屏幕微调·桌面 自由拉回；
+   mobile-adapt.js mochiScreenAdj 写 --mochi-desk-adj（±60px），默认 0 = 原布局零变化 */
+#desktop-pages { padding-top: var(--mochi-desk-adj, 0px); }
+.app-grid { display:grid; grid-template-columns:repeat(4,1fr); grid-gap:14px 8px; gap:14px 8px; padding:2px 8px 6px; }
 /* v3.16.x：三页功能图标完全一致（大小/行高/间距）——第三页默认 12 个图标 3 行，
    与 1/2 页 8 个图标 2 行同用默认行高 96px、图标 58px、行距 14px；
    第三页多一行的空间由经期卡让出（见 .desk-period min-height 190→160），
@@ -259,15 +313,28 @@
 .app { display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer; }
 .app .app-ico {
   /* v3.5.133：min(58px, 21vw)——极窄屏（<305px）固定 58px 会撑爆 4 列网格被裁 */
+  /* FIX 2026-09-17 #690：老内核整条丢弃不认识的 min() 函数（iOS Safari < 11.1 等）
+     → width/height 回退 auto → 图标盒收缩成 svg 的 28px，三页图标网格整体塌掉、
+     底部错位（用户报「桌面的三页灰屏/不正常」，多机型同现）。先给纯像素兜底，
+     支持 min() 的内核对同属性后写者胜、行为与改前完全一致。 */
+  width:58px; height:58px;
   width:min(58px, 21vw); height:min(58px, 21vw); border-radius:var(--app-ico-radius);
   background: rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.1);
   box-shadow:0 2px 8px rgba(0,0,0,.04);
   display:flex; align-items:center; justify-content:center;
   transition:transform .18s ease, box-shadow .18s ease;
 }
-.app:hover .app-ico {
-  transform:translateY(-2px) scale(1.05);
-  box-shadow:0 4px 12px rgba(0,0,0,.08);
+/* FIX 2026-09-17 #690：抬手放大/加深阴影只在「真正有悬停能力」的内核生效。
+   触摸内核（iOS/安卓）把 :hover 粘在最后一次点击上——点过的图标一直浮着不落
+   （用户可见的假状态），且该元素带着 box-shadow 过渡参与后续每一帧合成/栅格化
+   （桌面横滑时逐帧重绘的额外开销，卡顿/发热的加成项）。鼠标/桌面模拟器行为不变
+   （hover:hover 为真），触摸端回到无悬停的干净态。同款 hover 门控写法见
+   chat-pages.css 的五子棋/扫雷配色行。 */
+@media (hover:hover) {
+  .app:hover .app-ico {
+    transform:translateY(-2px) scale(1.05);
+    box-shadow:0 4px 12px rgba(0,0,0,.08);
+  }
 }
 .app .app-ico svg { width:28px; height:28px; stroke:var(--ink); }
 .app .app-ico img { width:100%; height:100%; object-fit:cover; border-radius:18px; display:block; }
@@ -310,8 +377,12 @@
   flex:1; min-height:0; display:flex;
   overflow-x:auto; overflow-y:hidden;
   scroll-snap-type:x mandatory;
-  -webkit-overflow-scrolling:touch;
   scrollbar-width:none; -ms-overflow-style:none;
+  /* FIX 2026-09-17 #707：删 -webkit-overflow-scrolling:touch——iOS 老式动量滚动旗标
+     （现代 WebKit 动量是默认，该属性只会把滚动容器钉在 legacy 路径/旧合成假设上），
+     而本元素正是用户报「翻页灰屏 + 秒级掉帧」的横向翻页层（iOS 26 多机型）。
+     删除对现代内核零行为变化（动量本来就有），老内核本就少见且动量非默认也只是
+     回退到普通滚动。桌面组件抽屉等小滚动容器上的同款属性不在本修复面。 */
   /* v3.5.129：明确手势归属——外层横滑翻页、内层纵滑列表，
      避免安卓轴锁定下斜滑"滑不动" */
   touch-action:pan-x pan-y;
@@ -329,6 +400,28 @@
   touch-action:pan-x pan-y;
 }
 .page-slide::-webkit-scrollbar { display:none; }
+/* #754 桌面翻页卡顿（iPhone 15 Pro Max 实报：翻页 平均186ms / p90 719ms / 最慢3611ms；
+   诊断【性能】长任务>50ms 为零＝主线程没堵，卡在合成/栅格层。本元素是「横向快照滚动容器
+   + 每页自带纵向滚动」的嵌套滚动层，整页背景图（page-bg-N）画在会移动的滚动页上——
+   与 #147 修壁纸的同源病灶：图层纹理不被保活时，翻页每帧重栅格化/重解码整屏大图。
+   修法=有整页背景图的桌面（.has-page-bg，personalize.js 按 DOM 实态挂/摘）在触屏设备上
+   把三页提升为独立合成层：翻页只平移纹理，不再逐帧重栅格化。
+   ⚠️ 门控说明（防跨机型回归）：①仅触屏设备（hover:none + pointer:coarse）——电脑端外壳
+   布局与图层行为零变化；②无整页背景图不挂类＝零额外显存（纯文字/图标页无收益故不付代价）。 */
+@media (hover: none) and (pointer: coarse) {
+  /* FIX 2026-09-25 #1225：`html.desk-layer-cold` 时释放这三张全屏合成层（类由 desktop-slider.js
+     按「亮屏且离开桌面 ≥60s」挂上、回到桌面前摘掉）。提升的唯一受益窗口是**桌面可见时**的左右
+     翻页（#754 实测翻页 平均186ms→17ms 就是它的功劳），而 perfcheck 实证用户 76% 的帧在 设置、
+     桌面只占 17%——人不在桌面时这层纹理纯属白占：440×956@3x 每张 ≈15MB、三张 ≈45MB。
+     这台 iPhone 16 Pro Max 的诊断正是「本页被系统回收过 28 次」→ 每次回收＝切回来整站冷启动
+     （5.2MB 脚本重编＋十几 MB 本地数据重回填）→ 报告里那串「前台冻结 32 次／最慢一帧 2449ms／
+     切回桌面 p90 764ms」，同时也是一次把未提交的写库窗口掐掉的机会（聊天记录丢失同源）。
+     零视觉变化：整页背景图画在 .page-slide 自己身上，桌面页 hidden 时这三张层根本不上屏；
+     回到桌面那一帧前类已摘掉＝#147「退聊天回桌面巨卡」那条常驻语义在正常来回里一字未动。
+     零机型／零 UA 分支：判据只有「亮屏离开桌面多久」。 */
+  .desktop-pages.has-page-bg .page-slide { will-change: transform; }
+  html.desk-layer-cold .desktop-pages.has-page-bg .page-slide { will-change: auto; }
+}
 
 /* 分页指示器（v3.6.x：不再占一整行——悬浮在桌面底部中央，不挤占/遮挡功能图标） */
 #page-phone { position:relative; }
@@ -392,6 +485,13 @@
 .desk-text-widget, .desk-countdown-widget {
   border-radius:var(--desk-card-radius, 20px);
 }
+/* v8.56 #1516 六类 glass-only 小组件补齐全局外观三件套（背景/边框/透明度）——此前它们只有
+   .glass 的 --glass-bg 底，设置页「小组件颜色/边框颜色/透明度」三个全局设置对它们全部无效
+   ＝「设置了小组件颜色桌面没任何变化/没有全部小组件统一颜色」（周卡/时钟/月历/计时/纪念日
+   倒计时/经期卡；荣耀畅玩40 Plus/夸克实报）。规则行按 minify 形态单行书写＝哨兵 #1516a 两边
+   同形。用 background-color 不用 shorthand：六类都接 [data-card-bg] 内联 background-image
+   卡片背景图，shorthand 会在级联上重置 image 系子属性，background-color 只覆盖颜色位。 */
+.week-card,.desk-clock,.desk-cal,.desk-timer,.desk-anniv,.desk-period{background-color:var(--widget-bg);border:1px solid var(--widget-border);opacity:var(--widget-opacity)}
 
 /* v3.6.x：组件库面板（新增页点「添加卡片」弹出） */
 .desk-lib {
@@ -400,6 +500,9 @@
   background:rgba(0,0,0,.4);
 }
 .desk-lib-box {
+  /* FIX 2026-09-17 #690：min() 兜底（同 .app-ico）——老内核丢弃整条声明时面板
+     宽度回退 auto，组件库弹窗撑成整屏。width+max-width 组合与 min() 取值等价 */
+  width:88vw; max-width:380px;
   width:min(88vw,380px); max-height:78vh; overflow:auto;
   background:#fff; border-radius:16px; padding:16px;
   box-shadow:0 8px 30px rgba(0,0,0,.2);
@@ -453,8 +556,10 @@
 
 /* v3.7.x：新增桌面小组件（时钟 / 月历 / 计时器 / 纪念日倒计时）
    v3.15.x：补 14px 下边距——被用户添加到页面时与相邻卡片保持全站统一间距 */
-.desk-clock { padding:14px 16px; margin:0 0 14px; text-align:center; }
-.desk-clock .dc-time { font-size:32px; font-weight:700; letter-spacing:2px; color:var(--ink,#111); line-height:1.1; }
+/* #1306（重放 2026-09-28）：时钟组件收小一号——32px/46px 在桌面上视觉占比过大（用户报「太大、显得丑」）；
+   时间 22px＋内边距收窄，与 mini-card 一族同量级；平板档同步收（46→30、16→13） */
+.desk-clock { padding:10px 14px; margin:0 0 14px; text-align:center; }
+.desk-clock .dc-time { font-size:22px; font-weight:700; letter-spacing:1px; color:var(--ink,#111); line-height:1.1; }
 .desk-clock .dc-date { font-size:12px; color:var(--muted,#888); margin-top:4px; }
 .desk-cal { padding:12px 14px; margin:0 0 14px; }
 .desk-cal .dcal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
@@ -600,6 +705,15 @@
 @keyframes bar-bounce {
   0%, 100% { transform:scaleY(.5); }
   50% { transform:scaleY(1); }
+}
+/* #795 缓冲中（已按下播放、内核还没取到可播数据）：条换成慢速同频呼吸＋半透明，
+   与「真在播」的乱频跳动一眼可分；时间位文案由 music-player.js 的 syncPlayIcons 写「缓冲中」。
+   判据只有 JS 侧一条（musicBuffering 读 readyState/buffered/waiting 事件），零机型分支。 */
+.mw-bars.playing.buffering { opacity:.7; }
+.mw-bars.playing.buffering rect { animation-name:bar-breathe; animation-duration:1.9s; }
+@keyframes bar-breathe {
+  0%, 100% { transform:scaleY(.3); opacity:.4; }
+  50% { transform:scaleY(.72); opacity:1; }
 }
 
 .mw-main { display:flex; align-items:center; gap:12px; }
@@ -757,6 +871,12 @@
 .desk-move-mode .page-slide { touch-action: pan-x pan-y; -webkit-touch-callout: none; }
 .desk-move-mode .app,
 .desk-move-mode [data-desk-widget]:not(.app-grid) { touch-action: none; cursor: grab; }
+/* #1278（跨域改动见 WORKLOG）：文字/图片/倒计时自绘组件纳入拖拽——
+   不加 touch-action:none 则安卓浏览器按 pan 手势接管触摸序列，pointermove
+   被抢占→自绘组件拖不动（标准组件 #134 同款兜底） */
+.desk-move-mode [data-desk-text],
+.desk-move-mode [data-desk-image],
+.desk-move-mode [data-desk-countdown] { touch-action: none; cursor: grab; }
 /* 拖拽中源项半透明占位 */
 .desk-dragging { opacity: .22 !important; animation: none !important; }
 /* 拖拽跟手 clone */
@@ -781,3 +901,144 @@
 .desk-edge-hint.show { opacity: 1; }
 .desk-edge-hint.left { left: 0; background: linear-gradient(90deg, rgba(43,127,255,.28), transparent); }
 .desk-edge-hint.right { right: 0; background: linear-gradient(270deg, rgba(43,127,255,.28), transparent); }
+
+/* ===== 平板（html.tablet）桌面适配：图标多列 + 组件两栏 + 尺寸随屏高升档 =====
+   背景：base.css 的 html.tablet 区块只把 .phone 改成 100vw 铺满（v3.7.x → #186），
+   桌面轴上的图标与组件仍是手机像素——只有图标盒 58→64px、图标名 11→12px，
+   其余高度与字号一条未改（.app-ico svg 恒 28px、.mini-card 恒 92px、卡内字号
+   9~13px）。1fr 网格于是把单格拉宽到 183~322px 而图标盒只占其中 20~35%
+   （手机端 74%），组件被拉成 774~1330px 宽、66~190px 高的横条，观感正是
+   「桌面没做平板兼容，小组件和图标都特别小、平板看起来很空」。
+   本节按「重排 ＋ 放大」重做平板桌面轴（实测：tools/verify-tablet-desktop.mjs）：
+   ① 重排：.page-slide 改两栏网格（组件成对并排），薄横条与图标组整宽；
+      图标网格列数 6（窄屏）/ 8（≥1000px）。重排吃掉横向空间，放大只用在
+      尺寸档上——实测横向需 2.08~3.50× 而纵向只给 1.09~1.53×，纯放大填不满。
+   ② 放大：--tb-* 一组变量统一给图标盒/字形/字号/各档卡高。矮屏（横屏平板，
+      桌面区约 650~700px）走基准档；高屏（竖屏平板，桌面区约 900~1070px，
+      含 12.9" 横屏）整体升一档——两档都按「内容基本填满桌面区」实测调过。
+   ③ 作用域：选择器全部带 html.tablet 前缀且写在 home.css（base.css 之后加载，
+      同特异性取后者），手机端与电脑端模拟器外壳（无 .tablet 类）零命中；
+      base.css 的平板高度链、.phone 宽度、聊天规则均不在本节范围内。
+   ⚠️ 桌面整体缩放仍走具体尺寸——不得引入 zoom / transform:scale（全站红线）。 */
+html.tablet {
+  /* 图标盒/字形按「盒占单格 75~85%」定档（手机端实测 74%）：窄平板 6 列时单格只有
+     103~114px，96px 盒会挤到 89~93%，故基准档 88px；≥1250px 宽屏单格 150px，
+     再放大一档到 104px（占 70%）。 */
+  --tb-ico:88px; --tb-glyph:40px; --tb-name:14px;
+  --tb-cols:6; --tb-rowgap:22px; --tb-colgap:16px; --tb-approw:150px;
+  --tb-hero:250px; --tb-band:118px; --tb-bar:88px; --tb-period:210px;
+  --tb-pagegap:18px;
+}
+@media (min-width:1000px) { html.tablet { --tb-cols:8; --tb-colgap:18px; } }
+@media (min-width:1250px) { html.tablet { --tb-ico:104px; --tb-glyph:46px; --tb-name:15px; } }
+@media (min-height:950px) {
+  html.tablet {
+    --tb-rowgap:24px; --tb-approw:172px;
+    --tb-hero:260px; --tb-band:140px; --tb-bar:104px; --tb-period:240px;
+  }
+}
+@media (min-width:1000px) and (min-height:950px) { html.tablet { --tb-approw:200px; } }
+
+/* —— 图标网格：多列 + 图标盒/字形放大（手机 58/28 → 96/44 起，高屏 104/48） —— */
+html.tablet .app-grid {
+  grid-template-columns:repeat(var(--tb-cols), 1fr);
+  grid-gap:var(--tb-rowgap) var(--tb-colgap);
+  gap:var(--tb-rowgap) var(--tb-colgap);
+  grid-auto-rows:var(--tb-approw);
+  align-items:center;
+  padding:2px 4px 6px;
+}
+html.tablet .app { gap:10px; }
+html.tablet .app .app-ico { width:var(--tb-ico); height:var(--tb-ico); }
+html.tablet .app .app-ico svg { width:var(--tb-glyph); height:var(--tb-glyph); }
+html.tablet .app .app-name { font-size:var(--tb-name); height:20px; line-height:20px; }
+html.tablet .app-badge { min-width:24px; height:24px; line-height:22px; font-size:13px; top:-6px; right:-8px; }
+
+/* —— 桌面分页：两栏网格（组件成对并排） —— */
+html.tablet .page-slide, html.tablet .page-slide.desk-page {
+  display:grid; grid-template-columns:1fr 1fr;
+  grid-gap:var(--tb-pagegap); gap:var(--tb-pagegap);
+  align-content:start;
+  padding-top:14px;
+}
+/* 卡片的上下外边距交给网格 gap（手机端靠 margin 形成的纵向节奏），逐条清零 */
+html.tablet .page-slide > [data-desk-widget] { margin-top:0; margin-bottom:0; min-width:0; }
+/* 整宽项：图标组、打卡横幅、音乐播放器、空白页提示。
+   摸鱼倒计时（.weekend-box）保持半宽——它与「本周日常」在第二页配成一对
+   （本周日常内容只有标题＋星期条，单独和音乐卡同排会被拉成 300 高的空壳，
+   实测截图核过；音乐卡本身内容满、整宽不空）。 */
+html.tablet .page-slide > .app-grid,
+html.tablet .page-slide > .checkin,
+html.tablet .page-slide > .music-widget,
+html.tablet .page-slide > .desk-page-hint,
+html.tablet .page-slide > .desk-page-add { grid-column:1 / -1; }
+
+/* —— 首卡档：纪念日卡 / 音乐卡（+ 卡内可见元素同步放大） —— */
+html.tablet .deco-widget, html.tablet .music-widget { height:var(--tb-hero); }
+html.tablet .deco-avatars { gap:32px; }
+html.tablet .deco-avatar .ring { width:118px; height:118px; }
+html.tablet .deco-avatar .ring svg { width:48px; height:48px; }
+html.tablet .deco-avatar .lbl { font-size:14px; padding:5px 18px; }
+html.tablet .deco-heart svg { width:28px; height:28px; }
+html.tablet .deco-love #love-days { font-size:30px; }
+html.tablet .deco-love #love-date { font-size:14px; }
+html.tablet #mw-cover { width:96px; height:96px; }
+html.tablet #mw-cover .mw-cover-ico { width:34px; height:34px; }
+html.tablet .mw-tag { font-size:13px; }
+html.tablet .mw-song { font-size:20px; }
+html.tablet .mw-artist { font-size:14px; }
+html.tablet .mw-bars { width:20px; height:20px; }
+html.tablet .mw-btn { width:34px; height:34px; }
+html.tablet .mw-btn svg, html.tablet .mw-heart svg { width:34px; height:34px; }
+html.tablet .mw-play svg { width:32px; height:32px; }
+
+/* —— 第二档：双卡行在平板改为竖排（与首卡成对同高），卡内字号上一档 ——
+   选择器带 .page-slide 前缀：第三页有 `.page-slide.third .mini-row{flex-direction:row}`
+   与 `.page-slide.third .mini-row .memo-card{height:92px}` 两条更高特异性的手机端规则，
+   不加前缀压不住（实测第三页双卡行仍是横排、卡高被钉在 92px）。 */
+html.tablet .page-slide .mini-row { flex-direction:column; gap:16px; }
+html.tablet .page-slide .mini-row .mini-card { height:auto; min-height:var(--tb-band); flex:1; }
+html.tablet .page-slide .mini-row .mc-top { font-size:14px; }
+html.tablet .page-slide .mini-row .mc-b { font-size:16px; height:auto; line-height:1.45; }
+html.tablet .page-slide .mini-row .mc-b b { font-size:20px; }
+html.tablet .page-slide .mini-row .mini-card[data-card-bg="fish"] .mc-b { height:auto; line-height:1.45; }
+html.tablet .page-slide .mini-row #love-quote { font-size:15px; height:auto; line-height:1.5; -webkit-line-clamp:4; }
+
+/* —— 本周日常：与首卡同一行时随行高拉伸，内容纵向分布 —— */
+html.tablet .week-card { height:auto; min-height:var(--tb-band); justify-content:space-between; }
+html.tablet .we-days { font-size:17px; }
+html.tablet .we-sub { font-size:12px; }
+html.tablet .we-ta { font-size:13px; }
+html.tablet .we-ta .pair b { font-size:16px; }
+html.tablet .we-btn { font-size:15px; padding:9px 16px; }
+html.tablet .we-btn b { font-size:17px; }
+html.tablet .we-combo { font-size:13px; padding:3px 11px; }
+
+/* —— 第三档：打卡横幅 / 摸鱼倒计时（整宽，抬高一档） —— */
+html.tablet .checkin { height:var(--tb-bar); padding:0 22px; gap:16px; }
+html.tablet .checkin .ck-heart { width:46px; height:46px; font-size:19px; }
+html.tablet .checkin .ck-txt { font-size:15px; }
+html.tablet .checkin .ck-btn { font-size:16px; padding:12px 22px; min-height:46px; }
+html.tablet .weekend-box { height:var(--tb-bar); padding:0 20px; }
+
+/* —— 经期卡 —— */
+html.tablet .desk-period { height:var(--tb-period); padding:24px; }
+html.tablet .desk-period .dpd-label { font-size:17px; }
+html.tablet .desk-period .dpd-days { font-size:64px; }
+html.tablet .desk-period .dpd-sub { font-size:17px; }
+html.tablet .desk-period .dpd-bar-cap { font-size:14px; }
+
+/* —— 组件库其余组件（时钟/月历/计时器/纪念日倒计时/文案/倒计时）：文字数字上一档 —— */
+html.tablet .desk-clock .dc-time { font-size:30px; } /* #1306：与手机档同量级收小（原 46px） */
+html.tablet .desk-clock .dc-date { font-size:13px; } /* #1306 */
+html.tablet .desk-cal .dcal-title { font-size:17px; }
+html.tablet .desk-cal .dcal-cell { font-size:15px; height:34px; line-height:34px; }
+html.tablet .desk-timer .dt-disp { font-size:40px; }
+html.tablet .desk-timer .dt-mode-label { font-size:15px; }
+html.tablet .desk-timer .dt-btn { font-size:15px; }
+html.tablet .desk-anniv .da-label { font-size:15px; }
+html.tablet .desk-anniv .da-days { font-size:34px; }
+html.tablet .desk-countdown-widget .dcd-label { font-size:15px; }
+html.tablet .desk-countdown-widget .dcd-days { font-size:34px; }
+html.tablet .desk-countdown-widget .dcd-date { font-size:15px; }
+html.tablet .desk-text-widget p { font-size:17px; }

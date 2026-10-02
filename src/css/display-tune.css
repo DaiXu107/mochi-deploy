@@ -1,0 +1,21 @@
+/* display-tune.css — #764 屏幕适配微调「文字大小」轴的消费层
+   由 build.mjs 排在 cssFiles 末位（后加载覆盖先加载），用原字号 + --mochi-text-adj
+   逐条 calc 叠加，只作用于核心可读文案；容器尺寸/间距不动。
+   技术红线：整页 zoom / transform:scale 禁用（iOS Safari 卡顿教训），本文件永久不得引入。 */
+:root { --mochi-text-adj: 0px; }
+/* #764 微调面板的返回键关闭（tabs.js 置 el.hidden=true）：面板内联 display:flex 会压过
+   UA 的 [hidden]{display:none}，必须用带 !important 的显式规则让 hidden 真正生效 */
+#screen-adj-panel[hidden] { display: none !important; }
+/* 单聊 + 群聊气泡（基准吃 --chat-font-size，美化抽屉/群聊美化设置的值照常生效，本轴在其上叠加） */
+.msg-bubble { font-size: calc(var(--chat-font-size, 14px) + var(--mochi-text-adj, 0px)); }
+.msg-quote { font-size: calc(12px + var(--mochi-text-adj, 0px)); }
+/* 聊天输入框——注意：base.css 有 `.phone [contenteditable="true"] { font-size:16px }`（iOS 聚焦不放大）
+   特异性压过裸类选择器，故输入框转成 contenteditable 后必须用同级双段选择器才赢得级联 */
+.chat-input { font-size: calc(15px + var(--mochi-text-adj, 0px)); }
+.phone .chat-input[contenteditable="true"] { font-size: calc(15px + var(--mochi-text-adj, 0px)); }
+/* 聊天页标题 */
+.ch-name { font-size: calc(17px + var(--mochi-text-adj, 0px)); }
+/* 设置主页 + 群聊设置行 */
+.set-row .txt { font-size: calc(14px + var(--mochi-text-adj, 0px)); }
+.set-row .txt .sub { font-size: calc(11.5px + var(--mochi-text-adj, 0px)); }
+.gc-set-row .txt { font-size: calc(14px + var(--mochi-text-adj, 0px)); }

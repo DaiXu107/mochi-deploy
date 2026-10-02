@@ -20,7 +20,8 @@
     // FIX 2026-09-12 #351：空图标网格不算内容——新页自带 .app-grid（pg* 网格）后，
     // 空 grid 也带 data-desk-widget，按旧判法新页提示永远不显示
     const hasContent = Array.prototype.slice.call(slide.querySelectorAll('[data-desk-widget]')).some(n => !(n.classList.contains('app-grid') && !n.querySelector('.app'))) ||
-      !!slide.querySelector('[data-desk-image]');
+      // #1278：文字/倒计时自绘组件同图片算页面内容，避免「只有自绘组件」的页误显示空白提示
+      !!slide.querySelector('[data-desk-image]') || !!slide.querySelector('[data-desk-text]') || !!slide.querySelector('[data-desk-countdown]');
     hint.style.display = hasContent ? 'none' : '';
   };
 
@@ -28,50 +29,23 @@
   // v3.6.x：失败/超大图不再回退存原图——iOS Safari 对超大 dataURL（48MP/ProRAW 级别）
   // 的 img 解码会占数百 MB 位图内存，直接把渲染进程拖崩（表现：画面正常但所有按钮
   // 点击无响应，且刷新后 idbRestore 恢复该 dataURL 再次渲染又崩，「刷新后依然失效」）。
-  // 解码前按 base64 长度、解码后按像素双重拦截，失败返回 null 由调用方提示换图。
-  function compressImage(dataUrl, maxSide) {
-    return new Promise((resolve) => {
-      // 解码前拦截：>8MB base64（≈6MB 原图，48MP/ProRAW 级别）不解码不存储；
-      // 1200 万像素普通照片（2-6MB base64）不受影响
-      if (typeof dataUrl === 'string' && dataUrl.length > 8 * 1024 * 1024) {
-        resolve(null);
-        return;
-      }
-      const img = new Image();
-      img.onload = () => {
-        try {
-          // 解码后像素拦截：高压缩格式小文件也可能是超大图（48MP HEIC 约 5-8MB）
-          if (img.width * img.height > 26000000) { resolve(null); return; }
-          const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
-          const w = Math.max(1, Math.round(img.width * scale));
-          const h = Math.max(1, Math.round(img.height * scale));
-          const c = document.createElement('canvas');
-          c.width = w; c.height = h;
-          c.getContext('2d').drawImage(img, 0, 0, w, h);
-          resolve(c.toDataURL('image/jpeg', 0.85));
-        } catch (e) {
-          // 压缩失败不再回退存原图（原图可能超大，存进去会让后续每次渲染重新崩溃）
-          resolve(null);
-        }
-      };
-      img.onerror = () => resolve(null);
-      img.src = dataUrl;
-    });
+  // #1270 收口：这一族判定（>8MB 拦截、>2600 万像素拦截、#1036 解码看门狗、字节收敛）
+  // 全站只留 img-ingest.js 一份。原来「先整幅解码再说」的两派在这里是误拒派——实测
+  // iPhone 主摄 8000×6000 高细节 JPEG ≈ 8.0MB 文件 / 10.6MB base64，字节闸和像素闸双双
+  // 命中＝用户看到的「无法导入任何照片」；而这台手机的照片本来就不需要整幅解码：
+  // 统一解码闸先用文件头算尺寸、超预算走 createImageBitmap 边解边缩（产物只有目标
+  // 尺寸那一份位图），内核不认这个能力时才退回原来的「拒」。零机型／零 UA 分支。
+  const ingestTo = (src, opts) => (window.mochiImgCompressTo ? window.mochiImgCompressTo(src, opts)
+    : (toast('图片处理组件没加载上（缓存过旧或离线），请重新打开页面再试'), Promise.resolve(null)));
+  function compressImage(src, maxSide) {
+    return ingestTo(src, { maxSide: maxSide, tag: 'pz-' + maxSide });
   }
   // v3.10.x：压缩并保证产物体积达标——细节丰富的照片压到目标边长后 JPEG 仍可能超过
   // 渲染防护阈值（如卡片背景 1000px 可 >500KB），旧流程照常入库后，启动渲染时会被
   // sanitizeBg 判为超大值，表现为「设置成功、退出重进后变回默认白板，每次都要重新设置」。
-  // 这里在上传端按 0.75 倍率逐级降边长重压（始终从原图压，避免二次 JPEG 糊化），
-  // 确保产物 <= limit 才入库；压到 320px 仍超限的极端图返回最小一版由调用方提示。
-  function compressImageFit(dataUrl, maxSide, limit) {
-    let side = maxSide;
-    const step = (data) => {
-      if (!data) return Promise.resolve(null);
-      if (data.length <= limit || side < 320) return Promise.resolve(data);
-      side = Math.round(side * 0.75);
-      return compressImage(dataUrl, side).then(step);
-    };
-    return compressImage(dataUrl, side).then(step);
+  // #1270：0.75 逐级降边长的收敛搬进统一解码闸（byteLimit），仍然始终从原图压、避免二次 JPEG 糊化。
+  function compressImageFit(src, maxSide, limit) {
+    return ingestTo(src, { maxSide: maxSide, byteLimit: limit, tag: 'pzfit-' + maxSide });
   }
   // v3.5.107：手机壁纸清晰度——按设备物理像素计算压缩上限。
   // 之前固定压到最长边 1000px，在 2-3x 高分屏（物理宽 1080-1440）上会被放大发糊；
@@ -140,37 +114,85 @@
       ring.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg>';
     }
   }
+  // FIX 2026-09-18 #717（小米8 等多机型报「换头像，点导入图片没反应」，#677 同族）：此处原本
+  // 点击时动态创建 input、**未挂进文档**就 click()——红米/真我等 Android Edge 系对这种用法会
+  // 静默忽略（不弹系统选择器＝点了没反应），iOS Safari 对未挂载 input 不保证派发 change。
+  // 改与 chat-settings.js headInput / chatcard.js pickFiles 已验证套路一致：常驻单个 input
+  // 永久挂 body、移出屏幕可见（不用 display:none）、复用前清 value、click 包 try/catch 失败
+  // 给可见提示。压缩/落库管线（compressImage 256 / store.set）一字不动。
+  let avatarPickCb = null;
+  const avatarPickInput = document.createElement('input');
+  avatarPickInput.type = 'file'; avatarPickInput.accept = 'image/*';
+  avatarPickInput.id = 'mochi-avatar-pick';
+  // FIX 2026-09-18 #738：offscreen+opacity:0 换标准 sr-only clip 写法——小米浏览器对不可见
+  // input 的激活更苛刻；clip 后命中区为零、不挡任何点击。原生 label 兜底见 device.js mochiFilePickLabel。
+  avatarPickInput.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:1;margin:0;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;';
+  document.body.appendChild(avatarPickInput);
+  // v8.29 #991（第九波）：选图后的处理抽成公共函数——sr-only input（老路径）与
+  // 铺在头像盒上的真 input（surface，新路径）两条来源共用同一条压缩/落库管线，防止两处走偏。
+  function avatarPickFile(f, cb) {
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      compressImage(reader.result, 256).then(data => {
+        // v3.6.x：压缩失败/图片过大返回 null——不再存原图（防 iOS 解码崩溃），提示换图
+        if (!data) { toast('图片过大、格式不支持或读取超时，请换一张小图'); return; }
+        if (cb) cb(data);
+      });
+    };
+    // FIX 2026-09-22 #1036：补 reader.onerror（原缺＝桌面头像读取失败静默无反馈）
+    reader.onerror = () => toast('图片读取失败，请重试');
+    reader.readAsDataURL(f);
+  }
+  avatarPickInput.onchange = () => {
+    const f = avatarPickInput.files && avatarPickInput.files[0];
+    avatarPickInput.value = ''; // 允许重选同一文件
+    if (!f) return;
+    const cb = avatarPickCb; avatarPickCb = null;
+    avatarPickFile(f, cb);
+  };
   function bindAvatar(id, key) {
     const box = document.getElementById(id);
     if (!box) return;
     applyAvatar(id, key);
+    // FIX 2026-09-18 #738：原生 label 激活兜底（小米浏览器对 JS 合成 click 静默不弹选择器）
+    if (window.mochiFilePickLabel) window.mochiFilePickLabel(box, avatarPickInput);
+    // 把图落到界面 + 存储（两条来源共用：点击兜底腿、以及手指点 surface input）
+    const applyData = (data) => {
+      const ring = box.querySelector('.ring');
+      // v3.6.x：img 用属性赋值（dataURL 含引号时拼 innerHTML 会逃逸注入 HTML）
+      if (ring) {
+        ring.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = data;
+        img.alt = '';
+        ring.appendChild(img);
+      }
+      store.set(key, data);
+    };
+    // FIX 2026-09-21 #991（第九波）：在头像盒内铺一层真·可点 file input——手指物理落在 input 上，
+    // 浏览器按原生默认动作弹相册，不再依赖 label 转发 / JS 合成 click / showPicker 任何一条腿
+    //（用户 2026-09-21 红米 Note 9 Pro + 自带浏览器报的正是「三条腿都在、点了仍没反应」那一类内核）。
+    // 昵称 .lbl 的 z-index:1（#821）仍在它之上：点昵称＝改昵称、点圆圈/其余区域＝换头像。
+    if (window.mochiFilePickSurface) {
+      window.mochiFilePickSurface(box, {
+        id: 'mochi-avatar-tap-' + id,
+        accept: 'image/*',
+        onFiles: (files) => { avatarPickFile(files && files[0], applyData); }
+      });
+    }
     box.addEventListener('click', (e) => {
       e.stopPropagation();
-      const input = document.createElement('input');
-      input.type = 'file'; input.accept = 'image/*';
-      input.onchange = () => {
-        const f = input.files && input.files[0];
-        if (!f) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-          compressImage(reader.result, 256).then(data => {
-            // v3.6.x：压缩失败/图片过大返回 null——不再存原图（防 iOS 解码崩溃），提示换图
-            if (!data) { toast('图片过大或格式不支持，请换一张小图'); return; }
-            const ring = box.querySelector('.ring');
-            // v3.6.x：img 用属性赋值（dataURL 含引号时拼 innerHTML 会逃逸注入 HTML）
-            if (ring) {
-              ring.innerHTML = '';
-              const img = document.createElement('img');
-              img.src = data;
-              img.alt = '';
-              ring.appendChild(img);
-            }
-            store.set(key, data);
-          });
-        };
-        reader.readAsDataURL(f);
-      };
-      input.click();
+      // ★ 先把回调武装好，再激活选择器（#756：兜底 click 会延后 60ms 触发，
+      //   若回调在激活之后才赋值，用户秒选文件时会拿到 null 回调＝存不上）
+      avatarPickCb = applyData;
+      // FIX 2026-09-18 #756：原 `if (fromLabel(e)) return;` 会在「label 存在但内核不转发」时
+      // 连 JS 兜底一起跳过＝彻底没反应（国产内核实况）。改为：label 只作加速路径，
+      // 由 mochiFilePickGuard 确认「确实没弹出」后补 JS click。
+      // FIX 2026-09-20 #920：兜底腿改走全站统一三腿（showPicker→click；小米系对合成 click 静默不弹）
+      var _fallback = () => { window.mochiFilePickFire(avatarPickInput, { onFail: () => { avatarPickCb = null; toast('无法打开相册，请重试'); } }); };
+      if (window.mochiFilePickGuard) window.mochiFilePickGuard(avatarPickInput, _fallback);
+      else _fallback();
     });
   }
   bindAvatar('avatar-user', 'avatar-user');
@@ -199,6 +221,8 @@ try {
         // v3.5.116：回填完成后一并重绘桌面图标 + 壁纸——
         //   自定义图标/壁纸大键可能只存 IDB，回填完成前桌面显示的是默认/空白
         try { restoreAppIcons(); } catch (e) {}
+        // #769：底部栏按钮图片同为大键只存 IDB——回填完成后一并重绘
+        try { restoreTabbarIcons(); } catch (e) {} // #769h1 回填后重绘底部栏
         // FIX 2026-09-10 #265：图标【顺序】同款——app-icon-order-* 的 LS 副本与写日志都可能
         //   读不到（配额清理 / 日志 40 条预算把该键挤掉），脚本加载期那次同步应用只能拿到空值，
         //   回填把值送进存储层后却没人再排一次 → 用户装修的图标顺序整会话不生效（看起来就是
@@ -211,6 +235,9 @@ try {
         //   回填完成后界面一直停留在空白。现在补齐 + 直读兜底 + 延迟二次刷新。
         try { refreshDeskVisuals(); } catch (e) {}
         try { rescueDeskVisuals(); } catch (e) {}
+        // FIX 2026-09-28 #1358a：桌面「我 / TA」两格小字同病——只在脚本执行期拿一次同步读数画过，
+        //   昵称只剩 IndexedDB 一份的设备上那一发读到 null，整场停在模板字面量。列进这份清单。
+        try { paintDeskNames(); } catch (e) {} // #1358a 这一行在「回填完成后重绘」清单里：删掉它＝库里那一份昵称整场不上屏
         setTimeout(function () {
           try { refreshDeskVisuals(); } catch (e) {}
         }, 1800);
@@ -277,6 +304,57 @@ try {
       const a2 = variants[k].indexOf('{'), b2 = variants[k].lastIndexOf('}');
       if (a2 >= 0 && b2 > a2) { d = ok(scanNorm(variants[k].slice(a2, b2 + 1))); if (d) return d; }
     }
+    // ④ #879 整份网页自救：美化方案经分享/售卖链路常被打包成网页文件（收到 .html → 打开全选复制，
+    //    或选文件时直接选了 .html），方案 JSON 被标签/属性打断，①~③ 全失效 → 天书 JSON error
+    //    （苹果11 Safari 实报「美化文件导入用不了」，收 9916 字符开头 <!DOCTYPE html>，多机型同现、
+    //    纯数据链路与机型无关）。分两层：先取 <textarea>/<pre>/<script type="application/json">
+    //    容器内文（HTML 实体还原）；再对全文做字符串感知的花括号配平扫描取 {...} 候选、按长度降序
+    //    （方案对象几乎总是页面里最大的 JSON）。每个候选走与顶层相同的清洗梯子（隐形字符/裁剪/
+    //    全角归一/实体还原），只在真正解析成顶层对象时才采用——提不出/提错都照旧抛错，由导入方的
+    //    用途校验兜底（识别不到美化项会如实提示，不会误导入）。
+    const htmlLike = /<!doctype\s*html|<html[\s>]|<body[\s>]|<textarea[\s>]/i.test(t1);
+    if (htmlLike) {
+      const ent = (s) => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#0*39;|&apos;/g, "'").replace(/&amp;/g, '&');
+      const ladder = (s) => {
+        if (!s || s.indexOf('{') < 0) return null;
+        let x = ok(s); if (x) return x;
+        const c1 = ent(s.replace(/[\uFEFF\u200B-\u200F\u2060\u202A-\u202E]/g, '').replace(/\u00A0/g, ' ').trim());
+        x = ok(c1); if (x) return x;
+        const a3 = c1.indexOf('{'), b3 = c1.lastIndexOf('}');
+        if (a3 >= 0 && b3 > a3) { x = ok(c1.slice(a3, b3 + 1)); if (x) return x; }
+        const v2 = c1.indexOf('"') >= 0 ? [c1] : [c1.replace(/[“”＂‟〝〞]/g, '"'), c1];
+        for (let k2 = 0; k2 < v2.length; k2++) {
+          x = ok(scanNorm(v2[k2])); if (x) return x;
+          const a4 = v2[k2].indexOf('{'), b4 = v2[k2].lastIndexOf('}');
+          if (a4 >= 0 && b4 > a4) { x = ok(scanNorm(v2[k2].slice(a4, b4 + 1))); if (x) return x; }
+        }
+        return null;
+      };
+      try {
+        const re = /<(textarea|pre|script)([^>]*)>([\s\S]*?)<\/\1>/gi;
+        let mm, bags = [];
+        while ((mm = re.exec(t1)) !== null) {
+          if (/^(textarea|pre)$/.test(mm[1].toLowerCase()) || /application\/json/i.test(mm[2])) bags.push(ent(mm[3]));
+        }
+        for (let bi = 0; bi < bags.length; bi++) { d = ladder(bags[bi]); if (d) return d; }
+      } catch (e) {}
+      try {
+        const spans = [];
+        let inStr = false, esc = false, depth = 0, st = -1;
+        for (let i = 0; i < t1.length; i++) {
+          const c = t1[i];
+          if (inStr) { if (esc) esc = false; else if (c === '\\') esc = true; else if (c === '"') inStr = false; continue; }
+          if (c === '"') { inStr = true; continue; }
+          if (c === '{') { if (depth === 0) st = i; depth++; }
+          else if (c === '}') { if (depth > 0) { depth--; if (depth === 0 && st >= 0) { if (i - st >= 40) spans.push(t1.slice(st, i + 1)); st = -1; } } }
+        }
+        if (spans.length > 1) spans.sort((p, q) => q.length - p.length);
+        const cap = Math.min(spans.length, 60);
+        for (let pi = 0; pi < cap; pi++) { d = ladder(spans[pi]); if (d) return d; }
+      } catch (e) {}
+      // 提取失败给可行动报错（替代天书；失败现场仍由调用方写诊断）
+      lastErr = new Error('粘贴的是网页不是方案文本：没能从中提取出方案代码。请打开原文件，只复制 { 开头、} 结尾的方案代码（或让对方重新导出 .json 文件）再粘贴');
+    }
     throw (lastErr || new Error('不是有效的方案 JSON'));
   };
 
@@ -306,7 +384,6 @@ try {
     const selectEl = document.getElementById('modal-select');
     const groupChipsEl = document.getElementById('modal-group-chips');
     const fileBtn = document.getElementById('modal-file');
-    const fileInput = document.getElementById('modal-file-input');
     const okBtn = document.getElementById('modal-ok');
     const cancelBtn = document.getElementById('modal-cancel');
     const copyBtn = document.getElementById('modal-copy');
@@ -331,11 +408,15 @@ try {
       try { return el.value || ''; } catch (e) { return ''; }
     }
     let cb = null;
+    // FIX 2026-09-27 #1342o：记住「此刻这一组胶囊」——#1342p 那道「确定＝真·可点选图层」要按
+    // 当前选中的那一档判断这一发到底是不是选图，而阶段切换（ctl.pills）会把整组换掉。
+    let pillList = [];
     // v3.13.x：胶囊构建抽出共用——openModal 打开时与控制器 ctl.pills() 阶段切换
     // 都走这一份（选中态/点击翻转/pillClicked 语义不变）
     function buildPills(list, initVal) {
       pillClicked = false;
       pillVal = initVal !== undefined ? initVal : null;
+      pillList = (list && list.length) ? list : [];
       pillsEl.hidden = !(list && list.length);
       pillsEl.innerHTML = '';
       if (list && list.length) {
@@ -400,6 +481,9 @@ try {
       // v3.25.x：opts.big——宽版弹窗（诊断信息等长文只读展示），配合 CSS
       // .modal.modal--big 加宽 + 放大输入框；每次开弹窗按 opts.big 重设类，天然复位。
       if (modalBox) modalBox.classList.toggle('modal--big', !!opts.big);
+      // v3.3x.x：opts.warn——警示形态（红描边/红标题/红底说明，样式见 base.css .modal--warn）。
+      // 备份提醒用它：「数据会被设备自动清空」这条必须一眼被看见。同 big 一样每次开弹窗重设类。
+      if (modalBox) modalBox.classList.toggle('modal--warn', !!opts.warn);
       // v3.20.x：每次打开弹窗重置底部确认按钮文案为默认「确定」——此前只在调用方显式
       // ctl.okText() 时才会写，若某次弹窗（如心意币「申请」）设过、下一个弹窗
       // （如跨桌面通话/查岗的 pill 弹窗）没设，按钮就残留显示上一个弹窗文案。
@@ -417,7 +501,21 @@ try {
       title.textContent = t;
       if (staticEl) {
         staticEl.hidden = !opts.staticText;
-        staticEl.textContent = opts.staticText || '';
+        // opts.staticEmph：文案里 **…** 圈出的重点单独上色（.modal-static-key），其余仍是普通说明色。
+        // 只走 createTextNode/createElement + textContent，调用方传的文本永不被当 HTML 解析。
+        if (opts.staticEmph) {
+          const segs = String(opts.staticText || '').split('**');
+          staticEl.textContent = '';
+          for (let i = 0; i < segs.length; i++) {
+            if (!segs[i]) continue;
+            if (i % 2) {
+              const key = document.createElement('b');
+              key.className = 'modal-static-key';
+              key.textContent = segs[i];
+              staticEl.appendChild(key);
+            } else staticEl.appendChild(document.createTextNode(segs[i]));
+          }
+        } else staticEl.textContent = opts.staticText || '';
       }
       input.hidden = noInput || !!opts.textarea;
       input.value = v || '';
@@ -474,9 +572,17 @@ try {
         }
       }
       // txt 文件导入
+      // FIX 2026-09-18 #755：原 #modal-file-input 写在 template.html 里带 style="display:none"
+      // （部分国产内核拒绝激活不可见 input）→ 收编进统一入口 window.mochiFilePick。
       if (fileBtn) {
         fileBtn.hidden = !opts.txtImport;
-        fileBtn.onclick = () => { if (fileInput) fileInput.click(); };
+        fileBtn.onclick = () => {
+          window.mochiFilePick({
+            id: 'dev-modal-file-pick',
+            accept: window.mochiDataPickAccept + ',.txt', // #1413：由单一来源派生（原来手抄那份少 octet-stream＝转存后丢类型的方案文件会灰显）
+            onFiles: (files) => readTxtInto(files && files[0])
+          });
+        };
       }
       // 色板
       swatches.hidden = !(opts.swatches && opts.swatches.length);
@@ -528,6 +634,62 @@ try {
       }
       cb = fn;
       mask.hidden = false;
+      // #1014：上一个弹窗可能留下「确定＝真·可点 input 层」（见 device.js mochiModalPickOk）——
+      // 每次开弹窗先撤干净，绝不跨弹窗残留；下面重新铺本弹窗的那一层。
+      if (window.mochiModalPickOkClear) { try { window.mochiModalPickOkClear(); } catch (eP) {} }
+      // FIX 2026-09-27 #1342p：这一层现在有两种来源——① 调用方直接给 opts.pickOk（数据导入／字卡
+      // 那几处，语义一字未动）；② 某一粒胶囊自己声明 `pick`＝「选中这一档再点确定＝选文件」。
+      // ②是本批要的那条通吃路径：全站「点确定之后才弹选择器」的入口（桌面卡片背景＝用户点名那一发）
+      // 落下的手指是弹窗那颗**全站共用**的「确定」，#1323 那套自学门面对它必然判成「同一格多宿主」
+      // 而永久剔除（一颗按钮服务几十个弹窗），于是这一族入口永远只剩合成腿＝iOS 静默不弹也不抛
+      //（本机诊断单：mochi-card-bg-pick/leg:fire＋srf:0＋fb:onscreen 两发、一条 files=N 都没回来）。
+      // 判据仍然只有一条事实「手指这一下落在的是不是真 file input」，零机型／零 UA 分支：
+      // 把「这一档＝选文件」写进胶囊，层由本模具在确定按钮上铺。
+      const pillPickOf = (v) => {
+        try {
+          const list = pillList || [];
+          for (let i = 0; i < list.length; i++) {
+            const p = list[i];
+            if (p && p.pick && p.value === v) return p.pick;
+          }
+        } catch (e) {}
+        return null;
+      };
+      const armModalPickLayer = () => {
+        // ① 调用方直接给 opts.pickOk——#1014 那条原口径的判据，一字未动地继续认
+        const byOpts = !!(opts.pickOk && okBtn && window.mochiModalPickOk);
+        if (!okBtn || !window.mochiModalPickOk) return;
+        if (window.mochiModalPickOkClear) { try { window.mochiModalPickOkClear(); } catch (eC) {} }
+        let cfg = byOpts ? opts.pickOk : null;
+        if (!cfg) {
+          let first = null;
+          try { (pillList || []).forEach(p => { if (!first && p && p.pick) first = p.pick; }); } catch (e) {}
+          if (!first) return;
+          cfg = {
+            accept: typeof first.accept === 'string' ? first.accept : 'image/*', // #1413：胶囊给了空串就按空串铺（与 device.js 那两处同一判据）
+            multiple: !!first.multiple,
+            entry: first.entry || '',
+            // 只有「当前选中的这一档声明了 pick」才让原生默认动作弹选择器；其余档（清除／遮罩浓度／
+            // 透明度／文字／摆放…）由 mochiModalPickOk 的 onclick preventDefault 取消默认动作、
+            // 把这发点按原样交回确定按钮自己的逻辑＝既有弹窗行为逐字不变。
+            skipWhen: (v) => !pillPickOf(v),
+            onFiles: (files, v) => { const pk = pillPickOf(v); if (pk && typeof pk.onFiles === 'function') pk.onFiles(files); }
+          };
+        }
+        try {
+          window.mochiModalPickOk({
+            okBtn: okBtn,
+            accept: cfg.accept || '',
+            multiple: !!cfg.multiple,
+            entry: cfg.entry || '',
+            // 模式＝弹窗内胶囊当前值：点按那一刻与选完文件那一刻各读一次（用户可能先选胶囊再点确定）
+            mode: function () { return pillVal; },
+            skipWhen: cfg.skipWhen,
+            onFiles: cfg.onFiles
+          });
+        } catch (eP2) {}
+      };
+      armModalPickLayer();
       // v3.5.133：多行模式聚焦 textarea（原只 focus 单行 input——多行模式下 input 隐藏、
       // focus 打在 display:none 元素上，键盘不弹，批量导入用户首触必失败一次）
       setTimeout(() => {
@@ -576,7 +738,9 @@ try {
           if (show) ctl.focus();
         },
         // 重建胶囊组；传空数组/null 隐藏。initVal 设初始选中项
-        pills: function (list, initVal) { buildPills(list, initVal); },
+        // #1342p：阶段切换会换掉整组胶囊＝「哪一档＝选文件」的答案也换了，铺层跟着重铺一次
+        //（层按确定按钮的盒对齐；弹窗固定居中、几何不变，故重铺只是换 accept/回调口径）。
+        pills: function (list, initVal) { buildPills(list, initVal); try { armModalPickLayer(); } catch (e) {} },
         // #576：ctl.close()——调用方主动关窗（存储异常弹窗「去导出备份/查看存储」直达
         // 按钮跳转成功后关闭）。走与取消/遮罩同一个 close()（含 stayOnce/关键盘语义），
         // 不另开直接摘 mask 的口子；失败静默（弹窗留在原地，调用方有手动路径兜底）。
@@ -606,6 +770,21 @@ try {
           if (cfg2.label) exportBtn.textContent = cfg2.label;
           if (typeof cfg2.fn === 'function') {
             exportBtn.onclick = function () { try { cfg2.fn(ctl); } catch (e) {} };
+          }
+        }
+      }
+      // v3.27.x #794：opts.extraBtn——第三个自定义按钮位（#modal-extra，诊断报告
+      // 「一键修正」这类"看完就地行动"场景；copy/export 是"带走"，extra 是"修"）。
+      // 每次打开按 opts 重置显隐与文案，不传保持隐藏，对既有弹窗零影响。
+      const extraBtnEl = document.getElementById('modal-extra');
+      if (extraBtnEl) {
+        const cfg3 = opts.extraBtn || null;
+        extraBtnEl.hidden = !cfg3;
+        extraBtnEl.onclick = null;
+        if (cfg3) {
+          if (cfg3.label) extraBtnEl.textContent = cfg3.label;
+          if (typeof cfg3.fn === 'function') {
+            extraBtnEl.onclick = function () { try { cfg3.fn(ctl); } catch (e) {} };
           }
         }
       }
@@ -659,8 +838,20 @@ try {
         if (window.mochiKbDismiss) { try { window.mochiKbDismiss(); } catch (eD) {} }
       } catch (eC0) {}
       mask.hidden = true; cb = null;
+      // #1014：关窗即撤「确定＝真·可点 input 层」（与开窗那次重复调用是幂等空操作）
+      if (window.mochiModalPickOkClear) { try { window.mochiModalPickOkClear(); } catch (eP3) {} }
     }
     function fire() {
+      // #1541 续（红米 K80 Chrome 实报「弹窗里打完字点确定＝没反应」，无头同路径全绿）：
+      // 真机与无头的最大差异＝真实输入法组合态——部分安卓内核组合中的文本不落 DOM，
+      // 直接读值＝读空/读半截，回调拿到空串被业务空值守卫静默 return（添加联系人/改名
+      // 等＝「确认了没反应」）。读值前先把组合收掉：blur 让内核把组合文本提交进
+      // contenteditable 再读；无组合（桌面/iOS/已上屏）时 blur 是空操作零影响。
+      // 多阶段表单（stayOnce）由后续 openModal 自己重新聚焦，不残留失焦。
+      try {
+        const ae = document.activeElement;
+        if (ae && ae.isContentEditable && mask.contains(ae)) ae.blur();
+      } catch (e) {}
       if (!cb) return;
       // 色板/自定义取色优先于 pills（v3.6.x：widget 颜色等弹窗同时带 pills 和色板时，
       // 点色板确定被 pills 分支拦截传 null → 设置不生效）
@@ -697,46 +888,45 @@ try {
       selectEl.addEventListener('change', () => { selectedGroup = selectEl.value || null; });
     }
     // txt 文件读取
-    if (fileInput) {
-      fileInput.addEventListener('change', () => {
-        const f = fileInput.files && fileInput.files[0];
-        if (!f) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-          // v3.18.x：修复 txt 乱码——readAsText 默认按 UTF-8 解码，中文 txt 常为
-          // GBK/GB2312（ANSI）编码（Windows 记事本等保存），会被解成乱码。
-          // 改为读 ArrayBuffer 探测编码：能按 UTF-8 严格解（合法序列+自动去 BOM）就用 UTF-8，
-          // 解不了说明是 GBK 系，回退用 gb18030（GBK 超集）解码。
-          let txt = '';
-          try {
-            const buf = reader.result;
-            if (buf) {
+    // FIX 2026-09-18 #755：原监听挂在模板 input 上；收编后改由 readTxtInto(f) 承接，
+    // 编码探测/自动提交逻辑一字未动（仅入口从 change 事件换成 onFiles 回调）。
+    function readTxtInto(f) {
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        // v3.18.x：修复 txt 乱码——readAsText 默认按 UTF-8 解码，中文 txt 常为
+        // GBK/GB2312（ANSI）编码（Windows 记事本等保存），会被解成乱码。
+        // 改为读 ArrayBuffer 探测编码：能按 UTF-8 严格解（合法序列+自动去 BOM）就用 UTF-8，
+        // 解不了说明是 GBK 系，回退用 gb18030（GBK 超集）解码。
+        let txt = '';
+        try {
+          const buf = reader.result;
+          if (buf) {
+            try {
+              txt = new TextDecoder('utf-8', { fatal: true }).decode(buf);
+            } catch (e) {
               try {
-                txt = new TextDecoder('utf-8', { fatal: true }).decode(buf);
-              } catch (e) {
-                try {
-                  txt = new TextDecoder('gb18030').decode(buf);
-                } catch (e2) {
-                  txt = new TextDecoder('utf-8').decode(buf); // 兜底
-                }
+                txt = new TextDecoder('gb18030').decode(buf);
+              } catch (e2) {
+                txt = new TextDecoder('utf-8').decode(buf); // 兜底
               }
             }
-          } catch (e) { txt = String(reader.result || ''); }
-          if (textarea) textarea.value = txt;
-          // v3.27.x：文件导入直接生效——否则选完文件还需再点一次「确定」，
-          // 手机上用户以为选了文件就导入、没点确定，导致「导入了却没应用」。
-          // 仅 opts.txtImportAuto 的弹窗开启自动提交（opts 经 _modalOpts 引用，
-          // 直接引用函数参数 opts 会 ReferenceError，见 IIFE 顶部注释）。
-          // 直接 cb(txt) 而非 fire()：导入弹窗为 noInput（无输入框/textarea），
-          // fire() 的 noInput 分支会传 'ok' 导致 JSON 解析失败。
-          if (_modalOpts && _modalOpts.txtImportAuto) {
-            try { if (cb) cb(txt); } catch (e) {}
-            try { close(); } catch (e) {}
           }
-        };
-        reader.readAsArrayBuffer(f);
-        fileInput.value = '';
-      });
+        } catch (e) { txt = String(reader.result || ''); }
+        if (textarea) textarea.value = txt;
+        // v3.27.x：文件导入直接生效——否则选完文件还需再点一次「确定」，
+        // 手机上用户以为选了文件就导入、没点确定，导致「导入了却没应用」。
+        // 仅 opts.txtImportAuto 的弹窗开启自动提交（opts 经 _modalOpts 引用，
+        // 直接引用函数参数 opts 会 ReferenceError，见 IIFE 顶部注释）。
+        // 直接 cb(txt) 而非 fire()：导入弹窗为 noInput（无输入框/textarea），
+        // fire() 的 noInput 分支会传 'ok' 导致 JSON 解析失败。
+        if (_modalOpts && _modalOpts.txtImportAuto) {
+          try { if (cb) cb(txt); } catch (e) {}
+          try { close(); } catch (e) {}
+        }
+      };
+      reader.onerror = () => { try { window.toast && window.toast('文件读取失败'); } catch (e) {} };
+      reader.readAsArrayBuffer(f);
     }
     okBtn.addEventListener('click', () => {
       // v3.5.130：回调抛异常（如存储配额满）也必须关闭弹窗，防止残留卡死
@@ -763,11 +953,32 @@ try {
   })();
 
   // 昵称（点击「我」/「TA」下方文字，弹层修改）
+  // FIX 2026-09-28 #1358a：桌面「我 / TA」两格小字的读数＋回退，全站只留这一份口径，并且
+  //   在「回填完成」之后重画一次。旧写法只有脚本执行期那一次同步读（bindLabel）＋切桌面重绘，
+  //   而 LS 整域失效的机器上（本机诊断：LS 写探针 QuotaExceededError、整域 202 键 ≈10MB 里
+  //   143 键 ≈10MB 是同源兄弟站点占的）昵称只剩 IndexedDB 一份，回填是异步的 ⇒ 那一发同步读拿到
+  //   null，界面整场停在 template 的字面量「TA／我」＝用户口径「退出就会刷新成原始状态」；
+  //   同一条回填后重绘清单（v3.5.113/#265/v3.5.116/#769）里的摸鱼值标签同场已经画对，只差这两格
+  //   没进清单（无头实测：库里那份回到内存后 store='宝贝'、摸鱼卡小字='宝贝 摸鱼值'，而
+  //   #lbl-partner 仍是 'TA'，切一次桌面才归位）。
+  // FIX 2026-09-28 #1358b：TA 侧的回退值改问 window.taWord()——称呼存在 partner-gender（他/她/TA），
+  //   而这两格拿写死的 'TA' 当回退，主页永远看不到用户设的「他/她」＝实报「昵称小字 TA 他 她
+  //   设置了但是没用，每次都是TA」。判据只取「这一格当前读数有没有值」，零机型／零 UA 分支。
+  function deskNameText(key) {
+    const v = store.get(key);
+    if (v) return v;
+    return key === 'lbl-partner' ? (window.taWord ? window.taWord() : 'TA') : '我';
+  }
+  function paintDeskNames() {
+    const lu = document.getElementById('lbl-user');
+    if (lu) lu.textContent = deskNameText('lbl-user');
+    const lp = document.getElementById('lbl-partner');
+    if (lp) lp.textContent = deskNameText('lbl-partner');
+  }
   function bindLabel(id, key) {
     const el = document.getElementById(id);
     if (!el) return;
-    const saved = store.get(key);
-    if (saved) el.textContent = saved;
+    paintDeskNames();
     el.addEventListener('click', (e) => {
       e.stopPropagation();
       if (window.openModal) {
@@ -795,6 +1006,16 @@ try {
   }
   bindLabel('lbl-user', 'lbl-user');
   bindLabel('lbl-partner', 'lbl-partner');
+  // FIX 2026-09-28 #1358b：称呼（他/她/TA）改完，主页那格小字当场跟随——旧写法只有切一次桌面才重画，
+  //   用户所见＝「设置了但是没用」。事件由 contacts.js 的称呼设置弹窗派发（detail.id＝归属桌面），
+  //   只画当前桌面那一格，别的桌面等它自己切过来时按同一口径画。
+  try {
+    document.addEventListener('ta-word-changed', function (ev) {
+      const id = ev && ev.detail && ev.detail.id;
+      if (id && id !== (window.__activeCid || 'default')) return;
+      try { paintDeskNames(); } catch (e) {}
+    });
+  } catch (e) {}
 
   // 上传手机背景图片：设为 .phone 全屏背景铺满整个手机屏幕，仅桌面显示；localStorage 持久化
   const phoneEl = document.querySelector('.phone');
@@ -830,6 +1051,85 @@ try {
   };
   // v3.27.x：壁纸定位/缩放可调（phone-bg-pos-x/y/size），默认 cover+center，旧数据无键时完全兼容
   const bgPosOf = () => ({ x: store.get('phone-bg-pos-x') || '50', y: store.get('phone-bg-pos-y') || '50', s: store.get('phone-bg-size') || 'cover' });
+  // ===== #1161：桌面壁纸模糊烘焙进纹理（修「滑动时背景模糊闪失、过几秒才恢复」——vivo X200s/Edge 实报，零机型分支）=====
+  // 旧机制（#240）：壁纸层常驻挂全屏 filter:blur(0~20px)。大半径全屏模糊在 Chromium 系引擎
+  // 每次「暂停摘除（#976 滑页期 filter:none）→ 恢复」都要整幅重新栅格化纹理，弱机/高 DPR 下
+  // 数百毫秒到数秒——观感＝「一滑动模糊就没了，停下几秒才糊回来」；不暂停则滑动掉帧（#976
+  // 当初为之）。两条都是「运行时全屏 filter」这一个根的果。
+  // 新机制：blur>0 时把壁纸原图经 canvas 降采样＋轻度模糊烘焙成几十~几百 px 宽的小纹理，
+  // 壁纸层直接显示「已经糊好的图」，运行时不挂任何 filter——滑动/翻页零重算、无中间态；
+  // 烘焙未完成/失败（渐变纯色预设、canvas 不可用、解码超时）时保持旧 CSS filter 路径显示
+  // 模糊，成功后才切纹理，任何时刻画面不出现「清晰裸图」闪烁。
+  let deskBlurPx = 0;           // 当前模糊半径（0~20，bg-blur 键原值）
+  let deskWallSrc = null;       // 壁纸原图 dataURL（null＝渐变/纯色预设/无壁纸 → 旧滤镜路径）
+  let deskLayerMode = 'none';   // 图层当前内容形态：'img' 原图壁纸 / 'css' 预设 / 'none'
+  let deskBlurBaked = null;     // 最近一次烘焙结果（已模糊小图 dataURL）
+  let deskBlurBakedFor = null;  // 烘焙结果对应的原图（=== 当前 deskWallSrc 才可用）
+  let deskBlurFallback = false; // true＝当前壁纸烘焙失败 → 维持旧 CSS filter（.desk-blur-on）
+  let deskBlurBakeSeq = 0;      // 烘焙序号：滑杆连改/换图时迟到的旧结果一律丢弃
+  let deskBlurTimer = null;
+  let _sdBlurPh = null; // #1467：.phone 静态锚（template.html 静态节点，#338 同款假设），不再每次开关都全文档查一遍
+  const setDeskBlurClass = (on) => {
+    // FIX 2026-09-07 #240：模糊载体＝壁纸层自滤（.desk-blur-on 挂 .phone，见 home.css）。
+    // #1161 后它只服务「烘焙不可用」的回退路径与渐变/纯色预设（无原图可烘）。
+    const ph = _sdBlurPh || (_sdBlurPh = document.querySelector('.phone'));
+    if (ph) ph.classList.toggle('desk-blur-on', !!on);
+  };
+  const deskBlurReady = () => deskBlurPx > 0 && deskLayerMode === 'img' && !deskBlurFallback && !!deskBlurBaked && deskBlurBakedFor === deskWallSrc;
+  const deskBlurRender = () => {
+    if (deskLayerMode !== 'img') { setDeskBlurClass(deskBlurPx > 0); return; } // 预设/空：旧滤镜路径
+    setDeskBlurClass(deskBlurPx > 0 && !deskBlurReady()); // 未烘好前原图＋旧滤镜＝始终有糊，不闪清晰裸图
+    paintBgLayerImage(deskBlurReady() ? deskBlurBaked : deskWallSrc);
+  };
+  const deskBlurSchedule = () => {
+    if (deskBlurTimer) { clearTimeout(deskBlurTimer); deskBlurTimer = null; }
+    deskBlurRender();
+    if (deskBlurPx > 0 && deskLayerMode === 'img' && deskWallSrc && deskBlurBakedFor !== deskWallSrc) {
+      deskBlurTimer = setTimeout(() => { deskBlurTimer = null; deskBlurBake(deskWallSrc, deskBlurPx); }, 120); // 滑杆防抖：逐步触发合并烘焙
+    }
+  };
+  const deskBlurBake = (src, px) => {
+    const seq = ++deskBlurBakeSeq;
+    let done = false;
+    const once = (out) => {
+      if (done) return; done = true;
+      if (seq !== deskBlurBakeSeq) return; // 更新的一次改动已发出，本结果作废（由新一轮处理）
+      if (out && src === deskWallSrc) { deskBlurBaked = out; deskBlurBakedFor = src; deskBlurFallback = false; }
+      else {
+        deskBlurBaked = null; deskBlurBakedFor = null; deskBlurFallback = true;
+        // #1295：烘焙失败＝壁纸退回「原图 + CSS backdrop 模糊」整层滤镜路径，这是桌面
+        // 合成开销最大的一档（#976/#1161 都在躲它）。进账本点名，诊断时能分清「已烘」与「兜底」。
+        try { if (window.__mochiPhase) window.__mochiPhase('bg-blur-fallback'); } catch (e0) {}
+      }
+      deskBlurRender();
+    };
+    try {
+      const img = new Image();
+      img.onload = () => { try { once(deskBlurCanvas(img, px)); } catch (e) { once(null); } };
+      img.onerror = () => once(null);
+      setTimeout(() => once(null), 5000); // 解码挂起（异常内核/巨型 dataURL）→ 判烘焙不可用，回旧路径
+      img.src = src;
+    } catch (e) { once(null); }
+  };
+  const deskBlurCanvas = (img, px) => {
+    const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    if (!iw || !ih || !(px > 0)) return null;
+    // 画布宽 ≈ 参考屏 380 CSS px ÷（模糊半径/2.5）：20px→48、8px→119、1px→950（≈不降采样），
+    // 双线性放大后每个纹素≈可见模糊斑大小，观感与 CSS blur 同级；用户在滑杆所见即所得自校正。
+    const cw = Math.max(6, Math.min(iw, Math.round(950 / px)));
+    const ch = Math.max(4, Math.round(ih * cw / iw));
+    const c = document.createElement('canvas'); c.width = cw; c.height = ch;
+    const g = c.getContext('2d'); if (!g) return null;
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, cw, ch); // jpeg 输出：透明 PNG 壁纸白底（全屏背景语义不变）
+    // 源图内缩采样（边上约 1.2×半径 的屏幕比例，封顶 12%）防透明/暗缘渗入＝旧方案「四边外扩 24px」的等价
+    const m = Math.min(0.12, (px * 1.2) / 380);
+    g.imageSmoothingEnabled = true;
+    try { g.imageSmoothingQuality = 'high'; } catch (e) {}
+    try { if ('filter' in g) g.filter = 'blur(' + (190 / cw).toFixed(2) + 'px)'; } catch (e) {} // 小尺度再轻抹一道去马赛克感（老内核无 ctx.filter 则仅靠降采样，仍成立）
+    g.drawImage(img, iw * m, ih * m, iw * (1 - 2 * m), ih * (1 - 2 * m), 0, 0, cw, ch);
+    const out = c.toDataURL('image/jpeg', 0.85);
+    return out && out.indexOf('data:image') === 0 ? out : null;
+  };
   // ===== v3.26.x #147：壁纸常驻图层（修 iPhone16 Pro「退聊天回桌面巨卡」）=====
   // 此前壁纸直写 .phone，applyBgVisibility 在每次进出桌面时清空/重设 backgroundImage：
   // 2MB 级 dataURL 壁纸在 iOS 上每次重设都要主线程重新解码整张大图；且 chat-back 直挂
@@ -843,32 +1143,91 @@ try {
     if (bgLayer || !phoneEl) return bgLayer;
     bgLayer = document.createElement('div');
     bgLayer.id = 'phone-bg-layer';
-    bgLayer.style.cssText = 'position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;';
+    // FIX 2026-09-17 #690（老内核兜底，零机型分支）：只写 inset:0 时，不认识 inset
+    // 简写的内核（Safari 14.1 / Chromium 87 之前——含 iOS 11、vivo 系等老内核，见
+    // chat-pages.css 的 .game-fs 同款注释）会整条丢弃该声明 → 本图层没有
+    // top/left/right/bottom，空 div 收缩成 0×0（无头实测：老内核解析结果 0×0，
+    // 现代内核 390×844）→ 桌面壁纸整层不显示、「换壁纸」点了没反应，桌面只剩
+    // .phone 底色＝一片灰白（用户报「三页灰屏」）。四条长手 + 宽高与 inset 同义，
+    // 同时给出＝谁认用谁。
+    bgLayer.style.cssText = 'position:absolute;inset:0;top:0;right:0;bottom:0;left:0;width:100%;height:100%;z-index:1;pointer-events:none;opacity:0;';
     phoneEl.insertBefore(bgLayer, phoneEl.firstChild);
     return bgLayer;
   };
-  const setBgLayerImage = (data) => {
+  // ===== #1285：缩放轴＝「铺满之后再放大」，任何档位都不许露出页面底色 =====
+  // 旧写法把档位数字原样写进 background-size（'150%'），那是「宽度=150%、高度按原图
+  // 比例自动」——横构图壁纸（4:3 插画/截图）一拖过 100% 就上下各留一条底色，
+  // 竖构图则左右留＝用户报「iOS 桌面壁纸无法铺满」。这不是机型/内核差异，是语义错
+  //（任何内核按 CSS 规范都会留白），所以修法也不许碰机型。
+  // 现在的做法：background-size 恒为 cover，放大由**图层盒等比外扩**承担——盒边长
+  // =k×.phone（k=档位/100），top/left 按 (1−k)/2 回中心，多出去的部分由 .phone 的
+  // overflow:clip 裁掉＝裁切式放大。尺寸仍全部交浏览器算，零量原图、零量盒高
+  //（#750/#751 那条「JS 折算显式像素」路线正是靠运行期读数而在各内核上反复出错，
+  //  #762 已把它清算掉，勿在此重走）。
+  // 背景模糊开着时另需一并外扩 24px（#240 防模糊边缘发虚）；那四边与 width/height
+  // 在 home.css 里是 !important（#690 要求它配 width/height:auto 让位），故本函数在
+  // k>1 时用内联 !important 同写盒尺寸＋top/left（内联 important 优先于作者 important），
+  // 回到 100% 档时写回与 ensureBgLayer 基线逐字相同的普通值＝把模糊外扩让还给 CSS。
+  const bgLayerGeom = (l, k) => {
+    const set = (p, v, imp) => { try { if (imp) l.style.setProperty(p, v, 'important'); else l.style[p] = v; } catch (e) {} };
+    const ext = deskBlurPx > 0 ? 24 : 0;
+    if (k > 1) {
+      const half = ((1 - k) * 50).toFixed(3) + '%';
+      set('top', ext ? 'calc(' + half + ' - ' + ext + 'px)' : half, true);
+      set('left', ext ? 'calc(' + half + ' - ' + ext + 'px)' : half, true);
+      set('width', ext ? 'calc(' + (k * 100).toFixed(3) + '% + ' + ext * 2 + 'px)' : (k * 100).toFixed(3) + '%', true);
+      set('height', ext ? 'calc(' + (k * 100).toFixed(3) + '% + ' + ext * 2 + 'px)' : (k * 100).toFixed(3) + '%', true);
+      return;
+    }
+    set('top', '0');
+    set('left', '0');
+    set('width', '100%');
+    set('height', '100%');
+  };
+  const paintBgLayerImage = (data) => {
     const l = ensureBgLayer(); if (!l) return;
     const want = data ? 'url("' + data + '")' : '';
     // FIX 2026-09-04 #151 backgroundImage 仍「值变才写」（#147 防 iOS 重复解码语义不变），
     // 但 backgroundSize/Position 必须每次刷新（各自值变才写、不盲写）：原实现把尺寸/定位
     // 也锁进「图变才写」守卫——壁纸定位/缩放（phone-bg-pos-*）改键后图层不重应用（滑杆
     // 实时预览失效）、两桌面同图不同 pos 时互相串用 → 「背景图片没有按正常比例铺满」。
-    if (l.style.backgroundImage !== want) l.style.backgroundImage = want;
+    if (l.style.backgroundImage !== want) {
+      // #1295：壁纸真换＝iOS 主线程同步重解码一张 dataURL 纹理，是「切回桌面 1.6s」最
+      // 可疑的一刀，但旧账本只看得到 persist(watch)——进账本留名（大小一并写入，事后能
+      // 判「1.7s 那一刀离这张 ~2MB 壁纸重绘有多近」）。
+      if (data && data.indexOf('data:') === 0) { try { if (window.__mochiPhase) window.__mochiPhase('bg-paint~' + Math.round(data.length / 1024) + 'KB'); } catch (e0) {} }
+      l.style.backgroundImage = want;
+    }
     if (!data) return;
     const pos = bgPosOf();
-    const szWanted = (pos.s === 'cover' || !pos.s) ? 'cover' : (pos.s + '%');
+    const zoomed = parseInt(pos.s, 10);
+    const szWanted = 'cover'; // #1285：尺寸恒交 CSS 关键字，放大改由图层盒承担（见 bgLayerGeom）
     const psWanted = pos.x + '% ' + pos.y + '%';
     if (l.style.backgroundSize !== szWanted) l.style.backgroundSize = szWanted;
     if (l.style.backgroundPosition !== psWanted) l.style.backgroundPosition = psWanted;
+    bgLayerGeom(l, zoomed > 100 ? zoomed / 100 : 1);
+  };
+  const setBgLayerImage = (data) => {
+    // #1161：这里只记「原图」，图层实际显示哪份纹理由 deskBlurRender 决定
+    //（模糊开着且已烘好＝已模糊小纹理；否则＝原图，旧滤镜兜底）。
+    deskWallSrc = data || null;
+    deskLayerMode = data ? 'img' : 'none';
+    deskBlurSchedule();
   };
   const setBgLayerPreset = (css) => {
+    // #1161：渐变/纯色预设没有「原图」可烘（canvas 画不了任意 CSS 渐变）——记为 'css' 形态，
+    // 模糊维持旧滤镜路径（渐变瓦片光栅远便宜于全屏照片纹理，#976 的暂停对它仍然适用）。
+    deskWallSrc = null;
+    deskLayerMode = 'css';
+    if (deskBlurTimer) { clearTimeout(deskBlurTimer); deskBlurTimer = null; }
     const l = ensureBgLayer(); if (!l) return;
     if (l.style.backgroundImage !== css) {
       l.style.backgroundImage = css;
       l.style.backgroundSize = 'cover';
       l.style.backgroundPosition = 'center';
     }
+    bgLayerGeom(l, 1); // #1285：预设渐变/纯色没有「放大」一档，把上一张图留下的外扩盒收回来
+    setDeskBlurClass(deskBlurPx > 0);
   };
   const setBgLayerVisible = (on) => {
     const l = ensureBgLayer(); if (!l) return;
@@ -1003,6 +1362,38 @@ try {
   //   phone-bg-item-thb-<id> = 240px 缩略图（面板只解码小图，防 N 张 4MB 原图同时解码卡顿）。
   // 当前生效壁纸仍是 phone-bg（常驻图层/定位缩放/预设互斥/方案导入等既有链路零改动）。
   // 旧数据自动迁移：phone-bg 有值而图库为空时，首次打开面板把当前壁纸收为第 1 张。
+  // FIX 2026-09-25 #1218（用户实报「小米15 edge 清理数据后再导入显示背景被清除，上传图片显示
+  // 原图已丢失请重新上传」；同族症状在别的机型/浏览器同样出现）：壁纸原图 >200KB 只存 IndexedDB，
+  // 启动回填按内存预算逐键流式补（超预算＝进 __xyIdbDeferredKeys 挂起名单），而回填用的
+  // idbGetMany 是定死的 4s+4s、不按体积放大 ⇒ 刚清库整包导入的那一轮里，排在几十个已入库大键
+  // 后面的 MB 级原图常常读不完就被判「挂起」。挂起 ≠ 丢失，可此前每条读空路径都直接宣布
+  // 「原图已丢失，请重新上传」。三态判定与按需取回收成数据层唯一一份 window.idbEnsureBigKey
+  //（批注在 idb.js），本文件只留薄包装——与字卡库 #193、音乐库 #1208 同口径。零机型／零 UA 分支。
+  const ensureBigKey = (k) => (window.idbEnsureBigKey ? window.idbEnsureBigKey(k) : Promise.resolve('unknown'));
+  // 取回成功后当前桌面读到值了吗（'ok' 却读不到＝键名/命名空间不对，按未取回处理，不判丢失）
+  const bigKeyReady = (k) => { try { return !!store.get(k); } catch (e) { return false; } };
+  // 读空 → 按需取回 → { v: 值, st: 'ready'|'absent'|'unknown' }：只有 'absent' 才允许说「已丢失」
+  const readBigKey = (k) => ensureBigKey(k).then((st) => {
+    let v = '';
+    try { v = store.get(k) || ''; } catch (e) {}
+    return { v: v, st: v ? 'ready' : st };
+  });
+  // 两种「读不到」必须说两种话：确认没有＝请重传；没确认＝别让用户白重传一遍
+  const bigKeyMissToast = (st, what) => toast(st === 'absent'
+    ? what + '的原图库里已经查不到了（可能被浏览器清理），请重新上传'
+    : what + '的原图这次没读出来（存储正忙），稍后再点一次即可，不需要重新上传');
+  // 写完验真：大键在 xyStore.set 里只落内存缓存 + 一个不管结果的 IDB 写（LS 那份还被大键规则删掉），
+  // 所以存储配额满时上传是「当场成功、重开就没」——用户按提示重传还是不行，因为每次都没落盘。
+  // 这里取 count(键) 的真回执，两次确认库里没有才报警；问不出结果（unknown）闭嘴，不吓正常设备。
+  const confirmBigKeys = (keys, what) => {
+    if (!window.idbBigKeyLanded) return;
+    try {
+      Promise.all(keys.map((k) => window.idbBigKeyLanded(k))).then((sts) => {
+        if (sts.indexOf('missing') < 0) return;
+        toast(what + '没能存进本机存储（存储空间可能已满）：现在能看见，重开就没了。请先去「设置 → 数据备份」导出备份，删掉一些数据后再传一次');
+      }).catch(() => {});
+    } catch (e) {}
+  };
   const PBG_GLIST = 'phone-bg-glist';
   const PBG_MAX = 12; // 图库容量上限
   const pbgList = () => {
@@ -1017,7 +1408,9 @@ try {
   function pbgReconcileActive() {
     const list = pbgList();
     const cur = store.get('phone-bg');
-    if (!cur) { if (pbgActiveId()) store.remove(PBG_ACTIVE); return ''; }
+    // #1218：读空不等于「壁纸没了」（大键可能被回填挂起）。原来这里顺手 store.remove(PBG_ACTIVE)
+    // ＝把 active-id 指针删掉，等原图稍后取回来，面板高亮/删除判定已经找不到当初生效的是哪张。
+    if (!cur) return '';
     const aid = pbgActiveId();
     if (aid && list.indexOf(aid) >= 0 && store.get('phone-bg-item-' + aid) === cur) return aid;
     for (let i = 0; i < list.length; i++) {
@@ -1054,6 +1447,7 @@ try {
     // v3.5.111：上传后立即同步一次桌面可见性，确保回桌面时壁纸已应用
     //（配合内存缓存修复：大壁纸不写 localStorage，靠内存缓存当前会话内读回）
     applyBgVisibility();
+    confirmBigKeys(['phone-bg-item-' + id, 'phone-bg'], '这张壁纸');
     return id;
   });
   // 壁纸图库面板：缩略图网格（点图切换 / × 删除两击确认）+ 多选上传 + 清除当前
@@ -1066,7 +1460,7 @@ try {
     if (!m) { m = document.createElement('div'); m.id = 'phone-bg-gallery-panel'; m.style.cssText = 'position:fixed;inset:0;z-index:90;align-items:center;justify-content:center;background:rgba(0,0,0,.4);display:none'; document.body.appendChild(m); m.addEventListener('click', (e) => { if (e.target === m) m.style.display = 'none'; }); }
     m.innerHTML = '';
     const wrap = document.createElement('div');
-    wrap.style.cssText = 'width:min(90vw,400px);max-height:84vh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--card-bg,#fff);color:var(--ink,#111);border-radius:16px;padding:16px;box-shadow:0 14px 40px rgba(0,0,0,.25)';
+    wrap.style.cssText = 'width:min(90vw,400px);max-height:84vh;overflow-y:auto;background:var(--card-bg,#fff);color:var(--ink,#111);border-radius:16px;padding:16px;box-shadow:0 14px 40px rgba(0,0,0,.25)';
     const hd = document.createElement('div');
     hd.innerHTML = '<div style="font-size:15px;font-weight:700">我的壁纸图库</div><div style="font-size:12px;color:var(--muted,#888);margin-top:4px">可存多张壁纸，点缩略图即切换；误删 5 秒内可撤销</div>';
     wrap.appendChild(hd);
@@ -1089,48 +1483,71 @@ try {
       const im = document.createElement('img');
       im.alt = '';
       im.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
+      const paintThb = (full) => {
+        if (!full) return;
+        compressImage(full, 240).then((th) => { if (th) { store.set('phone-bg-item-thb-' + id, th); im.src = th; cell.style.background = ''; } });
+      };
       if (thb) { im.src = thb; }
       else {
-        const full = store.get('phone-bg-item-' + id);
         im.src = 'data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAA=';
         cell.style.background = 'var(--muted,#888)';
-        if (full) compressImage(full, 240).then((th) => { if (th) { store.set('phone-bg-item-thb-' + id, th); im.src = th; cell.style.background = ''; } });
+        // #1218：灰格＝「原图这会儿没读到」，不等于「这张没了」。清库导入后回填常常只补上
+        // 前几个键，其余整屏壁纸一起变灰＝用户看到的「背景被清除」。先按需取回再补缩略图。
+        const full0 = store.get('phone-bg-item-' + id);
+        if (full0) paintThb(full0);
+        else readBigKey('phone-bg-item-' + id).then((r) => { paintThb(r.v); });
       }
       cell.appendChild(im);
       cell.addEventListener('click', () => {
         // 只读被点中的这一张全图（active-id 对账保证高亮一致）
+        const useFull = (full) => {
+          applyPhoneBg(full);
+          store.set('phone-bg', full);
+          store.set(PBG_ACTIVE, id);
+          store.remove('phone-bg-preset');
+          syncBgUI();
+          syncBgPresetUI();
+          applyBgVisibility();
+          toast('已切换壁纸');
+          m.style.display = 'none';
+        };
         const full = store.get('phone-bg-item-' + id);
-        if (!full) return;
-        applyPhoneBg(full);
-        store.set('phone-bg', full);
-        store.set(PBG_ACTIVE, id);
-        store.remove('phone-bg-preset');
-        syncBgUI();
-        syncBgPresetUI();
-        applyBgVisibility();
-        toast('已切换壁纸');
-        m.style.display = 'none';
+        if (full) { useFull(full); return; }
+        // FIX 2026-09-22 #1036：全图读不到时原本点格静默无响应，用户表现为「点了没反应要按
+        // 好几次」——改为明确提示；FIX 2026-09-25 #1218：提示之前先按需取回一次，并且只有
+        // 内核「健康连接确认库里没有」才说「已丢失请重传」，读失败/超时说「稍后再点一次」
+        readBigKey('phone-bg-item-' + id).then((r) => {
+          if (r.v) { useFull(r.v); return; }
+          bigKeyMissToast(r.st, '这张壁纸');
+        });
       });
       const del = document.createElement('div');
       del.textContent = '×';
       del.style.cssText = 'position:absolute;top:2px;right:2px;width:20px;height:20px;line-height:18px;text-align:center;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;font-size:14px';
       del.addEventListener('click', (e) => {
         e.stopPropagation();
-        const full = store.get('phone-bg-item-' + id);
-        const thb2 = store.get('phone-bg-item-thb-' + id);
-        const wasActive = id === aid;
-        pbgSaveList(pbgList().filter(x => x !== id));
-        store.remove('phone-bg-item-' + id);
-        store.remove('phone-bg-item-thb-' + id);
-        if (wasActive) { clearPhoneBg(); store.remove('phone-bg-pos-x'); store.remove('phone-bg-pos-y'); store.remove('phone-bg-size'); }
-        // 优化⑤：留底 5 秒，面板底部出「撤销」条；每次删除覆盖上一条留底（只保最近一张）
-        if (full) {
-          m.__undoItem = { id, full, thb: thb2, wasActive };
-          if (m.__undoTimer) clearTimeout(m.__undoTimer);
-          m.__undoTimer = setTimeout(() => { m.__undoItem = null; if (m.style.display === 'flex') openPhoneBgPanel(); }, 5000);
-        }
-        toast('已删除，5 秒内可撤销');
-        openPhoneBgPanel();
+        // #1218：删除要留 5 秒可撤销的底，而底只能从「手里有值」来——原图被回填挂起时
+        // store.get 是空的，留底也就是空的：一次读空把「可撤销的删除」变成不可逆删除。
+        // 所以先按需取回再删（取不回照删，用户要的就是删掉，只是撤销条诚实出现不了）。
+        const doDelete = (full) => {
+          const thb2 = store.get('phone-bg-item-thb-' + id);
+          const wasActive = id === aid;
+          pbgSaveList(pbgList().filter(x => x !== id));
+          store.remove('phone-bg-item-' + id);
+          store.remove('phone-bg-item-thb-' + id);
+          if (wasActive) { clearPhoneBg(); store.remove('phone-bg-pos-x'); store.remove('phone-bg-pos-y'); store.remove('phone-bg-size'); }
+          // 优化⑤：留底 5 秒，面板底部出「撤销」条；每次删除覆盖上一条留底（只保最近一张）
+          if (full) {
+            m.__undoItem = { id, full, thb: thb2, wasActive };
+            if (m.__undoTimer) clearTimeout(m.__undoTimer);
+            m.__undoTimer = setTimeout(() => { m.__undoItem = null; if (m.style.display === 'flex') openPhoneBgPanel(); }, 5000);
+          }
+          toast('已删除，5 秒内可撤销');
+          openPhoneBgPanel();
+        };
+        const has = store.get('phone-bg-item-' + id);
+        if (has) { doDelete(has); return; }
+        readBigKey('phone-bg-item-' + id).then((r) => { doDelete(r.v); });
       });
       cell.appendChild(del);
       grid.appendChild(cell);
@@ -1167,36 +1584,44 @@ try {
     const upBtn = document.createElement('button');
     upBtn.textContent = '＋ 上传新图（可多选）';
     upBtn.style.cssText = 'width:100%;padding:11px;border:none;border-radius:10px;background:var(--ink,#111);color:var(--bg-b,#fff);font-size:14px;font-weight:600;margin-bottom:8px';
+    // FIX 2026-09-21 #1002：手机壁纸「＋ 上传新图（可多选）」铺真·可点 input 层（owner＝统一入口那个
+    // 多选 input 的 id；面板每次打开都是新按钮，故渲染即铺，幂等）
+    if (window.mochiFilePickSurface) window.mochiFilePickSurface(upBtn, { id: 'phone-bg-up-tap', accept: 'image/*', multiple: true, owner: 'mochi-phonebg-gallery-pick' });
     upBtn.addEventListener('click', () => {
-      // input 现挂 body 再 click（v3.15.x 套路：未挂 DOM 的 input.click() 部分真机不弹选择器）
-      const input = document.createElement('input');
-      input.type = 'file'; input.accept = 'image/*'; input.multiple = true;
-      input.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;';
-      document.body.appendChild(input);
-      input.onchange = () => {
-        const fs = Array.prototype.slice.call(input.files || []);
-        try { if (input.parentNode) input.remove(); } catch (e) {}
-        if (!fs.length) return;
-        let ok = 0;
-        toast('正在处理 ' + fs.length + ' 张图片…');
-        let chain = Promise.resolve();
-        fs.forEach((f) => {
-          chain = chain.then(() => new Promise((res) => {
-            const reader = new FileReader();
-            reader.onload = () => { pbgAdd(reader.result).then((id) => { if (id) ok++; res(); }); };
-            reader.onerror = () => res();
-            reader.readAsDataURL(f);
-          }));
-        });
-        chain.then(() => {
-          if (ok) toast('已加入 ' + ok + ' 张壁纸');
-          if (document.getElementById('phone-bg-gallery-panel') && document.getElementById('phone-bg-gallery-panel').style.display === 'flex') openPhoneBgPanel();
-        });
-      };
-      input.onblur = () => { setTimeout(() => { try { if (input.parentNode) input.remove(); } catch (e) {} }, 1500); };
-      try { input.click(); } catch (e) { try { input.remove(); } catch (e2) {} toast('无法打开相册，请重试'); }
+      // FIX 2026-09-18 #755：统一走 window.mochiFilePick（原实现虽挂 body，但 accept 迟到、无 label
+      // 原生激活兜底、每次点按 new 一个再 remove；vivo X200s/百度浏览器报「上传无反应」的同族面）
+      window.mochiFilePick({
+        id: 'mochi-phonebg-gallery-pick', accept: 'image/*', multiple: true, btn: upBtn,
+        onFiles: (fs) => {
+          if (!fs.length) { toast('没有取到图片，请再选一次'); return; }
+          let ok = 0, fail = 0;
+          toast('正在处理 ' + fs.length + ' 张图片…');
+          let chain = Promise.resolve();
+          fs.forEach((f) => {
+            chain = chain.then(() => new Promise((res) => {
+              const reader = new FileReader();
+              // FIX 2026-09-22 #1036：失败图原本既不计成功也不给反馈（全失败＝整批静默
+              // 无响应＝「换了背景没反应」），现在计数收口并明确提示原因
+              reader.onload = () => { pbgAdd(reader.result).then((id) => { if (id) ok++; else fail++; res(); }); };
+              reader.onerror = () => { fail++; res(); };
+              reader.readAsDataURL(f);
+            }));
+          });
+          chain.then(() => {
+            if (ok) toast('已加入 ' + ok + ' 张壁纸' + (fail ? '，' + fail + ' 张失败（太大/格式不支持/读取超时）' : ''));
+            else if (fail) toast('图片太大、格式不支持或读取超时，没能加入，请换一张重试');
+            if (document.getElementById('phone-bg-gallery-panel') && document.getElementById('phone-bg-gallery-panel').style.display === 'flex') openPhoneBgPanel();
+          });
+        }
+      });
     });
     wrap.appendChild(upBtn);
+    // #997：多选能力由浏览器选择器决定（本站只是网页，没有相册权限），只能选一张 / 点了没反应时给就地指引
+    const bgHint = document.createElement('div');
+    bgHint.id = 'phonebg-upload-hint';
+    bgHint.style.cssText = 'font-size:11px;line-height:1.6;color:var(--muted);margin:2px 0 8px';
+    bgHint.textContent = '选不了多张或点了没反应，是浏览器 / 所在 App 的限制：换 Chrome / Edge 再试（详见 使用说明第 13 节）';
+    wrap.appendChild(bgHint);
     if (cur) {
       const rmBtn = document.createElement('button');
       rmBtn.textContent = '清除当前壁纸（图库保留）';
@@ -1295,7 +1720,13 @@ try {
       let cx = sx, cy = sy, cs = ss;
       wrap.appendChild(mkSlider('水平位置', sx, 0, 100, (v) => { cx = v; applyBgPos(cx, cy, cs); }));
       wrap.appendChild(mkSlider('垂直位置', sy, 0, 100, (v) => { cy = v; applyBgPos(cx, cy, cs); }));
-      wrap.appendChild(mkSlider('缩放', ss, 100, 300, (v) => { cs = v; applyBgPos(cx, cy, cs); }));
+      wrap.appendChild(mkSlider('缩放（铺满后放大）', ss, 100, 300, (v) => { cs = v; applyBgPos(cx, cy, cs); }));
+      // #1285：一句说明写清这一档在做什么（旧实现的「150%」是宽度百分比，横构图壁纸
+      // 拖它会在上下露出页面底色＝用户读成「壁纸无法铺满」；现在任何档位都先铺满再裁切放大）
+      const zoomHint = document.createElement('div');
+      zoomHint.style.cssText = 'font-size:11px;color:var(--muted,#888);line-height:1.5;margin:-4px 0 12px';
+      zoomHint.textContent = '100%＝铺满裁剪；往大拖＝在铺满的基础上放大裁切，不会露出底色';
+      wrap.appendChild(zoomHint);
       const act = document.createElement('div'); act.style.cssText = 'display:flex;gap:8px;margin-top:8px';
       const reset = document.createElement('button'); reset.textContent = '重置'; reset.style.cssText = 'flex:1;padding:9px;border:1px solid var(--card-border,#eee);border-radius:9px;background:var(--btn-cancel-bg,#fafafa);color:var(--ink,#111)';
       reset.addEventListener('click', () => { store.remove('phone-bg-pos-x'); store.remove('phone-bg-pos-y'); store.remove('phone-bg-size'); const d = bgData(); if (d) applyPhoneBg(d); m.style.display = 'none'; toast('已重置为居中铺满'); });
@@ -1313,6 +1744,26 @@ try {
     if (!n) return '';
     const p = BG_PRESETS.find(b => b.name === n);
     return p ? p.css : '';
+  };
+  // #1218：桌面壁纸原图 >200KB 只存 IndexedDB，启动回填可能把它判成「挂起」（预算/超时），
+  // 于是 store.get('phone-bg') 读空、桌面白板——而图其实就在库里，刷新一次时序变了又显示，
+  // 这正是用户说的「背景图显示被清理，需要重启才能显示」。这里改成：读空就按需取回一次，
+  // 落地后自己重铺；只有内核确认库里没有，才认这张真没了。
+  let pbgBgHydrating = false;
+  // 「这张壁纸本该还在」的判据：active-id 指针仍在图库清单里（与聊天背景 csBgExpectBg 同口径）。
+  // 用户真删掉/清掉壁纸时指针已随之移除，这里就会认「确实没壁纸」而不是无限等一次永远不会来的图。
+  const pbgExpectBg = () => { try { const aid = pbgActiveId(); return !!aid && pbgList().indexOf(aid) >= 0; } catch (e) { return false; } };
+  // 返回值给 applyBgVisibility 用：true＝这一轮发起了按需取回，先别拆层（等回执自己重铺）。
+  const pbgHydrateBgOnce = () => {
+    if (pbgBgHydrating || !window.idbEnsureBigKey || bigKeyReady('phone-bg')) return false;
+    pbgBgHydrating = true;
+    readBigKey('phone-bg').then((r) => {
+      pbgBgHydrating = false;
+      if (r.v) { applyBgVisibility(); return; }
+      // 确认查无此图＝指针指向的那张真的没了（被系统清理/换机没带过来），此时才按既有语义清指针
+      if (r.st === 'absent') { try { store.remove(PBG_ACTIVE); } catch (e) {} }
+    }).catch(() => { pbgBgHydrating = false; });
+    return true;
   };
   const applyBgVisibility = () => {
     if (!phoneEl) return;
@@ -1332,13 +1783,24 @@ try {
     // 现在自定义图优先、其次内置预设，都没有才清空。
     const customBg = bgData();
     const solidCss = store.get('phone-bg-solid') || '';
+    const solidOk = !!solidCss && /^#[0-9a-fA-F]{6}$/.test(solidCss);
     const presetCss = bgPresetCss();
+    // FIX 2026-09-25 #1270（壁纸「每隔几分钟就崩掉一次」的可见形态）：#1195e 每次切后台会按体积
+    // 放掉 ≥256KB 大键的内存副本（那是 iOS 内存压力下的正解，不动它），于是回到桌面这一轮
+    // store.get('phone-bg') 必然同步读空——旧写法当场把常驻图层拆掉（清空 backgroundImage＋隐藏层），
+    // 等异步取回落地才铺回来；取回只问出 'unknown'（这台机器 30s 内被系统回收十几次的常态）就一直
+    // 白着，非得用户再点一次标签页才恢复＝「过几分钟壁纸崩一次」。改成聊天背景 #1218 的 waitBg 口径：
+    // 指针说「这张图本该在」就保留最后一帧不拆，只踢一次按需取回，落地后自己重铺。
+    let waitBg = false;
     if (customBg) applyPhoneBg(customBg);
-    else if (solidCss && /^#[0-9a-fA-F]{6}$/.test(solidCss)) applyPhoneBgPreset(solidCss);
+    else if (solidOk) applyPhoneBgPreset(solidCss);
     else if (presetCss) applyPhoneBgPreset(presetCss);
-    else setBgLayerImage(null);
-    setBgLayerVisible(!!(customBg || (solidCss && /^#[0-9a-fA-F]{6}$/.test(solidCss)) || presetCss));
-    if (!customBg && !(solidCss && /^#[0-9a-fA-F]{6}$/.test(solidCss)) && !presetCss) applyBodyBg(null);
+    else { waitBg = pbgExpectBg() && pbgHydrateBgOnce(); if (!waitBg) setBgLayerImage(null); }
+    setBgLayerVisible(!!(customBg || solidOk || presetCss || waitBg));
+    if (!customBg && !solidOk && !presetCss && !waitBg) applyBodyBg(null);
+    // #1218：桌面该有自己的壁纸（active-id 指针在）却读空＝大概率被回填挂起，不是用户没设壁纸。
+    // 触发一次按需取回，落地后本函数会自己再跑一遍把壁纸铺回来（不用重启）。
+    if (!customBg && pbgActiveId()) pbgHydrateBgOnce();
   };
   // 页面切换时同步壁纸显示
   document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', applyBgVisibility));
@@ -1351,17 +1813,73 @@ try {
     mo.observe(homePage, { attributes: true, attributeFilter: ['hidden'] });
   }
   applyBgVisibility();
-  // v3.5.93：桌面壁纸大键可能只存在 IndexedDB（导入兜底写入/大键只进 IDB）——
-  // 启动时从 IDB 补读后重新应用
+  // FIX 2026-09-25 #1270：回前台主动复核一次。#1195e 每次切后台会放掉壁纸大键的内存副本，而
+  // store.get 是同步读（内存→localStorage），大键那份 localStorage 本来就被剥掉——旧写法只能等用户
+  // 点标签页走到 applyBgVisibility 才发现「图在库里、内存里没了」。挂 visible 后：这一轮按 waitBg
+  // 保留最后一帧不拆层，同时踢一次按需取回，落地即自行重铺；上一轮只问出 'unknown' 的机器不必再
+  // 等一次手势才恢复。零机型／零 UA 分支＝判据只有页面可见性与内核回执。
   try {
-    if (window.idbGet) {
-      window.idbGet(window.activePrefix() + ':phone-bg').then(v => {
-        if (v && typeof v === 'string' && v.length > 2 && !store.get('phone-bg')) {
-          store.set('phone-bg', v);
-          applyBgVisibility();
-        }
-      });
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') applyBgVisibility(); });
+    // bg-keep 的回前台统一信号（#967 同款双通道）：部分内核只发 focus/pageshow、不发 visibilitychange
+    document.addEventListener('mochi-fg-resume', applyBgVisibility);
+  } catch (e) {}
+
+  // ===== #1375：回前台把「常驻合成的壁纸图层」的绘制重新要求一次 =====
+  // 症状（iPhone 12 Pro Max／iOS 16.6 桌面 PWA 实报「每次切到后台再切回来壁纸就没了、变成没有背景的
+  // 空白，点进聊天页面再退出来又正常」＋「这个问题其他设备型号也有出现」）。
+  // 为什么只有壁纸空、屏上其余一切正常：手机端壁纸只由这一层画（applyBodyBg 在非宽屏形态不往 body 写图，
+  // personalize.js:1024），而 #phone-bg-layer／#cs-bg-layer 各自被 CSS 常驻提成独立合成层
+  //（home.css:51 #765d、chat-main.css:618 #765a 的 transform:translateZ(0)）。系统挂起页面时会作废合成层
+  // 的纹理，回前台只重栅格「脏了」的东西——普通绘制的内容整页重新画（所以图标卡片都好好的），常驻合成层
+  // 没被弄脏就永远拿回那一块空纹理。
+  // 取证（无头真跑 HEAD 产物＝tools/verify-1375-held-bg-paint-arm.mjs 的 B 组夹具）：切后台确实按 #1195e 放掉
+  //（307,222B→0），回前台按需取回也把值送回来了（0→307,222B），可整段窗口里这一层的 style 被写过 **0 次**
+  //（内联图一字未动、opacity 恒 1）——上面那条 #1270 通道把「数据」修好了，但它和所有重铺一样全是
+  //「值变才写」，于是「样式还在」被当成了「画出来了」。而用户那个恢复动作恰好对这一层写 2 次（opacity 0→1）
+  //＝唯一能让纹理重生的动作掌握在用户手里。
+  // 怎么做：回前台那一发把这一层的常驻提升临时收回（写 transform:none），下一帧再交还给 CSS——合成层
+  // 销毁重建＝纹理必然按当前 DOM 重新生成；两次写入必须跨帧（同一帧里写两次会被并成「没变化」）。全程
+  // 不重赋 backgroundImage：那是 #147/#1295 明令不许加回回场这一帧的主线程整幅解码。判据只有四个当场事实
+  //「这一发刚从后台回来」「这一屏此刻在屏上（读 .hidden 属性＝零布局、零 getComputedStyle）」「这一层此刻
+  // 挂着背景载荷」「这一层此刻真被画着（桌面层 opacity 0／聊天层 display none＝它不是壁纸的画布，别动）」
+  //，零机型、零 UA 分支；没设壁纸的设备一个字节都不写（同 #1300 证人闸口径）。
+  const HELD_BG_LAYERS = [['phone-bg-layer', 'page-phone'], ['cs-bg-layer', 'page-chat']];
+  const heldBgArmed = {};
+  function armHeldBgPaint() {
+    for (let i = 0; i < HELD_BG_LAYERS.length; i++) {
+      const lid = HELD_BG_LAYERS[i][0];
+      const l = document.getElementById(lid);
+      const pg = document.getElementById(HELD_BG_LAYERS[i][1]);
+      if (!l || !pg || pg.hidden || !l.style.backgroundImage) continue;
+      if (l.style.opacity === '0' || l.style.display === 'none') continue; // 这一层此刻根本没在屏上画（桌面那层 opacity 0／聊天那层 display none）＝它不是壁纸的画布，别动
+      l.style.transform = 'none'; // ① 收回提升：这一帧壁纸改由页面自己的绘制缓冲画（回场必然重栅格）
+      if (heldBgArmed[lid]) continue; // 还原已经排上了＝同一轮只重建一次合成层（写在收回之后：快速连着两次回前台，第二次仍要把提升收回，不许被这一发去重吞掉）
+      heldBgArmed[lid] = 1;
+      const back = function () {
+        if (!heldBgArmed[lid]) return;
+        heldBgArmed[lid] = 0;
+        l.style.transform = ''; // ② 交还给 CSS（#765d/#765a 的 translateZ(0) 原样回来，稳态成本一字未改）
+      };
+      // rAF 之外再兜一发：页面刚回来还没恢复产帧时 rAF 可能迟迟不来，光靠它就会把常驻语义整段丢掉。
+      if (window.requestAnimationFrame) requestAnimationFrame(back);
+      setTimeout(back, 120);
     }
+  }
+  try {
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') armHeldBgPaint(); });
+    document.addEventListener('mochi-fg-resume', armHeldBgPaint);
+  } catch (e) {}
+  // v3.5.93：桌面壁纸大键可能只存在 IndexedDB（导入兜底写入/大键只进 IDB）——启动时补读后重新应用
+  // FIX 2026-09-25 #1218：把「裸 idbGet（超时定死、失败静默、读空就当没有）」换成数据层的三态
+  // 按需取回：取回成功才重铺，确认查无才认丢失，读失败保持可重试（下一次进桌面 applyBgVisibility
+  // 会再踢一次）。备份导入/恢复整库换血后旧留底作废，重置探针再补一次＝「导入完不必重启」。
+  pbgHydrateBgOnce();
+  try {
+    document.addEventListener('mochi-restore-done', () => {
+      try { if (window.idbResetBigKeyProbe) window.idbResetBigKeyProbe(); } catch (e) {}
+      pbgBgHydrating = false;
+      pbgHydrateBgOnce();
+    });
   } catch (e) {}
 
   // 自定义手机桌面图标：点击设置项切到手机页进入编辑模式，再点击目标 app 上传替换
@@ -1480,6 +1998,125 @@ try {
     });
   };
   restoreAppIcons();
+  // ===== v3.26.x #769：底部导航栏美化（三按钮可上传图标图片 + 栏样式）=====
+  // 键族（per-cid store，与 app-icon-* 同族，随美化方案导入/导出/撤销走，见 collectBeauty）：
+  //   tab-icon-<page>    按钮图片（compressImage 256 后的 dataURL），<page>=data-page 稳定身份
+  //   tab-icon-opacity   图片透明度 0~100（只作用上传的 img，默认 SVG 不受影响——
+  //                      applyAppIconOpacity 同口径；三按钮共用一根滑杆，widget-opacity 同款）
+  //   tabbar-bg-op / tabbar-whole-op / tabbar-bg-color / tabbar-radius / tabbar-blur / tabbar-icon-size
+  // 整栏透明度双保险（防「栏透明到消失、找不回」的设计缺陷）：
+  //   ① 图标层 12% 下限——背景可全透，图标永远留一丝影（Math.max(wholeOp, 12) 是唯一锚点）；
+  //   ② 触摸显形——任一透明度 <50% 挂 tabbar-faint，按压瞬间描边+图标全可见（tabbar.css）。
+  const TABBAR_PAGES = ['page-phone', 'page-chatcard', 'page-setting'];
+  const TABBAR_PAGE_NAMES = { 'page-phone': '首页', 'page-chatcard': '字卡', 'page-setting': '设置' };
+  const tabbarNum = (key, def, min, max) => {
+    const n = parseInt(store.get(key), 10);
+    return isNaN(n) ? def : Math.max(min, Math.min(max, n));
+  };
+  const applyTabbarStyle = () => {
+    const bar = document.querySelector('.tabbar');
+    const rs = document.documentElement.style;
+    const bgOp = tabbarNum('tabbar-bg-op', 100, 0, 100);
+    const wholeOp = tabbarNum('tabbar-whole-op', 100, 0, 100);
+    const bgA = Math.round(bgOp * wholeOp) / 10000; // 背景＝两根滑杆叠乘
+    const icoA = Math.max(wholeOp, 12) / 100;       // 图标层整栏透明度 12% 下限
+    ['--tabbar-bg-a', '--tabbar-ico-a', '--tabbar-bg-color', '--tabbar-radius', '--tabbar-blur', '--tabbar-ico-size'].forEach(p => rs.removeProperty(p));
+    if (bgA < 1) rs.setProperty('--tabbar-bg-a', String(bgA));
+    if (icoA < 1) rs.setProperty('--tabbar-ico-a', String(icoA));
+    const bgc = store.get('tabbar-bg-color');
+    if (bgc) rs.setProperty('--tabbar-bg-color', bgc);
+    const rad = tabbarNum('tabbar-radius', 22, 0, 30);
+    if (rad !== 22) rs.setProperty('--tabbar-radius', rad + 'px');
+    const blur = tabbarNum('tabbar-blur', 0, 0, 20);
+    if (blur > 0) rs.setProperty('--tabbar-blur', blur + 'px');
+    const isz = tabbarNum('tabbar-icon-size', 23, 18, 34);
+    if (isz !== 23) rs.setProperty('--tabbar-ico-size', isz + 'px');
+    if (!bar) return;
+    bar.classList.toggle('tabbar-blur-on', blur > 0);
+    bar.classList.toggle('tabbar-faint', bgOp < 50 || wholeOp < 50);
+  };
+  const applyTabIconLook = (tab) => {
+    const img = tab.querySelector('img');
+    if (!img) return;
+    img.style.opacity = String(tabbarNum('tab-icon-opacity', 100, 0, 100) / 100);
+  };
+  // 图片与默认 SVG 共存切换（svg 只隐藏不删除＝#467/#477 模板结构锚依赖 .tab 内部形态，
+  // 且恢复默认无需任何备份键）
+  const paintTabIcon = (tab, data) => {
+    const svg = tab.querySelector('svg');
+    if (svg) svg.style.display = data ? 'none' : '';
+    let img = tab.querySelector('img');
+    if (data) {
+      if (!img) { img = document.createElement('img'); img.alt = ''; tab.appendChild(img); }
+      else if (img.src === data) { applyTabIconLook(tab); return; } // #249 恒等跳过：同源不重解码
+      img.src = data;
+    } else if (img) img.remove();
+    applyTabIconLook(tab);
+  };
+  const restoreTabbarIcons = () => {
+    document.querySelectorAll('.tabbar .tab').forEach(tab => {
+      const key = tab.dataset.page;
+      if (!key) return;
+      let saved = store.get('tab-icon-' + key);
+      // 与 app-icon 同款大图防护（v3.6.x 起）：超 500KB 本次跳过渲染，超 12MB 清除——
+      // 旧版压缩失败存过超大原图，真机解码会崩溃/卡死
+      if (saved && saved.length > 500 * 1024) {
+        try { if (saved.length > 12 * 1024 * 1024) store.remove('tab-icon-' + key); } catch (e) {}
+        saved = null;
+      }
+      paintTabIcon(tab, saved);
+    });
+    applyTabbarStyle();
+  };
+  // 上传/更换/移除（边看边调「底部栏」分区与设置页共用；已自定义时先问做哪个，不直接进相册）
+  const tabIconMenu = (pageKey) => {
+    const name = TABBAR_PAGE_NAMES[pageKey] || pageKey;
+    const tabOf = () => document.querySelector('.tabbar .tab[data-page="' + pageKey + '"]');
+    const pick = () => {
+      window.mochiFilePick({
+        id: 'mochi-tabicon-pick', accept: 'image/*',
+        onFiles: (files) => {
+          const f = files && files[0];
+          if (!f) { toast('没有取到图片，请再选一次'); return; }
+          const reader = new FileReader();
+          reader.onload = () => {
+            toast('正在处理图片…');
+            setTimeout(() => { // 让出当前帧使 toast 先渲染（app-icon 上传同口径，防主线程同步压缩假死）
+              compressImage(reader.result, 256).then((data) => {
+                if (!data) { toast('图片过大或格式不支持，请换一张小图'); return; }
+                store.set('tab-icon-' + pageKey, data);
+                const tab = tabOf();
+                if (tab) paintTabIcon(tab, data);
+                toast('「' + name + '」按钮图标已更新');
+              });
+            }, 80);
+          };
+          reader.onerror = () => toast('读取图片失败，请重试');
+          reader.readAsDataURL(f);
+        }
+      });
+    };
+    if (store.get('tab-icon-' + pageKey)) {
+      window.openModal('「' + name + '」按钮图标', '', (v) => {
+        if (v === 'clear') {
+          store.remove('tab-icon-' + pageKey);
+          const tab = tabOf();
+          if (tab) paintTabIcon(tab, null);
+          toast('「' + name + '」按钮已恢复默认图标');
+        } else if (v === 'pick') pick();
+      }, {
+        noInput: true, staticText: '该按钮正在使用自定义图片：',
+        pills: [{ label: '更换图片', value: 'pick' }, { label: '移除恢复默认', value: 'clear' }]
+      });
+    } else pick();
+  };
+  // 「恢复底部栏默认」：清空整族键 + 清变量 + 重绘（抽屉与将来入口共用）
+  const resetTabbarBeauty = () => {
+    TABBAR_PAGES.forEach(pk => store.remove('tab-icon-' + pk));
+    ['tab-icon-opacity', 'tabbar-bg-op', 'tabbar-whole-op', 'tabbar-bg-color', 'tabbar-radius', 'tabbar-blur', 'tabbar-icon-size'].forEach(k => store.remove(k));
+    restoreTabbarIcons();
+  };
+  restoreTabbarIcons();
   // v3.6.x：恢复图标网格内自定义顺序（app-icon-order-<grid.app> 存 data-app 数组）
   // FIX 2026-09-12 #351：跨页图标归位——旧实现只在「节点已在本网格」时重排，而模板
   // 每次启动都把图标放回默认网格，跨页拖动（只存目标页顺序）永远无法还原 = 「退出重进
@@ -1540,9 +2177,12 @@ try {
   };
   const applyHiddenIcons = () => {
     const hidden = getHiddenIcons();
+    // #823：寻踪总开关关闭时桌面【寻踪】图标与手动隐藏图标同轴收起——本函数会把「名单外」
+    // 图标的 display 复位成 ''（切桌面、恢复隐藏图标弹窗都会跑它），不认这个口径入口会自己回来。
+    const ckOff = typeof window.checkinDeskOff === 'function' && window.checkinDeskOff();
     document.querySelectorAll('.app').forEach(app => {
       const key = app.dataset.app;
-      if (hidden.indexOf(key) >= 0) app.style.display = 'none';
+      if (hidden.indexOf(key) >= 0 || (ckOff && key === 'checkin')) app.style.display = 'none';
       else app.style.display = '';
     });
   };
@@ -1587,7 +2227,16 @@ try {
     // FIX 2026-09-16 #581：调整图片位置优先——①面板开着时再点图标＝换目标；②「调整图标图片位置」
     // 入口置了 __iconAdjustPick，点哪个图标就调哪个（不用先认出菜单里的同名项）
     if (window.__iconFitPanelOpen) { openIconFitPanel(app); return; }
-    if (window.__iconAdjustPick) { openIconFitPanel(app); return; }
+    if (window.__iconAdjustPick) {
+      // FIX 2026-09-17 #696：这个标记必须先消费掉、再判走哪条分支。此前直接转给
+      // openIconFitPanel：点到的图标「没有自定义图片」时它早退、标记原样留着，于是之后
+      // 每一次点图标都被劫持——有图的弹位置面板、没图的只弹一句提示，图标菜单不再出现
+      // ＝用户报的「装修模式点桌面图标上传图片失效」，而且整会话不自愈（要刷新页面）。
+      window.__iconAdjustPick = false;
+      if (app && app.dataset.app && store.get('app-icon-' + app.dataset.app)) { openIconFitPanel(app); return; }
+      // 没传过图的图标：不吞这次点击，直接落到下面的图标菜单——用户当场选「上传图片」
+      toast('这个图标还没有自定义图片，先上传一张');
+    }
     // v3.27.x：批量换图队列——「批量上传图标图片」载入多张后，依次点桌面图标按顺序
     // 换上（每点一个消耗一张），队列清空自动恢复正常图标菜单。绕过弹窗直接换图，
     // 是批量场景的专用快路径；透明度沿用该图标已存设置。
@@ -1615,18 +2264,12 @@ try {
     const key = app.dataset.app;
     const ico = app.querySelector('.app-ico');
     const hasCustom = !!store.get('app-icon-' + key);
-    const pickFile = () => {
-      // v3.15.x：input 先挂 body 再 click——未挂 DOM 的 <input type=file>.click() 在
-      // 部分内核（iOS Safari / vivo Edge 等真机）不弹选择器（v3.8.x chatcard pickFiles
-      // 同款教训），选完/取消后移除防残留
-      const input = document.createElement('input');
-      input.type = 'file'; input.accept = 'image/*';
-      input.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;';
-      document.body.appendChild(input);
-      input.onchange = () => {
-        const f = input.files && input.files[0];
-        try { if (input.parentNode) input.remove(); } catch (e) {}
-        if (!f) { return; }
+    // FIX 2026-09-27 #1342q：管线从「现搭在 mochiFilePick 的 onFiles 里」提成一份 pickInto，两条腿
+    // 共用：合成腿（mochiFilePick）与「弹窗确定＝真·可点 input 层」（下面那颗 pill 的 pick 声明，
+    // 交给 openModal→mochiModalPickOk 模具）。同 #1342m 那一族的形状。
+    const pickInto = (files) => {
+        const f = files && files[0];
+        if (!f) { toast('没有取到图片，请再选一次'); return; }
         const reader = new FileReader();
         // v3.2x.x：上传图片卡顿很久——解码全分辨率位图 + 压到 256px 在
         // 主线程同步执行，原图大时界面会卡死数秒且毫无反馈看起来像假死。
@@ -1653,9 +2296,13 @@ try {
           }, 80);
         };
         reader.readAsDataURL(f);
-      };
-      input.onblur = () => { setTimeout(() => { try { if (input.parentNode) input.remove(); } catch (e) {} }, 1500); };
-      try { input.click(); } catch (e) { try { input.remove(); } catch (e2) {} }
+    };
+    // #1342q：这一档的「选文件」口径交给弹窗模具（openModal→mochiModalPickOk 在确定按钮上铺真层）
+    const appIconPick = { accept: 'image/*', entry: 'app-icon-' + key, onFiles: pickInto };
+    const pickFile = () => {
+      // FIX 2026-09-18 #755：统一走 window.mochiFilePick（原实现虽挂 body，但 accept 迟到、无 label
+      // 原生激活兜底、每次点按 new 一个再 remove——注意历史注释点名的「vivo Edge」正是本族机型）
+      window.mochiFilePick({ id: 'mochi-appicon-pick', accept: 'image/*', onFiles: pickInto });
     };
     const moveApp = (dir) => {
       if (!grid) return;
@@ -1668,7 +2315,7 @@ try {
       toast(dir === 'up' ? '已上移' : '已下移');
     };
     const pills = [];
-    pills.push({ label: hasCustom ? '更换图片' : '上传图片', value: '1' });
+    pills.push({ label: hasCustom ? '更换图片' : '上传图片', value: '1', pick: appIconPick });
     if (hasCustom) pills.push({ label: '清除图片', value: '2' });
     // FIX 2026-09-16 #581：单张图的「缩放 + 位置」——只移动图片在图标里的位置，不用重新上传
     if (hasCustom) pills.push({ label: '调整图片位置', value: 'fit' });
@@ -1791,12 +2438,14 @@ try {
     if (iconFitHi) { try { iconFitHi.style.boxShadow = '0 0 0 3px rgba(47,111,208,.85)'; } catch (e) {} }
   };
   const openIconFitPanel = (app) => {
+    // FIX 2026-09-17 #696：早退分支也要消费掉「等待点图标」标记——否则标记悬空会把后面每次
+    // 点图标都送进这里（无图只弹提示、连图标菜单都出不来）。见 openIconMenu 同条注释。
+    window.__iconAdjustPick = false;
     if (!app || !app.dataset.app || !store.get('app-icon-' + app.dataset.app)) {
       toast('这个图标还没有自定义图片，先上传一张');
       return;
     }
     const key = app.dataset.app;
-    window.__iconAdjustPick = false;
     let p = document.getElementById('icon-fit-panel');
     if (!p) {
       p = document.createElement('div');
@@ -1965,14 +2614,12 @@ try {
         return;
       }
       function startPick() {
-        const input = document.createElement('input');
-        input.type = 'file'; input.accept = 'image/*'; input.multiple = true;
-        input.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;';
-        document.body.appendChild(input);
-        input.onchange = () => {
-          const fs = Array.prototype.slice.call(input.files || []);
-          try { if (input.parentNode) input.remove(); } catch (e) {}
-          if (!fs.length) return;
+        // FIX 2026-09-18 #755：统一走 window.mochiFilePick（原实现 accept 迟到＋无 label 兜底＋
+        // 每次点按 new 一个 input 再 remove；本族机型包括 vivo Edge）
+        window.mochiFilePick({
+          id: 'mochi-icon-batch-pick', accept: 'image/*', multiple: true,
+          onFiles: (fs) => {
+          if (!fs.length) { toast('没有取到图片，请再选一次'); return; }
           toast('正在处理 ' + fs.length + ' 张图片…');
           const imgs = [];
           let chain = Promise.resolve();
@@ -1995,9 +2642,8 @@ try {
             enterDecor();
             toast('已载入 ' + imgs.length + ' 张——到桌面按顺序点图标，每点一个换一张');
           });
-        };
-        input.onblur = () => { setTimeout(() => { try { if (input.parentNode) input.remove(); } catch (e) {} }, 1500); };
-        try { input.click(); } catch (e) { try { input.remove(); } catch (e2) {} toast('无法打开相册，请重试'); }
+          }
+        });
       }
       startPick();
     });
@@ -2012,13 +2658,30 @@ try {
       toast('点桌面上要调整的图标，就能调它的图片位置');
     });
   }
+  // FIX v3.26.x #769：设置页「底部导航栏」两个入口——样式行直接唤起边看边调并停在
+  // 「底部栏」分区（改哪看哪）；上传行走 tabIconMenu（与抽屉同一实现，不重复）
+  const tabbarStyleRow = document.getElementById('row-tabbar-beauty');
+  if (tabbarStyleRow) {
+    tabbarStyleRow.addEventListener('click', () => openBeautyDrawer('tabbar'));
+  }
+  const tabbarIconRow = document.getElementById('row-tabbar-icons');
+  if (tabbarIconRow) {
+    tabbarIconRow.addEventListener('click', () => {
+      window.openModal('上传底部栏按钮图片', '', (v) => { if (v) tabIconMenu(v); }, {
+        noInput: true, staticText: '要换哪个按钮？（屏幕底部一行，从左到右）',
+        pills: TABBAR_PAGES.map(pk => ({ label: TABBAR_PAGE_NAMES[pk], value: pk }))
+      });
+    });
+  }
   // v3.27.x：快捷面板（项5）——美化页常用项直达，避免进多层菜单
+  // #602：「深色模式」快捷按钮移除（设置页已有入口，这里重复）
   (function bindQuickPanel() {
     const bind = (id, targetId) => { const b = document.getElementById(id); const t = document.getElementById(targetId); if (b && t) b.addEventListener('click', () => t.click()); };
     bind('dq-accent', 'row-accent-color');
-    bind('dq-theme', 'row-theme-mode');
     bind('dq-bg', 'row-bg-preset');
     bind('dq-radius', 'row-desk-card-radius');
+    bind('dq-tabbar', 'row-tabbar-beauty'); // #769：底部栏直达
+    bind('dq-icon', 'row-custom-icon'); // #1516：图标自定义直达（row-custom-icon 即进装修模式）
     // v3.27.x #146：dq-random（随机美化快捷入口）已随「一键随机美化」功能一并删除
   })();
   // FIX 2026-09-15 #527：边看边调改为「底部抽屉」。
@@ -2028,11 +2691,42 @@ try {
   // 所以这个坑只在真机暴露）。现改为底部抽屉：桌面完整留在上半屏，抽屉占下半屏、可折叠。
   // 同时按「颜色/尺寸/背景」分区补齐控件（原来只有 5 项：主题色/组件背景/边框/圆角/透明度，
   // 按钮色、按钮文字色、爱心色、图标圆角、字号、卡片大小、壁纸/模糊/遮罩全都没有）。
-  // FIX 2026-09-16 #562：边看边调面板可拖动/吸附（用户「还是会遮挡其他东西我看不见」）——
-  // 会话内记住拖到的纵向位置；null=贴底（默认）。放模块作用域不落盘：纯 UI 位置，避免与
-  // contacts.js 的根键迁移/EXCLUDE 清单打交道。
-  let beautyDockTop = null;
-  const openBeautyDrawer = () => {
+  // FIX 2026-09-16 #562 / v8.29 #1008：边看边调面板可拖动/吸附（用户「还是会遮挡其他东西我看不见」）——
+  // 会话内记住拖到的纵向位置；null＝自动位（停在底部导航之上，同 #962 屏幕适配面板口径）。
+  // 放模块作用域不落盘：纯 UI 位置，避免与 contacts.js 的根键迁移/EXCLUDE 清单打交道。
+  // v8.29 #1008（用户直派「桌面美化的边看边调不能托标题行可上移」）：#562 当年只留下了
+  // beautyDockTop 这个声明、拖动实现从未落地（grip 一直是纯装饰的误导 affordance，聊天侧
+  // #760 的注释里已记过这笔）；本轮按聊天侧同一口径把三处抽屉补齐。同时默认位从贴底
+  // （bottom:0）改为「停在底部导航之上」——贴底时抽屉 z-index:95 压住 z-index:2 的底部导航，
+  // 开着它根本切不了页，而「边看边调」的全部意义就是带着去别的页面看现场。
+  let beautyDockBot = null;
+  function beautyDrawerReserve() {
+    try {
+      const tb = document.querySelector('.tabbar');
+      const t = tb && tb.getBoundingClientRect();
+      if (t && t.height && t.top > 0) return Math.max(14, Math.round(window.innerHeight - t.top + 8));
+    } catch (e) {}
+    return 14;
+  }
+  function beautyDrawerApplyBottom() {
+    const d = document.getElementById('beauty-drawer');
+    if (!d) return;
+    d.style.bottom = (beautyDockBot == null ? beautyDrawerReserve() : beautyDockBot) + 'px';
+  }
+  // v8.29 #1008：自动位要按「切页完成后的底部导航」量。openBeautyDrawer 会先切到桌面页，
+  // 而底部导航的显示是 tabs.js 的 syncChrome 在页面 hidden 观察器里补的——本函数在那一刻
+  // 量到的 tabbar 还是 hidden（0 高）⇒ 会把抽屉错放到贴底 14px（实测 verify-beauty-cta-first
+  // B2 当场红：clearsNav=false）。只读观察页面 hidden，切页落定后再量一次；rAF 兜首帧。
+  let beautyDockObs = null;
+  function watchBeautyDockPages() {
+    if (beautyDockObs || !('MutationObserver' in window)) return;
+    try {
+      beautyDockObs = new MutationObserver(function () { if (beautyDockBot == null) beautyDrawerApplyBottom(); });
+      document.querySelectorAll('.page').forEach(function (p) { beautyDockObs.observe(p, { attributes: true, attributeFilter: ['hidden'] }); });
+    } catch (e) { beautyDockObs = null; }
+  }
+  // #769：可选 secKey＝直接打开指定分区（设置页「底部栏美化」行直达「底部栏」）；省略=停留上次分区
+  const openBeautyDrawer = (secKey) => {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     const phoneTab = document.querySelector('.tab[data-page="page-phone"]');
     if (phoneTab) phoneTab.classList.add('active');
@@ -2056,7 +2750,10 @@ try {
       // FIX 2026-09-16 #562：面板改半透明（用户报「又不是半透明的页面，还是会遮挡其他东西我看不见」）——
       // 底色 72% 不透明 + 不透明度更高时保留原观感（color-mix 不支持的老内核回落上一句纯色，行为不变）；
       // 同时高度上限 44vh→40vh，给桌面留更多可视区。刻意不加 backdrop-filter：AGENTS 的 iOS 卡顿红线。
-      d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:95;max-height:40vh;background:var(--card-bg,#fff);background:color-mix(in srgb, var(--card-bg,#fff) 72%, transparent);color:var(--ink,#111);box-shadow:0 -6px 24px rgba(0,0,0,.18);border-radius:16px 16px 0 0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:0 12px calc(10px + var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px)));box-sizing:border-box;display:flex;flex-direction:column;gap:8px';
+      // v8.29 #1008：加 transition:bottom——切页时自动位会在「底部导航留白」与「无导航 14px」
+      // 之间跳（实测设置页 90px → 聊天设置页 14px 一跳，旧实现 transition all 0s 硬切＝用户
+      // 看到的「瞬移/闪」）。拖动期间由 bindDrawerDrag 临时置 none，不影响跟手。
+      d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:95;max-height:40vh;transition:bottom .16s ease;background:var(--card-bg,#fff);background:color-mix(in srgb, var(--card-bg,#fff) 72%, transparent);color:var(--ink,#111);box-shadow:0 -6px 24px rgba(0,0,0,.18);border-radius:16px 16px 0 0;overflow-y:auto;overflow-x:hidden;padding:0 12px calc(10px + var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px)));box-sizing:border-box;display:flex;flex-direction:column;gap:8px';
       d.innerHTML = '';
       const grip = document.createElement('div');
       grip.style.cssText = 'width:36px;height:4px;border-radius:2px;background:var(--card-border,#ddd);margin:7px auto 0;flex:none';
@@ -2072,7 +2769,12 @@ try {
       hd.style.cssText = 'display:flex;align-items:center;gap:8px;flex:none';
       const hdTxt = document.createElement('span');
       hdTxt.textContent = '边看边调（即时生效）';
-      hdTxt.style.cssText = 'font-size:13px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+      hdTxt.style.cssText = 'font-size:13px;font-weight:700;flex:none';
+      // v8.29 #1008：标题行可拖动这件事此前三处抽屉都没有任何文字提示（用户原话「用户并不知道
+      // 有这个功能」）——提示固定挂在标题行里，点「收起」折叠正文区后仍然看得见。
+      const hdHint = document.createElement('span');
+      hdHint.textContent = '按住标题行上下拖 · 让开看桌面';
+      hdHint.style.cssText = 'font-size:11px;color:var(--muted,#888);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
       const panelBody = document.createElement('div');
       panelBody.style.cssText = 'display:flex;flex-direction:column;gap:8px;flex:none';
       const body = document.createElement('div');
@@ -2083,15 +2785,57 @@ try {
         foldBtn.textContent = willFold ? '展开' : '收起';
       });
       const closeBtn = mkMini('\u2715', () => { d.style.display = 'none'; showThemePage(); }, ';padding:4px 8px');
-      hd.appendChild(hdTxt); hd.appendChild(foldBtn); hd.appendChild(closeBtn);
+      hd.appendChild(hdTxt); hd.appendChild(hdHint); hd.appendChild(foldBtn); hd.appendChild(closeBtn);
       d.appendChild(hd);
+      // v8.29 #1008：grip 与标题行都可竖向拖动（用户「不能托标题行可上移」）。口径与聊天侧 #760
+      // 完全一致：pointer 事件 + setPointerCapture——不夺回控制权时触摸序列会被内核抢成滚动，
+      // 表现为「抖一下拖不动」；标题行里的按钮让行（否则点不动）；拖动期间关掉 bottom 过渡，
+      // 松手回自动位附近则吸附复位（null＝回「底部导航之上」）。
+      const bindDrawerDrag = (el) => {
+        el.style.touchAction = 'none';
+        el.style.cursor = 'grab';
+        let sy = 0, sb = 0, drag = false;
+        el.addEventListener('pointerdown', (e) => {
+          if (e.target.closest('button')) return;
+          if (e.pointerType === 'mouse' && e.button !== 0) return;
+          drag = true; sy = e.clientY;
+          sb = beautyDockBot == null ? beautyDrawerReserve() : beautyDockBot;
+          d.style.transition = 'none';
+          try { el.setPointerCapture(e.pointerId); } catch (er) {}
+          e.preventDefault();
+        });
+        el.addEventListener('pointermove', (e) => {
+          if (!drag) return;
+          beautyDockBot = Math.max(0, Math.min(Math.round(window.innerHeight * 0.6), Math.round(sb + sy - e.clientY)));
+          beautyDrawerApplyBottom();
+          e.preventDefault();
+        });
+        const up = () => {
+          if (!drag) return;
+          drag = false;
+          d.style.transition = 'bottom .16s ease';
+          if ((beautyDockBot || 0) <= beautyDrawerReserve() + 6) beautyDockBot = null; // 拖回自动位＝吸附复位
+          beautyDrawerApplyBottom();
+        };
+        el.addEventListener('pointerup', up);
+        el.addEventListener('pointercancel', up);
+      };
+      bindDrawerDrag(grip);
+      bindDrawerDrag(hd); // grip 只有 4px 高，标题行才是主拖拽把手
       const chipsRow = document.createElement('div');
       chipsRow.style.cssText = 'display:flex;gap:6px;flex:none';
       panelBody.appendChild(chipsRow);
       panelBody.appendChild(body);
       d.appendChild(panelBody);
+      // FIX #边看边调：一次会话内首次真正改动时快照一次，让「边看边调」也纳入撤销栈
+      // （此前只有设置页各行 pushBeautyUndo，抽屉里乱调无从撤销）。arm 后不再重复压栈。
+      let undoArmed = false;
+      const armUndo = () => { if (undoArmed) return; undoArmed = true; try { pushBeautyUndo(); } catch (e) {} };
       // 单行滑杆：标签 74px + 滑杆 + 数值 40px（比原「标签另起一行的竖排」省一半高度）
-      const mkSlider = (label, key, varName, min, max, step, unit, defVal, rawSet) => {
+      // apply(v)=纯视觉即时应用（不写库），persist(v)=落库；两者分离到 input/change 两个事件：
+      // 拖动过程每帧只跑廉价的 setProperty，localStorage 同步写只在松手（change）触发一次，
+      // 消除拖动掉帧（旧实现每个 input 事件都同步 store.set，一次拖动能数百次）。
+      const mkSlider = (label, key, varName, min, max, step, unit, defVal, apply, persist) => {
         const row = document.createElement('div');
         row.style.cssText = 'display:flex;align-items:center;gap:8px';
         const lb = document.createElement('span');
@@ -2105,13 +2849,46 @@ try {
         const vv = document.createElement('span');
         vv.style.cssText = 'font-size:11px;color:var(--muted,#999);flex:none;width:40px;text-align:right';
         vv.textContent = inp.value + unit;
-        inp.addEventListener('input', () => {
-          vv.textContent = inp.value + unit;
-          if (rawSet) rawSet(inp.value);
-          else { document.documentElement.style.setProperty(varName, inp.value + unit); store.set(key, inp.value); }
-        });
+        const doApply = apply || ((v) => { document.documentElement.style.setProperty(varName, v + unit); });
+        const doPersist = persist || ((v) => store.set(key, v));
+        inp.addEventListener('input', () => { vv.textContent = inp.value + unit; armUndo(); doApply(inp.value); });
+        inp.addEventListener('change', () => { doPersist(inp.value); });
         row.appendChild(lb); row.appendChild(inp); row.appendChild(vv);
         return row;
+      };
+      // #1292：本机手调轴滑杆——数据与生效值只有一份：window.mochiScreenAdj（mobile-adapt.js
+      // 的屏幕适配微调，按设备存根命名空间落库、跨桌面共用）。这里只是把「桌面图标区」这根
+      // 挪到用户真的在看桌面的抽屉里（同一键、同一写入口，不复制第二份实现）。
+      // 拖动期只写生效变量（mochiScreenAdj.set 会连带同步写 localStorage，一次拖动几百次＝
+      // mkSlider 刻意把 apply/persist 分到 input/change 两个事件的原因），松手才落库。
+      const mkAdjRow = (label, axis, varName, min, max, hint) => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:8px';
+        const lb = document.createElement('span');
+        lb.textContent = label;
+        lb.style.cssText = 'font-size:11.5px;color:var(--muted,#888);flex:none;width:74px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+        const inp = document.createElement('input');
+        inp.type = 'range'; inp.min = min; inp.max = max; inp.step = 1;
+        let cur = 0;
+        try { cur = (window.mochiScreenAdj && window.mochiScreenAdj.all()[axis]) || 0; } catch (e) {}
+        inp.value = String(cur);
+        inp.style.cssText = 'flex:1;min-width:0';
+        const vv = document.createElement('span');
+        vv.style.cssText = 'font-size:11px;color:var(--muted,#999);flex:none;width:40px;text-align:right';
+        vv.textContent = cur + 'px';
+        inp.addEventListener('input', () => {
+          vv.textContent = inp.value + 'px';
+          try { document.documentElement.style.setProperty(varName, parseInt(inp.value, 10) + 'px'); } catch (e) {}
+        });
+        inp.addEventListener('change', () => { try { window.mochiScreenAdj && window.mochiScreenAdj.set(axis, inp.value); } catch (e) {} });
+        const hp = document.createElement('div');
+        hp.style.cssText = 'font-size:10.5px;color:var(--muted,#999);line-height:1.5';
+        hp.textContent = hint;
+        row.appendChild(lb); row.appendChild(inp); row.appendChild(vv);
+        const box = document.createElement('div');
+        box.style.cssText = 'display:flex;flex-direction:column;gap:3px';
+        box.appendChild(row); box.appendChild(hp);
+        return box;
       };
       const PALETTE = ['#111111', '#ffffff', '#e05555', '#ff8800', '#ffd54f', '#4a9d5e', '#3a7bd5', '#8e5bd5', '#e055a0', '#8a8a8a'];
       let colorItems = [];
@@ -2136,6 +2913,7 @@ try {
           sw.style.background = c || '#ffffff';
         };
         const curSet = (v) => {
+          armUndo();
           // FIX 2026-09-16 #562：可选 onSet——「主题色」走与设置页同一套 applier（同时写
           // --btn-bg/--btn-ink 与键），修「边看边调点主题色只有 --btn-bg 变、--btn-ink 不跟随」。
           if (onSet) { try { onSet(v); } catch (e) {} paint(); return; }
@@ -2219,25 +2997,27 @@ try {
           txBtn.addEventListener('click', () => { d.style.display = 'none'; try { enterDecor(); } catch (e) {} });
           wrap.appendChild(txBtn);
           wrap.appendChild(mkSlider('透明度', 'widget-opacity', '--widget-opacity', 40, 100, 5, '%', 100, (v) => {
-            const n = parseInt(v, 10) / 100;
-            document.documentElement.style.setProperty('--widget-opacity', String(n));
-            store.set('widget-opacity', String(Math.round(n * 100)));
+            applyWidgetOpacity(parseInt(v, 10)); // 复用设置页 applier：写 --widget-opacity + 同步标签
           }));
           return wrap;
         } },
         { key: 'size', label: '尺寸', build: () => {
           const wrap = document.createElement('div');
           wrap.style.cssText = 'display:flex;flex-direction:column;gap:8px';
-          wrap.appendChild(mkSlider('组件圆角', 'desk-card-radius', '--desk-card-radius', 0, 30, 1, 'px', 16));
-          wrap.appendChild(mkSlider('图标圆角', 'ico-radius', '--app-ico-radius', 0, 30, 1, 'px', 18));
+          wrap.appendChild(mkSlider('组件圆角', 'desk-card-radius', '--desk-card-radius', 0, 30, 1, 'px', 20, (v) => {
+            applyCardRadius(parseInt(v, 10)); // 复用设置页 applier（写 var + 「默认」文案）
+          }, (v) => { const n = parseInt(v, 10); if (n === 20) store.remove('desk-card-radius'); else store.set('desk-card-radius', String(n)); }));
+          wrap.appendChild(mkSlider('图标圆角', 'ico-radius', '--app-ico-radius', 0, 30, 1, 'px', 18, (v) => {
+            applyIcoRadius(parseInt(v, 10));
+          }));
           if (zoomWorks) {
             wrap.appendChild(mkSlider('桌面字号', 'desk-font-size', '--desk-font-scale', 85, 120, 1, '%', 100, (v) => {
               document.documentElement.style.setProperty('--desk-font-scale', String(parseInt(v, 10) / 100));
-              store.set('desk-font-size', v);
+              syncDeskZoomClass(); // #707：值≠1 才挂缩放类（见 applyDeskFontPct 同编号注释）
             }));
             wrap.appendChild(mkSlider('卡片大小', 'desk-card-scale', '--desk-card-scale', 80, 120, 1, '%', 100, (v) => {
               document.documentElement.style.setProperty('--desk-card-scale', String(parseInt(v, 10) / 100));
-              store.set('desk-card-scale', v);
+              syncDeskZoomClass(); // #707
             }));
           } else {
             const nt = document.createElement('div');
@@ -2250,16 +3030,28 @@ try {
         { key: 'bg', label: '背景', build: () => {
           const wrap = document.createElement('div');
           wrap.style.cssText = 'display:flex;flex-direction:column;gap:8px';
-          wrap.appendChild(mkSlider('背景模糊', 'bg-blur', '--bg-blur', 0, 20, 1, 'px', 0, (v) => {
-            const n = parseInt(v, 10);
-            document.documentElement.style.setProperty('--bg-blur', n + 'px');
-            if (n > 0) store.set('bg-blur', String(n)); else store.remove('bg-blur');
-          }));
-          wrap.appendChild(mkSlider('背景遮罩', 'bg-mask-op', '--bg-mask-op', 0, 80, 5, '%', 0, (v) => {
-            const n = parseInt(v, 10);
-            document.documentElement.style.setProperty('--bg-mask-op', String(n / 100));
-            if (n > 0) store.set('bg-mask-op', String(n)); else store.remove('bg-mask-op');
-          }));
+          wrap.appendChild(mkSlider('背景模糊', 'bg-blur', '--desk-bg-blur', 0, 20, 1, 'px', 0, (v) => {
+            applyBgBlur(parseInt(v, 10)); // 写 --desk-bg-blur + toggle .desk-blur-on（旧代码写死变量名 --bg-blur 无人消费＝调了没反应）
+          }, (v) => { const n = parseInt(v, 10); if (n > 0) store.set('bg-blur', String(n)); else store.remove('bg-blur'); }));
+          wrap.appendChild(mkSlider('背景遮罩', 'bg-mask-op', '--desk-bg-mask-op', 0, 80, 5, '%', 0, (v) => {
+            applyBgMaskOp(parseInt(v, 10)); // 写 --desk-bg-mask-op（旧代码写死 --bg-mask-op 无人消费）
+          }, (v) => { const n = parseInt(v, 10); if (n > 0) store.set('bg-mask-op', String(n)); else store.remove('bg-mask-op'); }));
+          // #1292：桌面图标区上下位置——与「设置 → 屏幕适配微调」里那根「桌面图标区」同一份
+          // 数据、同一个生效值（window.mochiScreenAdj → --mochi-desk-adj），只是挪到用户真的在
+          // 看桌面的这个抽屉里。全屏（隐藏模拟状态栏）后桌面图标/小组件整体偏上，各机型安全区
+          // 不同，这一根自己拉回；只影响桌面页、按设备本机保存。
+          wrap.appendChild(mkAdjRow('图标区上下', 'desk', '--mochi-desk-adj', -60, 60, '开全屏后桌面图标整体偏上＝往正拖下移；只影响桌面页，本机保存'));
+          // #1285：壁纸放大入口（原面板在 设置→美化→壁纸定位与缩放，抽屉里够不着）——
+          // 不另实现一份，直接唤起那一行，读写的仍是同一组 phone-bg-pos-* 键。
+          const bgZoomRow = document.createElement('button');
+          bgZoomRow.textContent = '壁纸缩放 / 定位（铺满后放大，不露底色）';
+          bgZoomRow.style.cssText = 'padding:8px;border:1px solid var(--card-border,#ddd);border-radius:9px;background:var(--btn-cancel-bg,#fafafa);color:var(--ink,#111);font-size:11.5px;cursor:pointer';
+          bgZoomRow.addEventListener('click', () => {
+            const row = document.getElementById('row-bg-adjust');
+            if (!row) { try { window.toast && window.toast('请先在壁纸图库里选一张壁纸'); } catch (e) {} return; }
+            d.style.display = 'none'; row.click();
+          });
+          wrap.appendChild(bgZoomRow);
           const bgBtn = document.createElement('button');
           bgBtn.textContent = '更换壁纸 / 内置预设 / 上传图片';
           bgBtn.style.cssText = 'padding:8px;border:1px solid var(--card-border,#ddd);border-radius:9px;background:var(--btn-cancel-bg,#fafafa);color:var(--ink,#111);font-size:11.5px;cursor:pointer';
@@ -2285,6 +3077,16 @@ try {
             b.addEventListener('click', fn);
             return b;
           };
+          // FIX 2026-09-17 #696：补「只换一个图标」的入口（用户原话「边看边调功能不能上传单个
+          // 图标的图片」——原来这里只有批量多选和调整位置，想换一个图标得先按批量流程）。
+          // 只负责「进装修模式、等用户点图标」，换图仍走装修模式的图标菜单（上传图片→选图），
+          // 与批量入口一样不重复实现；进之前清掉位置标记，否则点图标弹的是位置面板。
+          wrap.appendChild(mkAct('上传单个图标图片（点图标）', () => {
+            d.style.display = 'none';
+            try { enterDecor(); } catch (e) {}
+            window.__iconAdjustPick = false;
+            toast('点桌面上要换图的图标，选「上传图片」');
+          }));
           wrap.appendChild(mkAct('批量上传桌面图标图片（可多选）', () => {
             d.style.display = 'none';
             const row = document.getElementById('row-icon-batch');
@@ -2300,20 +3102,90 @@ try {
           wrap.appendChild(fitBtn);
           const note = document.createElement('div');
           note.style.cssText = 'font-size:10.5px;color:var(--muted,#999);line-height:1.5';
-          note.textContent = '上传过的图片可单独调「缩放 / 水平位置 / 垂直位置」，即时生效、不用重新上传；装修模式点图标 →「调整图片位置」也是同一套。';
+          note.textContent = '换单个图标＝点「上传单个图标图片」后点桌面图标选「上传图片」；换一批用批量上传。上传过的图片可单独调「缩放 / 水平位置 / 垂直位置」，即时生效、不用重新上传。';
           wrap.appendChild(note);
+          return wrap;
+        } },
+        // FIX v3.26.x #769：底部导航栏美化分区（用户「底部导航栏的三个图标按钮，也可以上传图标
+        // 图片。然后也可以调整透明度。调整这一行的透明度和这一行的样式」）。全部控件走
+        // #769 模块同一套键与 applier（tabIconMenu / applyTabbarStyle / resetTabbarBeauty），
+        // 与设置页入口零重复实现。
+        { key: 'tabbar', label: '底部栏', build: () => {
+          const wrap = document.createElement('div');
+          wrap.style.cssText = 'display:flex;flex-direction:column;gap:8px';
+          const upRow = document.createElement('div');
+          upRow.style.cssText = 'display:flex;gap:6px';
+          TABBAR_PAGES.forEach(pk => {
+            const b = document.createElement('button');
+            b.textContent = TABBAR_PAGE_NAMES[pk] + '按钮图片';
+            b.style.cssText = 'flex:1;font-size:11.5px;padding:7px 0;border:1px solid var(--card-border,#ddd);border-radius:9px;background:var(--btn-cancel-bg,#fafafa);color:var(--ink,#111);cursor:pointer';
+            b.addEventListener('click', () => tabIconMenu(pk));
+            upRow.appendChild(b);
+          });
+          wrap.appendChild(upRow);
+          const setBarVar = (name, v) => { if (v === null || v === undefined || v === '') document.documentElement.style.removeProperty(name); else document.documentElement.style.setProperty(name, v); };
+          wrap.appendChild(mkSlider('图片透明度', 'tab-icon-opacity', '', 20, 100, 5, '%', 100, (v) => {
+            // 只作用上传的图片（默认 SVG 不受影响），三按钮同值——applyAppIconOpacity 同口径
+            document.querySelectorAll('.tabbar .tab img').forEach(im => { im.style.opacity = String(parseInt(v, 10) / 100); });
+          }, (v) => { const n = parseInt(v, 10); if (n >= 100) store.remove('tab-icon-opacity'); else store.set('tab-icon-opacity', String(n)); }));
+          wrap.appendChild(mkSlider('背景透明度', 'tabbar-bg-op', '', 0, 100, 5, '%', 100, (v) => {
+            // 拖动过程即时预览＝只重算背景叠乘（图标层由「整栏透明度」决定，互不干扰）
+            const w = tabbarNum('tabbar-whole-op', 100, 0, 100);
+            setBarVar('--tabbar-bg-a', (parseInt(v, 10) * w) >= 10000 ? null : String(Math.round(parseInt(v, 10) * w) / 10000));
+          }, (v) => { const n = parseInt(v, 10); if (n >= 100) store.remove('tabbar-bg-op'); else store.set('tabbar-bg-op', String(n)); applyTabbarStyle(); }));
+          wrap.appendChild(mkSlider('整栏透明度', 'tabbar-whole-op', '', 0, 100, 5, '%', 100, (v) => {
+            const n = parseInt(v, 10);
+            const bg = tabbarNum('tabbar-bg-op', 100, 0, 100);
+            setBarVar('--tabbar-bg-a', (n * bg) >= 10000 ? null : String(Math.round(n * bg) / 10000));
+            setBarVar('--tabbar-ico-a', String(Math.max(n, 12) / 100)); // 12% 图标下限：背景可全透，图标永远留一丝影
+            const bar = document.querySelector('.tabbar');
+            if (bar) bar.classList.toggle('tabbar-faint', bg < 50 || n < 50);
+          }, (v) => { const n = parseInt(v, 10); if (n >= 100) store.remove('tabbar-whole-op'); else store.set('tabbar-whole-op', String(n)); applyTabbarStyle(); }));
+          wrap.appendChild(mkSlider('栏圆角', 'tabbar-radius', '--tabbar-radius', 0, 30, 1, 'px', 22, null, (v) => { const n = parseInt(v, 10); if (n === 22) store.remove('tabbar-radius'); else store.set('tabbar-radius', String(n)); }));
+          wrap.appendChild(mkSlider('背景模糊', 'tabbar-blur', '', 0, 20, 1, 'px', 0, (v) => {
+            const n = parseInt(v, 10);
+            setBarVar('--tabbar-blur', n > 0 ? n + 'px' : null);
+            const bar = document.querySelector('.tabbar');
+            if (bar) bar.classList.toggle('tabbar-blur-on', n > 0);
+          }, (v) => { const n = parseInt(v, 10); if (n > 0) store.set('tabbar-blur', String(n)); else store.remove('tabbar-blur'); }));
+          wrap.appendChild(mkSlider('图标大小', 'tabbar-icon-size', '--tabbar-ico-size', 18, 34, 1, 'px', 23, null, (v) => { const n = parseInt(v, 10); if (n === 23) store.remove('tabbar-icon-size'); else store.set('tabbar-icon-size', String(n)); }));
+          paletteHost = document.createElement('div');
+          const cgrid = document.createElement('div');
+          cgrid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:6px';
+          cgrid.appendChild(mkColorItem('栏背景色', 'tabbar-bg-color', '--tabbar-bg-color', false));
+          wrap.appendChild(cgrid);
+          wrap.appendChild(paletteHost);
+          const rst = document.createElement('button');
+          rst.textContent = '恢复底部栏默认';
+          rst.style.cssText = 'padding:8px;border:1px solid var(--card-border,#ddd);border-radius:9px;background:var(--btn-cancel-bg,#fafafa);color:var(--ink,#111);font-size:11.5px;cursor:pointer';
+          rst.addEventListener('click', () => { armUndo(); resetTabbarBeauty(); renderSec('tabbar'); toast('底部栏已恢复默认'); });
+          wrap.appendChild(rst);
+          const nt = document.createElement('div');
+          nt.style.cssText = 'font-size:10.5px;color:var(--muted,#999);line-height:1.5';
+          nt.textContent = '「背景透明度」只稀释底色；「整栏透明度」连图标一起淡出——图标保底 12%、按屏下瞬间显形，不会消失找不回。按钮图片点上面三个按钮上传（已传过可选更换/移除）。';
+          wrap.appendChild(nt);
           return wrap;
         } }
       ];
       let activeSec = 'color';
-      const renderSec = (key) => {
-        activeSec = key;
+      // v8.29 #1008：点亮态只在真变化时写（口径同 #938：先比对现状与目标，相等就别写）。
+      // 原实现每次 renderSec 都无条件写 3×N 个 style——实测重复点同一个分区会白写 24~30 次，
+      // 而「没变也在动」正是用户报的闪屏里可去掉的那一半。重建控件区的行为刻意保留：
+      // 点当前分区胶囊＝重画本区视图是既有刷新链路（verify-badge-tune D3 依赖它）。
+      const paintChips = (key) => {
         Array.prototype.forEach.call(chipsRow.children, c => {
           const on = c.dataset.sec === key;
-          c.style.background = on ? 'var(--ink,#111)' : 'var(--btn-cancel-bg,#fafafa)';
-          c.style.color = on ? 'var(--bg-b,#fff)' : 'var(--ink,#111)';
-          c.style.borderColor = on ? 'var(--ink,#111)' : 'var(--card-border,#ddd)';
+          const bg = on ? 'var(--ink,#111)' : 'var(--btn-cancel-bg,#fafafa)';
+          if (c.style.background !== bg) c.style.background = bg;
+          const fg = on ? 'var(--bg-b,#fff)' : 'var(--ink,#111)';
+          if (c.style.color !== fg) c.style.color = fg;
+          const bd = on ? 'var(--ink,#111)' : 'var(--card-border,#ddd)';
+          if (c.style.borderColor !== bd) c.style.borderColor = bd;
         });
+      };
+      const renderSec = (key) => {
+        activeSec = key;
+        paintChips(key);
         body.innerHTML = '';
         paletteHost = null;
         colorItems = [];
@@ -2329,8 +3201,22 @@ try {
         chipsRow.appendChild(c);
       });
       renderSec(activeSec);
+      if (secKey) renderSec(secKey);
+      // v8.29 #1008：先落位再显形——自动位＝停在底部导航之上（见 beautyDrawerReserve），
+      // 这样开着抽屉也能点到底部导航去别的页面看现场。
+      beautyDrawerApplyBottom();
       d.style.display = 'flex';
+      // 切页落定后（底部导航由 syncChrome 补显）再量一次自动位；rAF 兜首帧（观察器回调是
+      // 微任务、rAF 在绘制前跑，正常首次绘制就已是正确位置，不会看到一次跳动）。
+      watchBeautyDockPages();
+      if (window.requestAnimationFrame) requestAnimationFrame(() => { if (beautyDockBot == null) beautyDrawerApplyBottom(); });
   };
+  // v8.29 #1008：兜住「开着抽屉时转屏/改窗口尺寸」——自动位按当前底部导航高度重算；
+  // 用户拖过的位置（beautyDockBot != null）不动。
+  try {
+    window.addEventListener('resize', () => { if (beautyDockBot == null) beautyDrawerApplyBottom(); });
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', () => { if (beautyDockBot == null) beautyDrawerApplyBottom(); });
+  } catch (e) {}
   // 回到「手机桌面美化」页（抽屉关闭/跳转用）。
   // 导航口径对齐 tabs.js 的 #row-appearance 处理：隐藏所有页 → 只显示 #page-theme，
   // 底部 tab 停在「设置」（page-theme 是 setting 的二级页，不单独占 tab）。
@@ -2414,7 +3300,7 @@ try {
     // ① 取词剔除 settings-help.js 注入的「功能说明」.tag 胶囊（此前搜「功能/说明」几乎全行命中）；
     // ② 口语词→入口行别名表（此前搜「壁纸/通知/概率/夜间」等 0 命中）；
     // ③ 多词 AND（空格分隔，每词都须命中）；④ 空分组/空分区隐藏 + 零命中空态提示。
-    const SEC_NAME = { basic: '通用', chat: '聊天', system: '系统', tools: '工具', about: '关于' };
+    const SEC_NAME = { basic: '通用', chat: '聊天', system: '系统', tools: '工具', diag: '信息诊断', about: '关于' };
     const KW = {
       '联系人 / 桌面': '切换桌面 多桌面 独立 称呼',
       '开启群聊': '多人聊天 群',
@@ -2422,7 +3308,7 @@ try {
       '查岗频率': '次数',
       '打电话': '拨打 通话',
       '深色模式': '夜间模式 暗色模式 黑暗模式 夜间 暗色 黑暗 黑色 主题 dark mode',
-      '手机桌面美化': '壁纸 主题 图标 字体 字号 圆角 装修 装扮 小组件 桌面美化',
+      '手机桌面美化': '壁纸 主题 图标 字体 字号 圆角 装修 装扮 小组件 桌面美化 底部栏 底栏 导航栏 tabbar',
       '回复设置': '概率 回复速度 拍一拍 撤回 已读 触发 自动回复 聊天',
       '通话设置': '来电 挂断 通话背景 铃声',
       '音效设置': '声音 铃声 提示音 静音',
@@ -2430,13 +3316,15 @@ try {
       '应用锁': '密码 锁 隐私',
       '开屏问答门': '问答 暗号 验证 提问',
       '手机布局': '布局 适配 模式',
-      '离线消息提醒': '通知 推送 通知提醒 新消息',
+      '离线消息提醒': '通知 推送 通知提醒 新消息 安卓 电脑 主屏幕 iPhone Chrome Edge',
       '使用说明': '教程 帮助 常见问题 安装',
       '导出数据': '备份 保存 导出',
       '导入数据': '恢复 还原 迁移 换机',
+      '修改摸鱼天数': '恢复 找回 补回 归零 重来 已摸鱼',
       '设备兼容诊断': '诊断 兼容 报错 环境',
-      '顶部避让修正': '安全区 白带 重叠 刘海',
+      '顶部避让修正': '安全区 白带 重叠 刘海 添加到主屏幕 独立应用 电脑',
       '屏幕适配诊断': '适配 屏幕 空白 裁切',
+      '屏幕适配微调': '微调 字号 文字大小 放大 变小 偏移 遮挡 裁切 留白 白带 状态栏 手势条 屏幕错位 位置',
       '功能诊断': '检测 测试',
       '查看存储': '空间 清理 占用',
       '压缩图片': '图片 瘦身',
@@ -2452,8 +3340,8 @@ try {
       '联系人 / 桌面': 'lxrzm', '开启群聊': 'kqql', '跨桌面查岗': 'kzmcg', '查岗频率': 'cgpl', '打电话': 'dh',
       '深色模式': 'ssms', '手机桌面美化': 'sjzmmh', '回复设置': 'hfsz', '通话设置': 'thsz', '音效设置': 'yxsz',
       '功能大全': 'gndq', '应用锁': 'yys', '开屏问答门': 'kpwdm', '手机布局': 'sjbj', '离线消息提醒': 'lxxtx',
-      '使用说明': 'sysm', '导出数据': 'dcsj', '导入数据': 'drsj', '设备兼容诊断': 'sbjrzd', '顶部避让修正': 'dbbrxz',
-      '屏幕适配诊断': 'pmspzd', '功能诊断': 'gnzd', '查看存储': 'ckcc', '压缩图片': 'ystp', '卡顿自检': 'kdzj',
+      '使用说明': 'sysm', '导出数据': 'dcsj', '导入数据': 'drsj', '修改摸鱼天数': 'xgmyts', '设备兼容诊断': 'sbjrzd', '顶部避让修正': 'dbbrxz',
+      '屏幕适配诊断': 'pmspzd', '屏幕适配微调': 'pmspwt', '功能诊断': 'gnzd', '查看存储': 'ckcc', '压缩图片': 'ystp', '卡顿自检': 'kdzj',
       '字卡使用状态自检': 'zksyztzj', '清除本地数据': 'qcbdsj', '新手引导': 'xsyd', '功能介绍': 'gnjs'
     };
     // 行搜索素材 = 标题 + .sub 说明 + 分区名 + settings-help 说明文案（#573）+ 命中 key 的别名/拼音；
@@ -2540,6 +3428,31 @@ try {
     chip.style.background = color;
   }
 
+  // #1516：小组件背景色板提到模块级——设置页全局行与装修模式「组件颜色」（单组件/应用到全部）
+  // 共用同一份，改色板只改一处
+  const WIDGET_BG_SWATCHES = [
+    { color: '#ffffff', label: '默认白' },
+    { color: '#f5f0eb', label: '暖米白' },
+    { color: '#fff0f0', label: '樱花粉' },
+    { color: '#f0f4ff', label: '雾霭蓝' },
+    { color: '#f0fff0', label: '薄荷绿' },
+    { color: '#fff5e6', label: '奶油黄' },
+    { color: '#f5e6ff', label: '淡紫' },
+    { color: '#fff0e0', label: '暖橘' },
+    { color: '#e6f7f5', label: '薄青' },
+    { color: '#fff8dc', label: '米黄' },
+    { color: '#fce4ec', label: '粉桃' },
+    { color: '#e8eaf6', label: '淡靛' },
+    { color: '#f1f8e9', label: '嫩绿' },
+    { color: '#fafafa', label: '银灰' },
+    { color: '#f0f0f0', label: '浅灰' },
+    { color: '#d4d4d4', label: '中灰' },
+    { color: '#111111', label: '深黑' },
+    { color: '#e8b4b8', label: '玫瑰' },
+    { color: '#b8d4e8', label: '天蓝' },
+    { color: '#c8e6c9', label: '森绿' },
+  ];
+
   // 小组件颜色：点击色板选择，CSS 变量 --widget-bg 实时生效
   const widgetColorRow = document.getElementById('row-widget-color');
   const widgetColorVal = document.getElementById('widget-color-val');
@@ -2558,29 +3471,7 @@ try {
     widgetColorRow.addEventListener('click', () => {
       if (!window.openModal) return;
       const current = store.get('widget-bg-color') || '#ffffff';
-      // v3.6.x：20 色板（覆盖黑白灰 + 8 个常用色相浅色 + 8 个深/中色）——告别"阉割版"
-      const swatchList = [
-        { color: '#ffffff', label: '默认白' },
-        { color: '#f5f0eb', label: '暖米白' },
-        { color: '#fff0f0', label: '樱花粉' },
-        { color: '#f0f4ff', label: '雾霭蓝' },
-        { color: '#f0fff0', label: '薄荷绿' },
-        { color: '#fff5e6', label: '奶油黄' },
-        { color: '#f5e6ff', label: '淡紫' },
-        { color: '#fff0e0', label: '暖橘' },
-        { color: '#e6f7f5', label: '薄青' },
-        { color: '#fff8dc', label: '米黄' },
-        { color: '#fce4ec', label: '粉桃' },
-        { color: '#e8eaf6', label: '淡靛' },
-        { color: '#f1f8e9', label: '嫩绿' },
-        { color: '#fafafa', label: '银灰' },
-        { color: '#f0f0f0', label: '浅灰' },
-        { color: '#d4d4d4', label: '中灰' },
-        { color: '#111111', label: '深黑' },
-        { color: '#e8b4b8', label: '玫瑰' },
-        { color: '#b8d4e8', label: '天蓝' },
-        { color: '#c8e6c9', label: '森绿' },
-      ];
+      const swatchList = WIDGET_BG_SWATCHES;
       window.openModal('小组件颜色', '', (v) => {
         // v 可能是色板下标（number）或自定义色值（#hex 字符串）
         const color = (typeof v === 'number' && swatchList[v]) ? swatchList[v].color : v;
@@ -2980,17 +3871,15 @@ try {
   const bgBlurRow = document.getElementById('row-bg-blur');
   const bgBlurVal = document.getElementById('bg-blur-val');
   const getBgBlur = () => { const v = store.get('bg-blur'); if (v) { const n = parseInt(v, 10); if (!isNaN(n)) return Math.max(0, Math.min(20, n)); } return 0; };
-  const setBgBlurClass = (px) => {
-    // FIX 2026-09-07 #240：模糊改画在壁纸常驻图层自身（.desk-blur-on 挂 .phone，
-    // 见 home.css 同日注）——原 .phone-bg-mask.blur-on 的 backdrop-filter 在
-    // 小米15Pro/Chrome 151 真机上采样不生效（#219 提层后仍无感），不再挂。
-    const ph = document.querySelector('.phone');
-    if (ph) ph.classList.toggle('desk-blur-on', px > 0);
-  };
+  // #1161：本函数不再是「挂/摘全屏 filter」的开关——那条路是滑动闪失的根。
+  // 现在只记录半径并交给 deskBlurSchedule：能烘纹理就走已烘好的小纹理（运行时零
+  // filter）；不能烘（预设/失败）时由 deskBlurRender 兜底切 .desk-blur-on 旧滤镜。
+  // --desk-bg-blur 仍要写：home.css 的 #240/#976 规则只在回退路径消费它。
   const applyBgBlur = (px) => {
+    deskBlurPx = px;
     document.documentElement.style.setProperty('--desk-bg-blur', px + 'px');
-    setBgBlurClass(px);
     if (bgBlurVal) bgBlurVal.textContent = px === 0 ? '关闭' : px + 'px';
+    deskBlurSchedule();
   };
   applyBgBlur(getBgBlur());
   if (bgBlurRow) {
@@ -3139,11 +4028,19 @@ try {
     'widget-opacity', 'ico-radius', 'ico-shape',
     'widget-bg-color', 'widget-border-color', 'widget-btn-color', 'widget-btn-text-color', 'widget-heart-color',
     'app-name-color',
+    // #769：底部导航栏样式键（图片本体 tab-icon-<page> 为动态键，在 collectBeauty 单独收集）
+    'tabbar-bg-op', 'tabbar-whole-op', 'tabbar-bg-color', 'tabbar-radius', 'tabbar-blur', 'tabbar-icon-size',
+    'tab-icon-opacity',
     'desk-layout', 'desk-page-count',
     'desk-images', 'desk-texts', 'desk-countdowns',
   ];
   ['deco','quote','fish','checkin','music','memo','mood','week','weekend'].forEach(function(t) {
     BEAUTY_KEYS.push('card-bg-' + t, 'card-bg-mask-' + t);
+  });
+  // #1516：组件独立背景颜色随方案走；顺带补登记 widget-opacity-<type>（独立透明度批漏登记＝
+  // 此前不随方案导入导出、「恢复全部默认」也清不掉）
+  ['deco','quote','fish','checkin','music','memo','mood','week','weekend','desk-period','desk-clock','desk-calendar','desk-timer','desk-anniv'].forEach(function(t) {
+    BEAUTY_KEYS.push('widget-bg-' + t, 'widget-opacity-' + t);
   });
   for (var _i = 0; _i < 5; _i++) BEAUTY_KEYS.push('page-bg-' + _i);
   // v3.26.x：文字部位颜色（widget-text-<type>-<key>）随美化方案导入导出
@@ -3176,6 +4073,11 @@ try {
         const k = 'app-icon-order-' + grid.dataset.app;
         const v = store.get(k);
         if (v) data[k] = v;
+      });
+      // #769：底部栏按钮图片（动态键，同 app-icon-* 口径；样式键与图片透明度已在 BEAUTY_KEYS）
+      TABBAR_PAGES.forEach(pk => {
+        const v = store.get('tab-icon-' + pk);
+        if (v) data['tab-icon-' + pk] = v;
       });
     } catch (e) {}
     // 动态键：图片组件本体（desk-image-src-<id> 只进 IDB+内存缓存，此前不导出 → 导入后空壳）
@@ -3277,12 +4179,13 @@ try {
       if (scope === 'all') return true;
       if (scope === 'color') return SCOPE_COLOR_KEYS.indexOf(k) >= 0 || k === '__accent__' || k === '__theme__';
       if (scope === 'bg') return SCOPE_BG_KEYS.indexOf(k) >= 0 || /^page-bg-/.test(k);
-      if (scope === 'layout') return SCOPE_LAYOUT_KEYS.indexOf(k) >= 0 || k.indexOf('app-icon-') === 0 || k.indexOf('desk-image-src-') === 0 || k === 'hidden-icons';
+      if (scope === 'layout') return SCOPE_LAYOUT_KEYS.indexOf(k) >= 0 || k.indexOf('app-icon-') === 0 || k.indexOf('desk-image-src-') === 0 || k.indexOf('tab-icon-') === 0 || k === 'hidden-icons';
       return true;
     };
     BEAUTY_KEYS.forEach(k => { if (data[k] !== undefined && allow(k)) { store.set(k, data[k]); n++; } });
     Object.keys(data).forEach(k => {
-      if ((k.indexOf('app-icon-') === 0 || k.indexOf('desk-image-src-') === 0) && data[k] !== undefined && allow(k)) {
+      // #769：tab-icon- 为底部栏按钮图片动态键（BEAUTY_KEYS 只列静态样式键）
+      if ((k.indexOf('app-icon-') === 0 || k.indexOf('desk-image-src-') === 0 || k.indexOf('tab-icon-') === 0) && data[k] !== undefined && allow(k)) {
         store.set(k, data[k]); n++;
       }
     });
@@ -3396,9 +4299,9 @@ try {
                 list = list.filter(s => !(s && drop.has(s.time) && typeof s.name === 'string' && s.name.indexOf('导入前备份') === 0));
               }
               list.push({ name, time: Date.now(), data: cur });
-              saveSchemesList(list);
-              // 读回校验：写入被静默吞掉时不再谎报成功
-              const back = getSchemes();
+              const wroteBackup = saveSchemesList(list);
+              // 读回校验：写入被静默吞掉时不再谎报成功（#1342h：被「未确认读空」闸拦下时同样不写）
+              const back = wroteBackup ? getSchemes() : [];
               const saved = back.some(s => s && s.name === name);
               if (saved) { backupName = name; toast('已自动保存原美化 → 方案「' + name + '」'); }
               else { toast('原美化备份失败（可能存储空间不足），建议先导出备份再导入'); }
@@ -3428,7 +4331,18 @@ try {
   const getSchemes = () => {
     try { const a = JSON.parse(gStore.get(SCHEMES_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
   };
-  const saveSchemesList = (arr) => { try { gStore.set(SCHEMES_KEY, JSON.stringify(arr)); } catch (e) {} };
+  // FIX 2026-09-27 #1342h：整本方案账写回前先问数据层「这一格刚才那次读空，问过库了吗」。
+  // 这一本账（xy-home-v2:beauty-schemes）是 IDB-only 大键：切后台释放大键内存副本（#1195e）或启动
+  // 回填超预算挂起（#975）之后，getSchemes() 从同步读口拿到的是一份空账，而「保存当前为方案」做的
+  // 正是读-改-写——库里那几本会被这一格空账整本顶掉（iPhone／iOS 16.6 实报「美化方案无法保存，
+  // 重新刷新过后数据会被清除」的形状）。闸与文案在数据层那一份（idb.js #1342i），这里只负责不谎报成功。
+  const schemesWriteBlocked = (store, key, what) => {
+    try { return !!(window.xyBigWriteBlocked && window.xyBigWriteBlocked(store, key, what)); } catch (e) { return false; }
+  };
+  const saveSchemesList = (arr) => {
+    if (schemesWriteBlocked(gStore, SCHEMES_KEY, '美化方案')) return false;
+    try { gStore.set(SCHEMES_KEY, JSON.stringify(arr)); return true; } catch (e) { return false; }
+  };
   // v3.27.x：内置美化方案库（只读，绝不写用户 beauty-schemes）——开箱即用，降低首次上手成本
   // 应用走 applyBeautyData（与用户方案同链路），用户主动点才覆盖当前桌面；不污染用户已保存方案
   const BUILTIN_SCHEMES = [
@@ -3531,7 +4445,7 @@ try {
       if (!name) { inp.style.borderColor = '#e05a5a'; return; }
       const list = getSchemes();
       list.push({ name, time: Date.now(), data });
-      saveSchemesList(list);
+      if (!saveSchemesList(list)) return;   // #1342h：没读全这一本账时不写、也不谎报「已保存」
       x.style.display = 'none'; x.hidden = true;
       toast('已保存方案「' + name + '」，所有桌面通用');
       const m = document.getElementById('beauty-scheme-manager');
@@ -3586,7 +4500,7 @@ try {
       if (v !== 'ok') return;
       const list = getSchemes();
       list.splice(idx, 1);
-      saveSchemesList(list);
+      if (!saveSchemesList(list)) return;   // #1342h
       toast('已删除方案');
       window.openBeautySchemes();
     }, { noInput: true, pillSubmit: true, staticText: '删除后不可恢复', pills: [{ label: '删除', value: 'ok' }] });
@@ -3601,7 +4515,7 @@ try {
     head.innerHTML = '<div style="font-size:16px;font-weight:600;margin-bottom:4px">美化方案</div><div style="font-size:12px;color:var(--muted,#888);margin-bottom:12px">方案在所有联系人桌面通用，点「应用」一键切换当前桌面外观</div>';
     box.appendChild(head);
     const list = document.createElement('div'); list.className = 'cm-list';
-    list.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin-bottom:12px;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;flex:1;min-height:0';
+    list.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin-bottom:12px;overflow-y:auto;overflow-x:hidden;flex:1;min-height:0';
     const schemes = getSchemes();
     // v3.27.x：内置方案置顶（只读，不可改名/删除）——开箱即用，应用走 applyBeautyData
     BUILTIN_SCHEMES.forEach((s) => {
@@ -3716,6 +4630,8 @@ try {
             store.remove('app-icon-pos-y-' + k);
           });
           document.querySelectorAll('.app-grid').forEach(g => { if (g.dataset.app) store.remove('app-icon-order-' + g.dataset.app); });
+          // #769：底部栏按钮图片一并清掉（样式键在 BEAUTY_KEYS 里已被上面 forEach 覆盖）
+          TABBAR_PAGES.forEach(pk => store.remove('tab-icon-' + pk));
           try { localStorage.removeItem('xy-home-v2:accent-color'); } catch (e) {}
           try { localStorage.removeItem('xy-home-v2:theme-mode'); } catch (e) {}
         } catch (e) {}
@@ -3735,18 +4651,31 @@ try {
   // JSON.parse 抛错被最外层 catch 吞掉，连失败提示都没有。用户设了自定义壁纸就发不出去。
   // 现在：链接只带「配色/尺寸/圆角/内置壁纸预设」等小体积项；带图壁纸不进链接（数据太大），
   // 生成时如实告知走「导出文件」。另对最终 URL 长度设硬上限，超限就明确报错、不静默生成坏链接。
-  const SHARE_URL_MAX = 60000;
+  // #602 优化：硬上限从 60000 收到 16000。分享链接的 fragment 不会发给服务器，浏览器本身能吃很长，
+  // 真正的风险是聊天软件/复制过程把长链接截断——截断后对方拿到坏链接（以前是静默失败，现已在接收端
+  // 明确报「链接不完整」）。16000 足以覆盖几乎所有真实美化数据，又大幅远离易被截断的区间。
+  const SHARE_URL_MAX = 16000;
+  // 超过这个长度就提示「可能被截断」，但仍允许生成（数据本身完整）
+  const SHARE_URL_WARN = 4000;
   const isBeautyImageKey = (k) => /^(phone-bg|page-bg-|card-bg-|desk-image-src-|phone-bg-item-)/.test(k);
   const shareBeautyLink = () => {
     try {
+      // #602：本地文件方式（file:// / 其它非 http(s)）打开的页面，生成的链接对方打不开
+      //（origin 会是 "null"，路径也只是本机绝对路径）。直接引导走文件导出，不生成坏链接。
+      if (!/^https?:$/.test(location.protocol)) {
+        toast('当前以本地文件方式打开，生成的链接对方打不开。请改用「导出美化方案」把方案文件发给对方');
+        return;
+      }
       const full = collectBeautyFull();
       const data = {};
-      let stripped = 0;
       Object.keys(full).forEach(k => {
+        // #602：分享链接不带主题——主题归设置页管，导入不该把对方的深/浅色改掉
+        if (k === '__theme__') return;
         // 大图（dataURL / 图片键）不带进链接；色值、百分比、预设名等小项照常带
         const v = full[k];
         const bigImg = typeof v === 'string' && v.indexOf('data:') === 0;
-        if (bigImg || (isBeautyImageKey(k) && typeof v === 'string' && v.length > 2048)) { stripped++; return; }
+        // #602：图片组件清单 desk-images 必须跟图片本体一起剔除，否则对方导入后会得到一排空壳组件
+        if (k === 'desk-images' || bigImg || (isBeautyImageKey(k) && typeof v === 'string' && v.length > 2048)) { return; }
         data[k] = v;
       });
       let json = JSON.stringify(data);
@@ -3757,44 +4686,106 @@ try {
         toast('这份美化太大，无法生成分享链接，请改用「导出美化方案」发文件');
         return;
       }
-      const note = stripped
-        ? '分享链接已复制（不含 ' + stripped + ' 项图片/壁纸，对方导入后需自行设置壁纸）'
-        : '分享链接已复制，发给对方打开即可导入';
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(url).then(() => toast(note)).catch(() => { if (window.openModal) window.openModal('分享链接', url, () => {}, { staticText: stripped ? '请手动复制下方链接发给对方（不含壁纸图片，对方导入后需自行设置壁纸）' : '请手动复制下方链接发给对方', noInput: true }); });
-      } else if (window.openModal) { window.openModal('分享链接', url, () => {}, { staticText: stripped ? '请手动复制下方链接发给对方（不含壁纸图片，对方导入后需自行设置壁纸）' : '请手动复制下方链接发给对方，对方打开会自动弹导入提示', noInput: true }); }
-      else { toast('已生成链接（见控制台）'); try { console.log(url); } catch (e) {} }
+      // #602：链接只同步配色/尺寸等小项——不含图片（含图片组件），也不改对方主题，提示如实说明
+      // 设置行副标题/功能介绍页已有完整说明，toast 只给最要紧的两句，避免手机上过长被截断
+      const scopeNote = '只同步配色/尺寸/圆角/内置壁纸/布局等小项，不含图片，也不改对方深色模式';
+      const longNote = url.length > SHARE_URL_WARN ? '；链接较长，个别聊天软件可能截断，若对方提示链接损坏请改用「导出美化方案」发文件' : '';
+      const note = '分享链接已复制，发给对方打开即可导入（不含图片，也不改对方深色模式）' + longNote;
+      // #602 优化：复制优先走 execCommand（无权限体系、不弹系统授权；部分安卓 WebView 上
+      // navigator.clipboard.writeText 会拒绝甚至 Promise 悬空），失败再回退 clipboard API 并加 1.2s 超时。
+      // 两条都失败时弹窗展示链接本体供长按复制——原实现给 openModal 传了 noInput:true，input 被隐藏，
+      // 弹窗里根本没有链接可复制（提示「请手动复制下方链接」却看不到链接）。
+      const copyFrom = (text) => new Promise((resolve) => {
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = text; ta.setAttribute('readonly', '');
+          ta.style.cssText = 'position:fixed;left:-9999px;top:0;width:10px;height:10px;opacity:0;';
+          document.body.appendChild(ta);
+          try { ta.select(); } catch (e) {}
+          let ok = false;
+          try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+          setTimeout(() => { try { document.body.removeChild(ta); } catch (e) {} }, 800);
+          if (ok) { resolve(true); return; }
+        } catch (e) {}
+        let done = false;
+        const fin = (v) => { if (done) return; done = true; resolve(v); };
+        try { setTimeout(() => fin(false), 1200); } catch (e) {}
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => fin(true), () => fin(false));
+          else fin(false);
+        } catch (e) { fin(false); }
+      });
+      const showShareLink = () => {
+        if (!window.openModal) { toast('已生成链接（见控制台）'); try { console.log(url); } catch (e) {} return; }
+        window.openModal('分享链接', '', () => {}, {
+          noInput: true,
+          staticText: '自动复制未成功，请长按下面的链接复制后发给对方：\n\n' + url + '\n\n' + scopeNote + longNote,
+          copyBtn: { label: '复制链接', fn: function () { copyFrom(url).then((ok) => toast(ok ? '已复制到剪贴板' : '复制失败，请长按上面链接手动复制')); } }
+        });
+      };
+      copyFrom(url).then((ok) => { if (ok) toast(note); else showShareLink(); });
     } catch (e) { toast('生成链接失败：' + ((e && e.message) || '未知原因')); }
   };
   const beautyShareRow = document.getElementById('row-beauty-share');
   if (beautyShareRow) beautyShareRow.addEventListener('click', shareBeautyLink);
   // 启动读 hash 自动弹导入分享方案
-  try {
-    if (location.hash && location.hash.indexOf('#beauty=') === 0) {
-      const b64 = location.hash.slice(7);
-      const json = decodeURIComponent(escape(atob(b64)));
-      const data = JSON.parse(json);
-      if (window.openModal && typeof data === 'object' && data) {
-        // FIX 2026-09-15 #527：分享链接同样做用途校验 + 命中项数为 0 时不覆盖
-        if (beautyKindMismatch(data)) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} return; }
-        const shareHit = recognizeBeauty(data);
-        if (!shareHit) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} return; }
-        const ctl = window.openModal('导入分享的美化方案？', '', (v) => {
-          if (v !== 'ok') { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} return; }
-          try { pushBeautyUndo(); } catch (e) {}
-          const applied = applyBeautyData(data, 'all');
-          try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
-          toast('已导入 ' + applied + ' 项，刷新生效');
-          reloadAfterBeautyWrite();
-        }, { noInput: true, pillSubmit: true, staticText: '从分享链接导入美化方案，将覆盖当前桌面美化', pills: [{ label: '导入', value: 'ok' }] });
-        if (ctl && ctl.pills) ctl.pills([{ label: '导入', value: 'ok' }], 'ok');
-      }
+  // FIX 2026-09-16 #602：整段包进独立函数——原 return 会穿透到 personalize 外层 IIFE，
+  // 遇到「用途不符 / 命中 0 项」的 #beauty= 链接时，其后所有初始化（主题开关绑定、预览浮条、
+  // 页签、引导等）会被整段跳过，桌面美化相关功能集体不工作。包一层后 return 只结束本段。
+  (function handleSharedBeauty() {
+    if (!location.hash || location.hash.indexOf('#beauty=') !== 0) return;
+    const cleanHash = () => { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} };
+    let data = null;
+    try {
+      // #602 加固：先做一次 percent 解码，兼容个别客户端把片段里的 + 编码成 %2B 导致 atob 崩
+      const b64 = decodeURIComponent(location.hash.slice(8)).replace(/-/g, '+').replace(/_/g, '/');
+      data = JSON.parse(decodeURIComponent(escape(atob(b64))));
+    } catch (e) {
+      // #602：解不出来不再静默——最常见是链接被聊天软件/复制截断。明确告知并给出「导出文件」正路。
+      cleanHash();
+      const msg = '这条分享链接不完整或已损坏（多半被聊天软件截断了）。请让 TA 用「导出美化方案」把方案文件发给你，或重新发送完整链接。';
+      if (window.openModal) window.openModal('分享链接无法读取', '', () => {}, { noInput: true, pillSubmit: true, staticText: msg, pills: [{ label: '知道了', value: 'ok' }] });
+      else toast(msg);
+      return;
     }
-  } catch (e) {}
+    // #602：分享链接不应用主题——即使旧链接/手改链接带了 __theme__ 也丢掉，避免悄悄改对方明暗
+    if (data && typeof data === 'object') delete data['__theme__'];
+    if (!window.openModal || typeof data !== 'object' || !data) return;
+    // FIX 2026-09-15 #527：分享链接同样做用途校验 + 命中项数为 0 时不覆盖
+    if (beautyKindMismatch(data)) { cleanHash(); return; }
+    const shareHit = recognizeBeauty(data);
+    if (!shareHit) { cleanHash(); toast('这条链接里没有可导入的桌面美化项'); return; }
+    // #602：启动弹窗优先级——openModal 全站唯一、后开的覆盖先开的。延迟到「开屏收起 + 800ms 内
+    // 没有任何弹窗」才弹导入提示，避免被首启引导 / 备份提醒等启动弹窗顶掉；30s 兜底防永不出现。
+    let opened = false;
+    const openImport = () => {
+      if (opened) return; opened = true;
+      const ctl = window.openModal('导入分享的美化方案？', '', (v) => {
+        if (v !== 'ok') { cleanHash(); return; }
+        try { pushBeautyUndo(); } catch (e) {}
+        const applied = applyBeautyData(data, 'all');
+        cleanHash();
+        toast('已导入 ' + applied + ' 项，刷新生效');
+        reloadAfterBeautyWrite();
+      }, { noInput: true, pillSubmit: true, staticText: '从分享链接导入美化方案，将覆盖当前桌面美化（不含图片，也不会改动深色模式）', pills: [{ label: '导入', value: 'ok' }] });
+      if (ctl && ctl.pills) ctl.pills([{ label: '导入', value: 'ok' }], 'ok');
+    };
+    let quietMs = 0;
+    const timer = setInterval(() => {
+      if (opened) { clearInterval(timer); return; }
+      const splash = document.getElementById('splash');
+      const splashGone = !splash || splash.classList.contains('hide') || splash.hidden;
+      const mask = document.getElementById('modal-mask');
+      const modalOpen = !!(mask && !mask.hidden);
+      if (splashGone && !modalOpen) { quietMs += 250; if (quietMs >= 800) { clearInterval(timer); openImport(); } }
+      else quietMs = 0;
+    }, 250);
+    setTimeout(() => { try { clearInterval(timer); openImport(); } catch (e) {} }, 30000);
+  })();
   // v3.27.x：完整外观方案（项9）——桌面+聊天美化合并保存/应用，跨域用 window.collectChatBeauty/applyChatBeautyData
   const FULL_SCHEMES_KEY = 'full-beauty-schemes';
   const getFullSchemes = () => { try { const a = JSON.parse(gStore.get(FULL_SCHEMES_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
-  const saveFullSchemesList = (arr) => { try { gStore.set(FULL_SCHEMES_KEY, JSON.stringify(arr)); } catch (e) {} };
+  const saveFullSchemesList = (arr) => { if (schemesWriteBlocked(gStore, FULL_SCHEMES_KEY, '完整外观方案')) return false; try { gStore.set(FULL_SCHEMES_KEY, JSON.stringify(arr)); return true; } catch (e) { return false; } };
   const collectFullBeauty = () => { const data = { desk: collectBeautyFull() }; try { if (window.collectChatBeauty) data.chat = window.collectChatBeauty(); } catch (e) {} return data; };
   const applyFullBeautyData = (data) => { try { applyBeautyData(data.desk || {}, 'all'); } catch (e) {} try { if (window.applyChatBeautyData && data.chat) window.applyChatBeautyData(data.chat); } catch (e) {} };
   const openFullBeautySchemes = () => {
@@ -3827,7 +4818,7 @@ try {
         if (ctl && ctl.pills) ctl.pills([{ label: '应用', value: 'ok' }], 'ok');
       });
       const del = document.createElement('button'); del.textContent = '删除'; del.style.cssText = 'font-size:12px;padding:4px 10px;border:1px solid rgba(163,45,45,.35);border-radius:8px;background:var(--danger-soft,#fff5f5);color:var(--danger-ink,#a32d2d)';
-      del.addEventListener('click', () => { const l2 = getFullSchemes(); l2.splice(i, 1); saveFullSchemesList(l2); toast('已删除'); openFullBeautySchemes(); });
+      del.addEventListener('click', () => { const l2 = getFullSchemes(); l2.splice(i, 1); if (!saveFullSchemesList(l2)) return; toast('已删除'); openFullBeautySchemes(); });
       btns.appendChild(apply); btns.appendChild(del); row.appendChild(btns); list.appendChild(row);
     });
     box.appendChild(list);
@@ -3836,7 +4827,7 @@ try {
       if (!window.openModal) return;
       const ctl = window.openModal('保存完整方案', '', (name) => {
         name = (name || '').trim(); if (!name) { ctl.hint('名称不能为空'); ctl.stay(); return; }
-        const l2 = getFullSchemes(); l2.push({ name, time: Date.now(), data: collectFullBeauty() }); saveFullSchemesList(l2);
+        const l2 = getFullSchemes(); l2.push({ name, time: Date.now(), data: collectFullBeauty() }); if (!saveFullSchemesList(l2)) { ctl.stay(); return; }
         toast('已保存完整方案「' + name + '」'); openFullBeautySchemes();
       }, { maxlength: 20, placeholder: '例如：情侣粉全套' });
     });
@@ -3886,7 +4877,8 @@ try {
     const ctl = window.openModal('编辑方案名称', s.name, (name) => {
       name = (name || '').trim();
       if (!name) { ctl.hint('名称不能为空'); ctl.stay(); return; }
-      s.name = name; saveSchemesList(list); toast('已重命名');
+      s.name = name; if (!saveSchemesList(list)) { ctl.stay(); return; }   // #1342h：没读全这账就不整本写回
+      toast('已重命名');
       window.openBeautySchemes();
     }, { maxlength: 20, placeholder: '输入方案名称' });
   }
@@ -3942,7 +4934,106 @@ try {
     show(tabs[0] ? tabs[0].dataset.tab : 'basic');
   })();
 
-  // ===== 设置 → 工具：使用说明页导航 + 页内搜索（#row-guide → #page-guide；说明内容静态在 template.html） =====
+  // ===== 设置页「本机能不能用」标记（v8.29 #978）：按真实前提标记，不按手机系统 =====
+  // 沿革：用户先问「设置里好多 iOS / 安卓专属功能，要不要单独分一类」→ 结论不分类、改行级标记
+  // （#964）；随后用户指出两处静态胶囊都误导——「后台通知」行右的「仅安卓」与「顶部避让修正」
+  // 行的「仅 iPhone」。实测三条胶囊的真实前提没有一条是「手机系统」：
+  //   后台通知   = Chromium 内核 + https + 通知权限（电脑版 Chrome / Edge 同样可用；而小米 /
+  //                vivo / OPPO 自带、UC、夸克、Via 这些安卓壳本机没有 Notification 对象）
+  //   离线消息提醒 = Chromium 内核（PeriodicSyncManager）+ 添加到主屏幕（电脑版 Chrome 也可以）
+  //   顶部避让修正 = 添加到主屏幕的独立应用形态 + 用户自己声明形态（执行器 forceCover 的
+  //                standalone 就是 ios-pwa-standalone 类，只在 iOS 独立应用形态加；iPhone 用
+  //                Safari 直接打开时这个开关是空的，开了不生效）
+  // 静态胶囊把「平台」当成门槛，两个方向都错：桌面 Chromium 用户被「仅安卓」劝退（其实能用），
+  // iPhone 浏览器形态用户被「仅 iPhone」叫去开一个空开关。故撤掉静态胶囊，改为按本机实测条件
+  // 标记：不满足条件才变灰 + 给替代入口，满足条件不加任何标记。判定保守口径不变（判定不明 /
+  // 桌面 / UA 伪装一律不误伤），且只变灰、绝不 disabled 开关——识别失手的用户必须仍能点到
+  // 唯一能修好自己问题的开关。
+  (function initUseMark() {
+    const page = document.getElementById('page-setting');
+    if (!page) return;
+    const d = window.mochiDevice || {};
+    const isIOS = function () { return d.isIOS === true; };
+    // 本机有没有网页通知能力（Chromium 只在 https / localhost 才暴露 Notification 对象）
+    const hasNotify = function () { try { return 'Notification' in window; } catch (e) { return false; } };
+    // 是不是「添加到主屏幕后的独立应用形态」——与 fullscreen.js 加 ios-pwa-standalone 类同口径
+    // （fullscreen.js 在 personalize.js 之后加载，故先读类、读不到再按同式自算）
+    const isIosStandalone = function () {
+      if (!isIOS()) return false;
+      if (document.documentElement.classList.contains('ios-pwa-standalone')) return true;
+      try {
+        return navigator.standalone === true ||
+          !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+      } catch (e) { return false; }
+    };
+    // 每行一个判定器：返回 null＝本机可用（不加任何标记）；返回 { text, go? }＝本机用不了，
+    // 变灰 + 替代指引。key 取该行开关 input 的 id。
+    const RULES = [
+      { input: 'bg-notify', off: function () {
+        // FIX 2026-09-29 #1391：判据顺序倒回来——先问本机有没有 Notification 对象，再按平台挑指路。
+        //   原写法把 isIOS() 排在 hasNotify() 前面，等于任何 iPhone 一律标「本机用不了」，连主屏幕
+        //   应用形态里 API 在场、权限 granted、通知确实走过 sw 通道的那台也被盖掉（iPhone 16 Plus／
+        //   iOS 18.7 报障单【保活现场】那两行就是本机自证）。#986d 当年钉的正是「门槛是通知能力、
+        //   不是手机系统」——针还绿着、语义被插在它前面的一行机型分支顶掉了，这条针换写法重锚。
+        if (hasNotify()) return null; // 能力在场＝本机可用，不加任何标记（iPhone 从桌面图标打开走的这一支）
+        if (isIOS()) return { text: '本机是 iPhone / iPad 的 Safari 标签页：没有网页通知能力。到 Safari「添加到主屏幕」，之后从桌面图标打开本站再回来开这个开关；期间可先用应用内横幅「桌面消息弹窗」。', go: '#desk-msg-en', goText: '去开启' };
+        return { text: '本机浏览器没有通知能力（小米 / vivo / OPPO 等自带浏览器、UC、夸克常见如此）：请改用 Chrome / Edge 打开本站，安卓或电脑都行。' };
+      } },
+      { input: 'safe-top-force', off: function () {
+        if (isIosStandalone()) return null; // 本机就是它要修的形态
+        if (isIOS()) return { text: '本项只在「添加到主屏幕」后打开（独立应用形态）才生效：浏览器里直接打开时开关无效果，顶部遮挡 / 底部裁切请用「屏幕适配微调」。', go: '#row-screen-adj', goText: '去调整' };
+        return { text: '本项只修 iPhone / iPad 独立应用形态的顶部避让（安卓没有这个形态）：安卓要调顶部遮挡 / 底部裁切请用「屏幕适配微调」。', go: '#row-screen-adj', goText: '去调整' };
+      } }
+    ];
+    function jumpTo(sel) {
+      const target = document.querySelector(sel);
+      if (!target) return;
+      const row = (target.closest && target.closest('.set-row, .gs-row')) || target;
+      // 搜索态下目标行可能正被过滤隐藏：先清空搜索框（回到原分区），再切 tag + 滚到现场
+      const si = document.getElementById('set-search-input');
+      if (si && si.value) {
+        si.value = '';
+        try { si.dispatchEvent(new Event('input')); } catch (e) {}
+      }
+      const sec = row.closest ? row.closest('.them-sec') : null;
+      if (sec && sec.hidden) {
+        const tab = document.querySelector('#set-tabs .them-tab[data-tab="' + (sec.dataset.sec || '') + '"]');
+        if (tab) tab.click();
+      }
+      try { row.scrollIntoView({ block: 'center' }); } catch (e) {}
+      row.classList.add('plat-flash');
+      setTimeout(function () { row.classList.remove('plat-flash'); }, 1500);
+    }
+    RULES.forEach(function (rule) {
+      const inp = document.getElementById(rule.input);
+      if (!inp) return;
+      const row = inp.closest('.set-row, .gs-row');
+      if (!row) return;
+      let alt = null;
+      try { alt = rule.off(); } catch (e) { alt = null; }
+      if (!alt) return;
+      row.classList.add('plat-off');
+      const hint = document.createElement('div');
+      hint.className = 'gs-sub plat-hint';
+      hint.textContent = alt.text;
+      if (alt.go) {
+        const go = document.createElement('span');
+        go.className = 'plat-go';
+        go.setAttribute('role', 'button');
+        go.setAttribute('tabindex', '0');
+        go.textContent = alt.goText || '去设置';
+        const fire = function (e) { if (e) { e.preventDefault(); e.stopPropagation(); } jumpTo(alt.go); };
+        go.addEventListener('click', fire);
+        go.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') fire(e); });
+        hint.appendChild(go);
+      }
+      // #978：提示插在该行【紧后面】。原 #964 是插在该行下面所有 .gs-sub 说明之后——「后台通知」
+      // 那行的说明有六百多字，替代入口被压在整段说明底下，本机用不了的用户根本看不到该点哪里。
+      if (row.parentNode) row.parentNode.insertBefore(hint, row.nextSibling);
+    });
+  })();
+
+  // ===== 设置 → 关于 → 帮助与支持：使用说明页导航 + 页内搜索（#row-guide → #page-guide；说明内容静态在 template.html） =====
   (function initGuideNav() {
     const page = document.getElementById('page-guide');
     const row = document.getElementById('row-guide');
@@ -4225,24 +5316,46 @@ try {
   // ===== v3.27.x：全局字体（桌面美化快捷入口，与聊天设置「全局字体」互通同一功能） =====
   // 复用 chat-settings.js 的存储键 'cs-font' + 同款 applyFont 逻辑（@font-face 注入 / body+html font-family），
   // 两边任一改动写同一键、应用同一全局 DOM，天然互通。applyDeskCsFont 与 chat-settings 的 applyFont 都
-  // 先 remove id="cs-font-style" 再注入，幂等可重复调用。store = activeStore() 与 chat-settings 同款 per-cid。
+  // 先 remove id="cs-font-style" 再注入，幂等可重复调用。
+  // v3.26.x #628：字体按桌面各存各的（每个联系人可各自排版），面板里新增「同步到全部桌面」按钮——
+  //   用户报「上传字体，无法应用到全部桌面」，缺的就是这一步。同步实现只有一份（chat-settings.js
+  //   暴露的 window.csFontSyncAllDesks），本文件的按钮调用它，避免两处逻辑漂移。
   const deskCsFontRow = document.getElementById('row-desk-cs-font');
   const deskCsFontVal = document.getElementById('desk-cs-font-val');
   const CS_FONT_KEY = 'cs-font';
   const deskCsFontValOf = () => { try { return store.get(CS_FONT_KEY) || ''; } catch (e) { return ''; } };
-  function applyDeskCsFont() {
-    const old = document.getElementById('cs-font-style');
-    if (old) old.remove();
+  // #642：cs-font 现在存的是「轻量引用 @@font:<hash>」，真身在全局唯一下载键里——
+  //   展示/应用前先展开；blob 未就绪（大键等 IDB 回填）时按空处理，chat-settings 侧的
+  //   异步补读落地后会广播 cs-font-changed，这里跟着重渲染。
+  function deskCsFontResolved() {
     const v = deskCsFontValOf();
-    if (deskCsFontVal) deskCsFontVal.textContent = v ? (v.indexOf('data:') === 0 ? '已上传' : v) : '默认';
+    if (v.indexOf('@@font:') !== 0) return v;
+    try { return window.xyStore('xy-home-v2').get('font-blob-' + v.slice(7)) || ''; } catch (e) { return ''; }
+  }
+  // #894：keepPending=true（启动/contact-switched 路径）时，引用形态但 blob 未就绪（同步读空）
+  //   【不清除】已注入字体——弱内核补读挂起期间切桌面，旧逻辑按空值拆 @font-face＝字体应用消失；
+  //   补读落地会广播 cs-font-changed 再校正。false（广播路径）读空＝补读已终局且确认读不到
+  //   （成功落地必已回填 memoryCache 可同步读到），照常清除。
+  function applyDeskCsFont(keepPending) {
+    const v = deskCsFontResolved();
+    const raw = deskCsFontValOf();
+    if (deskCsFontVal) deskCsFontVal.textContent = raw ? ((raw.indexOf('data:') === 0 || raw.indexOf('@@font:') === 0) ? '已上传' : raw) : '默认';
+    if (!v && raw.indexOf('@@font:') === 0 && keepPending) return;
+    // 同一个值已在位就不再重注入（dataURL 字体可达 MB 级，切桌面/回填兜底都会调到这里）
+    const old = document.getElementById('cs-font-style');
+    if (old && old.__fontVal === v) return;
+    if (old) old.remove();
     if (!v) {
-      document.body.style.fontFamily = '';
-      document.documentElement.style.fontFamily = '';
+      if (document.body.style.fontFamily || document.documentElement.style.fontFamily) {
+        document.body.style.fontFamily = '';
+        document.documentElement.style.fontFamily = '';
+      }
       return;
     }
     if (v.indexOf('data:') === 0) {
       const st = document.createElement('style');
       st.id = 'cs-font-style';
+      st.__fontVal = v;
       st.textContent = '@font-face{font-family:"cs-custom-font";src:url("' + v + '");font-display:swap;}' +
         'body,html{font-family:"cs-custom-font",sans-serif !important;}';
       document.head.appendChild(st);
@@ -4253,39 +5366,53 @@ try {
     document.body.style.fontFamily = '"' + v + '",sans-serif';
     document.documentElement.style.fontFamily = '"' + v + '",sans-serif';
   }
-  applyDeskCsFont();
+  // 与聊天设置那侧互相回显（cs-font-changed 广播；本函数不广播，避免两边成环）
+  document.addEventListener('cs-font-changed', () => applyDeskCsFont(false));
+  applyDeskCsFont(true);
   if (deskCsFontRow) {
     deskCsFontRow.addEventListener('click', () => {
       if (!window.openTCPanel) return;
       const cur = deskCsFontValOf();
+      // #642：引用值（@@font:）不回填到字体名输入框（它不是字体名）
+      const curName = (cur && cur.indexOf('@@font:') === 0) ? '' : cur;
       window.openTCPanel('全局字体', '' +
-        '<div class="sm-fld"><label>上传本地字体（ttf / otf / woff / woff2），应用后全局生效</label>' +
-        '<input class="tc-input" id="cs-font-name" placeholder="也可直接输入字体名或链接，如 Microsoft YaHei"' + (cur && cur.indexOf('data:') !== 0 && cur.indexOf('http') !== 0 ? ' value="' + String(cur).replace(/"/g, '&quot;').replace(/</g, '&lt;') + '"' : '') + '></div>' +
-        '<div class="mail-actions"><button class="cc-tool" id="cs-font-upload">上传字体</button><button class="cc-tool" id="cs-font-clear">恢复默认</button><button class="cc-tool" id="cs-font-ok">应用</button></div>');
+        '<div class="sm-fld"><label>上传本地字体（ttf / otf / woff / woff2），应用后本桌面全部页面生效</label>' +
+        '<input class="tc-input" id="cs-font-name" placeholder="也可直接输入字体名或链接，如 Microsoft YaHei"' + (curName && curName.indexOf('data:') !== 0 && curName.indexOf('http') !== 0 ? ' value="' + String(curName).replace(/"/g, '&quot;').replace(/</g, '&lt;') + '"' : '') + '></div>' +
+        '<div class="mail-actions"><button class="cc-tool" id="cs-font-upload">上传字体</button><button class="cc-tool" id="cs-font-clear">恢复默认</button><button class="cc-tool" id="cs-font-ok">应用</button></div>' +
+        // #628：其它桌面也要用同一个字体时点这颗同步（走 chat-settings.js 同一份实现），不必逐个桌面重传
+        '<div class="sm-fld" style="margin-top:10px"><label>其它桌面也要用这个字体？</label>' +
+        '<button id="cs-font-sync" style="width:100%;padding:10px;border:1px solid var(--card-border,#ddd);border-radius:10px;background:var(--btn-cancel-bg,#fafafa);color:var(--ink,#111);font-size:13px">同步到全部桌面</button></div>');
       document.getElementById('cs-font-upload').addEventListener('click', () => {
-        const inp = document.createElement('input');
-        inp.type = 'file';
-        inp.accept = '.ttf,.otf,.woff,.woff2';
-        inp.onchange = () => {
-          const f = inp.files && inp.files[0];
-          if (!f) return;
+        // FIX 2026-09-18 #755：统一走 window.mochiFilePick（原实现 detached＋无 label＋accept 迟到）
+        window.mochiFilePick({
+          id: 'mochi-deskcs-font-pick', accept: '.ttf,.otf,.woff,.woff2',
+          onFiles: (files) => {
+          const f = files && files[0];
+          if (!f) { toast('没有取到字体文件，请再选一次'); return; }
           toast('正在读取字体文件…');
           const reader = new FileReader();
           reader.onload = () => {
-            store.set(CS_FONT_KEY, reader.result);
+            if (window.csFontStoreData) window.csFontStoreData(reader.result); // #642：全局唯一份 + 引用
+            else store.set(CS_FONT_KEY, reader.result);
             document.getElementById('tc-mask').hidden = true;
             applyDeskCsFont();
-            toast('字体已应用成功');
+            try { document.dispatchEvent(new Event('cs-font-changed')); } catch (e) {}
+            toast('字体已应用到本桌面');
           };
           reader.onerror = () => { toast('字体文件读取失败，请重试'); };
           reader.readAsDataURL(f);
-        };
-        inp.click();
+          }
+        });
+      });
+      document.getElementById('cs-font-sync').addEventListener('click', () => {
+        if (window.csFontSyncAllDesks) window.csFontSyncAllDesks();
+        else toast('同步入口未就绪，请稍后重试');
       });
       document.getElementById('cs-font-clear').addEventListener('click', () => {
-        store.remove(CS_FONT_KEY);
+        try { store.remove(CS_FONT_KEY); } catch (e) {}
         document.getElementById('tc-mask').hidden = true;
         applyDeskCsFont();
+        try { document.dispatchEvent(new Event('cs-font-changed')); } catch (e) {}
         toast('已恢复默认字体');
       });
       document.getElementById('cs-font-ok').addEventListener('click', () => {
@@ -4299,15 +5426,18 @@ try {
           }).then(blob => {
             const rd = new FileReader();
             rd.onload = () => {
-              store.set(CS_FONT_KEY, rd.result);
+              if (window.csFontStoreData) window.csFontStoreData(rd.result); // #642：全局唯一份 + 引用
+              else store.set(CS_FONT_KEY, rd.result);
               document.getElementById('tc-mask').hidden = true;
               applyDeskCsFont();
+              try { document.dispatchEvent(new Event('cs-font-changed')); } catch (e) {}
               toast('字体下载并应用成功');
             };
             rd.onerror = () => {
               store.set(CS_FONT_KEY, name);
               document.getElementById('tc-mask').hidden = true;
               applyDeskCsFont();
+              try { document.dispatchEvent(new Event('cs-font-changed')); } catch (e) {}
               toast('字体读取失败，已按字体名应用');
             };
             rd.readAsDataURL(blob);
@@ -4315,6 +5445,7 @@ try {
             store.set(CS_FONT_KEY, name);
             document.getElementById('tc-mask').hidden = true;
             applyDeskCsFont();
+            try { document.dispatchEvent(new Event('cs-font-changed')); } catch (e) {}
             toast('链接下载失败，已按字体名应用');
           });
           return;
@@ -4322,13 +5453,35 @@ try {
         store.set(CS_FONT_KEY, name);
         document.getElementById('tc-mask').hidden = true;
         applyDeskCsFont();
-        toast('字体已应用成功');
+        try { document.dispatchEvent(new Event('cs-font-changed')); } catch (e) {}
+        toast('字体已应用到本桌面');
       });
     });
   }
-  document.addEventListener('contact-switched', applyDeskCsFont);
+  document.addEventListener('contact-switched', () => applyDeskCsFont(true));
 
   // ===== v3.6.x：桌面字号（滑块 85~120%，默认 100%） =====
+  // FIX 2026-09-17 #707：桌面缩放类门控（单点实现，所有写值路径都要调它）——只有
+  // 「宽窗(>901px) 且非平板 且 缩放值≠1」才给 <html> 挂 desk-zoom-font / desk-zoom-card，
+  // home.css 里带这两个前缀的 zoom 声明才真正存在；其余形态（手机/平板/默认值）零
+  // zoom 声明。背景：Safari 18.2 起 WebKit 重写 zoom（标准化实现），官方自述该实现
+  // 「genuinely tricky」、26.4 仍在修其性能/继承缺陷，而 zoom:1 的声明本身就会让整个
+  // 桌面子树常年进 zoom 继承/布局路径（iOS 卡顿红线；真机 iPhone15ProMax 报「全局
+  // 滑动卡顿 + 翻页灰屏」，诊断 html 类带 tablet＝伪装 UA 误判走了非主流布局）。
+  // 视觉语义与旧版完全一致：旧版手机端 zoom 恒被 CSS 兜成 1（声明仍在、值被钉死）。
+  function syncDeskZoomClass() {
+    try {
+      const d = document.documentElement;
+      const wide = !!(window.matchMedia && window.matchMedia('(min-width: 901px)').matches);
+      const tab = !!(window.mochiDevice && window.mochiDevice.isTablet);
+      const fs = parseFloat(d.style.getPropertyValue('--desk-font-scale'));
+      const cs = parseFloat(d.style.getPropertyValue('--desk-card-scale'));
+      const onF = wide && !tab && fs > 0 && Math.abs(fs - 1) > 0.001;
+      const onC = wide && !tab && cs > 0 && Math.abs(cs - 1) > 0.001;
+      if (onF !== d.classList.contains('desk-zoom-font')) d.classList.toggle('desk-zoom-font', onF);
+      if (onC !== d.classList.contains('desk-zoom-card')) d.classList.toggle('desk-zoom-card', onC);
+    } catch (e) {}
+  }
   const deskFontRow = document.getElementById('row-desk-font-size');
   const deskFontVal = document.getElementById('desk-font-size-val');
   const DESK_FONT_DEFAULT = 100;
@@ -4340,6 +5493,7 @@ try {
   const applyDeskFontPct = (pct) => {
     document.documentElement.style.setProperty('--desk-font-scale', String(pct / 100));
     if (deskFontVal) deskFontVal.textContent = pct === DESK_FONT_DEFAULT ? '默认' : pct + '%';
+    syncDeskZoomClass();
   };
   applyDeskFontPct(getDeskFontPct());
   if (deskFontRow) {
@@ -4355,7 +5509,7 @@ try {
       }, {
         noInput: true,
         slider: { min: 85, max: 120, step: 1, value: current, label: '拖动调整桌面字号', unit: '%',
-          onChange: (val) => { document.documentElement.style.setProperty('--desk-font-scale', String(val / 100)); } },
+          onChange: (val) => { document.documentElement.style.setProperty('--desk-font-scale', String(val / 100)); syncDeskZoomClass(); } },
         pills: [{ label: '恢复默认', value: '__reset__' }],
       });
     });
@@ -4373,6 +5527,7 @@ try {
   const applyDeskCardPct = (pct) => {
     document.documentElement.style.setProperty('--desk-card-scale', String(pct / 100));
     if (deskCardVal) deskCardVal.textContent = pct === DESK_CARD_DEFAULT ? '默认' : pct + '%';
+    syncDeskZoomClass();
   };
   applyDeskCardPct(getDeskCardPct());
   if (deskCardRow) {
@@ -4388,7 +5543,7 @@ try {
       }, {
         noInput: true,
         slider: { min: 80, max: 120, step: 1, value: current, label: '拖动调整卡片大小', unit: '%',
-          onChange: (val) => { document.documentElement.style.setProperty('--desk-card-scale', String(val / 100)); } },
+          onChange: (val) => { document.documentElement.style.setProperty('--desk-card-scale', String(val / 100)); syncDeskZoomClass(); } },
         pills: [{ label: '恢复默认', value: '__reset__' }],
       });
     });
@@ -4553,6 +5708,30 @@ try {
       }
     });
   };
+  // ===== v8.56 #1516：小组件独立背景颜色 =====
+  // 每个组件按类型单独存 widget-bg-<type>（per-cid 随桌面独立，走 store），应用方式为内联
+  // background-color 直接覆盖全局 --widget-bg；未设置时清内联回落全局。装修模式点卡片菜单
+  // 「组件颜色」改本组件，并可一键应用到全部。卡片背景图在内联 background-image 层：
+  // 有图时图在上、颜色垫底（清除图片后颜色显现），两层互不覆盖。
+  const widgetBgKey = (type) => 'widget-bg-' + type;
+  const applyWidgetBgOf = (type, color) => {
+    try {
+      const els = document.querySelectorAll('[data-card-bg="' + type + '"]');
+      els.forEach(el => { if (el) el.style.backgroundColor = color || ''; });
+    } catch (e) {}
+  };
+  // 应用所有已保存的组件独立颜色（启动 / 切桌面 / 恢复方案后调用）；类型从 DOM [data-card-bg]
+  // 收集：比枚举 CARD_BG_TYPES 多覆盖 desk-period 等裸类型（同 applyAllWidgetOpacities 口径）
+  const applyAllWidgetBgs = () => {
+    const seen = {};
+    document.querySelectorAll('[data-card-bg]').forEach(el => {
+      const t = el.getAttribute('data-card-bg');
+      if (!t || seen[t]) return;
+      seen[t] = 1;
+      const c = store.get(widgetBgKey(t));
+      if (c) applyWidgetBgOf(t, c);
+    });
+  };
   // 应用单个卡片的背景：遮罩用多层背景（白色半透明叠加在图片上）
   // v3.6.x：遮罩浓度滑块 0~85（百分比），存数字字符串；旧值 'off'/'light'/'mid'/'strong'/'on' 迁移
   const MASK_ALPHA_LEGACY = { off: 0, light: 30, mid: 50, strong: 72, on: 50 };
@@ -4565,6 +5744,46 @@ try {
     return 0.5;
   };
   const maskPctOf = (type) => Math.round(maskAlphaOf(type) * 100);
+  // FIX 2026-09-26 #1300c 卡片背景／整页背景的大键按需取回闸（#1270 桌面壁纸／#1218 聊天壁纸
+  //   那一族做法补到这两处漏网的大键上）。根因：#1195e 每次切后台按体积放掉 ≥256KB 大键的内存
+  //   副本（iOS 内存压力下的正解，不动它），而这些键 >200KB 时 localStorage 那份本就被大键规则
+  //   剥掉（LS_BIG_LIMIT）——于是回前台／回桌面这一轮 store.get 必然同步读空，旧写法当场把已画好
+  //   的背景内联拆掉（清空 backgroundImage），等异步取回落地才铺回来；只问出 'unknown'（本机诊断
+  //   实测 30s 内被系统回收 96 次的常态）就一直白着，非得杀一次进程重开才恢复＝用户口径的「背景
+  //   图要重启才显示／卡片是空的」。判据只取两个结构事实，零机型／零 UA 分支，且不新增任何存储键：
+  //   ① 内存／LS 读空；② 这个节点上**还挂着一张上一帧留下的背景图**＝用户看得见它、而值却读不到。
+  //   成立即不拆层（保留最后一帧），只踢一次按需取回，落地后自己重铺。
+  const deskBgHydrating = {};
+  const deskBgMissed = {};
+  // el＝这一帧的证人：它身上还挂着背景图＝这张图确实被画给用户看过，而此刻同步读却空了。
+  // 没有这张帧（用户从没设过该卡片背景）就一个键都不敲——否则每次回前台都要对几十个空键
+  // 各发一次 IDB 存在性查询＋重跑一遍应用函数，恰好把要治的这一帧弄得更重（#1227 写风暴同族教训）。
+  const hydrateDeskBgOnce = (key, el, after) => {
+    if (!window.idbEnsureBigKey) return false;
+    if (!el || !el.style.backgroundImage) return false;
+    if (deskBgHydrating[key]) return true; // 同键的在途取回已在跑：这一帧同样先不拆
+    // 读得到值＝不是「读空」（含超限不画的老口径），交回原流程；顺带销掉上一轮的「库里没有」
+    // 结论——用户重新上传过就该重新问一次，不能让旧回话把新图的最后一帧拆掉。
+    if (store.get(key)) { delete deskBgMissed[key]; return false; }
+    // 库里确切回话「这张图没了」＝只回一次头：再敲一遍还是「没有」，而每一轮都先保帧＝那一帧
+    // 永远钉在屏上（幽灵图）＋反复敲库。这一条不许写成 `if (deskBgMissed[key]) return false`
+    // 之外的形态：漏了它「保帧→取回→仍没有→保帧」会跑成死循环（无头 C5 实测 10s 都拆不掉）。
+    if (deskBgMissed[key]) return false;
+    deskBgHydrating[key] = 1;
+    readBigKey(key).then((r) => {
+      delete deskBgHydrating[key];
+      const v = (r && r.v) || '';
+      // 只有超硬上限的毒数据才清库（iOS 解码会拖垮整页）；略超软阈值的按既有口径「留在库里、
+      // 这一轮不画」。两种都交给 after()：sanitizeBg 不许画时它自己把这一帧拆回默认，不会把
+      // 一张永远不该画的图钉在屏上。
+      if (v.length > BG_HARD_LIMIT) { try { store.remove(key); } catch (e) {} }
+      // 没问出结果（存储正忙/事务挂起）＝既不说「已丢失」，也不拆用户看得见的这一帧。
+      if (!v && r && r.st === 'unknown') return;
+      if (!v) deskBgMissed[key] = 1;
+      try { after(); } catch (e) {}
+    }).catch(() => { delete deskBgHydrating[key]; });
+    return true;
+  };
   const applyCardBg = (type) => {
     const sel = cardBgSel(type);
     if (!sel) return;
@@ -4589,6 +5808,12 @@ try {
         el.style.backgroundRepeat = 'no-repeat';
       } else {
         // 无图：恢复默认（清内联，回落到 --widget-bg 变量）
+        // FIX 2026-09-26 #1300c：读空但这一帧还挂着用户设过的背景＝大键被 #1195e 放掉了内存副本
+        //   （不是用户没设），保留最后一帧不拆，只踢一次按需取回，落地后自己重铺。
+        //   after 必须带 type 闭包：applyCardBg(type) 直接传引用会让落地回调以 undefined 调用，
+        //   cardBgSel(undefined) 空转返回＝「重铺」根本没跑（无头 C5 实测：库里确切回话 absent 之后
+        //   那一帧 10s 拆不掉＝幽灵帧）。
+        if (hydrateDeskBgOnce('card-bg-' + type, el, () => applyCardBg(type))) return;
         if (!el.style.backgroundImage) return;
         el.style.backgroundImage = '';
         el.style.backgroundSize = '';
@@ -4615,7 +5840,7 @@ try {
     const miss = keys.filter(k => !store.get(k));
     if (!miss.length) return;
     let left = miss.length, refreshed = false;
-    const done = () => { if (!refreshed) { refreshed = true; try { refreshDeskVisuals(); } catch (e) {} } };
+    const done = () => { if (!refreshed) { refreshed = true; try { whenDeskVisible(refreshDeskVisuals); } catch (e) {} } };
     miss.forEach(k => {
       window.idbGet(pfx + ':' + k).then(v => {
         if (v && typeof v === 'string' && v.length > 2 && !store.get(k)) {
@@ -4630,18 +5855,73 @@ try {
   function refreshDeskVisuals() {
     try { window.applyAvatars(); } catch (e) {}
     try { applyAllCardBgs(); } catch (e) {}
-    try { applyAllWidgetTexts(); } catch (e) {}
-    try { applyAllWidgetOpacities(); } catch (e) {}
     try { applyPageBgs(); } catch (e) {}
-    try { renderDeskImages(); } catch (e) {}
-    try { syncBgUI(); } catch (e) {}
+    // FIX 2026-09-20 #943d：整块七项同步跑（无头实测 ≈150ms，真机 iOS 大 dataURL 解码更高）
+    // 恰压在「回到桌面/切桌面」的交互帧上＝桌面翻页/回桌面冻结（实测最慢 954ms）的来源。
+    // 拆帧：头像/卡片背景/页面背景三样最显眼的大图仍在本帧落位（不闪旧桌面，#695 语义不变），
+    // 其余四项（文本组件/透明度/图片组件/设置页背景 UI）逐帧让出，每帧之间主线程可响应触摸；
+    // 隐藏态无渲染竞争，一次跑完。
+    const rest = [applyAllWidgetTexts, applyAllWidgetOpacities, applyAllWidgetBgs, renderDeskImages, syncBgUI];
+    let rest943 = 0;
+    const step943 = function () {
+      while (rest943 < rest.length) {
+        try { rest[rest943](); } catch (e) {}
+        rest943++;
+        if (!document.hidden && rest943 < rest.length) { requestAnimationFrame(step943); return; }
+      }
+    };
+    if (document.hidden) step943();
+    else requestAnimationFrame(step943);
+  }
+  // ===== FIX 2026-09-17 #695 切桌面「直达聊天」时桌面视觉延后到主页真正显示前 =====
+  // 症状（用户直派）：此间里点某位跨桌面梦角的【去找TA】直达聊天，点击后要卡一下。
+  // 根因：cjian.js 的【去找TA】在同一次任务里先 setActiveContact 再 enterChat——前者尾部
+  //   把主页显示出来，后者立刻又把它盖掉，主页这一帧从未被绘制；但 contact-switched 扇出
+  //   已经把卡片背景/页面背景（MB 级 dataURL）整批重新解码应用（无头 4× CPU 节流实测
+  //   refreshDeskVisuals ≈ 150ms + buildDeskPages 的 applyPageBgs，占整次点击同步耗时约 3/4）。
+  // 口径：#249 群聊「隐藏态不重渲 + 脏标记」（group-chat.js gcSwitchDirty）同一模式。
+  // 做法：主页不可见时只登记待办、不干活；主页真正显示前补跑一次——MutationObserver 回调
+  //   与 microtask 都早于本帧绘制，观感与「当时就应用」完全一致（不会闪一帧旧桌面）。
+  //   先例：本文件 1350 行的 #147 壁纸观察器同款盯 #page-phone 的 hidden 变化。
+  const deskVisualJobs = new Set();   // 待补跑的桌面视觉重应用（去重＝同一个重应用函数只排一次）
+  let deskVisualWatch = null;         // 主页显示触发器（只建一次）
+  const homeVisibleNow = () => {
+    const home = document.getElementById('page-phone');
+    return !!home && !home.hidden;
+  };
+  function flushDeskVisualJobs() {
+    if (!deskVisualJobs.size) return;
+    const jobs = Array.from(deskVisualJobs);
+    deskVisualJobs.clear();
+    jobs.forEach(function (fn) { try { fn(); } catch (e) {} });
+  }
+  function ensureDeskVisualWatch() {
+    if (deskVisualWatch || !window.MutationObserver) return;
+    const home = document.getElementById('page-phone');
+    if (!home) return;
+    try {
+      deskVisualWatch = new MutationObserver(function () { if (homeVisibleNow()) flushDeskVisualJobs(); });
+      deskVisualWatch.observe(home, { attributes: true, attributeFilter: ['hidden'] });
+    } catch (e) { deskVisualWatch = null; }
+  }
+  // 主页可见＝当场跑（与修复前完全一致）；不可见＝登记待办，主页真正显示前补跑。
+  // 返回 true＝本次已延后（调用方需当场补跑那些「与主页可见性无关」的项，如设置页的壁纸 UI）。
+  function whenDeskVisible(fn) {
+    if (homeVisibleNow()) { try { fn(); } catch (e) {} return false; }
+    deskVisualJobs.add(fn);
+    ensureDeskVisualWatch();
+    // 微任务重查：同一次任务里「显示主页 → 随即被别的页盖掉」（此间【去找TA】就是这条路径）
+    // 时主页始终没被绘制过，待办保留到主页真正显示那一刻
+    Promise.resolve().then(function () { if (homeVisibleNow()) flushDeskVisualJobs(); });
+    return true;
   }
   // 初始化 + 多桌面切换后重应用
   applyAllCardBgs();
   applyAllWidgetTexts();
   applyAllWidgetOpacities();
+  applyAllWidgetBgs(); // #1516：组件独立背景颜色
   // FIX 2026-09-07 #249 切桌面卡死：这三个监听器删掉——6750 行的综合切换监听器已调
-  // refreshDeskVisuals()（内部含 applyAllCardBgs/applyAllWidgetTexts/applyAllWidgetOpacities，
+  // refreshDeskVisuals()（内部含 applyAllCardBgs/applyAllWidgetTexts/applyAllWidgetOpacities/applyAllWidgetBgs，
   // 还带头像/页面背景/图片组件/壁纸 UI），同一批赋值每次切换重复跑两遍（prof-contact-switch
   // 实测 applyCardBg 全家桶 ~13ms/次，MB 级 dataURL 在真机上翻倍成解码卡顿）。重应用语义
   // 全保留在综合监听器一处，applyPageBgs→applyCardBg 的恒等跳过短路兜底其余重复赋值。
@@ -4654,27 +5934,38 @@ try {
     const img = store.get('card-bg-' + type);
 
     const widgetEl = anchorEl ? anchorEl.closest('[data-desk-widget]') : null;
-    const pickFile = () => {
-      const input = document.createElement('input');
-      input.type = 'file'; input.accept = 'image/*';
-      input.onchange = () => {
-        const f = input.files && input.files[0];
-        if (!f) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-          // v3.10.x：压缩并保证 <=450KB（渲染防护阈值 500KB 留余量）——超限自动降边长重压，
-          // 防止「设置成功、重启后被渲染防护跳过变白板」
-          compressImageFit(reader.result, 1000, 450 * 1024).then(data => {
-            if (!data) { toast('图片过大或格式不支持，请换一张小图'); return; }
-            store.set('card-bg-' + type, data);
-            applyCardBg(type);
-            syncCardBgUIs();
-            toast(name + '背景已设置');
-          });
-        };
-        reader.readAsDataURL(f);
+    // FIX 2026-09-18 #755：统一走 window.mochiFilePick（原实现 detached＋无 label＋accept 迟到）
+    // FIX 2026-09-27 #1342m：管线从「点确定之后现搭在 mochiFilePick 的回调里」提成一份 pickInto——
+    // 同一份管线两条腿共用：合成腿（mochiFilePick）与「弹窗确定＝真·可点 input 层」（下面那颗 pill
+    // 的 pick 声明，交给 openModal→mochiModalPickOk 现成模具）。本入口的手指这一下落在弹窗的「确定」
+    // 按钮上，而 #1323 那套自学门面对它必然判成「同一格多宿主」永久剔除（确定按钮全站共用），
+    // 于是这一族入口永远只剩合成腿＝iOS 静默不弹也不抛（本机诊断单里
+    // mochi-card-bg-pick/leg:fire＋srf:0＋fb:onscreen 两发、一条 files=N 都没回来）。
+    const pickInto = (files) => {
+      const f = files && files[0];
+      if (!f) { toast('没有取到图片，请再选一次'); return; }
+      const reader = new FileReader();
+      reader.onload = () => {
+        // v3.10.x：压缩并保证 <=450KB（渲染防护阈值 500KB 留余量）——超限自动降边长重压，
+        // 防止「设置成功、重启后被渲染防护跳过变白板」
+        compressImageFit(reader.result, 1000, 450 * 1024).then(data => {
+          if (!data) { toast('图片过大或格式不支持，请换一张小图'); return; }
+          store.set('card-bg-' + type, data);
+          applyCardBg(type);
+          syncCardBgUIs();
+          toast(name + '背景已设置');
+          // FIX 2026-09-27 #1342n：写完验真——这张背景是 >200KB 的 dataURL，只进 IDB＋内存，
+          // xyStore.set 那一发 idbSet 的结果没人看（配额满/事务被杀时当场看着「已设置」、重开就没）。
+          // 取库里 count 的真回执（#1218u 那份），问不出结果不吭声。
+          confirmBigKeys(['card-bg-' + type], name + '背景');
+        });
       };
-      input.click();
+      reader.onerror = () => toast('图片读取失败，请换一张再试');
+      reader.readAsDataURL(f);
+    };
+    const cardBgPick = { accept: 'image/*', entry: 'card-bg-' + type, onFiles: pickInto };
+    const pickFile = () => {
+      window.mochiFilePick({ id: 'mochi-card-bg-pick', accept: 'image/*', onFiles: pickInto });
     };
     const moveWidget = (dir) => {
       if (!widgetEl || !widgetEl.parentNode) return;
@@ -4696,11 +5987,15 @@ try {
     setTimeout(() => { if (window.openModal) window.openModal(t, v, fn, opts); }, 0);
   };
   const pills = [];
-    pills.push({ label: img ? '更换图片' : '上传图片', value: '1' });
+    // #1342m：这一档声明「点确定＝选图」＝把弹窗的确定按钮盖成真·可点 file input（模具在
+    // openModal→mochiModalPickOk，#1014 建的、此前只有数据导入那几处在用）。其余档（清除/遮罩/
+    // 透明度/文字/摆放）照旧走确定按钮原有的那发点按。
+    pills.push({ label: img ? '更换图片' : '上传图片', value: '1', pick: cardBgPick });
     if (img) pills.push({ label: '清除图片', value: '2' });
     if (img) pills.push({ label: '遮罩浓度', value: 'mask' });
     if (img) pills.push({ label: maskPctOf(type) === 0 ? '原图直出 ✓' : '原图直出', value: 'origin' });
     pills.push({ label: '组件透明度', value: 'opacity' });
+    pills.push({ label: '组件颜色', value: 'wcolor' }); // #1516 独立背景颜色（与背景图片分两层：颜色垫底、图片在上）
     if (WIDGET_TEXT_PARTS[type]) pills.push({ label: '文字颜色', value: 'text' });
     if (widgetEl) {
       pills.push({ label: '上移', value: 'up' });
@@ -4782,6 +6077,47 @@ try {
           },
           pills: [
             { label: '应用到全部小组件', value: '__all__' },
+            { label: '恢复默认（跟随全局）', value: '__reset__' },
+          ],
+        });
+      } else if (v === 'wcolor') {
+        // #1516：独立背景颜色——两步弹窗（同「文字颜色」模具）：先选应用范围，再选颜色即生效。
+        // 「应用到全部」把当前色写入所有组件独立键（设置页「小组件颜色」是全局键，两者并存：
+        // 全局定基调、单组件可各自覆盖）。
+        const bgKey = widgetBgKey(type);
+        const curBg = store.get(bgKey) || store.get('widget-bg-color') || '#ffffff';
+        const bgApply = (target, color) => {
+          if (target === 'all') {
+            const seen2 = {};
+            document.querySelectorAll('[data-card-bg]').forEach(el => { const t = el.getAttribute('data-card-bg'); if (t && !seen2[t]) { seen2[t] = 1; store.set(widgetBgKey(t), color); applyWidgetBgOf(t, color); } });
+            toast('全部小组件颜色已统一');
+          } else {
+            store.set(bgKey, color);
+            applyWidgetBgOf(type, color);
+            toast(name + '颜色已设置');
+          }
+        };
+        openCardMenuNext('组件颜色（' + name + '）', '', (sv) => {
+          if (sv === 'one' || sv === 'all') {
+            window.openModal(sv === 'all' ? '全部小组件颜色' : name + '颜色', '', (cv) => {
+              const color = (typeof cv === 'number' && WIDGET_BG_SWATCHES[cv]) ? WIDGET_BG_SWATCHES[cv].color : cv;
+              if (!color) return;
+              bgApply(sv, color);
+            }, {
+              colorPicker: true,
+              noInput: true,
+              color: curBg,
+              swatches: WIDGET_BG_SWATCHES,
+            });
+            return;
+          }
+          if (sv === '__reset__') { store.remove(bgKey); applyWidgetBgOf(type, ''); toast(name + '已恢复，跟随全局小组件颜色'); }
+        }, {
+          noInput: true,
+          staticText: '改这一个还是全部小组件？选范围再选颜色，选完即生效',
+          pills: [
+            { label: '只改「' + name + '」', value: 'one' },
+            { label: '应用到全部小组件', value: 'all' },
             { label: '恢复默认（跟随全局）', value: '__reset__' },
           ],
         });
@@ -4867,6 +6203,12 @@ try {
       if (!phonePageEl.classList.contains('decor-on')) return;
       // 组件库面板 / 装饰完成条 / 新增页「+ 添加卡片」点击不拦截
       if (e.target.closest('.desk-lib') || e.target.closest('.decor-bar') || e.target.closest('.desk-page-add')) return;
+      // FIX 2026-09-21 #991：头像区不参与「点卡片设背景」——头像盒（.deco-avatar）长在
+      // [data-card-bg="deco"] 卡片内部，装修模式下点它会走到下面 preventDefault+stopPropagation，
+      // 把 label 转发（默认动作）和头像自己的 JS 兜底腿一起掐掉＝装修模式下换不了头像、点昵称也改不了名
+      //（无头实测：装修模式点桌面头像 = 弹出「纪念日卡设置」、选择器 0 次）。头像/昵称是卡片内的
+      // **可点元素**而非卡片背景区，按 #821 同口径各归各：点头像＝换头像，点卡片其余区域＝设背景。
+      if (e.target.closest('.deco-avatar')) return;
       const card = e.target.closest('[data-card-bg]');
       if (!card) return;
       e.preventDefault();
@@ -4976,13 +6318,43 @@ try {
         s.style.backgroundSize = 'cover';
         s.style.backgroundPosition = 'center';
       } else {
+        // FIX 2026-09-26 #1300c：整页背景同是大键（>200KB 只存 IDB）——读空但这一页还挂着一张
+        //   上一帧留下的背景图＝被 #1195e 放了内存副本，保留它不拆，踢一次按需取回后自己重铺。
+        if (hydrateDeskBgOnce('page-bg-' + i, s, applyPageBgs)) continue;
         if (!s.style.backgroundImage) continue;
         s.style.backgroundImage = '';
         s.style.backgroundSize = '';
         s.style.backgroundPosition = '';
       }
     }
+    // #754 桌面翻页卡顿（iPhone 15 Pro Max 实报：翻页 平均186ms / p90 719ms / 最慢3611ms，
+    // 长任务为零＝卡在合成/栅格层）：有整页背景图的桌面挂类，触屏设备据此把三页提升为
+    // 独立合成层——翻页只平移纹理，不再对整屏背景图逐帧重栅格化/重解码；与 #147 壁纸
+    // 「常驻图层纹理保持存活、不再反复解码」同源修法。读 DOM 实态自校正（页背景增删后
+    // 本函数必被调用），无整页背景图不挂类＝零额外显存。
+    var anyPageBg = false;
+    for (var j = 0; j < slides.length; j++) { if (slides[j] && slides[j].style.backgroundImage) { anyPageBg = true; break; } }
+    if (pagesBox.classList.contains('has-page-bg') !== anyPageBg) pagesBox.classList.toggle('has-page-bg', anyPageBg);
   };
+  // FIX 2026-09-26 #1300c：回前台主动复核一次（与 #1270 给桌面壁纸的那一枪同口径）。
+  //   store.get 是同步读（内存→localStorage），#1195e 切后台放掉的卡片／整页背景大键在 LS 里
+  //   本来就没有那份——旧写法只能等用户走进 refreshDeskVisuals 的那条路（回桌面/切联系人/restore
+  //   完成）才发现「图在库里、内存里没了」，而那一帧恰是它把已经画好的背景拆掉再重解码的时刻。
+  //   这里当场走一遍应用函数：读到值就按 #249 恒等短路重写（零成本），读空但节点还挂着图＝命中
+  //   #1300c 的「保留最后一帧＋踢一次按需取回」。零机型／零 UA 分支＝判据只有页面可见性与内核回执。
+  //   经 #695 whenDeskVisible 调度：主页不可见时（用户回前台落在聊天/设置）不抢这一帧的解码预算，
+  //   改登记待办、主页真正显示前补跑——那一帧恰是「卡片空着」被看见的时刻。作业函数取固定引用＝
+  //   Set 去重，反复切前后台不会攒出一串待办。
+  const resumeDeskBgJob = () => {
+    try { applyAllCardBgs(); } catch (e) {}
+    try { applyPageBgs(); } catch (e) {}
+  };
+  const resumeDeskBgWatch = () => { try { whenDeskVisible(resumeDeskBgJob); } catch (e) {} };
+  try {
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') resumeDeskBgWatch(); });
+    // bg-keep 的回前台统一信号（#967 同款双通道）：部分内核只发 focus/pageshow、不发 visibilitychange
+    document.addEventListener('mochi-fg-resume', resumeDeskBgWatch);
+  } catch (e) {}
   // FIX 2026-09-15 #495：deskLayout 定义自 4397 行处上移至此——冷启动 personalize.js 顶层
   // 4288 行同步调用 buildDeskPages()，其删页收缩分支（原 4104 行）调用 deskLayout() 时该
   // const 尚未初始化＝TDZ「Cannot access 'deskLayout' before initialization」每次冷启动必抛
@@ -5013,6 +6385,69 @@ try {
       return null;
     }
     return a;
+  };
+  // ===== v3.27.x #1278：文字/图片/倒计时组件纳入桌面布局统一排序 =====
+  //（重装 2026-09-29：首次实施后因从未入库、被并行会话重置而全量丢失；见 WORKLOG）
+  // 红米 Note 13 Pro/Edge 等实报「刷新重开桌面布局变了 + 自加文字组件无法上移」。
+  // 根因：desk-layout 只收集 [data-desk-widget]，三种自绘组件（文字/图片/倒计时）
+  // 每次渲染都全量重建插到页底，跨类型顺序无法保存；moveDeskText 上移又只与同类型
+  // 相邻交换，页首文字点「上移」静默无操作。改法：统一选择器收集四种组件 id 进
+  // desk-layout，渲染器按布局定位插入，拖拽/上移菜单按布局数组跨类型换位。
+  // 布局校验语义不变（全字符串/无重复/页数界）；老布局（无自绘 id）渐进兼容——
+  // 用户拖拽/移动一次后自动补全，零机型/零 UA 分支，只取 DOM 顺序事实。
+  const DESK_SEL_ALL = '[data-desk-widget],[data-desk-text],[data-desk-image],[data-desk-countdown]';
+  // 按 id 查四种组件节点（id 由代码生成，仅含字母数字与 _，无引号注入风险）
+  const deskNodeById = (wid) => {
+    if (!wid) return null;
+    return document.querySelector('[data-desk-widget="' + wid + '"],[data-desk-text="' + wid + '"],[data-desk-image="' + wid + '"],[data-desk-countdown="' + wid + '"]');
+  };
+  // 取节点归属的组件 id（四种属性任一）
+  const deskWidOf = (n) => {
+    if (!n) return null;
+    return n.getAttribute('data-desk-widget') || n.getAttribute('data-desk-text') ||
+      n.getAttribute('data-desk-image') || n.getAttribute('data-desk-countdown');
+  };
+  // 按布局数组定位插入自绘组件：优先插到布局中该 id「之后」第一个已在页内的节点前，
+  // 否则插到「之前」第一个节点后，都找不到回退页底——三个渲染器独立重建、执行顺序
+  // 不定，双向查找保证任何顺序下最终顺序与 desk-layout 一致。
+  const insertDeskNodeByLayout = (slide, node, id, pageArr) => {
+    const addBtn = slide.querySelector('.desk-page-add');
+    let ref = null;
+    if (pageArr) {
+      const pos = pageArr.indexOf(id);
+      if (pos >= 0) {
+        for (let i = pos + 1; i < pageArr.length; i++) {
+          const rn = deskNodeById(pageArr[i]);
+          if (rn && rn.parentNode === slide) { ref = rn; break; }
+        }
+        if (ref) { slide.insertBefore(node, ref); return; }
+        for (let i = pos - 1; i >= 0; i--) {
+          const rn = deskNodeById(pageArr[i]);
+          if (rn && rn.parentNode === slide) { ref = rn; break; }
+        }
+        if (ref) { slide.insertBefore(node, ref.nextSibling); return; }
+      }
+    }
+    if (addBtn) slide.insertBefore(node, addBtn);
+    else slide.appendChild(node);
+  };
+  // 自绘组件增删时同步 desk-layout（addArr=[{id,page}] 追加到页尾、removeArr=[id] 全页剔除）；
+  // 布局为坏键/不存在时跳过——renderDesk* 重建后 doDrop/上移调 saveDeskLayout 会兜底补全
+  const syncDeskLayout = (addArr, removeArr) => {
+    const lay = deskLayout();
+    if (!lay) return;
+    let changed = false;
+    (removeArr || []).forEach(id => {
+      lay.forEach(page => {
+        const i = page.indexOf(id);
+        if (i >= 0) { page.splice(i, 1); changed = true; }
+      });
+    });
+    (addArr || []).forEach(it => {
+      const page = lay[it.page];
+      if (page && page.indexOf(it.id) < 0) { page.push(it.id); changed = true; }
+    });
+    if (changed) { try { store.set('desk-layout', JSON.stringify(lay)); } catch (e) {} }
   };
   // 重建桌面页结构：保证页数 = desk-page-count，新增页为空 page-slide
   const buildDeskPages = () => {
@@ -5106,7 +6541,10 @@ try {
       slides.push(s);
     }
     // 应用每页背景图（v3.10.x：抽出为 applyPageBgs，供回填完成后/切桌面后单独重应用）
-    applyPageBgs();
+    // FIX 2026-09-17 #695：主页不可见时不在这里重解码整页背景（切桌面直达聊天时主页
+    //   一帧都没画过，这份钱白付），登记待办、主页真正显示前补跑。syncPagesUI 是设置页
+    //   的页面管理 UI，与主页可见性无关，保持同步（否则跨桌面后设置页会显示旧桌面的页数）。
+    whenDeskVisible(applyPageBgs);
     if (window.deskRebuild) window.deskRebuild();
     syncPagesUI();
     setTimeout(function () { if (window.ensureP3) window.ensureP3(); }, 50);
@@ -5136,28 +6574,34 @@ try {
       };
       syncRowUI();
       row.appendChild(ico); row.appendChild(txt); row.appendChild(val);
+      // FIX 2026-09-21 #1002（第九波续）：本行「首页/第 N 页背景图」铺「真·可点 input」层——手指物理落在
+      // 真 input 上，选择器由浏览器原生默认动作弹出，不再依赖 label 转发 / JS 合成 click / showPicker。
+      // owner 写统一入口那个 input 的 id（点按时才建），选完文件转交它并派发 change ⇒ 压缩/落库管线一字未改。
+      if (window.mochiFilePickSurface) window.mochiFilePickSurface(row, { id: 'page-bg-tap-' + i, accept: 'image/*', owner: 'mochi-page-bg-pick' });
       row.addEventListener('click', () => {
         const bg = store.get('page-bg-' + i);
+        // FIX 2026-09-18 #755：统一走 window.mochiFilePick（原实现 detached＋无 label＋accept 迟到）
         const pickPageBg = () => {
-          const input = document.createElement('input');
-          input.type = 'file'; input.accept = 'image/*';
-          input.onchange = () => {
-            const f = input.files && input.files[0];
-            if (!f) return;
-            const reader = new FileReader();
-            reader.onload = () => {
-              // v3.10.x：压缩并保证 <=4.5MB（渲染防护 6MB 留余量），超限自动降边长重压
-              compressImageFit(reader.result, phoneBgMaxSide(), 4.5 * 1024 * 1024).then(data => {
-                if (!data) { toast('图片过大或格式不支持，请换一张小图'); return; }
-                store.set('page-bg-' + i, data);
-                buildDeskPages();
-                syncRowUI();
-                toast((i === 0 ? '首页' : '第 ' + (i + 1) + ' 页') + '背景已设置');
-              });
-            };
-            reader.readAsDataURL(f);
-          };
-          input.click();
+          window.mochiFilePick({
+            id: 'mochi-page-bg-pick', accept: 'image/*',
+            onFiles: (files) => {
+              const f = files && files[0];
+              if (!f) { toast('没有取到图片，请再选一次'); return; }
+              const reader = new FileReader();
+              reader.onload = () => {
+                // v3.10.x：压缩并保证 <=4.5MB（渲染防护 6MB 留余量），超限自动降边长重压
+                compressImageFit(reader.result, phoneBgMaxSide(), 4.5 * 1024 * 1024).then(data => {
+                  if (!data) { toast('图片过大或格式不支持，请换一张小图'); return; }
+                  store.set('page-bg-' + i, data);
+                  buildDeskPages();
+                  syncRowUI();
+                  toast((i === 0 ? '首页' : '第 ' + (i + 1) + ' 页') + '背景已设置');
+                });
+              };
+              reader.onerror = () => toast('图片读取失败，请换一张再试');
+              reader.readAsDataURL(f);
+            }
+          });
         };
         if (bg && window.openModal) {
           window.openModal((i === 0 ? '首页' : '第 ' + (i + 1) + ' 页') + '背景图', '', (v) => {
@@ -5299,7 +6743,7 @@ try {
   // 组件 id 列表（对应 template.html 中 [data-desk-widget]）；组件节点唯一，
   // 「添加」= 把节点移动到目标页（节点移动不重建，内部事件绑定保留）
   const WIDGET_IDS = ['deco', 'quote-row', 'checkin', 'apps', 'music', 'p2apps', 'memo-row', 'week', 'weekend', 'desk-clock', 'desk-calendar', 'desk-timer', 'desk-anniv', 'desk-period',
-    'app-chat', 'app-group-chat', 'app-home', 'app-mail', 'app-feed', 'app-calendar', 'app-memory', 'app-divination', 'app-note', 'app-music', 'app-stats', 'app-interact', 'app-checkin', 'p3apps', 'app-period', 'app-accounting', 'app-garden',     'app-tongpin', 'app-shenshou', 'app-water', 'app-eat', 'app-pomo', 'app-cjian', 'app-memo-arc', 'app-my-arc', 'app-room', 'app-piggy'];
+    'app-chat', 'app-group-chat', 'app-home', 'app-mail', 'app-feed', 'app-calendar', 'app-memory', 'app-divination', 'app-note', 'app-music', 'app-stats', 'app-interact', 'app-checkin', 'p3apps', 'app-period', 'app-accounting', 'app-garden',     'app-tongpin', 'app-shenshou', 'app-water', 'app-eat', 'app-pomo', 'app-cjian', 'app-memo-arc', 'app-my-arc', 'app-room', 'app-piggy', 'app-memo'];
   const WIDGET_NAMES = {
     deco: '纪念日卡', 'quote-row': '今日情话 / 已摸鱼', checkin: '打卡横幅', apps: '功能图标(整组)',
     music: '音乐播放器', p2apps: '第二页功能图标(整组)', 'memo-row': '今日备忘 / 心情', week: '本周日常', weekend: '摸鱼倒计时（周末）',
@@ -5308,7 +6752,7 @@ try {
     'app-calendar': '日历图标', 'app-memory': '纪念图标', 'app-divination': '占卜图标', 'app-note': '收藏图标',
     'app-music': '音乐图标', 'app-stats': '聊天统计图标', 'app-interact': '提问记录图标', 'app-checkin': '寻踪图标',
     'p3apps': '第三页功能图标(整组)', 'app-period': '经期记录图标', 'app-accounting': '记账图标', 'app-garden': '花园图标',     'app-tongpin': '同频图标', 'app-shenshou': '伸手图标', 'app-water': '喝水图标', 'app-eat': '吃什么图标', 'app-pomo': '番茄钟图标',
-    'app-cjian': '此间图标', 'app-memo-arc': '梦角档案图标', 'app-my-arc': '我的档案图标', 'app-room': '房间图标', 'app-piggy': '存钱罐图标',
+    'app-cjian': '此间图标', 'app-memo-arc': '梦角档案图标', 'app-my-arc': '我的档案图标', 'app-room': '房间图标', 'app-piggy': '存钱罐图标', 'app-memo': '备忘录图标',
   };
   // v3.7.x：装修模式组件库静态预览缩略图（glass 质感 + 真实 SVG 图标，不依赖真实数据/事件）
   const PREV_BOX = 'display:flex;align-items:center;justify-content:center;width:78px;height:58px;border-radius:10px;background:linear-gradient(135deg,#fff,#f6f6f6);border:1px solid rgba(0,0,0,.07);box-shadow:0 1px 3px rgba(0,0,0,.06);flex-shrink:0;overflow:hidden;padding:4px;box-sizing:border-box';
@@ -5346,7 +6790,7 @@ try {
     'app-calendar': _appIcoPrev('日历'), 'app-memory': _appIcoPrev('纪念'), 'app-divination': _appIcoPrev('占卜'), 'app-note': _appIcoPrev('收藏'),
     'app-music': _appIcoPrev('音乐'), 'app-stats': _appIcoPrev('统计'), 'app-interact': _appIcoPrev('提问'), 'app-checkin': _appIcoPrev('寻踪'),
     'app-period': _appIcoPrev('经期'), 'app-accounting': _appIcoPrev('记账'), 'app-garden': _appIcoPrev('花园'),     'app-tongpin': _appIcoPrev('同频'), 'app-shenshou': _appIcoPrev('伸手'), 'app-water': _appIcoPrev('喝水'), 'app-eat': _appIcoPrev('吃什么'), 'app-pomo': _appIcoPrev('番茄钟'), 'p3apps': _appIcoPrev('经期'),
-    'app-cjian': _appIcoPrev('此间'), 'app-memo-arc': _appIcoPrev('梦角档案'), 'app-my-arc': _appIcoPrev('我的档案'), 'app-room': _appIcoPrev('房间'), 'app-piggy': _appIcoPrev('存钱罐'),
+    'app-cjian': _appIcoPrev('此间'), 'app-memo-arc': _appIcoPrev('梦角档案'), 'app-my-arc': _appIcoPrev('我的档案'), 'app-room': _appIcoPrev('房间'), 'app-piggy': _appIcoPrev('存钱罐'), 'app-memo': _appIcoPrev('备忘录'),
   };
   // 隐藏池：被移除的组件暂存（display:none），可从组件库重新添加
   function ensureWidgetPool() {
@@ -5364,7 +6808,9 @@ try {
   // 保存布局（按当前 DOM 状态，含隐藏池外的所有页）
   const saveDeskLayout = () => {
     const slides = Array.prototype.slice.call(pagesBox.querySelectorAll('.page-slide'));
-    const lay = slides.map(s => Array.prototype.slice.call(s.querySelectorAll('[data-desk-widget]')).map(n => n.getAttribute('data-desk-widget')));
+    // #1278：收集选择器从 [data-desk-widget] 扩为四种组件（deskWidOf 取 id）——
+    // 文字/图片/倒计时与标准组件统一排序持久化，刷新后跨类型摆放不再丢失
+    const lay = slides.map(s => Array.prototype.slice.call(s.querySelectorAll(DESK_SEL_ALL)).map(n => deskWidOf(n)).filter(Boolean));
     // v3.27.x（#140）：写前防损坏——非数组/页数超界/组件 id 重复（嵌套遍历或并发装修
     // 可产生重复 id，回填后校验必失败 → 全卡进隐藏池复发）。异常时放弃本次保存并清除，
     // 保持 template 默认桌面，不把坏值固化进 IDB。
@@ -5398,7 +6844,7 @@ try {
     // 变成竖向排列（刷新后图标从横变竖）。与池逻辑的保护一致。
     const inGrid = (wid) => {
       if (wid.indexOf('app-') === 0) {
-        const n = document.querySelector('[data-desk-widget="' + wid + '"]');
+        const n = deskNodeById(wid);
         return !!(n && n.closest('.app-grid'));
       }
       return false;
@@ -5408,9 +6854,11 @@ try {
       if (!slide) return;
       const wids = pageWidgets || [];
       // 1) 移入不在本页的节点（插入到「+ 添加卡片」按钮之前）
+      // #1278：查节点从 data-desk-widget 扩为四种组件——自绘组件跨页拖拽后，
+      // 刷新时按布局数组归位到正确页，不再被渲染器按 meta.page 放回旧页
       wids.forEach(wid => {
         if (inGrid(wid)) return;
-        const node = document.querySelector('[data-desk-widget="' + wid + '"]');
+        const node = deskNodeById(wid);
         if (!node || node.parentNode === slide) return;
         const addBtn = slide.querySelector('.desk-page-add');
         if (addBtn) slide.insertBefore(node, addBtn);
@@ -5419,16 +6867,16 @@ try {
       // 2) 顺序校正：比对当前 DOM 顺序与布局数组顺序，不一致才重排
       const want = wids.filter(wid => {
         if (inGrid(wid)) return false;
-        const n = document.querySelector('[data-desk-widget="' + wid + '"]');
+        const n = deskNodeById(wid);
         return !!(n && n.parentNode === slide);
       });
-      const cur = Array.prototype.slice.call(slide.querySelectorAll('[data-desk-widget]'))
-        .map(n => n.getAttribute('data-desk-widget'))
+      const cur = Array.prototype.slice.call(slide.querySelectorAll(DESK_SEL_ALL))
+        .map(n => deskWidOf(n))
         .filter(w => want.indexOf(w) >= 0);
       if (cur.join('|') !== want.join('|') && want.length) {
         const addBtn = slide.querySelector('.desk-page-add');
         want.forEach(wid => {
-          const node = document.querySelector('[data-desk-widget="' + wid + '"]');
+          const node = deskNodeById(wid);
           if (!node) return;
           if (addBtn) slide.insertBefore(node, addBtn);
           else slide.appendChild(node);
@@ -5467,7 +6915,14 @@ try {
     try { renderDeskWidgets(); } catch (e) {}
   };
   applyDeskLayout();
-  window.applyDeskLayout = applyDeskLayout;
+  // #861：暴露口包一层「落位后补套隐藏名单」——applyHiddenIcons 原本只在加载期跑一次
+  //（彼时备忘录/心意市集/心意柜/喝水/吃什么/存钱罐/番茄钟/同频/伸手等动态图标尚未注入＝
+  // 躲过隐藏），下一次再跑要等 contact-switched（含 contacts.js #88 启动校正的静默切换）
+  // ＝「启动时看得见、切一次桌面就没了」（红米 K80 实报「第三页备忘录图标莫名其妙不见了」）。
+  // 各注入方追加图标后都会调 window.applyDeskLayout；不能放在 applyDeskLayout 末尾——
+  // 其 !lay 分支（默认桌面无布局）提前 return 走不到（无头实证），包在暴露口才覆盖全部路径。
+  // contact-switched 直挂本函数不经此口，但该事件本就另有 applyHiddenIcons 监听，无缺口。
+  window.applyDeskLayout = function () { try { applyDeskLayout(); } finally { try { applyHiddenIcons(); } catch (e) {} } };
   document.addEventListener('contact-switched', applyDeskLayout);
   // v3.10.x：经期倒计时组件默认放第三页顶部（template 已置）。
   // 已装修过的用户（desk-layout 存在且不含 desk-period）自动加新页放 desk-period，不破坏现有布局。
@@ -5768,6 +7223,53 @@ try {
   if (window.__mochiDataReady) applyGroupChatMode();
   else document.addEventListener('mochi-restore-done', applyGroupChatMode);
 
+  // ===== v3.27.x #670：设置 → 工具 →【占卜】入口（#row-open-divination，模板静态行）=====
+  // 背景（用户直派）：群聊模式开启期间桌面占卜图标按 #156 收进隐藏池（第一页留给「群聊」），
+  // 桌面就找不到占卜了——用户要求把「打开占卜」放到「设置 → 工具」里，并在说明里讲清楚。
+  // 打开路径复用桌面占卜图标的 click 处理器（divination.js 绑定，含「打开即渲染历史 +
+  // 同步自动发送开关」）；图标被收进隐藏池时仍是同一个节点、监听器没丢，.click() 照样生效
+  // ＝与点桌面图标行为逐字一致。图标确实不在（模板被改/被删）时才走兜底导航（同 feature-data
+  // 的 openPage 写法：隐所有 .page、显 #page-divine），至少保证进得去占卜页。
+  // 行下小字随群聊开关切换，把「为什么桌面没有图标」当场说明（#670 的「这点也要说明」）。
+  (function () {
+    const row = document.getElementById('row-open-divination');
+    if (!row) return;
+    const sub = document.getElementById('open-divination-sub');
+    const SUB_ON = '群聊模式开启中：桌面占卜图标已收起，点这里直接打开（与点桌面图标等效，历史记录照常）';
+    const SUB_OFF = '塔罗 78 张 / 雷诺曼 40 张，三种牌阵；与点桌面【占卜】图标等效';
+    function openDivinePage() {
+      const icon = document.querySelector('.app[data-app="divination"]');
+      if (icon) { try { icon.click(); return; } catch (e) {} }
+      document.querySelectorAll('.page').forEach(p => { p.hidden = true; });
+      const dp = document.getElementById('page-divine');
+      if (dp) dp.hidden = false;
+    }
+    function groupChatOn() {
+      try {
+        const v = window.xyStore ? window.xyStore('xy-home-v2').get('group-chat-enabled') : null;
+        if (v !== null && v !== undefined) return v === '1';
+      } catch (e) {}
+      try { return store.get('group-chat-enabled') === '1'; } catch (e) { return false; }
+    }
+    // 桌面图标是否真的被收起＝群聊开启 且 用户没在装修里显式固定占卜（#393 的
+    // divination-desk-pin=1 豁免）；固定过的桌面图标照常显示，小字不能说「已收起」。
+    function deskIconHidden() {
+      if (!groupChatOn()) return false;
+      try { return store.get('divination-desk-pin') !== '1'; } catch (e) { return true; }
+    }
+    function syncSub() { if (sub) sub.textContent = deskIconHidden() ? SUB_ON : SUB_OFF; }
+    row.addEventListener('click', openDivinePage);
+    syncSub();
+    document.addEventListener('group-chat-mode-changed', syncSub);
+    document.addEventListener('contact-switched', syncSub);
+    // 装修里显式把占卜加回/移出桌面会改写 divination-desk-pin（#393），退出装修后重算小字
+    document.addEventListener('decor-exited', syncSub);
+    // 同 applyGroupChatMode：#670 也依赖全局键 group-chat-enabled，localStorage 被清理后
+    // 该键可能只在 IndexedDB，idbRestore 回填完成后再同步一次小字（回填前读到的可能是空）。
+    if (window.__mochiDataReady) syncSub();
+    else document.addEventListener('mochi-restore-done', syncSub);
+  })();
+
   // 组件库面板：列出所有组件 + 当前位置，点击「添加到此页」
   function openDeskLib(pageSlide, pageIdx) {
     const lib = document.createElement('div');
@@ -6024,9 +7526,17 @@ try {
     if (!pagesBox) return;
     pagesBox.querySelectorAll('[data-desk-image]').forEach(n => n.remove());
     const meta = loadDeskImagesMeta();
+    const lay = deskLayout();
     const slides = pagesBox.querySelectorAll('.page-slide');
     meta.forEach(m => {
-      const slide = slides[m.page];
+      // #1278：页归属优先布局数组（拖拽跨页后按布局归位），不在布局中用 meta.page 兜底
+      let pageIdx = m.page, pageArr = null;
+      if (lay) {
+        for (let pi = 0; pi < lay.length; pi++) {
+          if (lay[pi] && lay[pi].indexOf(m.id) >= 0) { pageIdx = pi; pageArr = lay[pi]; break; }
+        }
+      }
+      const slide = slides[pageIdx] || slides[m.page];
       if (!slide) return;
       const node = document.createElement('div');
       node.className = 'desk-image-widget';
@@ -6039,8 +7549,7 @@ try {
       if (wv < 100) node.style.alignSelf = m.align === 'c' ? 'center' : (m.align === 'r' ? 'flex-end' : 'flex-start');
       const img = document.createElement('img');
       node.appendChild(img);
-      const addBtn = slide.querySelector('.desk-page-add');
-      if (addBtn) slide.insertBefore(node, addBtn); else slide.appendChild(node);
+      insertDeskNodeByLayout(slide, node, m.id, pageArr);
       const srcKey = window.activePrefix() + ':desk-image-src-' + m.id;
       if (window.idbGet) {
         window.idbGet(srcKey).then(src => { if (src && node.dataset.deskImage === m.id) img.src = src; });
@@ -6052,8 +7561,25 @@ try {
     // v3.6.x：图片也算页面内容——有图页隐藏空白提示，空页恢复（装修模式才显示）
     for (let i = 0; i < slides.length; i++) syncPageHint(slides[i]);
   }
-  // v3.6.x：图片组件上移/下移——只与同页相邻图片交换顺序，持久化到 meta
+  // #1278：图片组件上移/下移改为跨类型（布局数组内与相邻项交换）——页首图片也能上移到
+  // 标准组件上方，不再静默无操作；布局无此 id（老数据）时回退原「同页相邻图片交换」语义
   function moveDeskImage(id, dir) {
+    const lay = deskLayout();
+    if (lay) {
+      for (const page of lay) {
+        const i = page.indexOf(id);
+        if (i >= 0) {
+          const j = dir === 'up' ? i - 1 : i + 1;
+          if (j < 0 || j >= page.length) { toast(dir === 'up' ? '已在最前' : '已在最后'); return; }
+          const t = page[i]; page[i] = page[j]; page[j] = t;
+          try { store.set('desk-layout', JSON.stringify(lay)); } catch (e) {}
+          renderDeskImages();
+          try { window.applyDeskLayout(); } catch (e) {}
+          toast(dir === 'up' ? '已上移' : '已下移');
+          return;
+        }
+      }
+    }
     const meta = loadDeskImagesMeta();
     const idx = meta.findIndex(x => x.id === id);
     if (idx < 0) return;
@@ -6066,63 +7592,68 @@ try {
     } else if (dir === 'down' && pos < same.length - 1) {
       const a = same[pos + 1];
       const t = meta[a]; meta[a] = meta[idx]; meta[idx] = t;
-    } else {
-      return;
-    }
+    } else { toast(dir === 'up' ? '已在最前' : '已在最后'); return; }
     saveDeskImagesMeta(meta);
     renderDeskImages();
+    try { saveDeskLayout(); } catch (e) {}
     toast(dir === 'up' ? '已上移' : '已下移');
   }
-  // 上传新图片到指定页
+  // 上传新图片到指定页（FIX 2026-09-18 #755：统一走 window.mochiFilePick，原实现 detached＋无 label）
   function addDeskImage(pageIdx) {
-    const input = document.createElement('input');
-    input.type = 'file'; input.accept = 'image/*';
-    input.onchange = () => {
-      const f = input.files && input.files[0];
-      if (!f) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        compressImage(reader.result, 1280).then(data => {
-          if (!data) { toast('图片过大或格式不支持，请换一张'); return; }
-          const id = 'img_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
-          const meta = loadDeskImagesMeta();
-          meta.push({ id: id, page: pageIdx, addedAt: Date.now() });
-          saveDeskImagesMeta(meta);
-          const srcKey = window.activePrefix() + ':desk-image-src-' + id;
-          if (window.idbSet) window.idbSet(srcKey, data); else store.set('desk-image-src-' + id, data);
-          renderDeskImages();
-          toast('已添加图片');
-        });
-      };
-      reader.readAsDataURL(f);
-    };
-    input.click();
+    window.mochiFilePick({
+      id: 'mochi-desk-img-add-pick', accept: 'image/*',
+      onFiles: (files) => {
+        const f = files && files[0];
+        if (!f) { toast('没有取到图片，请再选一次'); return; }
+        const reader = new FileReader();
+        reader.onload = () => {
+          compressImage(reader.result, 1280).then(data => {
+            if (!data) { toast('图片过大或格式不支持，请换一张'); return; }
+            const id = 'img_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+            const meta = loadDeskImagesMeta();
+            meta.push({ id: id, page: pageIdx, addedAt: Date.now() });
+            saveDeskImagesMeta(meta);
+            syncDeskLayout([{ id: id, page: pageIdx }]);
+            const srcKey = window.activePrefix() + ':desk-image-src-' + id;
+            if (window.idbSet) window.idbSet(srcKey, data); else store.set('desk-image-src-' + id, data);
+            renderDeskImages();
+            toast('已添加图片');
+          });
+        };
+        reader.onerror = () => toast('图片读取失败，请换一张再试');
+        reader.readAsDataURL(f);
+      }
+    });
   }
-  // 换图
+  // FIX 2026-09-18 #755：原实现点击时现场 new input 且**从不挂文档**（#677 判据）＋无 label 兜底
+  // ＋accept 迟到——vivo X200s/百度浏览器（T7 内核）报「上传无反应」的同族面。统一走
+  // window.mochiFilePick（常驻挂文档 + accept 前置 + label 激活 + 最后 click）。
   function changeDeskImage(id) {
-    const input = document.createElement('input');
-    input.type = 'file'; input.accept = 'image/*';
-    input.onchange = () => {
-      const f = input.files && input.files[0];
-      if (!f) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        compressImage(reader.result, 1280).then(data => {
-          if (!data) { toast('图片过大或格式不支持'); return; }
-          const srcKey = window.activePrefix() + ':desk-image-src-' + id;
-          if (window.idbSet) window.idbSet(srcKey, data); else store.set('desk-image-src-' + id, data);
-          renderDeskImages();
-          toast('已更换图片');
-        });
-      };
-      reader.readAsDataURL(f);
-    };
-    input.click();
+    window.mochiFilePick({
+      id: 'mochi-desk-img-pick', accept: 'image/*',
+      onFiles: (files) => {
+        const f = files && files[0];
+        if (!f) { toast('没有取到图片，请再选一次'); return; }
+        const reader = new FileReader();
+        reader.onload = () => {
+          compressImage(reader.result, 1280).then(data => {
+            if (!data) { toast('图片过大或格式不支持'); return; }
+            const srcKey = window.activePrefix() + ':desk-image-src-' + id;
+            if (window.idbSet) window.idbSet(srcKey, data); else store.set('desk-image-src-' + id, data);
+            renderDeskImages();
+            toast('已更换图片');
+          });
+        };
+        reader.onerror = () => toast('图片读取失败，请换一张再试');
+        reader.readAsDataURL(f);
+      }
+    });
   }
   // 删除图片组件
   function removeDeskImage(id) {
     const meta = loadDeskImagesMeta().filter(m => m.id !== id);
     saveDeskImagesMeta(meta);
+    syncDeskLayout(null, [id]);
     try { if (window.idbDelete) window.idbDelete(window.activePrefix() + ':desk-image-src-' + id); } catch (e) {}
     try { store.remove('desk-image-src-' + id); } catch (e) {}
     renderDeskImages();
@@ -6134,6 +7665,7 @@ try {
     const toRemove = meta.filter(m => m.page === pageIdx);
     const remain = meta.filter(m => m.page !== pageIdx);
     saveDeskImagesMeta(remain);
+    syncDeskLayout(null, toRemove.map(m => m.id));
     toRemove.forEach(m => {
       try { if (window.idbDelete) window.idbDelete(window.activePrefix() + ':desk-image-src-' + m.id); } catch (e) {}
       try { store.remove('desk-image-src-' + m.id); } catch (e) {}
@@ -6248,9 +7780,17 @@ try {
     if (!pagesBox) return;
     pagesBox.querySelectorAll('[data-desk-text]').forEach(n => n.remove());
     const meta = loadDeskTextsMeta();
+    const lay = deskLayout();
     const slides = pagesBox.querySelectorAll('.page-slide');
     meta.forEach(m => {
-      const slide = slides[m.page];
+      // #1278：页归属优先布局数组，不在布局中用 meta.page 兜底（同 renderDeskImages）
+      let pageIdx = m.page, pageArr = null;
+      if (lay) {
+        for (let pi = 0; pi < lay.length; pi++) {
+          if (lay[pi] && lay[pi].indexOf(m.id) >= 0) { pageIdx = pi; pageArr = lay[pi]; break; }
+        }
+      }
+      const slide = slides[pageIdx] || slides[m.page];
       if (!slide) return;
       const node = document.createElement('div');
       node.className = 'desk-text-widget';
@@ -6260,8 +7800,7 @@ try {
       p.style.fontSize = (m.size || 15) + 'px';
       p.style.color = m.color || '#333';
       node.appendChild(p);
-      const addBtn = slide.querySelector('.desk-page-add');
-      if (addBtn) slide.insertBefore(node, addBtn); else slide.appendChild(node);
+      insertDeskNodeByLayout(slide, node, m.id, pageArr);
     });
     for (let i = 0; i < slides.length; i++) syncPageHint(slides[i]);
   }
@@ -6273,17 +7812,37 @@ try {
       const meta = loadDeskTextsMeta();
       meta.push({ id: id, page: pageIdx, text: v.trim(), size: 15, color: '#333' });
       saveDeskTextsMeta(meta);
+      syncDeskLayout([{ id: id, page: pageIdx }]);
       renderDeskTexts();
       toast('已添加文字');
     }, { placeholder: '输入要显示的文字' });
   }
   function removeDeskText(id) {
     saveDeskTextsMeta(loadDeskTextsMeta().filter(m => m.id !== id));
+    syncDeskLayout(null, [id]);
     renderDeskTexts();
     toast('已删除');
   }
-  // v3.26.x：文字组件上移/下移——只与同页相邻文字交换顺序，持久化到 meta
+  // v3.26.x：文字组件上移/下移——#1278 改为跨类型（布局数组内与相邻项交换）：
+  // 页首文字也能上移到标准组件上方，不再静默无操作；布局无此 id（老数据）时
+  // 回退原「同页相邻文字交换」语义并把结果同步进布局
   function moveDeskText(id, dir) {
+    const lay = deskLayout();
+    if (lay) {
+      for (const page of lay) {
+        const i = page.indexOf(id);
+        if (i >= 0) {
+          const j = dir === 'up' ? i - 1 : i + 1;
+          if (j < 0 || j >= page.length) { toast(dir === 'up' ? '已在最前' : '已在最后'); return; }
+          const t = page[i]; page[i] = page[j]; page[j] = t;
+          try { store.set('desk-layout', JSON.stringify(lay)); } catch (e) {}
+          renderDeskTexts();
+          try { window.applyDeskLayout(); } catch (e) {}
+          toast(dir === 'up' ? '已上移' : '已下移');
+          return;
+        }
+      }
+    }
     const meta = loadDeskTextsMeta();
     const idx = meta.findIndex(x => x.id === id);
     if (idx < 0) return;
@@ -6296,13 +7855,17 @@ try {
     } else if (dir === 'down' && pos < same.length - 1) {
       const a = same[pos + 1];
       const t = meta[a]; meta[a] = meta[idx]; meta[idx] = t;
-    } else return;
+    } else { toast(dir === 'up' ? '已在最前' : '已在最后'); return; }
     saveDeskTextsMeta(meta);
     renderDeskTexts();
+    try { saveDeskLayout(); } catch (e) {}
     toast(dir === 'up' ? '已上移' : '已下移');
   }
   function removeDeskTextsOnPage(pageIdx) {
-    saveDeskTextsMeta(loadDeskTextsMeta().filter(m => m.page !== pageIdx));
+    const all = loadDeskTextsMeta();
+    saveDeskTextsMeta(all.filter(m => m.page !== pageIdx));
+    // #1278：删页时同步布局数组，否则残留 id 会在刷新时被渲染器拉回已删页
+    syncDeskLayout(null, all.filter(m => m.page === pageIdx).map(m => m.id));
   }
   function setupDeskTextClick() {
     if (!pagesBox) return;
@@ -6370,9 +7933,17 @@ try {
     if (!pagesBox) return;
     pagesBox.querySelectorAll('[data-desk-countdown]').forEach(n => n.remove());
     const meta = loadDeskCountdownsMeta();
+    const lay = deskLayout();
     const slides = pagesBox.querySelectorAll('.page-slide');
     meta.forEach(m => {
-      const slide = slides[m.page];
+      // #1278：页归属优先布局数组，不在布局中用 meta.page 兜底（同 renderDeskTexts）
+      let pageIdx = m.page, pageArr = null;
+      if (lay) {
+        for (let pi = 0; pi < lay.length; pi++) {
+          if (lay[pi] && lay[pi].indexOf(m.id) >= 0) { pageIdx = pi; pageArr = lay[pi]; break; }
+        }
+      }
+      const slide = slides[pageIdx] || slides[m.page];
       if (!slide) return;
       const node = document.createElement('div');
       node.className = 'desk-countdown-widget';
@@ -6383,8 +7954,7 @@ try {
       node.innerHTML = '<div class="dcd-label">距' + (m.title || '事件') + '</div>' +
         '<div class="dcd-days">' + (days >= 0 ? days : '已过') + (days >= 0 ? ' 天' : '') + '</div>' +
         '<div class="dcd-date">' + m.date + '</div>';
-      const addBtn = slide.querySelector('.desk-page-add');
-      if (addBtn) slide.insertBefore(node, addBtn); else slide.appendChild(node);
+      insertDeskNodeByLayout(slide, node, m.id, pageArr);
     });
     for (let i = 0; i < slides.length; i++) syncPageHint(slides[i]);
   }
@@ -6401,17 +7971,37 @@ try {
       const meta = loadDeskCountdownsMeta();
       meta.push({ id: id, page: pageIdx, title: title, date: date });
       saveDeskCountdownsMeta(meta);
+      syncDeskLayout([{ id: id, page: pageIdx }]);
       renderDeskCountdowns();
       toast('已添加倒计时');
     }, { placeholder: '标题|日期，如 出差|2026-09-16', value: '|' + today });
   }
   function removeDeskCountdown(id) {
     saveDeskCountdownsMeta(loadDeskCountdownsMeta().filter(m => m.id !== id));
+    syncDeskLayout(null, [id]);
     renderDeskCountdowns();
     toast('已删除');
   }
-  // v3.26.x：倒计时组件上移/下移——只与同页相邻倒计时交换顺序，持久化到 meta
+  // v3.26.x：倒计时组件上移/下移——#1278 改为跨类型（布局数组内与相邻项交换）：
+  // 页首倒计时也能上移到标准组件上方，不再静默无操作；布局无此 id（老数据）时
+  // 回退原「同页相邻倒计时交换」语义并把结果同步进布局
   function moveDeskCountdown(id, dir) {
+    const lay = deskLayout();
+    if (lay) {
+      for (const page of lay) {
+        const i = page.indexOf(id);
+        if (i >= 0) {
+          const j = dir === 'up' ? i - 1 : i + 1;
+          if (j < 0 || j >= page.length) { toast(dir === 'up' ? '已在最前' : '已在最后'); return; }
+          const t = page[i]; page[i] = page[j]; page[j] = t;
+          try { store.set('desk-layout', JSON.stringify(lay)); } catch (e) {}
+          renderDeskCountdowns();
+          try { window.applyDeskLayout(); } catch (e) {}
+          toast(dir === 'up' ? '已上移' : '已下移');
+          return;
+        }
+      }
+    }
     const meta = loadDeskCountdownsMeta();
     const idx = meta.findIndex(x => x.id === id);
     if (idx < 0) return;
@@ -6424,13 +8014,17 @@ try {
     } else if (dir === 'down' && pos < same.length - 1) {
       const a = same[pos + 1];
       const t = meta[a]; meta[a] = meta[idx]; meta[idx] = t;
-    } else return;
+    } else { toast(dir === 'up' ? '已在最前' : '已在最后'); return; }
     saveDeskCountdownsMeta(meta);
     renderDeskCountdowns();
+    try { saveDeskLayout(); } catch (e) {}
     toast(dir === 'up' ? '已上移' : '已下移');
   }
   function removeDeskCountdownsOnPage(pageIdx) {
-    saveDeskCountdownsMeta(loadDeskCountdownsMeta().filter(m => m.page !== pageIdx));
+    const all = loadDeskCountdownsMeta();
+    saveDeskCountdownsMeta(all.filter(m => m.page !== pageIdx));
+    // #1278：删页时同步布局数组（同 removeDeskTextsOnPage）
+    syncDeskLayout(null, all.filter(m => m.page === pageIdx).map(m => m.id));
   }
   function setupDeskCountdownClick() {
     if (!pagesBox) return;
@@ -6503,6 +8097,14 @@ try {
     // v3.27.x：批量换图队列没点完就退出装修 → 队列作废（留在队列里会让下次进
     // 装修点的第一个图标莫名被换图）
     if (window.__iconBatchQ && window.__iconBatchQ.length) { window.__iconBatchQ = null; toast('批量换图未点完，已作废'); }
+    // FIX 2026-09-17 #696：退出装修一并收掉「点图标上传/调位置」的挂起状态与位置面板——
+    // 用户从抽屉/设置页点了「调整图标图片位置」却直接退出（没点图标）时，标记会留到下一次
+    // 进装修，把那次点图标劫持成位置面板（表现为「点图标上传图片失效」）。
+    window.__iconAdjustPick = false;
+    const fitPanelEl = document.getElementById('icon-fit-panel');
+    if (fitPanelEl && fitPanelEl.style.display !== 'none') { try { fitPanelEl.style.display = 'none'; } catch (e) {} }
+    window.__iconFitPanelOpen = false;
+    iconFitHighlight(null);
     try { document.dispatchEvent(new Event('decor-exited')); } catch (e) {}
   }
   // v3.5.131：暴露给 tabs.js 返回键（返回时退出编辑态，防止"点了没反应"）
@@ -6613,7 +8215,7 @@ try {
     pagesBox.addEventListener('touchstart', (e) => {
       if (!inMoveMode) return;
       if (e.target.closest('.desk-lib, .desk-page-add, .decor-bar')) return;
-      if (!e.target.closest('[data-desk-widget], .app')) return;
+      if (!e.target.closest(DESK_SEL_ALL + ', .app')) return;
       e.preventDefault();
     }, { capture: true, passive: false });
     // v3.14.x：touchmove capture 兜底——组件已允许 pan-x pan-y（移动模式下桌面横滑翻页），
@@ -6624,7 +8226,7 @@ try {
     pagesBox.addEventListener('touchmove', (e) => {
       if (!inMoveMode) return;
       if (e.target.closest('.desk-lib, .desk-page-add, .decor-bar')) return;
-      if (!e.target.closest('[data-desk-widget], .app')) return;
+      if (!e.target.closest(DESK_SEL_ALL + ', .app')) return;
       e.preventDefault();
     }, { capture: true, passive: false });
 
@@ -6632,7 +8234,7 @@ try {
     pagesBox.addEventListener('pointerdown', (e) => {
       if (e.button !== 0 && e.pointerType === 'mouse') return;
       if (e.target.closest('.desk-lib, .desk-page-add, .decor-bar')) return;
-      const target = e.target.closest('[data-desk-widget], .app');
+      const target = e.target.closest(DESK_SEL_ALL + ', .app');
       if (!target) return;
       // v3.27.x：非移动模式不再有长按入口——日常点按/长按图标无副作用（点击照常），
       // 拖动排序只走「装饰模式→编辑布局」主动入口。下方逻辑仅在 inMoveMode 时生效。
@@ -6651,7 +8253,7 @@ try {
       // v3.27.x：非移动模式长按入口已移除，pressTimer 位移取消逻辑随之删除
       // 移动模式下的横滑翻页判定：手指按下但未进入拖拽（_swiping 未定）时判定方向
       if (inMoveMode && !dragging) {
-        const t = e.target.closest ? e.target.closest('[data-desk-widget], .app') : null;
+        const t = e.target.closest ? e.target.closest(DESK_SEL_ALL + ', .app') : null;
         if (t && t._swiping !== undefined && t._swiping === null) {
           const dx = e.clientX - t._swipeX, dy = e.clientY - t._swipeY;
           // 长按超过 MOVE_DELAY 后移动 → 直接拖拽（按住图标/组件拖动的场景）
@@ -6674,7 +8276,7 @@ try {
     // v3.27.x：pressTimer/cancelPress 已随长按入口移除（pointerdown 仅移动模式生效）
     // v3.14.x：移动模式下横滑判定结束/取消时清理（避免残留 _swiping 状态）
     const clearSwipe = (e) => {
-      const t = e.target.closest ? e.target.closest('[data-desk-widget], .app') : null;
+      const t = e.target.closest ? e.target.closest(DESK_SEL_ALL + ', .app') : null;
       if (t) { t._swiping = undefined; t._swipeX = undefined; t._swipeY = undefined; }
     };
     pagesBox.addEventListener('pointerup', clearSwipe);
@@ -6830,7 +8432,7 @@ try {
           return gridDropInfo(curGrid, dragged, clientX, clientY);
         }
       }
-      const items = Array.prototype.slice.call(slide.querySelectorAll('[data-desk-widget]')).filter(n => {
+      const items = Array.prototype.slice.call(slide.querySelectorAll(DESK_SEL_ALL)).filter(n => {
         if (n === dragged) return false;
         const p = n.parentElement;
         if (p === slide) return true;
@@ -6912,7 +8514,7 @@ try {
     // 点空白退出移动模式
     pagesBox.addEventListener('click', (e) => {
       if (!inMoveMode) return;
-      if (e.target.closest('[data-desk-widget], .app, .desk-page-add, .desk-lib, .decor-bar')) return;
+      if (e.target.closest(DESK_SEL_ALL + ', .app, .desk-page-add, .desk-lib, .decor-bar')) return;
       if (window.exitDecor) window.exitDecor();
     }, true);
   }
@@ -6998,6 +8600,620 @@ try {
     }
   })();
 
+  // ===== v3.27.x #645：修改摸鱼天数（设置 → 工具，#row-fish-days）=====
+  // 背景：fish-log（全局键，天数 = 日期去重个数）遇浏览器丢数据后从 0 重来，
+  // 用户要求能手动改回原天数。走 openModal 数字输入：目标 > 现有 → 在最早一天之前
+  // 往回补连续自然日（真实打卡日全部保留、仍是最近的日子）；目标 < 现有 → 保留最近
+  // n 天（今天/近期打卡日不动）。写回走 gStore.set（内存 + LS + IDB 同链路），
+  // #290 规范化/自愈只做并集合并，不会把这里的结果清掉。
+  (function () {
+    const row = document.getElementById('row-fish-days');
+    if (!row || typeof window.openModal !== 'function') return;
+    const fmtDate = (dt) =>
+      dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+    function fishToast(msg) {
+      let t = document.getElementById('cc-toast');
+      if (!t) { t = document.createElement('div'); t.id = 'cc-toast'; document.body.appendChild(t); }
+      t.textContent = msg;
+      t.className = 'cc-toast'; void t.offsetWidth; t.className = 'cc-toast show';
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
+    }
+    row.addEventListener('click', function () {
+      const cur = normalizeFishLog().length;
+      const HINT = '当前已摸鱼 ' + cur + ' 天。摸鱼天数＝使用网站的累计天数：当天在站内聊天、打卡或有互动就记 1 天（同一天不重复计）。数据丢失后天数会从 0 重新开始，输入原来的天数即可改回；改回后照常每天 +1。';
+      const ctl = window.openModal('修改摸鱼天数', cur ? String(cur) : '', function (v) {
+        const sv = String(v == null ? '' : v).trim();
+        if (!/^\d+$/.test(sv)) { ctl.hint('请输入 0 起的整数天数'); ctl.stay(); return; }
+        const n = parseInt(sv, 10);
+        if (n > 36500) { ctl.hint('最多 36500 天（约 100 年），别填太大'); ctl.stay(); return; }
+        const list = normalizeFishLog().slice().sort();
+        if (n === list.length) { ctl.hint('现在就是 ' + n + ' 天，没有变化'); ctl.stay(); return; }
+        let out;
+        if (n < list.length) {
+          out = list.slice(list.length - n); // 收缩：丢最旧的，最近 n 天（含今天）不动
+        } else {
+          out = list.slice();
+          let d;
+          if (out.length) {
+            const p = out[0].split('-').map(Number);
+            d = new Date(p[0], p[1] - 1, p[2]); // 非空：在最早一天之前回补，真实打卡日全保留
+          } else {
+            const now = new Date();
+            d = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // 空日志（数据丢失场景）：从今天往回补
+            d.setDate(d.getDate() + 1); // 循环先自减再入组，起点设明天＝首个入组日期是今天
+          }
+          for (let i = n - out.length; i > 0; i--) { d.setDate(d.getDate() - 1); out.unshift(fmtDate(d)); }
+        }
+        gStore.set('fish-log', JSON.stringify(out));
+        updateFishDays();
+        fishToast('已改为「已摸鱼 ' + n + ' 天」');
+      }, {
+        inputmode: 'numeric',
+        maxlength: 6,
+        placeholder: cur ? ('当前 ' + cur + ' 天，输入新天数') : '输入目标天数',
+        staticText: HINT
+      });
+    });
+  })();
+
+  // ===== v3.27.x #707→#764：屏幕适配微调（设置 → 工具区首位，独立显眼分组，六轴滑杆）=====
+  // #707 原「屏幕位置设置」：±2px 步进按钮 + 点数值 openModal 手输——用户看不到拖动效果只能猜。
+  // #764 合并升级：入口挪到工具区第一组；每轴改 range 滑杆「边拖边看」实时生效（面板只占下半屏，
+  // 上半屏就是预览现场），双击滑杆复位 0；新增「文字大小」第六轴（--mochi-text-adj，
+  // display-tune.css 只叠加气泡/输入框/设置行等文字组，零 zoom/scale）。
+  // 偏移存根命名空间 LS，跨桌面共用（屏幕是设备属性）；mobile-adapt.js mochiScreenAdj 落层。
+  (function () {
+    // #990：每轴带 group 字段＝它「管哪一页」，渲染时按组加小标题（原七轴平铺一列，用户看不出
+    // 哪根滑杆管桌面、哪根管聊天；顺序也按组排：通用位置轴 → 桌面页专有 → 聊天文字）
+    const AXES = [
+      { k: 'top', name: '顶部', min: -80, max: 80, group: 'pos', hint: '顶部内容被状态栏遮挡=往正拖；离得太远=往负拖' },
+      { k: 'bottom', name: '底部', min: -80, max: 80, group: 'pos', hint: '底部被手势条裁掉=往正拖；悬空离底太远=往负拖' },
+      { k: 'h', name: '页面高度', min: -80, max: 80, group: 'pos', hint: '页面底部留白=往正撑满；内容超出屏幕被裁=往负收短' },
+      { k: 'shift', name: '整体位移', min: -60, max: 60, group: 'pos', hint: '整页位置偏了：正=整页下移、负=上移' },
+      { k: 'side', name: '左右安全边', min: 0, max: 12, group: 'pos', hint: '曲面屏/瀑布屏内容贴到屏幕弧边=往正加（两侧同时内收）；0=默认' },
+      { k: 'kbgap', name: '键盘间隙', min: -240, max: 240, group: 'pos', hint: '键盘弹出后输入栏离键盘还悬空一块=往正拖（往下压向键盘）；反而被键盘盖住一条=往负拖（抬回来）；只在键盘弹出期间生效。量程 ±240：键盘完全不报信号的机型（Edge 系）只能按固定比例猜高度，实测空隙常常超过 80px，用下面的 ±10 / ±1 微调键收尾' },
+      { k: 'desk', name: '桌面图标区', min: -60, max: 60, group: 'desk', hint: '全屏时桌面图标/按钮整体偏上=往正拉回（只影响桌面页）' },
+      { k: 'text', name: '文字大小', min: 0, max: 12, group: 'text', hint: '聊天气泡/输入框/设置列表等正文文字整体加大（只放大文字组，非整页缩放）；0=默认' }
+    ];
+    // 组表＝「哪根滑杆管哪一页」的单一事实源（新增轴只要给 group 字段即可归类）
+    const AXIS_GROUPS = {
+      pos: '通用位置轴（桌面 / 聊天 / 设置都生效）',
+      desk: '只影响「桌面页」',
+      text: '只影响「聊天页」正文文字（气泡 / 输入框）'
+    };
+    function groupIsCurrent(g) {
+      const nm = adjPageName();
+      if (g === 'desk') return nm === '桌面';
+      if (g === 'text') return nm === '聊天' || nm === '群聊';
+      return false;
+    }
+    let panel = null;
+    let elGrip = null, elHead = null, elBody = null, elMini = null; // 面板四块（收起态只留胶囊）
+    // #940（用户 2026-09-20：「不是和边看边调一样半透明的，而且不能拖动滑动，不能预览其他页面」）
+    // 对齐美化抽屉三件套：72% 半透明底（#562 口径）、竖向拖动（#760 bindDockDrag 口径）。
+    // 拖动落位只记会话内、不落盘（纯 UI 位置，不碰数据层）。
+    // #962（用户 2026-09-21：「现在只能在这个设置里面调、不能在桌面的页面调，需要区分在桌面页面
+    // 调和在聊天页面里调，现在是盲调什么也看不见」）——无头实测（390×844）根因：面板贴底
+    // bottom:0 时占距底 0~338px，而底部导航占距底 18~82px、聊天输入栏占距底 0~43px，
+    // 连「收起」态也还占 0~70px ⇒ 切页的唯一入口（底部导航）与说话的唯一入口（输入栏）
+    // 被整条盖死，用户在设置里开了面板就再也走不到桌面/聊天页，只能对着设置列表盲调。
+    // 修法三条，零机型分支：①面板与胶囊自动停在底部操作区之上（量出来再让开）；
+    // ②收起＝一枚小胶囊（不再横贯底边，点一下展开、拖走可让位），带着它就能切页看现场；
+    // ③面板顶部显示「正在调：桌面/聊天」并给两枚切页按钮（#990 起＝带选中态的页签），桌面与聊天各自有入口。
+    // #990（用户 2026-09-21：「屏幕适配打开了这个功能…没有把调桌面和聊天里的屏幕的功能分开，
+    // 这样用户不知道点哪一个才是」「拖动说明那句没说清在挪什么」）修法：①两枚裸按钮改带选中态
+    // 的页签（当前页那枚反色高亮＝一眼看出在调哪页，点另一枚＝切过去看现场）；②七轴按生效页面
+    // 分三组加小标题，当前页那组打「你正在这一页」标记；③拖动说明从标题行（被按钮挤到省略号，
+    // 用户根本没看到）移到标题下的用法段，标题行只留「按住这行标题上下拖＝把面板挪开」。
+    // 注：本段注释刻意不照抄被替换掉的旧文案（旧句原文会命中 verify-962 的 S22/S24 删除型断言，
+    // 也会命中 #982c 那类 absent 哨兵——注释里的裸标识符会被合并进产物）。
+    let adjMini = false;   // true＝收起态小胶囊
+    let adjBottom = null;  // null＝自动让开底部操作区；否则＝距视口底 px（用户拖过的位置）
+    const toast = (msg) => { if (typeof window.toast === 'function') window.toast(msg); };
+
+    // 当前页面短名：胶囊与面板顶部都显示它＝用户一眼知道正在给哪一页调
+    function adjPageName() {
+      const vis = (id) => { const e = document.getElementById(id); return !!e && !e.hidden; };
+      if (vis('page-chat')) return '聊天';
+      if (vis('page-group-chat')) return '群聊';
+      if (vis('page-phone')) return '桌面';
+      if (vis('page-setting')) return '设置';
+      return '本页';
+    }
+    // 底部操作区留白：tab 页＝底部导航栏高度；聊天/群聊页＝输入栏高度。量不到退回 14px。
+    function bottomReserve() {
+      let gap = 14;
+      try {
+        const chat = document.getElementById('page-chat');
+        const gc = document.getElementById('page-group-chat');
+        const host = (chat && !chat.hidden) ? chat : ((gc && !gc.hidden) ? gc : null);
+        if (host) {
+          const row = host.querySelector('.chat-input-row, .gc-input-row');
+          const r = row && row.getBoundingClientRect();
+          if (r && r.height) return Math.max(gap, Math.round(window.innerHeight - r.top + 8));
+          return gap;
+        }
+        const tb = document.querySelector('.tabbar');
+        const t = tb && tb.getBoundingClientRect();
+        if (t && t.height && t.top > 0) gap = Math.max(gap, Math.round(window.innerHeight - t.top + 8));
+      } catch (e) {}
+      return gap;
+    }
+    // v8.29 #1008：落位写入带短过渡（cssText 里的 transition:bottom .16s ease，拖动期间由
+    // bindAdjDrag 临时置 none）。切页时留白会在「底部导航留白」与「聊天输入栏留白 / 无导航
+    // 14px」之间跳——无头实测：设置页 bottom:90px 一跳 → 聊天设置页 bottom:14px（旧实现
+    // transition all 0s 硬切），76px 的瞬移就是用户报的「切换设置和设置美化还是会闪屏」。
+    function applyAdjPos() { if (panel) panel.style.bottom = (adjBottom == null ? bottomReserve() : adjBottom) + 'px'; }
+    function syncMiniLabel() {
+      if (!panel) return;
+      const nm = adjPageName();
+      const pg = panel.querySelector('[data-adj-page]');
+      if (pg) pg.textContent = nm;
+      const ctx = panel.querySelector('[data-adj-ctx]');
+      if (ctx) ctx.textContent = '正在调：' + nm;
+      syncPageSeg();
+    }
+    // #990：页签选中态与分组标记——当前在调的那一页＝页签反色高亮、该页专有的那组滑杆＝
+    // 打「你正在这一页」标记；切页（桌面↔聊天↔设置）随时跟着变，用户不必猜哪一根滑杆管哪页
+    function syncPageSeg() {
+      if (!panel) return;
+      const nm = adjPageName();
+      panel.querySelectorAll('[data-adj-goto]').forEach(function (b) {
+        const on = (b.getAttribute('data-adj-goto') === 'chat') ? (nm === '聊天' || nm === '群聊') : (nm === '桌面');
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        b.style.background = on ? '#111' : 'var(--btn-cancel-bg,#fafafa)';
+        b.style.color = on ? '#fff' : 'var(--ink,#111)';
+        b.style.borderColor = on ? '#111' : 'var(--card-border,#ddd)';
+        b.style.fontWeight = on ? '800' : '600';
+      });
+      panel.querySelectorAll('[data-adj-group]').forEach(function (h) {
+        const mk = h.querySelector('[data-adj-group-mine]');
+        if (mk) mk.style.display = groupIsCurrent(h.getAttribute('data-adj-group')) ? 'inline-block' : 'none';
+      });
+      // 说明行随当前页改写：在设置/其它页开面板时两枚页签都不高亮（那两页都不是当前页），
+      // 这里必须直说「点哪一枚切过去」，否则用户又会问「为什么两个都不亮、我该点哪个」
+      const ch = panel.querySelector('[data-adj-ctxhint]');
+      if (ch) {
+        if (nm === '桌面') ch.textContent = '反色高亮的「桌面」＝你现在正在调的页面；点「聊天」就切到聊天页看现场（面板自动收成小胶囊）。';
+        else if (nm === '聊天' || nm === '群聊') ch.textContent = '反色高亮的「聊天」＝你现在正在调的页面；点「桌面」就切到桌面页看现场（面板自动收成小胶囊）。';
+        else ch.textContent = '当前不在桌面/聊天页（' + nm + '）：点「桌面」或「聊天」切过去看现场（面板自动收成小胶囊），调完点胶囊展开继续。';
+      }
+    }
+    // 收起/展开：只切四块的显隐与外壳形态（全内联，不依赖新增 CSS 文件）
+    function setMini(on) {
+      if (!panel) return;
+      adjMini = !!on;
+      panel.style.left = '0'; panel.style.right = '0';
+      if (adjMini) {
+        panel.style.width = 'max-content'; panel.style.maxWidth = '80vw'; panel.style.margin = '0 auto';
+        panel.style.borderRadius = '99px';
+        panel.style.padding = '8px 14px';
+        panel.style.overflow = 'visible';
+        panel.style.boxShadow = '0 6px 20px rgba(0,0,0,.22)';
+        panel.style.border = '1px solid var(--card-border,#ddd)';
+        // 胶囊就这么点大：半透明会让底层文字透上来糊成一片，这一态用实色（展开态回半透明）
+        panel.style.background = 'var(--card-bg,#fff)';
+        panel.style.display = 'block';
+      } else {
+        panel.style.width = ''; panel.style.maxWidth = ''; panel.style.margin = '';
+        panel.style.borderRadius = '16px 16px 0 0';
+        panel.style.padding = '0 14px calc(14px + var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px)))';
+        panel.style.overflow = 'hidden auto';
+        panel.style.boxShadow = '0 -6px 24px rgba(0,0,0,.18)';
+        panel.style.border = 'none';
+        panel.style.background = 'var(--card-bg,#fff)';
+        panel.style.background = 'color-mix(in srgb, var(--card-bg,#fff) 72%, transparent)';
+        panel.style.display = 'flex';
+      }
+      if (elGrip) elGrip.style.display = adjMini ? 'none' : 'block';
+      if (elHead) elHead.style.display = adjMini ? 'none' : 'flex';
+      if (elBody) elBody.style.display = adjMini ? 'none' : 'flex';
+      if (elMini) elMini.style.display = adjMini ? 'flex' : 'none';
+      syncMiniLabel();
+      applyAdjPos();
+    }
+    // 切页后重算落位与页面名（只读观察 hidden 变化，不写页面状态＝不惊动 #336 的页面观察器）
+    let adjObs = null;
+    function watchAdjPages() {
+      if (adjObs || !('MutationObserver' in window)) return;
+      try {
+        adjObs = new MutationObserver(function () { applyAdjPos(); syncMiniLabel(); });
+        document.querySelectorAll('.page').forEach(function (p) { adjObs.observe(p, { attributes: true, attributeFilter: ['hidden'] }); });
+      } catch (e) { adjObs = null; }
+    }
+    function unwindAdjPages() { try { if (adjObs) adjObs.disconnect(); } catch (e) {} adjObs = null; }
+    // 拖动（面板把手与胶囊共用）：纵向改距底位置；胶囊态位移不足 6px 视为 tap＝展开
+    function bindAdjDrag(el, tapToOpen) {
+      el.style.touchAction = 'none';
+      let sy = 0, sb = 0, drag = false, moved = false;
+      el.addEventListener('pointerdown', (e) => {
+        if (!tapToOpen && adjMini) return; // 展开态把手：胶囊态下不参与
+        if (!tapToOpen && e.target.closest('button')) return; // header 里的按钮不参与拖动
+if (e.target.closest('input,select,textarea')) return; // #1534：滑块是本面板的主角，绝不能被拖面板劫持
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        drag = true; moved = false; sy = e.clientY;
+        sb = parseFloat(panel.style.bottom) || bottomReserve();
+        panel.style.transition = 'none'; // #1008：拖动期间关掉 bottom 过渡，保证跟手
+        try { el.setPointerCapture(e.pointerId); } catch (er) {}
+        e.preventDefault();
+      });
+      el.addEventListener('pointermove', (e) => {
+        if (!drag) return;
+        if (Math.abs(e.clientY - sy) > 6) moved = true;
+        if (!moved) return;
+        adjBottom = Math.max(0, Math.min(Math.round(window.innerHeight * 0.7), Math.round(sb + sy - e.clientY)));
+        applyAdjPos();
+      });
+      const up = () => {
+        if (!drag) return;
+        drag = false;
+        panel.style.transition = 'bottom .16s ease'; // #1008：松手恢复过渡（吸附/回自动位都是动画）
+        if (tapToOpen && !moved) { setMini(false); return; } // 胶囊：点一下＝展开
+        if (adjBottom != null && adjBottom <= bottomReserve() + 6) adjBottom = null; // 拖回自动位＝吸附复位
+        applyAdjPos();
+      };
+      el.addEventListener('pointerup', up);
+      el.addEventListener('pointercancel', () => { drag = false; });
+      el.style.cursor = 'grab';
+    }
+    function valElOf(k) { return panel ? panel.querySelector('[data-adj-val="' + k + '"]') : null; }
+    function sliderOf(k) { return panel ? panel.querySelector('[data-adj-slider="' + k + '"]') : null; }
+    function refreshVals() {
+      if (!panel || !window.mochiScreenAdj) return;
+      const cur = window.mochiScreenAdj.all();
+      AXES.forEach(ax => {
+        const el = valElOf(ax.k);
+        if (el) el.textContent = (cur[ax.k] > 0 ? '+' : '') + (cur[ax.k] || 0) + 'px';
+        const sl = sliderOf(ax.k);
+        if (sl) sl.value = cur[ax.k] || 0;
+      });
+    }
+    function applyAxis(ax, nv, silent) {
+      if (!window.mochiScreenAdj || !window.mochiScreenAdj.set(ax.k, nv)) return;
+      refreshVals();
+      if (!silent) toast(ax.name + ' ' + (nv > 0 ? '+' : '') + nv + 'px');
+    }
+    function buildPanel() {
+      panel = document.createElement('div');
+      panel.id = 'screen-adj-panel';
+      // #940：底色 72% 半透明（color-mix 不支持的老内核自动回落上一句纯色）＋高度 62vh→40vh，
+      // 与边看边调抽屉同口径；刻意不加 backdrop-filter——AGENTS 的 iOS 卡顿红线。
+      panel.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:96;max-height:40vh;background:var(--card-bg,#fff);background:color-mix(in srgb, var(--card-bg,#fff) 72%, transparent);color:var(--ink,#111);box-shadow:0 -6px 24px rgba(0,0,0,.18);border-radius:16px 16px 0 0;overflow-y:auto;overflow-x:hidden;padding:0 14px calc(14px + var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px)));box-sizing:border-box;display:flex;flex-direction:column;gap:6px;transition:bottom .16s ease';
+      const grip = document.createElement('div');
+      grip.style.cssText = 'width:100%;height:20px;margin:2px 0 0;flex:none;background:linear-gradient(transparent 8px,var(--card-border,#ddd) 8px,var(--card-border,#ddd) 12px,transparent 12px)'; // #1534：触控区从 36×4 加大到整行 20px 高（手机上 4px 细条点不中＝用户感知「拖不动」），视觉细条仍居中
+      panel.appendChild(grip);
+      bindAdjDrag(grip, false);
+      elGrip = grip;
+      const head = document.createElement('div');
+      head.style.cssText = 'display:flex;flex-direction:column;gap:5px;flex:none;padding:2px 0 4px';
+      // #990：标题与说明分两行——原来挤成一行时那句拖动提示被右侧按钮压成省略号
+      // （390px 实测只剩不到 40px），用户看不到＝「没有写清楚」；现在这行完整可读
+      const headTop = document.createElement('div');
+      headTop.style.cssText = 'display:flex;align-items:center;gap:8px';
+      headTop.innerHTML = '<b style="font-size:14px;flex:1;min-width:0">屏幕适配微调</b><span style="font-size:11px;color:#666;flex:none">本机永久保存</span>';
+      head.appendChild(headTop);
+bindAdjDrag(headTop, false); // #1534：拖标题行移动面板（与桌面美化「边看边调」同口径）
+      const headTool = document.createElement('div');
+      headTool.style.cssText = 'display:flex;align-items:center;gap:8px';
+      head.appendChild(headTool);
+      const headHint = document.createElement('span');
+      headHint.setAttribute('data-adj-draghint', '');
+      headHint.style.cssText = 'font-size:11px;color:#666;flex:1;min-width:0;line-height:1.3';
+      headHint.textContent = '按住这行标题上下拖＝把面板挪开';
+      headTool.appendChild(headHint);
+      const done = document.createElement('button');
+      done.textContent = '完成';
+      done.style.cssText = 'flex:none;border:none;background:#111;color:#fff;font-size:12px;font-weight:700;border-radius:99px;padding:6px 16px;cursor:pointer';
+      done.addEventListener('click', closePanel);
+      headTop.appendChild(done);
+      // #794：按住看默认（A/B 对比）——按住期间全部轴临时归零预览出厂形态，
+      // 松手恢复按住前的值；拖方向拿不准时按一下就知道该往哪边拖
+      const holdBtn = document.createElement('button');
+      holdBtn.textContent = '按住看默认';
+      holdBtn.style.cssText = 'flex:none;border:1px solid var(--card-border,#ddd);background:var(--btn-cancel-bg,#fafafa);color:var(--ink,#111);font-size:12px;border-radius:99px;padding:6px 12px;cursor:pointer';
+      let heldSnap = null;
+      const holdOn = function () {
+        if (heldSnap || !window.mochiScreenAdj) return;
+        heldSnap = window.mochiScreenAdj.all();
+        AXES.forEach(function (ax) { applyAxis(ax, 0, true); });
+        holdBtn.textContent = '松手恢复';
+      };
+      const holdOff = function () {
+        if (!heldSnap) return;
+        const snap = heldSnap; heldSnap = null;
+        AXES.forEach(function (ax) { applyAxis(ax, snap[ax.k] || 0, true); });
+        holdBtn.textContent = '按住看默认';
+        refreshVals();
+      };
+      holdBtn.addEventListener('pointerdown', holdOn);
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { holdBtn.addEventListener(ev, holdOff); });
+      headTool.insertBefore(holdBtn, headHint);
+      // #940：收起＝只剩 grip＋标题行，露出 tabbar 可切到桌面/聊天等页面看六轴现场（同抽屉口径）
+      const foldBtn = document.createElement('button');
+      foldBtn.textContent = '收起';
+      foldBtn.title = '收成一枚小胶囊（不挡底部导航/输入栏），切到桌面或聊天继续调';
+      foldBtn.style.cssText = 'flex:none;border:1px solid var(--card-border,#ddd);background:var(--btn-cancel-bg,#fafafa);color:var(--ink,#111);font-size:12px;border-radius:99px;padding:6px 12px;cursor:pointer';
+      const adjBody = document.createElement('div');
+      adjBody.style.cssText = 'display:flex;flex-direction:column;gap:6px;flex:none';
+      elBody = adjBody;
+      // #962：收起＝整块收成小胶囊（原实现只折正文区，外壳仍横贯底边 70px 高、照样盖住底部导航）
+      foldBtn.addEventListener('click', () => { setMini(true); });
+      headTool.insertBefore(foldBtn, holdBtn);
+      panel.appendChild(head);
+      elHead = head;
+      bindAdjDrag(head, false); // grip 只有 4px 高，标题行才是主拖拽把手
+      // #962：收起态胶囊——一枚小 chip（点一下展开、可拖走让位），头上带当前页面名
+      // ⇒ 用户带着它就能切到桌面/聊天看现场，一眼知道在给哪一页调
+      const mini = document.createElement('div');
+      mini.setAttribute('data-adj-mini', '');
+      mini.style.cssText = 'display:none;align-items:center;gap:8px;font-size:13px;font-weight:700;white-space:nowrap';
+      mini.innerHTML = '<span style="font-size:13px;font-weight:800">适配</span><span data-adj-page style="font-weight:600;color:#888">桌面</span><span style="font-weight:500;font-size:11px;color:#999">点开调 ›</span>';
+      bindAdjDrag(mini, true);
+      panel.appendChild(mini);
+      elMini = mini;
+      // #990：用法写在面板最上面（用户报拖动那句没说清在挪什么——原句还被右侧按钮挤成
+      // 省略号）。拖动这条现已挪到标题行那行明说，这里只讲「切页」与「哪根滑杆管哪页」这两件
+      // 最容易点错的事，避免把滑杆挤出首屏
+      const tip = document.createElement('div');
+      tip.setAttribute('data-adj-usage', '');
+      tip.style.cssText = 'font-size:11px;color:#666;flex:none;line-height:1.5';
+      tip.textContent = '想调哪一页，就点「正在调」旁边那一枚页签——切过去看现场（面板自动收成小胶囊）。下面滑杆按「哪一页生效」分三组，标着「你正在这一页」的那组才是当前页要调的；拖动当场生效、双击滑杆回默认 0。';
+      adjBody.appendChild(tip);
+      // #962 现场行 → #990：原来两枚裸按钮（分别写着「看桌面」与「看聊天」）分不出哪一枚是
+      // 「我现在要调的」，用户报「不知道点哪一个才是」——改成带选中态的页签（当前页反色高亮）＋ 一行说明
+      const ctx = document.createElement('div');
+      ctx.style.cssText = 'flex:none;display:flex;align-items:center;gap:8px;border:1px solid var(--card-border,#eee);border-radius:10px;padding:7px 10px;font-size:12px';
+      const ctxTxt = document.createElement('span');
+      ctxTxt.setAttribute('data-adj-ctx', '');
+      ctxTxt.style.cssText = 'flex:1;min-width:0;font-weight:600';
+      ctxTxt.textContent = '正在调：' + adjPageName();
+      ctx.appendChild(ctxTxt);
+      [['page-phone', '桌面'], ['chat', '聊天']].forEach(function (pair) {
+        const pb = document.createElement('button');
+        pb.setAttribute('data-adj-goto', pair[0]);
+        pb.setAttribute('aria-pressed', 'false');
+        pb.title = '切到「' + pair[1] + '」页看现场（面板自动收成小胶囊）';
+        pb.textContent = pair[1];
+        pb.style.cssText = 'flex:none;border:1px solid var(--card-border,#ddd);background:var(--btn-cancel-bg,#fafafa);color:var(--ink,#111);font-size:12px;font-weight:600;border-radius:99px;padding:5px 14px;cursor:pointer';
+        pb.addEventListener('click', function () { goPage(pair[0]); });
+        ctx.appendChild(pb);
+      });
+      adjBody.appendChild(ctx);
+      const ctxHint = document.createElement('div');
+      ctxHint.setAttribute('data-adj-ctxhint', '');
+      ctxHint.style.cssText = 'font-size:11px;color:#666;flex:none;line-height:1.4;margin-top:-2px';
+      ctxHint.textContent = '点「桌面」或「聊天」切过去看现场（面板自动收成小胶囊），调完点胶囊展开继续。'; // syncPageSeg 随后按当前页改写
+      adjBody.appendChild(ctxHint);
+      // #794：诊断建议行——打开面板即现场探测一次（device.js 只读采集+判定同源），
+      // 有可修项才显示；点「一键修正」直接写入对应轴，不用再跑诊断报告
+      try {
+        const sug = (window.mochiScreenFixSuggest ? window.mochiScreenFixSuggest() : []) || [];
+        if (sug.length) {
+          const srow = document.createElement('div');
+          srow.style.cssText = 'flex:none;display:flex;align-items:center;gap:8px;border:1px solid #d9a400;background:#fff8e0;color:#6b5200;font-size:11.5px;line-height:1.5;border-radius:10px;padding:8px 10px';
+          const stxt = document.createElement('span');
+          stxt.style.cssText = 'flex:1;min-width:0';
+          stxt.textContent = '诊断发现：' + sug.map(function (s) { return s.why; }).join('、');
+          srow.appendChild(stxt);
+          const sbtn = document.createElement('button');
+          sbtn.textContent = '一键修正';
+          sbtn.style.cssText = 'flex:none;border:none;background:#8a6d00;color:#fff;font-size:11.5px;font-weight:700;border-radius:99px;padding:5px 12px;cursor:pointer';
+          sbtn.addEventListener('click', function () {
+            let n = 0;
+            sug.forEach(function (s) { try { if (window.mochiScreenAdj.set(s.axis, s.delta)) n++; } catch (e) {} });
+            toast(n ? ('已按诊断应用 ' + n + ' 项修正') : '没有可应用的修正');
+            refreshVals();
+            if (srow.parentNode) srow.remove();
+          });
+          srow.appendChild(sbtn);
+          adjBody.appendChild(srow);
+        }
+      } catch (eSug) {}
+      const cur0 = window.mochiScreenAdj ? window.mochiScreenAdj.all() : {};
+      let lastGroup = '';
+      AXES.forEach(ax => {
+        // #990：换组就插一个小标题＝「这根滑杆管哪一页」的唯一说明位，当前页那组带「你正在这一页」
+        if (ax.group !== lastGroup) {
+          lastGroup = ax.group;
+          const gh = document.createElement('div');
+          gh.setAttribute('data-adj-group', ax.group);
+          gh.style.cssText = 'flex:none;display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;font-weight:800;color:#444;padding-top:7px';
+          gh.textContent = AXIS_GROUPS[ax.group] || '';
+          const mine = document.createElement('span');
+          mine.setAttribute('data-adj-group-mine', '');
+          mine.style.cssText = 'display:none;background:#111;color:#fff;font-size:10px;font-weight:700;border-radius:99px;padding:1px 7px';
+          mine.textContent = '你正在这一页';
+          gh.appendChild(mine);
+          adjBody.appendChild(gh);
+        }
+        const row = document.createElement('div');
+        row.style.cssText = 'flex:none;border-top:1px solid var(--card-border,#eee);padding:7px 0';
+        const line = document.createElement('div');
+        line.style.cssText = 'display:flex;align-items:center;gap:8px';
+        const lbl = document.createElement('div');
+        lbl.style.cssText = 'flex:1;min-width:0;font-size:13px;font-weight:600';
+        lbl.innerHTML = ax.name + ' <span style="font-weight:400;color:#888;font-size:11px">（' + ax.min + '~' + ax.max + 'px）</span>';
+        line.appendChild(lbl);
+        const val = document.createElement('span');
+        val.setAttribute('data-adj-val', ax.k);
+        val.style.cssText = 'flex:none;min-width:52px;text-align:right;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums';
+        line.appendChild(val);
+        row.appendChild(line);
+        const sub = document.createElement('div');
+        sub.style.cssText = 'font-size:10.5px;color:#999;line-height:1.4;margin:1px 0 3px';
+        sub.textContent = ax.hint;
+        // #1463：平台差异行级标记（#964 惯例：只在对方平台被【正向】判定时点出，不隐藏不裁功能）
+        // ——「页面高度」轴的 CSS 消费方全挂在 iOS 形态类（ios-vv-fit / ios-pwa-standalone /
+        // ios-cover-top）下，安卓既无写入方也无消费方＝拖了无变化是事实，明说比让人盲拖好。
+        if (ax.k === "h" && (function () { try { var md = window.mochiDevice; return !!(md && md.isAndroid && !md.isIOS); } catch (ePT) { return false; } })()) {
+          const ptag = document.createElement("span");
+          ptag.textContent = "iOS 专用（安卓上此轴无落点，拖了无变化属正常）";
+          ptag.style.cssText = "display:inline-block;margin-left:6px;font-size:10px;font-weight:700;color:#888;background:var(--card-border,#e9e9e9);border-radius:6px;padding:1px 6px;vertical-align:middle";
+          sub.appendChild(ptag);
+        }
+        row.appendChild(sub);
+        const rng = document.createElement('input');
+        rng.type = 'range';
+        rng.setAttribute('data-adj-slider', ax.k);
+        rng.min = ax.min; rng.max = ax.max; rng.step = 1;
+        rng.value = cur0[ax.k] || 0;
+        rng.style.cssText = 'width:100%;margin:0;accent-color:#111';
+        rng.addEventListener('input', () => {
+          applyAxis(ax, parseInt(rng.value, 10) || 0, true);
+        });
+        rng.addEventListener('dblclick', () => { applyAxis(ax, 0); });
+        row.appendChild(rng);
+        if (ax.k === 'kbgap') { // #1527：量程放到 ±240 后需要粗调/细调两档，否则小屏上一条长滑块很难落到某个整像素
+          const pad = document.createElement('div');
+          pad.style.cssText = 'display:flex;gap:6px;margin-top:4px';
+          [['-10', -10], ['-1', -1], ['+1', 1], ['+10', 10]].forEach(function (btn) {
+            const b2 = document.createElement('button');
+            b2.type = 'button'; b2.textContent = btn[0];
+            b2.style.cssText = 'flex:1;min-width:44px;padding:5px 0;border:1px solid var(--card-border,#ddd);background:var(--btn-cancel-bg,#fafafa);color:var(--ink,#111);border-radius:6px;font-size:12px';
+            b2.addEventListener('click', function () {
+              const curV = parseInt(rng.value, 10) || 0;
+              const nv = Math.max(ax.min, Math.min(ax.max, curV + btn[1]));
+              applyAxis(ax, nv, true);
+              rng.value = nv;
+            });
+            pad.appendChild(b2);
+          });
+          row.appendChild(pad);
+        }
+        adjBody.appendChild(row);
+      });
+      const reset = document.createElement('button');
+      reset.textContent = '全部恢复默认（各轴归零）';
+      reset.style.cssText = 'flex:none;margin-top:6px;border:1px solid var(--card-border,#ddd);background:var(--btn-cancel-bg,#fafafa);color:var(--ink,#111);font-size:12px;font-weight:600;border-radius:99px;padding:8px 0;cursor:pointer';
+      reset.addEventListener('click', () => {
+        AXES.forEach(ax => applyAxis(ax, 0, true));
+        toast('屏幕适配微调已全部恢复默认');
+      });
+      adjBody.appendChild(reset);
+      // #794：适配码（换机/情侣互帮）——把当前各轴值打成一串 MCADJ1 码，对方在
+      // 「屏幕适配微调→导入适配码」粘贴即套用（值域校验走 mochiScreenAdj.set，
+      // 越界/残缺项自动忽略，不会把对方面板写坏）
+      const MOCHI_ADJ_TAG = 'MCADJ1:';
+      const ADJ_CODE_MAP = { t: 'top', b: 'bottom', h: 'h', d: 'desk', s: 'shift', x: 'text', e: 'side' };
+      function adjCodeExport() {
+        const a = window.mochiScreenAdj ? window.mochiScreenAdj.all() : {};
+        const o = {};
+        Object.keys(ADJ_CODE_MAP).forEach(function (k) { o[k] = a[ADJ_CODE_MAP[k]] || 0; });
+        return MOCHI_ADJ_TAG + JSON.stringify(o);
+      }
+      function adjCodeImport(str) {
+        str = String(str || '');
+        const at = str.indexOf(MOCHI_ADJ_TAG);
+        if (at < 0) return -1;
+        const b0 = str.indexOf('{', at);
+        const b1 = str.lastIndexOf('}');
+        if (b0 < 0 || b1 <= b0) return -1;
+        let o = null;
+        try { o = JSON.parse(str.slice(b0, b1 + 1)); } catch (e) { return -1; }
+        if (!o || typeof o !== 'object') return -1;
+        let n = 0;
+        Object.keys(ADJ_CODE_MAP).forEach(function (k) {
+          if (o[k] !== undefined && window.mochiScreenAdj.set(ADJ_CODE_MAP[k], o[k])) n++;
+        });
+        return n;
+      }
+      const codeRow = document.createElement('div');
+      codeRow.style.cssText = 'flex:none;display:flex;gap:8px;margin-top:6px';
+      const expBtn = document.createElement('button');
+      expBtn.textContent = '复制适配码';
+      expBtn.style.cssText = 'flex:1;border:1px solid var(--card-border,#ddd);background:var(--btn-cancel-bg,#fafafa);color:var(--ink,#111);font-size:12px;font-weight:600;border-radius:99px;padding:8px 0;cursor:pointer';
+      expBtn.addEventListener('click', function () {
+        const code = adjCodeExport();
+        let settled = false;
+        const fin = function (ok) {
+          if (settled) return; settled = true;
+          toast(ok ? '适配码已复制，发给对方在本面板「导入适配码」粘贴' : '复制失败，请手动抄录：' + code);
+        };
+        try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(code).then(function () { fin(true); }, function () { fin(false); }); return; } } catch (e1) {}
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = code;
+          ta.setAttribute('readonly', '');
+          ta.style.cssText = 'position:fixed;left:-9999px;top:0;width:10px;height:10px;opacity:0;';
+          document.body.appendChild(ta);
+          ta.select();
+          const ok2 = document.execCommand('copy');
+          window.mochiKillCopySelection && window.mochiKillCopySelection(ta);
+          document.body.removeChild(ta);
+          fin(!!ok2);
+        } catch (e2) { fin(false); }
+      });
+      codeRow.appendChild(expBtn);
+      const impBtn = document.createElement('button');
+      impBtn.textContent = '导入适配码';
+      impBtn.style.cssText = expBtn.style.cssText;
+      impBtn.addEventListener('click', function () {
+        window.openModal('导入适配码', '', function (v) {
+          const n = adjCodeImport(v);
+          if (n < 0) { toast('适配码无法识别——请让对方在「屏幕适配微调」里点「复制适配码」后整段发来'); return; }
+          refreshVals();
+          toast(n ? ('已应用对方适配码（' + n + ' 项生效）') : '适配码与本机现状一致，无需改动');
+        });
+      });
+      codeRow.appendChild(impBtn);
+      adjBody.appendChild(codeRow);
+      panel.appendChild(adjBody);
+      document.body.appendChild(panel);
+      setMini(false); // 每次新建都从展开态起步（落位自动摆到底部操作区之上）
+      watchAdjPages();
+    }
+    function closePanel() { if (panel) { panel.remove(); panel = null; unwindAdjPages(); } }
+    // #962：切到桌面/聊天现场（面板里那两枚切页页签用）——切完自动收成胶囊，一眼看到那一页
+    // #1409：切桌面那一跳抽成 gotoDeskTab＝设置页入口复用同一句，但它不收胶囊（面板要保持展开好边拖边看）
+    function gotoDeskTab() {
+      try { const t = document.querySelector('.tab[data-page="page-phone"]'); if (t) t.click(); } catch (e) {}
+    }
+    function goPage(which) {
+      try {
+        if (which === 'chat') { if (typeof window.enterChat === 'function') window.enterChat(); }
+        else gotoDeskTab();
+      } catch (e) {}
+      setMini(true);
+      applyAdjPos();
+      syncMiniLabel();
+    }
+    function openAdjPanel() {
+      // #962：节点若被外部摘掉（页面重建/测试脚本 remove）就重建——否则 openAdjPanel 会对着
+      // 游离节点置 hidden=false：命令都执行了、屏上什么都没有（实测踩过）
+      if (!panel || !panel.isConnected) { panel = null; buildPanel(); }
+      else panel.hidden = false; // 安卓返回键走 tabs.js 只置 hidden，重开要显回来（防 zombie 面板）
+      applyAdjPos();
+      refreshVals();
+      syncMiniLabel();
+    }
+    // #962/#982：三处入口收敛到同一个开面板动作——设置页「工具」首位（原有）＋聊天页「聊天设置 → 美化」
+    // ＋桌面页「装修模式栏」，用户不用先钻进设置：在桌面/聊天现场就能开面板调，调的位置看得见＝不再盲调。
+    // #982：聊天侧入口由「更多 → 工具」改为「聊天设置 → 美化」（用户直派），按钮 id 随行 id 一并换掉。
+    window.mochiOpenScreenAdj = openAdjPanel;
+    const entry = document.getElementById('row-screen-adj');
+    // #1409（作者直派「点击打开【屏幕适配微调】没有自动跳转到桌面」）：这枚入口此前只开面板、不切页，
+    // 于是人还站在设置列表前、面板盖住下半屏——要看自己正在调的东西得再点一次面板里「桌面」那枚页签
+    // （顶上那句「当前不在桌面/聊天页（设置）：点『桌面』或『聊天』切过去」本就是给这一跳兜底的）。
+    // 作者定的口径＝点入口把这一跳合并进去：开面板 + 立刻站到桌面现场，且**面板保持展开**（收胶囊等于
+    // 又要点一下才能拖滑杆，边拖边看断在半路）；关掉面板**留在桌面**、不回设置页（它不是一层归还页面的弹窗）。
+    // 切页后的落位与页面名由 watchAdjPages 那双眼睛跟上，这里不重复落位。
+    // 只收设置页这一枚：聊天设置里那枚（cs-screen-adj）本就在聊天现场、装修那枚（decor-fit）本就在桌面，
+    // 把它们也拽走＝把人踢离自己正在看的页面。
+    if (entry) entry.addEventListener('click', function () { openAdjPanel(); gotoDeskTab(); });
+    const chatSetEntry = document.getElementById('cs-screen-adj');
+    if (chatSetEntry) chatSetEntry.addEventListener('click', openAdjPanel);
+    const decorEntry = document.getElementById('decor-fit');
+    if (decorEntry) decorEntry.addEventListener('click', () => {
+      try { if (window.exitDecor) window.exitDecor(); } catch (e) {} // 先退出装修模式再开面板，避免两层叠着看不清
+      openAdjPanel();
+    });
+    try {
+      window.addEventListener('resize', () => { applyAdjPos(); });
+      if (window.visualViewport) window.visualViewport.addEventListener('resize', () => { if (panel) applyAdjPos(); });
+    } catch (e) {}
+  })();
+
   // 今日情话：每天固定随机一条（按日期种子，当天不变，隔天换新）
   // 字卡库「桌面今日情话」可自定义字卡库；未自定义时用默认库
   // v3.6.x：抽成可复用函数——多桌面切换联系人后重读新桌面的字卡库与存档
@@ -7018,12 +9234,15 @@ try {
       }
     });
     // 今日情话存档：每天一条，全部历史保存在主页（同一天不重复）
+    // #1493：读不全先让路（quote-history 大键化后冷读空＝拿空档 unshift 会把整本存档顶掉；今天这句主页照常显示）
     try {
-      const today = fishToday();
-      const list = JSON.parse(store.get('quote-history') || '[]');
-      if (!list.length || list[0].date !== today) {
-        list.unshift({ date: today, text: text, ts: Date.now() });
-        store.set('quote-history', JSON.stringify(list));
+      if (!window.xyBigWriteHold || !window.xyBigWriteHold(store, 'quote-history')) {
+        const today = fishToday();
+        const list = JSON.parse(store.get('quote-history') || '[]');
+        if (!list.length || list[0].date !== today) {
+          list.unshift({ date: today, text: text, ts: Date.now() });
+          store.set('quote-history', JSON.stringify(list));
+        }
       }
     } catch (e) {}
   }
@@ -7043,7 +9262,9 @@ try {
     return c === 'family' ? '亲情纪念日' : c === 'friend' ? '友情纪念日' : '恋爱纪念日';
   }
   function updateLove() {
-    const start = store.get('love-start');
+    // v8.29 #984：统一经 normDateStr 收口——历史脏值（如内核 date 回落 text 时落库的
+    // 「20260601」）不再渲染成「20260601 年 undefined 月 undefined 日」
+    const start = normDateStr(store.get('love-start'));
     const daysEl = document.getElementById('love-days');
     const dateEl = document.getElementById('love-date');
     const mDays = document.getElementById('mem-love-days');
@@ -7080,15 +9301,45 @@ try {
   }
   updateLove();
 
-  // 设置页恋爱纪念日：原生日期选择器（任何浏览器/手机上都能点开）
-  const dateInput = document.getElementById('love-date-input');
+  // 设置页恋爱纪念日：站内月历弹层（openLoveDateModal）
+  // v8.29 #984：原实现是「透明的原生 date 控件铺满假按钮」——按钮本身 pointer-events:none
+  //   且无任何点击处理，点按能否生效、取回的日期字符串是什么形态，全看内核把触摸转发给
+  //   原生控件的行为与内核的 date 支持（date 回落 text 的内核给的是「20260601」这类无连字
+  //   符串，落库即脏值）。iPhone X / iOS16.7 / 夸克实报「点击设置恋爱纪念日无反应」，同族
+  //   机型同现；功能大全「纪念 · 恋爱纪念日」的链式 .click() 也正落在这个没有处理器的按钮
+  //   上（点了没反应）。改为纯 DOM 月历（与「添加纪念日」共用 .mem-cal 渲染），点击、取值、
+  //   校验全在自己手里，零机型分支。
   const dateBtnTxt = document.getElementById('love-date-btn-txt');
   const dateBtn = document.getElementById('love-date-btn');
-  // 把已选的日期显示到按钮文字上（原生 date input 本身被覆盖为不可见）
+  // 日期字符串收口：只接受 YYYY-MM-DD，并容忍内核/历史数据里的无连字符与点/斜杠形态
+  function normDateStr(v) {
+    const s = String(v == null ? '' : v).trim();
+    let m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s);
+    if (!m) m = /^(\d{4})(\d{2})(\d{2})$/.exec(s);
+    if (!m) m = /^(\d{4})[./](\d{1,2})[./](\d{1,2})$/.exec(s);
+    if (!m) return '';
+    const y = +m[1], mo = +m[2], d = +m[3];
+    if (y < 1900 || y > 2999 || mo < 1 || mo > 12 || d < 1 || d > 31) return '';
+    const dt = new Date(y, mo - 1, d);
+    if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return '';
+    return y + '-' + pad2(mo) + '-' + pad2(d);
+  }
+  // 纪念日起值的唯一写入口（月历「确定」与任何外部赋值都走它）：非法值一律不落库
+  function setLoveStart(v) {
+    const ds = normDateStr(v);
+    if (!ds) return false;
+    store.set('love-start', ds);
+    syncLoveDateBtn(ds);
+    updateLove();
+    try { renderDeskAnniv(); } catch (e) {}
+    return true;
+  }
+  // 把已选的日期显示到按钮文字上
   function syncLoveDateBtn(val) {
     if (!dateBtnTxt || !dateBtn) return;
-    if (val) {
-      const parts = val.split('-');
+    const ds = normDateStr(val);
+    if (ds) {
+      const parts = ds.split('-');
       dateBtnTxt.textContent = parts[0] + ' 年 ' + parts[1] + ' 月 ' + parts[2] + ' 日';
       dateBtn.setAttribute('data-set', '1');
     } else {
@@ -7096,18 +9347,8 @@ try {
       dateBtn.setAttribute('data-set', '0');
     }
   }
-  if (dateInput) {
-    const saved = store.get('love-start');
-    if (saved) dateInput.value = saved;
-    syncLoveDateBtn(dateInput.value);
-    dateInput.addEventListener('change', () => {
-      if (dateInput.value) {
-        store.set('love-start', dateInput.value);
-        syncLoveDateBtn(dateInput.value);
-        updateLove();
-      }
-    });
-  }
+  syncLoveDateBtn(store.get('love-start'));
+  if (dateBtn) dateBtn.addEventListener('click', openLoveDateModal);
 
   // v3.26.x：主纪念日关系类型（爱情向/亲情向/友情向）+ 关系称呼（选填）
   // 桌面双方头像之间的图标随类型切换：爱情=爱心 / 亲情=家 / 友情=两人
@@ -7202,44 +9443,63 @@ try {
     memAdd.addEventListener('click', openMemAddModal);
   }
 
-  // ================= 添加纪念日 / 倒数日：日历选择弹层 =================
+  // ================= 纪念日日期选择：月历（「添加纪念日」与「恋爱纪念日」共用） =================
   // v3.5.29：从"文本输入名称+日期"改为可视化月历点选（更直观美观）
-  let memMask = null;      // 弹层单例
+  // v8.29 #984：渲染与导航抽成共用件——两个弹层同一实现，日期控件族的坑只修一处，
+  //   不再逐入口手抄（手抄必漏是本族反复复发的结构性原因）。
+  let memMask = null;      // 添加纪念日弹层单例
   let memSelDate = '';     // 选中日期 'YYYY-MM-DD'
   let memSelType = 'auto'; // auto/ann/count
-  let mvY = 0, mvM = -1;   // 弹层当前查看的年/月（-1=本月）
+  const mvYM = { y: 0, m: -1 }; // 弹层当前查看的年/月（m=-1 表示「本月」，首帧落到当前年月）
   function pad2(n) { return n < 10 ? '0' + n : '' + n; }
   function memToday() {
     const d = new Date();
     return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
   }
-  function renderMemCal() {
-    if (!memMask) return;
-    const now = new Date();
-    if (mvM < 0) { mvY = now.getFullYear(); mvM = now.getMonth(); }
-    const y = mvY, m = mvM;
-    memMask.querySelector('.mem-cal-title').textContent = y + ' 年 ' + (m + 1) + ' 月';
-    const first = new Date(y, m, 1);
-    const days = new Date(y, m + 1, 0).getDate();
-    const startWd = first.getDay();
+  // 月历导航条：‹‹ ›› 按年跳（选几年前的纪念日不必点几十下），‹ › 按月跳
+  const MEM_CAL_NAV_HTML =
+    '<div class="mem-cal-nav">' +
+      '<button class="mem-cal-btn" data-nav="-12" title="上一年"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M11 17l-5-5 5-5"/><path d="M18 17l-5-5 5-5"/></svg></button>' +
+      '<button class="mem-cal-btn" data-nav="-1" title="上个月"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M15 18l-6-6 6-6"/></svg></button>' +
+      '<span class="mem-cal-title"></span>' +
+      '<button class="mem-cal-btn" data-nav="1" title="下个月"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M9 18l6-6-6-6"/></svg></button>' +
+      '<button class="mem-cal-btn" data-nav="12" title="下一年"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M13 7l5 5-5 5"/><path d="M6 7l5 5-5 5"/></svg></button>' +
+    '</div>';
+  // 画一个月（ym={y,m} 会被就地修正为合法月份；selDate 打选中态、今天打 today 态）
+  function memCalPaint(panel, ym, selDate, onPick) {
+    while (ym.m < 0) { ym.m += 12; ym.y--; }
+    while (ym.m > 11) { ym.m -= 12; ym.y++; }
+    const title = panel.querySelector('.mem-cal-title');
+    const grid = panel.querySelector('.mem-cal-grid');
+    if (!title || !grid) return;
+    title.textContent = ym.y + ' 年 ' + (ym.m + 1) + ' 月';
+    const days = new Date(ym.y, ym.m + 1, 0).getDate();
+    const startWd = new Date(ym.y, ym.m, 1).getDay();
     const wds = ['日', '一', '二', '三', '四', '五', '六'];
     const t = memToday();
     let html = wds.map(w => '<span class="mem-cal-wd">' + w + '</span>').join('');
     for (let i = 0; i < startWd; i++) html += '<span class="mem-cal-cell blank"></span>';
     for (let d = 1; d <= days; d++) {
-      const ds = y + '-' + pad2(m + 1) + '-' + pad2(d);
-      const isToday = ds === t;
-      const isSel = ds === memSelDate;
-      html += '<span class="mem-cal-cell' + (isToday ? ' today' : '') + (isSel ? ' sel' : '') + '" data-d="' + ds + '">' + d + '</span>';
+      const ds = ym.y + '-' + pad2(ym.m + 1) + '-' + pad2(d);
+      html += '<span class="mem-cal-cell' + (ds === t ? ' today' : '') + (ds === selDate ? ' sel' : '') + '" data-d="' + ds + '">' + d + '</span>';
     }
-    const grid = memMask.querySelector('.mem-cal-grid');
     grid.innerHTML = html;
     grid.querySelectorAll('.mem-cal-cell[data-d]').forEach(cell => {
-      cell.addEventListener('click', () => {
-        memSelDate = cell.getAttribute('data-d');
-        renderMemCal();
-      });
+      cell.addEventListener('click', () => { onPick(cell.getAttribute('data-d')); });
     });
+  }
+  function memCalNavBind(panel, ym, onChange) {
+    panel.querySelectorAll('.mem-cal-btn').forEach(b => b.addEventListener('click', () => {
+      ym.m += parseInt(b.getAttribute('data-nav'), 10) || 0;
+      while (ym.m < 0) { ym.m += 12; ym.y--; }
+      while (ym.m > 11) { ym.m -= 12; ym.y++; }
+      onChange();
+    }));
+  }
+  function renderMemCal() {
+    if (!memMask) return;
+    if (mvYM.m < 0) { const now = new Date(); mvYM.y = now.getFullYear(); mvYM.m = now.getMonth(); }
+    memCalPaint(memMask, mvYM, memSelDate, (d) => { memSelDate = d; renderMemCal(); });
   }
   function closeMemAdd() {
     if (memMask) memMask.hidden = true;
@@ -7253,14 +9513,7 @@ try {
         '<div class="mg-panel mem-add-panel">' +
           '<div class="mg-head"><span>添加纪念日 / 倒数日</span><button class="mg-close">✕</button></div>' +
           '<input type="text" class="mem-add-input" placeholder="名称（如：在一起一周年 / 生日）" maxlength="24">' +
-          '<div class="mem-cal">' +
-            '<div class="mem-cal-nav">' +
-              '<button class="mem-cal-btn" data-nav="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M15 18l-6-6 6-6"/></svg></button>' +
-              '<span class="mem-cal-title"></span>' +
-              '<button class="mem-cal-btn" data-nav="1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M9 18l6-6-6-6"/></svg></button>' +
-            '</div>' +
-            '<div class="mem-cal-grid"></div>' +
-          '</div>' +
+          '<div class="mem-cal">' + MEM_CAL_NAV_HTML + '<div class="mem-cal-grid"></div></div>' +
           '<div class="mem-type-row">' +
             '<button class="mem-type-pill sel" data-type="auto">自动</button>' +
             '<button class="mem-type-pill" data-type="ann">纪念日</button>' +
@@ -7276,13 +9529,8 @@ try {
       memMask.querySelector('.mg-close').addEventListener('click', closeMemAdd);
       memMask.addEventListener('click', (e) => { if (e.target === memMask) closeMemAdd(); });
       memMask.querySelector('.mem-add-cancel').addEventListener('click', closeMemAdd);
-      // 月份切换
-      memMask.querySelectorAll('.mem-cal-btn').forEach(b => b.addEventListener('click', () => {
-        mvM += parseInt(b.getAttribute('data-nav'), 10);
-        if (mvM < 0) { mvM = 11; mvY--; }
-        if (mvM > 11) { mvM = 0; mvY++; }
-        renderMemCal();
-      }));
+      // 月份/年份切换（共用件：‹ › 按月、‹‹ ›› 按年）
+      memCalNavBind(memMask, mvYM, renderMemCal);
       // 类型切换
       memMask.querySelectorAll('.mem-type-pill').forEach(b => b.addEventListener('click', () => {
         memSelType = b.getAttribute('data-type');
@@ -7314,9 +9562,54 @@ try {
     const nameInput = memMask.querySelector('input.mem-add-input');
     nameInput.value = '';
     memMask.querySelectorAll('.mem-type-pill').forEach(x => x.classList.toggle('sel', x.getAttribute('data-type') === 'auto'));
-    mvY = 0; mvM = -1;
+    mvYM.y = 0; mvYM.m = -1;
     renderMemCal();
     setTimeout(() => nameInput.focus(), 80);
+  }
+
+  // ================= 恋爱纪念日：选日期弹层（#984） =================
+  // 与「添加纪念日」同一套月历渲染，但只做一件事：选一个日期写进 love-start。
+  // 纯 DOM、按钮自己接点击——不再依赖任何内核的原生日期控件行为。
+  let memDateMask = null;
+  let mdSel = '';
+  const mdYM = { y: 0, m: 0 };
+  function renderMemDateCal() {
+    if (!memDateMask) return;
+    memCalPaint(memDateMask, mdYM, mdSel, (d) => { mdSel = d; renderMemDateCal(); });
+  }
+  function closeMemDateModal() { if (memDateMask) memDateMask.hidden = true; }
+  function openLoveDateModal() {
+    if (!memDateMask) {
+      memDateMask = document.createElement('div');
+      memDateMask.id = 'mem-date-mask';
+      memDateMask.className = 'mg-mask';
+      memDateMask.innerHTML =
+        '<div class="mg-panel mem-add-panel">' +
+          '<div class="mg-head"><span>选择日期</span><button class="mg-close">✕</button></div>' +
+          '<div class="mem-cal">' + MEM_CAL_NAV_HTML + '<div class="mem-cal-grid"></div></div>' +
+          '<div class="mem-type-hint">‹ › 按月换，‹‹ ›› 按年换；点日期选中后按「确定」</div>' +
+          '<div class="mem-add-foot">' +
+            '<button class="mem-add-cancel">取消</button>' +
+            '<button class="mem-add-ok">确定</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(memDateMask);
+      memCalNavBind(memDateMask, mdYM, renderMemDateCal);
+      memDateMask.querySelector('.mg-close').addEventListener('click', closeMemDateModal);
+      memDateMask.addEventListener('click', (e) => { if (e.target === memDateMask) closeMemDateModal(); });
+      memDateMask.querySelector('.mem-add-cancel').addEventListener('click', closeMemDateModal);
+      memDateMask.querySelector('.mem-add-ok').addEventListener('click', () => {
+        if (!setLoveStart(mdSel)) { toast('日期没选上，请再点一次'); return; }
+        closeMemDateModal();
+      });
+    }
+    // 每次打开：已设过就停在那一天（选中态 + 视图年月），没设过就以今天为初始
+    const cur = normDateStr(store.get('love-start')) || memToday();
+    mdSel = cur;
+    const cp = cur.split('-');
+    mdYM.y = +cp[0]; mdYM.m = +cp[1] - 1;
+    memDateMask.hidden = false;
+    renderMemDateCal();
   }
 
   // 纪念页：桌面【纪念】图标进入
@@ -7818,6 +10111,103 @@ try {
     });
   }
 
+  // #606（2026-09-16）「关于」分类信息行：版本与更新 / 开源与致谢 / 隐私与数据安全 / 联系与反馈。
+  // 均为只读说明，统一走 openModal 弹窗（noInput + staticText）；「检查更新」复用开屏同一条
+  // 刷新链 window.mochiRefreshNow（pwa.js 暴露），不新增网络轮询。
+  // #620 维护提示：「开源与致谢」与「功能介绍与许可」现在都直接打开 #page-about（单一出处，不再各写一份）；
+  //    「联系作者」的账号与设置页底部 .set-alert 防骗声明同源，账号变更时请一并同步。
+  (function initAboutInfo() {
+    const bind = (id, fn) => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('click', fn);
+    };
+    const open = (title, text, opts, cb) => {
+      if (!window.openModal) return;
+      window.openModal(title, '', cb || function () {}, Object.assign({ noInput: true, staticText: text }, opts || {}));
+    };
+    // 版本号从行内 .val 读（构建时 __APP_VERSION__ 已替换），不依赖从未赋值的 window.APP_VERSION
+    bind('row-changelog', () => {
+      const el = document.getElementById('about-ver-val');
+      const ver = (el && el.textContent.trim()) || '（未知）';
+      open('版本与更新',
+        '当前版本：' + ver + '\n\n有新版本时会自动换到（切后台/重开时生效），也可点下方按钮立即检查并刷新到最新。\n\n更新只替换程序文件，本机的聊天记录、字卡、头像、壁纸、音乐等数据全部保留，不会被清除。\n\n作者已决定月底停更：之后不再维护更新（详见开屏公告）。\n\n本次更新了哪些内容：以开屏公告为准（公告可在线更新，每次上线会写在里面）。',
+        { okText: '知道了', pills: [{ label: '检查更新（刷新到最新）', value: 'ok' }], pillSubmit: true },
+        (v) => { if (v === 'ok' && typeof window.mochiRefreshNow === 'function') window.mochiRefreshNow(); });
+    });
+    // #620：开源与致谢不再另写一份（与 #page-about 的「许可 / 关于星言字卡与灵感来源」重复），
+    // 改为直接打开功能介绍页，单一出处。
+    bind('row-opensource', () => {
+      document.querySelectorAll('.page').forEach(p => { p.hidden = true; });
+      const aboutPage = document.getElementById('page-about');
+      if (aboutPage) aboutPage.hidden = false;
+    });
+    bind('row-privacy', () => {
+      open('隐私与数据安全',
+        '本站是纯本地应用：无后端、无账号、无需联网，你的聊天记录、字卡、头像、壁纸、音乐等全部数据只保存在本机浏览器存储里（localStorage + IndexedDB），作者看不到、也不会收集或上传。\n\n请留意：卸载应用或清除浏览器数据会一并删除本机数据且无法找回——唯一可靠的防线是定期「导出数据」完整备份。\n\niOS Safari 等可能被系统自动清空存储，建议常导出完整备份。\n\n「应用锁」「开屏问答门」用于防旁人日常偷看；数据存于本机，懂技术的人仍可读取本机数据。');
+    });
+    bind('row-contact', () => {
+      open('联系作者 / 反馈',
+        '作者只有两个账号：小红书 @言序（1842523578）、抖音 @言序（58334080131）。\n\n作者不玩抖音、不回消息，账号仅用于发布本站链接。本站完全免费，任何收费均为诈骗。\n\n作者已决定月底停更：之后不再答疑、不再帮看 bug；网站仍开源免费，代码可自行下载修改。\n\n遇到问题建议先看「使用说明」，并用 信息诊断 →「设备兼容诊断」一键复制本机环境信息再反馈。');
+    });
+    // #611：以下 5 条原在开屏（「其他说明与常见问题」/「四、关于全屏模式失效」/「八、关于系统预设字卡和功能设置」），
+    // 按用户要求从开屏删除、移入设置 → 关于 → 常见问题（只读弹窗）。
+    bind('row-faq-app', () => {
+      open('关于“会不会做成 App”',
+        '暂不考虑。原因是网站功能非常多——如果功能少还好说，功能太多的情况下，做成 App 可能出现的 Bug 只会更多，而且和设备、浏览器一样存在适配问题：不同手机的屏幕、系统、性能都不一样，要做到所有手机都适配，Bug 可能需要全部重写一遍。我没有这种精力和金钱。');
+    });
+    bind('row-faq-app2', () => {
+      open('关于“自己转 App 使用”',
+        '类似“一个木函”那种链接转应用的方式，没有我的原代码，本质是浏览器套壳，不是真正的 App，反而可能出现非常多的适配问题。所以不如直接浏览器使用，体验更稳定。\n\n替代方案：「浏览器 → 安装快捷方式到手机桌面」是可以正常使用的（PWA 方式，还能开全屏，效果最接近真正的 App）。');
+    });
+    bind('row-faq-addcard', () => {
+      open('怎么添加字卡',
+        '本站的系统预设字卡都是补充类和小功能衍生字卡，关于个人使用得根据个人情况添加 mj 聊天字卡。\n\n聊天、写信、朋友圈 添加 自定义字卡里的【公用字卡】和【专享字卡】即可。');
+    });
+    bind('row-faq-fullscreen', () => {
+      open('全屏模式失效',
+        '如果你是把浏览器切到后台，再切回来，全屏会失效——这是浏览器限制，只能手动重新开全屏。\n\n或者可以使用“浏览器安装快捷方式到手机桌面”的方式使用，这样可以全屏。\n\n但注意：手机自身顶部栏是手机系统限制，需要自己手动开全屏模式隐藏，且切到后台后同样会失效。');
+    });
+    bind('row-faq-preset', () => {
+      open('系统预设字卡与功能设置',
+        '建议打开使用。（我自己用是默认全开）\n\n初衷就是为了不限制梦角表达，如果关掉，反而限制了它，和基础传讯网站没什么差别——正是因为以前接触的字卡传讯类型太简单才做的。\n\n建议先全部打开使用，再根据个人适应情况调整。');
+    });
+    // #961（2026-09-21 用户直派）：常见问题新增三条——没有账号不同步 / 浏览器与桌面图标两套存储 / 收不到消息与通知
+    bind('row-faq-noacct', () => {
+      open('关于「没有账号、不会自动同步」',
+        '本站没有账号系统（不用注册、不用登录），也没有云端——你的数据只存在【这台手机 + 这个浏览器】的本地存储里。两个直接后果：\n① 两台手机（或两个浏览器）之间不会自动同步，A 上的聊天记录不会出现在 B 上；\n② 换机 / 换浏览器时数据不会自己跟过去，必须靠「导出数据」→ 在新设备「导入数据」搬运一次。\n\n想换设备：先在旧设备 设置 → 通用 →「导出数据」导出完整备份，再在新设备 设置 → 通用 →「导入数据」导入。\n\n同一台手机上，浏览器直接打开 和「添加到桌面」后的图标也各自独立（见「浏览器和桌面图标是两份数据」）。');
+    });
+    bind('row-faq-twostore', () => {
+      open('浏览器和桌面图标是两份数据',
+        '「浏览器直接打开本站」和「添加到主屏幕 / 桌面后从图标打开」是两份彼此独立的存储：在一个入口存的数据，另一个入口看不到——这不是数据丢了。\n\n常见表现：装到桌面后打开发现是空的 / 两个入口聊天记录对不上。\n\n原因：iPhone 的主屏幕应用与 Safari、部分安卓浏览器（如 Edge）与它的桌面应用，各用各自的存储空间，互不相通。\n\n怎么处理：\n① 固定用一个入口，不要换来换去；\n② 想换入口：先在旧入口 设置 → 通用 →「导出数据」导出，再到新入口 设置 → 通用 →「导入数据」导入；\n③ iPhone 推荐「添加到主屏幕」后用桌面图标（不受 Safari 7 天清空规则限制，见关于段顶部提示）。');
+    });
+    bind('row-faq-notify', () => {
+      open('锁屏 / 后台收不到消息、通知不弹？',
+        '本站是网页、不是原生 App，消息与通知受浏览器 / 系统限制，不是网站坏了。按下面查：\n\n① 页面完全关掉后，普通网页无法自己醒来——需要到 设置 → 系统 打开「后台保活」并开启「离线消息提醒」；仅部分安卓浏览器（Chromium 系，如 Chrome / Edge）支持「离线消息提醒」，且要允许「通知」权限。\n② iPhone：Safari / 网页拿不到系统通知，关掉页面后不会再弹——可改用应用内的「桌面消息弹窗」横幅（需页面开着）。\n③ 省电 / 电池优化 / 后台限制会冻结网页导致不弹：把浏览器加入电池优化白名单、允许后台运行。\n④ 通知权限被拒：到系统设置里给浏览器打开「通知」权限。\n\n结论：想尽量稳定收到——安卓用 Chrome / Edge 并打开「后台保活」＋「后台弹窗」；iPhone 别指望关掉页面还能收通知（系统限制）。完整排查步骤见 设置 → 系统 →「后台弹窗」行的「功能说明」，或点该行右侧「测试」一键体检。');
+    });
+    // #792（2026-09-18 用户直派）：数据与存储必读五条——小白用户对「数据为什么会没」的重复疑问，
+    // 详版文案在此（行点击弹窗），短版功能说明在 settings-help.js，行与警示条在 template.html，三处同步。
+    bind('row-faq-st-lose', () => {
+      open('数据为什么会自己没（先看这条）',
+        '先把最重要的话说在前面：本站没有服务器、没有云端账号，你的全部数据（聊天记录、字卡、头像、壁纸、音乐、设置）只保存在【这台手机 + 这个浏览器】的本地存储里。所以浏览器或系统清理数据时，本站会跟着一起被清——这是所有网页共同的设备限制，不是本站坏了，也不是有人删了你的数据。\n\n常见的会清掉数据的操作（都属正常机制）：\n① 手动「清除浏览器数据 / 清理缓存」：勾选了「网站数据 / Cookie」就会把本站一起删掉；\n② 手机管家 / 安全中心的「一键清理」「清理加速」「释放空间」：很多手机会把浏览器存的网站数据当垃圾扫掉；\n③ 浏览器自己的自动清理：设了「退出时清除浏览数据」或「定期自动移除网站数据」（iPhone Safari 有类似选项）；存储空间紧张时，浏览器也会优先清掉不常用网站的数据；\n④ iPhone 的 Safari：网站数据可能被系统回收清空；长时间（约 7 天以上）完全不打开，系统也有权自动清——所以 iPhone 要定期打开用一用 + 定期备份；\n⑤ 卸载 / 重装浏览器、手机恢复出厂或系统大更新、换机换浏览器——本地数据跟着没。\n\n没做上面任何操作却突然丢、还高频反复丢，才需要怀疑是 bug（见「丢数据了，怎么判断是不是 bug」）。防丢的唯一办法＝定期导出备份（见「怎么备份与恢复」）。');
+    });
+    bind('row-faq-st-perm', () => {
+      open('浏览器的存储权限与设置怎么开',
+        '浏览器要被允许「保存网站数据」，本站才能存东西；同时要关掉一切「自动清除」类开关。逐项检查（不同浏览器版本名称略有差异）：\n\n【iPhone · Safari】手机设置 → Safari →「网站数据」保持允许；若看到「30 天后自动移除网站数据」类开关请关闭；不要用无痕浏览常驻。\n\n【安卓 · Chrome / Edge】浏览器 设置 → 网站设置 → 存储 / 网站数据：保持允许，不要选「退出时清除」类选项。\n\n【安卓 · 国产自带浏览器（小米 / 华为 / OPPO / vivo / 夸克等）】本就不建议用（兼容问题多，见开屏「浏览器兼容提醒」）；一定要用的话，进浏览器设置找到「清除浏览数据 / 自动清理」相关项，关掉「退出时 / 定期自动清除」。\n\n【手机清理类 App（清理管家 / 安全中心等）】把浏览器加入清理白名单，或关掉对浏览器的自动清理——否则每次「一键清理」都可能把数据当垃圾扫掉。\n\n一句话总结：允许网站保存数据 + 关掉所有「自动清除 / 定期清除」开关。\n\n自查方法：本站能记住你的设置、刷新后聊天记录还在，就说明存储权限是通的。');
+    });
+    bind('row-faq-st-incog', () => {
+      open('为什么不能用无痕模式',
+        '无痕模式（有的浏览器叫「隐私模式」「隐身模式」「InPrivate」）的设计就是【关掉就全部清空】：关掉无痕窗口的那一刻，你在里面产生的所有网站数据——聊天记录、字卡、设置——被浏览器全部删除，一样不留，也无法找回。\n\n所以：\n① 绝对不要用无痕 / 隐私模式打开本站；\n② 每次进入本站时看一眼浏览器顶部——无痕模式的窗口是深色的，Chrome / Safari 都有明显的「无痕 / 隐私」标识；\n③ 在无痕模式里用过的数据关掉就没，这是浏览器的正常设计，不是 bug，也找不回。\n\n正确做法：用正常（普通）模式打开本站 + 定期导出备份。');
+    });
+    bind('row-faq-st-backup', () => {
+      open('怎么备份与恢复（唯一防线）',
+        '备份＝把全部数据导出成一个文件，存到浏览器清不到的地方。这是防丢的唯一可靠防线，其它都没用（本机不保留任何自动备份副本）。\n\n【怎么做】设置 → 通用 →「导出数据」→ 选「完整备份」→ 把文件保存好。\n\n【存到哪】不要只留在浏览器的下载记录里——发送到微信收藏 / 文件夹 / 云盘 / 电脑，至少一份存在浏览器外面；文件不要改名弄丢后缀。\n\n【多久一次】建议每周一次；大量聊天 / 加了很多字卡之后；以及每次看到「有新版本」要刷新之前，都先导一次。\n\n【怎么恢复】换机或数据丢失后：装好本站 → 设置 → 通用 →「导入数据」→ 选备份文件 → 按完整备份覆盖恢复，等恢复完成提示后再操作。\n\n【换设备 / 换浏览器】数据不会自动跟过去（本站无云端不同步），全靠备份文件搬家：新设备导入一次即可。\n\n【两个入口不互通】浏览器直接打开 和 桌面快捷方式，是两份独立存储——固定用一个入口；非要换，先在旧入口导出、再到新入口导入。');
+    });
+    bind('row-faq-st-bug', () => {
+      open('丢数据了，怎么判断是不是 bug',
+        '先自查——数据丢失最常见的原因不是 bug，是设备限制（详见「数据为什么会自己没」）。按顺序自查：\n\n① 想一想最近有没有：清过浏览器数据 / 缓存、用过手机管家一键清理、开过无痕模式、卸载重装过浏览器、恢复出厂 / 系统大更新、换过手机或浏览器、把手机给别人动过；\n② 打开其它常用网站，看登录状态还在不在：其它网站也被退出 / 被清了＝浏览器数据被清过，不是本站 bug；\n③ 看丢的范围：全部没了多半是浏览器层被清；只有个别消息或个别功能不对，才更像程序问题；\n④ 换过入口吗：浏览器打开和桌面快捷方式数据不互通，另一个入口里可能还在。\n\n都排除了、且是高频反复丢，才按疑似 bug 处理。');
+    });
+  })();
+
   // ===== v3.26.x：查看存储——看全站功能占用空间 + 手动清理错误诊断记录 =====
   // 用户反馈「存储已用 1.x GB」：这里把 localStorage + IndexedDB 按功能归类展示占用，
   // 并提供「清理错误诊断记录」一键清掉诊断缓存（__diag-*）。只读统计 + 定向清理，
@@ -7837,7 +10227,10 @@ try {
       'xy-home-v2:__diag-env',
       'xy-home-v2:__diag-lt',
       'xy-home-v2:__diag-net',
-      'xy-home-v2:__diag-tap'
+      'xy-home-v2:__diag-tap',
+      // #690：桌面翻页帧耗时采样（desktop-slider.js 写、诊断【性能】读）——同为诊断
+      // 缓存，一并进「清理错误诊断记录」，不然每次翻页的样本会一直留在键里。
+      'xy-home-v2:__diag-deskperf'
     ];
 
     function fmtBytes(n) {
@@ -8583,6 +10976,119 @@ try {
     }
   })();
 
+  // ===== #726 卡顿自检·渲染层实测（设置→工具「卡顿自检」行）——与下方 #411 数据层一键优化互补：
+  // 10 秒 rAF 帧间隔现场实测（可去任意页面复现），报告含掉帧率/集中页/键盘期占比/本地数据画像，
+  // 报告走只读大弹窗（同功能诊断样式）。检测逻辑全在 perf-check.js，这里只做行接线/进度浮条/弹报告。
+  (function () {
+    const row = document.getElementById('row-perf-check');
+    if (!row || !window.mochiPerfCheck) return;
+    const sub = row.querySelector('.sub');
+    function echoLast() {
+      try {
+        const r = JSON.parse(localStorage.getItem(window.mochiPerfCheck.LAST_KEY) || 'null');
+        if (r && r.verdict && sub) sub.textContent = '上次：' + r.verdict + '（掉帧 ' + r.jankPct + '%）· ' + new Date(r.t).toLocaleString().replace(/^\d+\/\d+\/\d+\s*/, '');
+      } catch (e) {}
+    }
+    echoLast();
+    let bar = null;
+    let lastProg = null; // #1412⑨ 最近一次 onTick 读数，供「进行中」弹窗报出还剩多久／已采多少
+    function showBar(txt) {
+      try {
+        if (!bar) {
+          bar = document.createElement('div');
+          bar.id = 'perf-check-bar';
+          // #905：进度浮条从「底部横条」改「顶部居中小胶囊」——底部条把 tabbar/聊天输入栏/
+          // 返回按钮这些用户实测时要点的按钮盖住了（用户实报「位置太靠下不居中，挡住按钮」；
+          // pointer-events:none 本就点了穿透，问题在视觉遮挡）。顶部胶囊避开全部底部操作区，
+          // 只占页面标题上方窄条；宽度按内容自适应（max-width 防长文案溢出）。
+          bar.style.cssText = 'position:fixed;top:max(14px,env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);max-width:88%;z-index:99999;background:rgba(18,18,28,.94);color:#fff;padding:8px 14px;border-radius:999px;font-size:12px;line-height:1.45;text-align:center;pointer-events:none;box-shadow:0 2px 12px rgba(0,0,0,.35);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+          document.body.appendChild(bar);
+        }
+        bar.textContent = txt;
+      } catch (e) {}
+    }
+    function hideBar() { try { if (bar && bar.parentNode) bar.parentNode.removeChild(bar); } catch (e) {} bar = null; }
+    row.addEventListener('click', function () {
+      if (!window.openModal) return;
+      // #1412⑨ 进行中再点本行＝「结束并出报告」（对齐电量自测 #935、发烫自测 #1418 那套出口）。
+      // 旧写法是一条 `if (running()) return`＝屏上什么也不发生：2 分钟与 5 分钟档一旦开跑只能干等
+      // （perf-check 导出面实测只有 start/running/LAST_KEY，没有 stop），也没有任何地方告诉你它还在跑。
+      if (window.mochiPerfCheck.running()) {
+        var ctlRun = window.openModal('卡顿自检进行中', '', function () { window.mochiPerfCheck.stop(); }, {
+          noInput: true,
+          staticText: '正在实测' + (lastProg ? '（剩约 ' + lastProg.left + ' 秒｜已采 ' + lastProg.frames + ' 帧 · 掉帧 ' + lastProg.janky + '）' : '') + '。\n点「结束并出报告」＝立刻结算已测到的部分（剩余时长放弃，报告一律按实际跑到的时长算）；点「取消」＝继续测，什么都不发生。'
+        });
+        try { if (ctlRun && ctlRun.okText) ctlRun.okText('结束并出报告'); } catch (e9) {}
+        return;
+      }
+      // #905：时长可选（用户实报「为什么只能测十秒，不合理」）——纯 pills 弹窗确定时 cb(pillVal)，
+      // 默认 30 秒（原 10 秒样本太少：60fps 下才 ~600 帧，偶发巨帧很容易整窗漏采），10/60 可换。
+      // #906：抽 runTest——报告弹窗「确定」＝用同样时长马上再测一轮（okText 定制按钮文案），
+      // 闭环不用重进设置；「取消」仅关闭。running() 守卫天然防双开。
+      function runTest(durMs) {
+        // 点确定＝开始：弹窗即关，用户去任意页面正常操作所选时长，顶部浮条实时倒数，结束自动弹报告
+        window.mochiPerfCheck.start(durMs, function (p) {
+          // #906：浮条带当前页名（采样在跟着走，用户放心）＋后台占比过高时提示「不算数」
+          var hidRatio = (p.frames + p.hid) > 0 ? p.hid / (p.frames + p.hid) : 0;
+          lastProg = p; // #1412⑨
+          showBar('卡顿实测中…剩 ' + p.left + ' 秒｜' + (p.pg && p.pg !== '?' ? p.pg + '｜' : '') + '已采 ' + p.frames + ' 帧 · 掉帧 ' + p.janky + (hidRatio > 0.3 ? '（锁屏/切后台的时间不算数）' : ''));
+        }).then(function (r) {
+          hideBar();
+          if (!r) return;
+          echoLast();
+          // #884：报告弹窗补【复制】+【导出docx】（同 device.js 诊断弹窗的 copyBtn/exportBtn 机制）——
+          // 之前只有可手选的 textarea，手机上长篇手选复制极易漏段；导出走 device.js 暴露的
+          // window.mochiDiagExportDocx（三级降级：分享面板→保存框→确认下载，Word/WPS 直开不乱码），
+          // shareTitle 用「mochi 卡顿自检报告」；无该全局（旧产物）时提示改用复制。
+          var ctlR = window.openModal('卡顿自检报告', r.text, function () { runTest(durMs); }, {
+            noInput: true, textarea: true, textareaRows: 16, big: true,
+            staticText: '点「再测一次」＝用同样时长马上再来一轮（对照测）；「取消」仅关闭本报告。',
+            copyBtn: {
+              label: '复制',
+              fn: function (c) {
+                var txt = c ? c.text() : r.text;
+                var hint = function (s) { if (c && c.hint) c.hint(s); };
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                  navigator.clipboard.writeText(txt).then(function () { hint('已复制到剪贴板'); }, function () { hint('复制失败，请长按选字手动复制'); });
+                } else {
+                  hint('当前内核不支持一键复制，请长按文本手动复制（或用【导出docx】）');
+                }
+              }
+            },
+            exportBtn: {
+              label: '导出docx',
+              fn: function (c) {
+                var txt = c ? c.text() : r.text;
+                if (typeof window.mochiDiagExportDocx === 'function') {
+                  window.mochiDiagExportDocx(txt, 'mochi-perfcheck-', null, null, 'mochi 卡顿自检报告');
+                } else {
+                  if (c && c.hint) c.hint('导出组件未就绪，请用【复制】或长按手选复制');
+                }
+              }
+            }
+          });
+          try { if (ctlR && ctlR.okText) ctlR.okText('再测一次'); } catch (e5) {}
+        });
+      }
+      window.openModal('卡顿自检（渲染层实测）', '', function (v) {
+        var durMs = { 10: 10000, 30: 30000, 60: 60000, 120: 120000, 300: 300000 }[String(v)] || 30000;
+        runTest(durMs);
+      }, {
+        // #908：红字警示——用户在弹窗打开这一刻就要看见「短时长没用」（#900b 的 staticEmph+warn 重点标红机制）
+        // #1418/#908：红字警示——用户在弹窗打开这一刻就要看见「短时长没用」（#900b 的 staticEmph+warn 重点标红机制）
+        // #1412⑩：中段口径改口——旧文案叫用户「正常用手机…从后台切回来」，而 #975 那道闸在前台不足
+        // 整窗 20% 时就把这一轮判成「结论不可用」＝照文案做必然白测（实测：8 秒窗切后台 9.6 秒，回前台
+        // 结算即带「结论不可用」）。现在写清「留在本站前台」，并给「想测切回来那一下」的正确次序。
+        staticText: '**⚠ 时长太短没用！**10 秒 / 30 秒只能看「此刻顺不顺」，抓卡顿请用 **2 分钟档（已设为默认）**，卡得少就用 **5 分钟**——切页面卡、用一会儿才卡、玩一阵才掉帧这类，时间越长越撞得上。\n\n点「确定」开始后（弹窗会关）请**留在本站前台**操作：去感觉卡的地方打字、滑动、切页、翻字卡库；顶部浮条实时倒数和显示当前页，结束自动弹报告，中途想收工就再点一次这一行 →「结束并出报告」，可【复制】或【导出docx】留档。\n要看「从后台切回来那一下」：切回来**之后**再开一轮、一进场就做那个动作——锁屏／切去别的应用那段时间会被整段剔除，剔得太多这一轮直接判「结论不可用」（那段时间本来就读不到本站）。采样只在本机、不上传。',
+        noInput: true,
+        warn: true,
+        staticEmph: true,
+        pills: [{ label: '10 秒', value: '10' }, { label: '30 秒', value: '30' }, { label: '60 秒', value: '60' }, { label: '2 分钟', value: '120' }, { label: '5 分钟', value: '300' }],
+        pill: '120'
+      });
+    });
+  })();
+
   // ===== v3.26.x #411：卡顿自检 · 一键优化（只优化不删除） =====
   // 数据过大（如公用库 44MB）是 iOS/安卓间歇卡顿主因（#377/#387/#398 内存内瘦身后，
   // 大库解析/按需取回仍是冻结点）。本模块扫描分级 + 非破坏预热：不碰不删任何用户数据，
@@ -8625,7 +11131,7 @@ try {
         let done = false;
         const bar = document.createElement('div');
         bar.id = 'perf-heal-bar';
-        bar.style.cssText = 'position:fixed;left:12px;right:12px;bottom:max(16px,env(safe-area-inset-bottom));z-index:99999;background:rgba(18,18,28,.94);color:#fff;padding:12px 14px;border-radius:10px;font-size:13px;line-height:1.5;text-align:center;pointer-events:none;box-shadow:0 2px 12px rgba(0,0,0,.35);';
+        bar.style.cssText = 'position:fixed;left:12px;right:12px;bottom:max(16px,env(safe-area-inset-bottom,0px));z-index:99999;background:rgba(18,18,28,.94);color:#fff;padding:12px 14px;border-radius:10px;font-size:13px;line-height:1.5;text-align:center;pointer-events:none;box-shadow:0 2px 12px rgba(0,0,0,.35);'; /* #718 env 补 ,0px：老内核不支持 env 时整条 max() 失效＝提示条贴出屏 */
         bar.textContent = '正在准备…';
         (document.body || document.documentElement).appendChild(bar);
         function showProg(pct, label) {
@@ -8875,7 +11381,7 @@ try {
     if (!daysEl || !nameEl) return;
     const now = new Date();
     const cands = [];
-    const start = store.get('love-start');
+    const start = normDateStr(store.get('love-start'));
     if (start) {
       const d = new Date(start + 'T00:00:00');
       if (!isNaN(d.getTime())) {
@@ -8918,15 +11424,39 @@ try {
   }
   renderDeskWidgets();
 
+  // FIX 2026-09-26 #1307：「我们在一起 N 天」在回填完成之后再重放一次。
+  //   love-start 是 per-cid 小键，正常设备上一次同步写就落进 localStorage，故上方 8858 行的
+  //   一次性求值够用；但同源配额被兄弟站点吃满的设备（一加 Ace5/Edge 实报 LS 写入失败，导出件
+  //   里「localStorage 整域 187 键 ≈10.0 MB，非本项目 94 键 ≈9.4 MB」）每一次 xyStore.set 的 LS
+  //   那档都会抛并被吞，值只活在 IndexedDB——本模块求值那一刻 idbRestore 还没跑完，读出来是空，
+  //   于是桌面纪念日卡与设置页日期按钮渲染成「请先设置」，之后数据补齐也没有代码回头再刷＝用户
+  //   所见「在一起的天数没有了」。这与 #289（打卡按钮同一空窗、当场收口为 restore-done + wrj-heal
+  //   重放）是同一把尺子，照抄那条已验证的路；三处渲染都幂等（只按当前 store 读数重写文本），
+  //   重复触发不改数据、不抖动态。刻意不含 renderDeskCalendar/renderDeskClock 等：它们不读业务键。
+  const replayDeskAnnivAfterRestore = () => {
+    try { syncLoveDateBtn(store.get('love-start')); } catch (e) {}
+    try { updateLove(); } catch (e) {}
+    try { renderDeskAnniv(); } catch (e) {}
+  };
+  try {
+    document.addEventListener('mochi-restore-done', replayDeskAnnivAfterRestore);
+    document.addEventListener('mochi-wrj-heal', replayDeskAnnivAfterRestore);
+  } catch (e) {}
+
   // v3.6.x：多桌面——切换联系人后刷新桌面外观（壁纸/自定义图标/打卡/摸鱼展示）。
   // store 是动态绑定当前联系人的，restoreAppIcons/applyBgVisibility 会读新桌面的值；
   // 打卡按钮状态按新桌面的 checkin 键重新判断。
   document.addEventListener('contact-switched', function () {
     try { applyBgVisibility(); } catch (e) {}
     try { restoreAppIcons(); } catch (e) {}
+    // #769：底部导航栏图标/样式同为 per-cid 键——切桌面后按新命名空间重刷
+    try { restoreTabbarIcons(); } catch (e) {} // #769h2 切桌面重刷底部栏
     // v3.10.x：切桌面后按新命名空间重应用卡片背景/页面背景/图片组件 + 直读兜底
     //（这些大图键只存 IndexedDB，切桌面瞬间 memoryCache 可能还没新桌面的值）
-    try { refreshDeskVisuals(); } catch (e) {}
+    // FIX 2026-09-17 #695：主页不可见（切桌面后直接进了聊天）时改登记待办、主页真正
+    //   显示前补跑；refreshDeskVisuals 内含的 syncBgUI 是设置页壁纸 UI（与主页可见性
+    //   无关，跨桌面后必须读到新桌面的值），延后时当场补跑一次。
+    if (whenDeskVisible(refreshDeskVisuals)) { try { syncBgUI(); } catch (e) {} }
     try { rescueDeskVisuals(); } catch (e) {}
     // v3.6.x：小组件三色（背景/边框/按钮）按桌面独立——切换后重新应用新桌面的值
     try { applyWidgetColor(store.get('widget-bg-color') || '#ffffff'); } catch (e) {}
@@ -8970,11 +11500,7 @@ try {
     // v3.6.x：桌面双方昵称（lbl-user / lbl-partner）只在加载时写一次，
     // 切换联系人后必须按新桌面的 store 重新渲染，否则残留上一个联系人的名字
     // （新联系人未设昵称时回退默认「我 / TA」）
-    try {
-      const lu = document.getElementById('lbl-user');
-      if (lu) { const v = store.get('lbl-user'); lu.textContent = v || '我'; }
-      const lp = document.getElementById('lbl-partner');
-      if (lp) { const v = store.get('lbl-partner'); lp.textContent = v || 'TA'; }
-    } catch (e) {}
+    // FIX 2026-09-28 #1358a：这两行与初始化那一次共用同一个 paintDeskNames（回退口径含称呼，见上）
+    try { paintDeskNames(); } catch (e) {}
   });
 })();

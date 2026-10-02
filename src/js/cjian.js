@@ -189,6 +189,10 @@
   function worldMinuteOf(c) { return ottFor(c).worldMin; }
   // 删除梦角时清掉其持久化世界时间，避免留孤儿数据
   function clearOttTag(id) { if (ottCache && ottCache[id]) { delete ottCache[id]; saveOtt(ottCache); } }
+  // #903：时段设定变动后失效「对方当前时间」的已抽结果（<cid>:cjian-ta-time）——已抽时刻
+  // 按 1–8 小时冷却驻留，用户改完时辰区间/增删梦角后卡片仍显示老时辰的旧时刻＝
+  // 「设置的时间与显示的时辰区间对不上」。删键＝下次渲染立即按新设定重抽。
+  function invalidateTaTime(cid) { try { const s = storeOf(cid); if (s) s.remove('cjian-ta-time'); } catch (e) {} }
   function timeInfo(ts) {
     const d = new Date(ts);
     const hour = d.getHours();
@@ -521,21 +525,21 @@
   // 造出以联系人命名的梦角，看起来像别人的数据串了进来）
   function seedIfEmpty(cid) {
     try {
+      // #850：回填未完成不播种——「cjian-seeded 读空」可能只是键还没回来，此时播种会
+      // saveRoster 整包覆盖＝真实梦角名单被新种的本尊顶掉（LS 失效/回填迟到设备必现）。
+      // 让位给 boot 的 mochi-restore-done 补跑（见下方迁移监听器）
+      if (window.mochiDataPending && window.mochiDataPending()) return; // #850e 回填未决＝不算没播种
       const s = storeOf(cid);
       if (!s || s.get(SEED_KEY)) return;
       const list = loadRoster(cid);
       if (list.length) { s.set(SEED_KEY, '1'); return; }
-      // v3.33.x #409：播种名改走 effective 昵称链——cs-lbl-partner（聊天设置昵称，用户在
-      // 聊天里实际看到的名字）优先，回退桌面 lbl-partner → 联系人名片名，与 2026-09-03
-      // 全站昵称回退链约定对齐。旧链只看 lbl-partner/注册名：用户只设了聊天昵称时，
-      // 梦角名与聊天对不上，多联系人下观感就是「名字串了」。
-      let name = '';
-      try {
-        const cs = s.get('cs-lbl-partner');
-        if (cs) name = cs;
-        if (!name) { const lbl = s.get('lbl-partner'); if (lbl) name = lbl; }
-        if (!name) name = contactName(cid);
-      } catch (e) {}
+      // v3.33.x #409：播种名走 effective 昵称链。2026-09-16（#616 用户要求）把顺序倒过来：
+      // 桌面 lbl-partner 优先、聊天 cs-lbl-partner 兜底——此间属于「其他功能」，昵称池频繁
+      // 轮换的聊天昵称不该带着梦角名一起变；桌面没设过时仍退回聊天昵称（#409 要解决的
+      // 「只设了聊天昵称时梦角名与聊天对不上」照旧兜住，见下方 effNick 同口径）。
+      // FIX 2026-09-18 #786b：取值链收进 effNick 一处（含「昵称撞了别的桌面的身份名就退回
+      // 本桌名片名」），新种下的本尊不会一出生就挂着另一个联系人的名字。
+      const name = effNick(cid);
       list.push({ id: makeId(), name: name || 'TA', offsetMin: 0, cid: cid, own: 1 });
       saveRoster(list, cid);
       s.set(SEED_KEY, '1');
@@ -552,18 +556,46 @@
   //   永不自动搬；② 梦角名必须落在「它物理所在桌面」的全部身份标识之外；③ 且精确命中
   //   「唯一另一个桌面」的身份标识（0 个=无名可归、多个=撞名，都不搬）；④ 目标桌面已有
   //   同名梦角则跳过（不制造重复）。身份链与 seedIfEmpty 播种链同源：
-  //   cs-lbl-partner（聊天独立昵称）→ lbl-partner（桌面昵称）→ 联系人名片名。
-  function effNick(cid) {
+  //   lbl-partner（桌面昵称）→ cs-lbl-partner（聊天独立昵称）→ 联系人名片名。
+  //   2026-09-16（#616）：顺序倒成桌面优先——这个值既是「本尊名字漂移对齐」的目标（见①，
+  //   会把自动播种的梦角名纠成它），也是此间卡片显示的名字，属「其他功能」，不该跟着
+  //   昵称池轮换的聊天昵称变。identSet 仍同时收两个键（那是身份**集合**，用于认亲，
+  //   多收不多伤：名字是按旧聊天昵称播种出来的存量梦角照样认得出归属）。
+  // FIX 2026-09-18 #786b：某个名字是否已被【另一个桌面】认作身份（名片名 / 桌面 TA 昵称 /
+  // 聊天 TA 昵称任一）——三源与 identSet 同源。用于挡住「本尊名挂着别的联系人的名字」。
+  function otherClaimsName(cid, name) {
+    const n = String(name || '').trim();
+    if (!n) return false;
+    const list = contacts();
+    for (let i = 0; i < list.length; i++) {
+      const o = list[i];
+      if (!o || o.id === cid) continue;
+      if (hasKey(identSet(o.id), n)) return true;
+    }
+    return false;
+  }
+  // 取值链原样（#616n 锚点：桌面 lbl-partner 优先、聊天 cs-lbl-partner 兜底、名片名最后）
+  function nickLabelChain(cid) {
     try {
       const s = storeOf(cid);
       if (s) {
-        const cs = String(s.get('cs-lbl-partner') || '').trim();
-        if (cs) return cs;
         const lb = String(s.get('lbl-partner') || '').trim();
         if (lb) return lb;
+        const cs = String(s.get('cs-lbl-partner') || '').trim();
+        if (cs) return cs;
       }
     } catch (e) {}
     return contactName(cid);
+  }
+  function effNick(cid) {
+    const card = contactName(cid);
+    const pick = nickLabelChain(cid);
+    // 昵称链取到的名字恰是另一个桌面的身份名（联系人改过名、renameContact 因 cur≠oldName
+    // 没同步 lbl-partner；聊天昵称被写成另一个梦角名；跨桌面查岗 ensureTaName 兜过旧名）
+    // → 此间的梦角卡片/今日轴就会显示「另一个联系人的名字」。本桌面自己的名片名不撞名时
+    // 用它；无撞名的常规场景零变化（#616 的取值顺序原样保留）。
+    if (pick && pick !== card && otherClaimsName(cid, pick) && !otherClaimsName(cid, card)) return card;
+    return pick;
   }
   function identSet(cid) {
     const out = {};
@@ -791,6 +823,11 @@
       loadRoster(ct.id).forEach(c => out.push({ c: c, cid: ct.id }));
     });
     return out;
+  }
+  // FIX 2026-09-18 #786：当前视图范围内的梦角列表（「全部」＝各桌面，单桌面＝只该桌面）
+  function scopeEntries() {
+    const s = scopeCids();
+    return flatEntries().filter(en => s.indexOf(en.cid) >= 0);
   }
   function cidOfDreamer(id) {
     let hit = '';
@@ -1101,8 +1138,9 @@
       });
       bar.appendChild(b);
     }
-    contacts().forEach(ct => chip(contactName(ct.id), ct.id));
+    // FIX 2026-09-16 #615 「全部」总览固定排在分组条首位（原在末尾，桌面多了要横滑到底才点得到）
     chip('全部', ALL);
+    contacts().forEach(ct => chip(contactName(ct.id), ct.id));
   }
   function setView(v) {
     if (viewCid === v) return;
@@ -1158,6 +1196,13 @@
     if (!listEl) return;
     listEl.innerHTML = '';
     const empty = document.getElementById('cj-empty');
+    // #850：回填期 roster 键可能还没回来——不出「这个桌面还没有梦角/各个桌面还没有梦角」
+    // 的假空断言，占位等 done 后补渲收敛
+    if (window.mochiDataPending && window.mochiDataPending()) {
+      if (empty) empty.hidden = true;
+      listEl.innerHTML = window.mochiLoadingHtml('梦角名单');
+      return;
+    }
     const now = Date.now();
     if (viewCid === ALL) {
       // 总览模式：按桌面分组，一次看完全部梦角状态
@@ -1260,8 +1305,14 @@
     }
     body.appendChild(traj);
     body.appendChild(el('div', 'cj-d-foot', '这不是TA的日程表，只是TA可能的样子。'));
-    // 上一位 / 下一位：不回列表直接切换查看别的梦角（跨桌面，循环）
-    const entries = flatEntries();
+    // 上一位 / 下一位：不回列表直接切换查看别的梦角
+    // FIX 2026-09-18 #786：翻页范围跟随当前视图——顶部选「单个联系人」tag 时只在该桌面自己的
+    // 名单里循环（旧实现恒用 flatEntries()＝全部桌面的梦角排一张表：点【景元】tag 进详情按
+    // 「下一位」直接翻到【符玄】【应星】桌面的梦角，观感＝「不同联系人数据串了、里面有别人
+    // 的名字」；多桌面/多机型同现，纯逻辑与设备无关）。「全部」总览照旧跨桌面循环。
+    // 兜底：详情条目已不在当前范围内（视图被外部改动 / 桌面被删）才退回全表，不留死路。
+    let entries = scopeEntries();
+    if (!entries.some(en => en.c.id === detailId)) entries = flatEntries();
     const pos = entries.findIndex(en => en.c.id === detailId);
     if (pos >= 0 && entries.length > 1) {
       function jump(en) { detailId = en.c.id; detailCid = en.cid; renderDetail(); }
@@ -1438,6 +1489,7 @@
           const l = loadRoster(mCid);
           l.push({ id: makeId(), name: pendingName, offsetMin: pendingOffset, cid: mCid, manual: 1 });
           saveRoster(l, mCid);
+          invalidateTaTime(mCid); // #903
           toast('已添加梦角：「' + pendingName + '」');
           pendingName = ''; pendingOffset = 0;
           todayCacheMap = {}; // 名单变了，各视图的今日预测全部作废
@@ -1445,27 +1497,33 @@
           return;
         }
         setTimeout(function () {
+          // #892：名字与时间偏移在前两步已定档，时辰浮层只是可选附加项——「取消」不再等于
+          // 整个放弃添加（旧版会丢弃名字与偏移＝梦角根本没建出来，用户以为时间流设置不了），
+          // 改为与「不限定 · 用时间偏移」同路：按已选偏移照常建档
+          function createPlain() {
+            const list = loadRoster(mCid);
+            list.push({ id: makeId(), name: pendingName, offsetMin: pendingOffset, cid: mCid, manual: 1 });
+            saveRoster(list, mCid);
+            invalidateTaTime(mCid); // #903
+            toast('已加入此间：「' + pendingName + '」');
+            pendingName = ''; pendingOffset = 0;
+            todayCacheMap = {}; // 名单变了，各视图的今日预测全部作废
+            window.renderCjian(true);
+          }
           showSlotPicker(
             [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
             function (idxs) {
               const list = loadRoster(mCid);
               list.push({ id: makeId(), name: pendingName, offsetMin: pendingOffset, slots: idxs.map(i => SHICHEN_START[i]), cid: mCid, manual: 1 });
               saveRoster(list, mCid);
+              invalidateTaTime(mCid); // #903
               toast('已加入此间：「' + pendingName + '」');
               pendingName = ''; pendingOffset = 0;
               todayCacheMap = {}; // 名单变了，各视图的今日预测全部作废
               window.renderCjian(true);
             },
-            function () { pendingName = ''; pendingOffset = 0; }, // 取消：不创建
-            function () {
-              const list = loadRoster(mCid);
-              list.push({ id: makeId(), name: pendingName, offsetMin: pendingOffset, cid: mCid, manual: 1 });
-              saveRoster(list, mCid);
-              toast('已加入此间：「' + pendingName + '」');
-              pendingName = ''; pendingOffset = 0;
-              todayCacheMap = {}; // 名单变了，各视图的今日预测全部作废
-              window.renderCjian(true);
-            }
+            function () { createPlain(); }, // 取消：时辰不限定，照常建档
+            createPlain
           );
         }, 0);
         return;
@@ -1483,6 +1541,7 @@
               if (!cc) return;
               cc.slots = idxs.map(i => SHICHEN_START[i]);
               saveRoster(l2, mCid);
+              clearOttTag(c.id); invalidateTaTime(mCid); // #903：改时段后立即按新时辰区间重抽，不驻留旧时刻
               toast('已设时辰区间：' + slotLabel(cc.slots));
               todayCacheMap = {};
               window.renderCjian(true);
@@ -1494,6 +1553,7 @@
               if (!cc) return;
               delete cc.slots;
               saveRoster(l2, mCid);
+              clearOttTag(c.id); invalidateTaTime(mCid); // #903：改回时间偏移流动同样重抽
               toast('已改回：按时间偏移流动');
               todayCacheMap = {};
               window.renderCjian(true);
@@ -1544,6 +1604,11 @@
         delete st[v];
         saveState(st, mCid);
         clearOttTag(v);
+        invalidateTaTime(mCid); // #903：名单头变了，「对方当前时间」重抽
+        // #892：删空名单＝恢复「第一次打开自动种下默认梦角」——播种标记不清的话，该桌面
+        // 永远停在「此间还没有梦角」空态、再也不自动播种，用户删掉想重设时间流只能手动
+        // 一步步添加（与 healBelonging「搬空后清播种标记」同语义）
+        if (!list.length) { const rs = storeOf(mCid); if (rs) rs.remove(SEED_KEY); }
         // v3.14.x：同步清掉 TA 的梦角档案（narc-<id>，memo-arc.js 存根命名空间）
         // 与指向 TA 的 narc-cur（档案页打开时会自愈，这里顺手清干净不留孤儿数据）
         try {
@@ -1581,11 +1646,17 @@
     // 存量纠偏同样补跑一次（注册表刚就绪时才能可靠认亲，未就绪轮次不会误置标记）。
     let reMigrated = false;
     document.addEventListener('mochi-restore-done', function () {
-      if (reMigrated) return;
-      reMigrated = true;
       try { migrateSplit(); } catch (e) {}
       try { rehomeMisfiled(); } catch (e) {}
       try { fixBelonging(); } catch (e) {}
+      // #850：首次就绪补播种（打开/切视图时的 seedIfEmpty 都被回填闸挡过）＋补渲染
+      // 收起「梦角名单还在读取」占位；后续再派发（备份导入）时迁移幂等照跑，补渲走
+      // 各现读入口，不在此重复整页重画
+      if (!reMigrated) {
+        reMigrated = true;
+        try { seedIfEmpty(curCid()); if (viewCid !== ALL && viewCid !== curCid()) seedIfEmpty(viewCid); } catch (e) {}
+        try { window.renderCjian(false); } catch (e) {}
+      }
     });
     // v3.33.x #409：联系人改名跟随——联系人管理改名（contacts.js renameContact 派发的
     // contact-renamed，此时该桌面 lbl-partner 已同步为新名）后，把该桌面名单里与旧名同名

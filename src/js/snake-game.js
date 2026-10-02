@@ -61,6 +61,7 @@
   let isFs = false;
   let pauseAt = 0;
   let cssW = 360, cssH = 360, dpr = 1;   // 画布 CSS 尺寸（全屏由 setupCanvas 按剩余空间计算）
+  let lastFitBox = null, refitSettle = 0;   // #774 视口抖动闸门：上次铺设照着的可用盒 / 落定定时器
   let particles = [], floaters = [], renderLastTime = 0;
   // 多点触控分轨（双人模式：左半屏=P1、右半屏=P2；经典模式整块画布都归 P1）
   let touchTracks = {};
@@ -189,16 +190,20 @@
     for (let i = 0; i < 4; i++) {
       cell = Math.max(minCell, cell);
       cssW = Math.round(cell * gW()); cssH = Math.round(cell * gH());
-      canvas.style.width = cssW + 'px';
-      canvas.style.height = cssH + 'px';
-      canvas.width = Math.round(cssW * dpr);       // 改位图尺寸会清空画布，调用方随后 render()
-      canvas.height = Math.round(cssH * dpr);
+      // 位图尺寸「赋同一个值」也会清空画布（HTMLCanvas 语义），清空＝整屏白一下：
+      // 只在真的变了才写 style 与位图，同值重铺一律跳过（#774 抖动期白闪的直接来源）
+      const bw = Math.round(cssW * dpr), bh = Math.round(cssH * dpr);
+      if (canvas.style.width !== cssW + 'px') canvas.style.width = cssW + 'px';
+      if (canvas.style.height !== cssH + 'px') canvas.style.height = cssH + 'px';
+      if (canvas.width !== bw) canvas.width = bw;
+      if (canvas.height !== bh) canvas.height = bh;
       if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       if (!sc || !sc.clientHeight) break;          // 面板未布局（隐藏）时量不到，下次打开/resize 会重算
       const over = sc.scrollHeight - sc.clientHeight;
       if (over <= 0 || cell <= minCell) break;
       cell -= over / gH();
     }
+    if (sc && sc.clientHeight) lastFitBox = scrollAvail();   // 记下这次是照着哪个可用盒铺的
   }
   // 全屏：按当前地图把画布贴合到剩余空间（不改格数；开始按钮收起/结算块出现后调用）
   function fitCanvasBox() {
@@ -224,9 +229,26 @@
     fitCanvasBox();
     render(0);                    // applyCell 改位图尺寸会清空画布
   }
+  // #774 视口抖动闸门（iPhone 16 Pro + Safari 实报「玩的时候屏幕和蛇一直弹和闪」）：
+  // iOS 独立应用的对局期视口高会在 812↔874 之间反复跳（状态栏/底部横条区被系统改写），
+  // 安卓 Chrome 的地址栏收放同理；而画布每响应一次 resize 就是「整张地图换比例 + 位图重建」，
+  // 实测 2 秒抖动内地图在 230×388 ↔ 193×326 之间脉冲 16 次＝用户看到的弹＋闪。
+  // 改法：视口连续变化期间一律不重铺，等它安静 280ms 再量一次，量出来和上次铺设用的
+  // 可用盒一致（<2px）就整条跳过——抖动不再驱动布局，旋转/分屏这类真变化照旧收敛到一次重铺；
+  // 极端的「抖着不停且真的放不下」由 .poke-card-scroll 可纵向滚兜底（同既有 overflow 策略）。
+  function onViewportChange() {
+    clearTimeout(refitSettle);
+    refitSettle = setTimeout(function () {
+      if (!panel || panel.hidden || !canvas) return;
+      const av = scrollAvail();
+      if (lastFitBox && Math.abs(av.w - lastFitBox.w) < 2 && Math.abs(av.h - lastFitBox.h) < 2) return;
+      refitAll();
+    }, 280);
+  }
   function setupCanvas() {
     if (!canvas) return;
-    dpr = Math.min(window.devicePixelRatio || 1, 3);
+    // dpr 上限 2：全屏 34×46 格 ×dpr3 位图约 2100×2900，低端安卓每帧填充吃不消，且 2 与 3 肉眼无差
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
     ctx = canvas.getContext('2d');   // 幂等，供 applyCell 重设 transform
     if (isFs) {
       // 全屏：空闲/结束态顺便把「下一局」地图按 FS_CELL 放大到接近满屏；
@@ -292,7 +314,9 @@
     document.addEventListener('contact-switched', function () { try { closeSnakePanel(); state = null; behavior = null; } catch (e) {} });
     window.addEventListener('resize', function () {
       if (!panel || panel.hidden) return;
-      refitAll();   // FIX 2026-09-16：原只处理全屏，半框旋转后画布不重排——refitAll 内部按 isFs 分流
+      // FIX 2026-09-16：原只处理全屏，半框旋转后画布不重排——refitAll 内部按 isFs 分流
+      // #774：不再每个 resize 事件同步重铺（iOS/安卓视口抖动会把地图打成脉冲），改走落定闸门
+      onViewportChange();
     });
     // FIX 2026-09-16：切后台自动暂停+存档（原 saveGame 只挂在关面板，iOS Safari 后台杀页面丢进行中对局）
     document.addEventListener('visibilitychange', function () {
@@ -718,7 +742,10 @@
     });
     if (!candidates.length) { o.nextDir = { x: o.dir.x, y: o.dir.y }; return; }
     const target = currentTarget();
-    const scored = candidates.map(function (d) { return { d: d, score: scoreDirection(d, target, head, o) }; });
+    // 占位表每 tick 建一次复用：蛇身在本次决策内不会移动，原实现每个候选方向都全蛇重扫一遍（4 次/step）
+    const blocked = {};
+    activeSnakes().forEach(function (s) { s.body.forEach(function (p) { blocked[p.x + ',' + p.y] = true; }); });
+    const scored = candidates.map(function (d) { return { d: d, score: scoreDirection(d, target, head, o, blocked) }; });
     scored.sort(function (a, b) { return b.score - a.score; });
     let chosen;
     if ((behavior.current === 'randomTurn' || behavior.current === 'detour') && scored.length >= 2) {
@@ -729,7 +756,7 @@
     o.nextDir = chosen;
   }
 
-  function scoreDirection(d, target, head, o) {
+  function scoreDirection(d, target, head, o, blocked) {
     const nx = head.x + d.x, ny = head.y + d.y;
     let score = 0;
     if (target) {
@@ -737,7 +764,7 @@
       const w = behavior.speedUp ? 4 : 2;
       score += (gW() + gH() - dist) * w;
     }
-    score += floodFillSize(nx, ny) * 0.6;
+    score += floodFillSize(nx, ny, blocked) * 0.6;
     for (let i = 1; i < o.body.length; i++) {
       const s = o.body[i];
       const dd = Math.abs(nx - s.x) + Math.abs(ny - s.y);
@@ -755,9 +782,7 @@
     return score;
   }
 
-  function floodFillSize(sx, sy) {
-    const blocked = {};
-    activeSnakes().forEach(function (s) { s.body.forEach(function (p) { blocked[p.x + ',' + p.y] = true; }); });
+  function floodFillSize(sx, sy, blocked) {
     const visited = {};
     const q = [[sx, sy]];
     visited[sx + ',' + sy] = true;
@@ -880,21 +905,31 @@
     return false;
   }
 
-  // 胜负：谁分高谁赢（#341 语义保留）。duo/pvp 按各自分数；coop 按 P1+P2 队伍合计 vs TA。
+  // 胜负：撞死的一方输（#604 起）。对局以「任一蛇撞死」收局（checkEnd），撞死=出局这条直觉
+  // 优先于分数：原口径「谁分高谁赢」在我方撞死、分数却高于对方时弹「你赢了」（用户报
+  // 「我输了显示我赢」，任何机型浏览器必现）。现在按存活判：我死 TA 活=负 / TA 死我活=胜 /
+  // 同 tick 一起撞死（头对头）=平；pvp 是 P1 vs P2，coop 是 P1+P2 队伍 vs TA（队友死=队伍输）。
+  // 分数只作展示（结算页仍列出），不再决定胜负；两侧都活着（非死亡收局，正常走不到）才退回比分数。
   function endGame() {
     if (!state) return;
     state.status = 'over';
     stopFrame();
+    // 最后一帧是 step 前的插值中间态（frame 里 step 后 status 已离开 playing 就不再 render），
+    // 收局后补一次整格对齐渲染，冻结画面才能停在真正的死亡位置。
+    render(0);
     clearSaved();
     const mode = state.mode || 'duo';
     const psFinal = Math.floor(state.player.score);
     const osFinal = Math.floor(state.opp.score);
     const p2Final = state.p2 ? Math.floor(state.p2.score) : 0;
     const teamFinal = psFinal + (mode === 'coop' ? p2Final : 0);
+    const myAlive = !!state.player.alive && !(state.p2 && !state.p2.alive);   // coop：队友死=我方输
+    const oppAlive = !!state.opp.alive;
     let result;
-    if (mode === 'pvp') result = psFinal > osFinal ? 'win' : psFinal < osFinal ? 'lose' : 'draw';
-    else if (mode === 'coop') result = teamFinal > osFinal ? 'win' : teamFinal < osFinal ? 'lose' : 'draw';
-    else result = psFinal > osFinal ? 'win' : psFinal < osFinal ? 'lose' : 'draw';
+    if (!myAlive && oppAlive) result = 'lose';
+    else if (myAlive && !oppAlive) result = 'win';
+    else if (!myAlive && !oppAlive) result = 'draw';
+    else result = (mode === 'coop' ? teamFinal : psFinal) > osFinal ? 'win' : (mode === 'coop' ? teamFinal : psFinal) < osFinal ? 'lose' : 'draw';
     if (result === 'win') SFX.win();
     const d = {
       result: result,
@@ -1056,15 +1091,20 @@
     const cw = cssW / gW(), ch = cssH / gH(), cs = Math.min(cw, ch);
     const dead = !snake.alive;
     const dark = themeDark();
-    const bodyC = dead ? (dark ? '#4a4a52' : '#cfcfd4') : bodyColor;
-    const headC = dead ? (dark ? '#4a4a52' : '#cfcfd4') : headColor;
+    // FIX 2026-09-16 #604：死亡不再把整条蛇刷成中性灰（原先 dead 时头身统一换成灰）——
+    // 收局后画布停在冻结的最后一帧，灰化让场上颜色与结算页的 🟢P1 / 🟠P2（pvp）对不上，
+    // 两条蛇一起撞死时更是两条全灰（用户报「对局结束时两只蛇的颜色不对」）。
+    // 保留本蛇配色，死亡改由 × 眼 + 画布 snk-die 抖动/红晕（#352）表达，冻结帧仍认得出谁是谁。
+    const bodyC = bodyColor;
+    const headC = headColor;
     const prevBody = snake._prev || null;   // 步进前快照（snapshotPrev 统一维护）
     const interp = !dead && prevBody && alpha > 0 && alpha < 1;
     const pts = [];
     for (let i = 0; i < snake.body.length; i++) {
       const s = snake.body[i];
       let x = s.x, y = s.y;
-      if (interp && prevBody[i]) {
+      // 穿墙跨边界的格不做线性插值：14→0 会在屏上整条"倒车"滑回去，直接落新格
+      if (interp && prevBody[i] && Math.abs(s.x - prevBody[i].x) <= 1 && Math.abs(s.y - prevBody[i].y) <= 1) {
         x = prevBody[i].x + (s.x - prevBody[i].x) * alpha;
         y = prevBody[i].y + (s.y - prevBody[i].y) * alpha;
       }
@@ -1246,6 +1286,23 @@
   }
 
   // ---- 面板开关 ----
+  // 贪吃蛇打开时的默认形态：手机/平板一律全屏（占满视口、地图按屏幕放大更好玩），
+  // 真桌面保持半框。判据与 device.js 的窗口级判定同源，不看单一 innerWidth——
+  // 详见 openSnakePanel 里的 #604 说明（桌面版网站模式 / 手机横屏两族都栽在宽度上）。
+  function wantFullscreenDefault() {
+    try {
+      const d = window.mochiDevice;
+      if (d && (d.isMobile || d.isTablet)) return true;   // 全站唯一设备判定源
+    } catch (e) {}
+    try { if (document.documentElement.classList.contains('force-mobile')) return true; } catch (e) {}
+    if (window.innerWidth < 900) return true;             // 兜底：device.js 未就绪/判定未出
+    try {
+      // 触摸设备（手机横屏等宽视口）：coarse + hover:none 才算——触摸笔记本带鼠标时
+      // hover 为 hover，不受影响（桌面形态不变）
+      if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches && window.matchMedia('(hover: none)').matches) return true;
+    } catch (e) {}
+    return false;
+  }
   function openSnakePanel() {
     if (!panel) return;
     ['poke-card', 'emoji-panel', 'chat-ask-panel', 'chat-search', 'chat-divine-panel', 'chat-decision-panel', 'chat-rps-panel', 'chat-rp-panel', 'chat-call-panel', 'chat-pong-panel'].forEach(function (id) { const el = $(id); if (el) el.hidden = true; });
@@ -1258,7 +1315,7 @@
       let pname = 'TA';
       try {
         const nst = window.activeStore && window.activeStore();
-        pname = (nst && (nst.get('cs-lbl-partner') || nst.get('lbl-partner'))) || pname;
+        pname = (nst && (nst.get('lbl-partner') || nst.get('cs-lbl-partner'))) || pname;
       } catch (e) {}
       nameEl.textContent = pname;
     }
@@ -1269,10 +1326,16 @@
     panel.hidden = false;
     renderScore();
     renderBest();   // 最长纪录行要先落到 DOM：toggleFs 会按当时可见的兄弟块量画布，晚一行就把按钮顶出屏
-    // 手机端默认全屏（占满视口、地图按屏幕放大更好玩）；桌面端重置全屏
-    const mobile = window.innerWidth < 900;
-    if (mobile) { if (!isFs) toggleFs(); }
-    else { if (isFs) toggleFs(); }
+    // FIX 2026-09-16 #604：默认形态不再只看 window.innerWidth，改与 device.js 的全站设备
+    // 判定同源。用户报「好多手机使用这个功能是迷你框，无法正常玩」——两种手机都栽在这条
+    // 宽度判断上：①桌面版网站模式（Edge/Via 把 layout viewport 拉到 980，device.js 已用
+    // html.force-mobile 兜底成手机形态，innerWidth 却仍是 980）；②手机横屏（视口 ≥900）。
+    // 两者都判成「桌面」→ 面板停在半框，视口一矮 applyCell 自查把画布一路收到 6px 格子
+    // 下限（实测 980×600 下 176px、横屏 932 下 90px）＝根本没法玩。
+    // 手机/平板（含 force-mobile 兜底）或触摸设备一律默认全屏；真桌面（宽屏 + 精细指针）
+    // 保持半框（原行为不变）。
+    if (wantFullscreenDefault()) { if (!isFs) toggleFs(); }
+    else if (isFs) toggleFs();
     paused = false;
     if (pauseBtn) pauseBtn.textContent = '⏸';
     if (canSave(state) && validState(state)) {

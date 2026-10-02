@@ -9,6 +9,20 @@
   const G = 'xy-home-v2';
   const MSG_KEY = G + ':group-chat-msgs';
   const page = document.getElementById('page-group-chat');
+  // #710：群聊记录加载进度条（与单聊 #chat-loading 同款样式类）——群消息大键 IDB 异步读库
+  // 期间消息区可能只有空 LS 快照甚至全空＝「进群白屏干等无反馈」。读库前置位、落定即收起。
+  const gcLoadingEl = document.getElementById('gc-loading');
+  let gcAuthPending = false; // 权威读库是否在途（切群/重进由 gcLoadSeq 作废旧等待）
+  let gcLoadSeq = 0;
+  function updateGcLoading() {
+    if (!gcLoadingEl) return;
+    gcLoadingEl.hidden = !(page && !page.hidden && gcAuthPending);
+  }
+  function gcLoadSettle(seq) {
+    if (seq !== gcLoadSeq) return; // 已切群/重进：本次等待作废，由新一次 loadMsgs 管理
+    gcAuthPending = false;
+    updateGcLoading();
+  }
   const input = document.getElementById('gc-input');
   const sendBtn = document.getElementById('gc-send');
   const backBtn = document.getElementById('gc-back');
@@ -32,6 +46,8 @@
   // （显隐跟随当前桌面的聊天设置，与聊天页 cs-voice-send/cs-trigger-bar/cs-batch-send 一致）
   const gcMicBtn = document.getElementById('gc-mic-btn');
   const gcContinueBtn = document.getElementById('gc-continue-btn');
+  // v3.27.x：#674 顶部那枚「让对方继续说」已撤销，继续说在群聊里只剩输入栏这一个入口
+  //（与单聊聊天页同位置、同显隐口径），见下方 syncGcInputBtns / gcCsFireContinue。
   const gcBatchBtn = document.getElementById('gc-batch-btn');
   const gcDraftBar = document.getElementById('gc-draft');
   const gcDraftItems = document.getElementById('gc-draft-items');
@@ -138,6 +154,10 @@
     // v3.28.x：对齐聊天美化——气泡边缘圆角 / 时间轴颜色 / 正在输入颜色
     'bubble-radius': '18px', 'time-ink': '#111111', 'typing-ink': '#8a8a8a',
     'av-shape': 'circle', 'time-style': 'under-av',
+    // FIX 2026-09-17 #697：对齐聊天美化——气泡底色不透明度 / 栏位不透明度 / 栏位位置微调
+    // （用户：「群聊设置里的美化聊天没有和聊天里一样完整的美化功能」——单聊 #655/#673 有
+    //  这三组，群聊只有颜色/字号/圆角；默认值与单聊 CHAT_SURFACE_SETTINGS 一致）
+    'bubble-op': 100, 'head-op': 92, 'input-op': 92, 'head-inset': 0, 'input-inset': 0,
     'bg': '', 'font': '', 'css': '',
     // v3.16.x：成员群聊昵称显示开关（on = 成员消息头像上方显示昵称，默认不显示）
     'show-name': 'off'
@@ -202,6 +222,38 @@
     return GC_BEAUTY_DEFAULTS[k];
   }
   function gcBeautySave() { try { gcBeautyStore().set('gc-beauty', JSON.stringify(gcBeautyStored)); } catch (e) {} }
+  // FIX 2026-09-17 #697：气泡底色 → rgba（气泡透明度用；与单聊 _csHexRgb 同口径）。
+  // 认不出（rgba()/变量/关键字）时返回 null，调用方原样落色，绝不把颜色改坏。
+  function gcHexRgb(c) {
+    const s = String(c === undefined || c === null ? '' : c).trim();
+    let m = /^#([0-9a-f]{3})$/i.exec(s);
+    if (m) return [parseInt(m[1][0] + m[1][0], 16), parseInt(m[1][1] + m[1][1], 16), parseInt(m[1][2] + m[1][2], 16)];
+    m = /^#([0-9a-f]{6})$/i.exec(s);
+    if (m) return [parseInt(m[1].slice(0, 2), 16), parseInt(m[1].slice(2, 4), 16), parseInt(m[1].slice(4, 6), 16)];
+    return null;
+  }
+  function gcClampNum(v, min, max, def) {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return def;
+    return Math.max(min, Math.min(max, Math.round(n)));
+  }
+  // 气泡底色（含透明度）：op<100 时转 rgba 写进 --msg-in-bg/--msg-out-bg（群聊页无对比度守卫，
+  // 直接改底色变量与单聊 --cs-in-surface 等效；op=100 时保持纯色，CSS 自定义背景仍可覆盖）
+  function gcApplyBubbleSurfaceWith(op) {
+    const page = document.getElementById('page-group-chat');
+    if (!page) return;
+    const o = gcClampNum(op, 0, 100, 100);
+    const surf = (color) => {
+      if (o >= 100) return color;
+      const rgb = gcHexRgb(color);
+      return rgb ? 'rgba(' + rgb.join(',') + ',' + (o / 100) + ')' : color;
+    };
+    gcSetVar(page, '--msg-in-bg', surf(gcBeautyGet('in-bg')));
+    gcSetVar(page, '--msg-out-bg', surf(gcBeautyGet('out-bg')));
+  }
+  function gcApplyBubbleSurface() {
+    gcApplyBubbleSurfaceWith(gcBeautyGet('bubble-op'));
+  }
   // 设置（空值/默认值 → 删除键）；应用 + 刷新设置面板回显
   function gcBeautySet(k, v) {
     const def = GC_BEAUTY_DEFAULTS[k];
@@ -214,12 +266,17 @@
     try { if (settingsPanel && !settingsPanel.hidden) renderSettingsPanel(); } catch (e) {}
   }
   // 群聊页局部字体（不污染全局 body/html）
+  let gcFontApplied = null;
   function applyGcFont() {
     const page = document.getElementById('page-group-chat');
+    const v = gcBeautyGet('font');
+    // FIX 2026-09-17 #697：值没变不重建 @font-face——上传字体是 dataURL（可达数 MB），
+    // 边看边调拖滑杆时 applyGcBeauty 每次输入都调用本函数，重建＝每帧重解析整份字体
+    if (v === gcFontApplied && (!v || document.getElementById('gc-font-style'))) return;
+    gcFontApplied = v;
     const old = document.getElementById('gc-font-style');
     if (old) old.remove();
     if (page) page.style.fontFamily = '';
-    const v = gcBeautyGet('font');
     if (!v) return;
     if (v.indexOf('data:') === 0) {
       const st = document.createElement('style');
@@ -254,29 +311,44 @@
     document.head.appendChild(st);
     if (hint) setTimeout(() => { try { toast(hint); } catch (e) {} }, 50);
   }
+  // FIX 2026-09-21 #966（同 #938 口径）：applyGcBeauty 原先每点一次档位（哪怕值一个字没变、
+  // 群聊「边看边调」里重复点同一档）都把 ~16 个内联变量重写一遍 + 白摘 5 个不存在的 cs-time-* 类，
+  // 每次都是整页样式重解析＝#938 那型闪屏（用户在真机闪屏自测里点同一个档量出来的就是这一下）。
+  // 修法与单聊 chat-settings.js 的 setVar/delVar 逐字同源：值没变一个字节都不碰。
+  const gcSetVar = (el, name, value) => { if (!el) return; const v = String(value); if (el.style.getPropertyValue(name) !== v) el.style.setProperty(name, v); };
+  const gcDelVar = (el, name) => { if (el && el.style.getPropertyValue(name) !== '') el.style.removeProperty(name); };
+  const gcSetCls = (el, cls, on) => { if (!el) return; if (on) { if (!el.classList.contains(cls)) el.classList.add(cls); } else if (el.classList.contains(cls)) el.classList.remove(cls); };
   // 应用群聊美化（CSS 变量在 #page-group-chat 上局部覆盖；默认值与聊天页默认一致）
   function applyGcBeauty() {
     const page = document.getElementById('page-group-chat');
     if (!page) return;
     const g = gcBeautyGet;
-    page.style.setProperty('--msg-in-bg', g('in-bg'));
-    page.style.setProperty('--msg-in-ink', g('in-ink'));
-    page.style.setProperty('--msg-out-bg', g('out-bg'));
-    page.style.setProperty('--msg-out-ink', g('out-ink'));
-    page.style.setProperty('--chat-font-size', g('font-size'));
-    page.style.setProperty('--chat-bubble-pad', g('bubble-size'));
+    gcSetVar(page, '--msg-in-ink', g('in-ink'));
+    gcSetVar(page, '--msg-out-ink', g('out-ink'));
+    // FIX 2026-09-17 #697：气泡底色经「气泡透明度」处理后写入（默认 100% ＝纯色，行为不变）
+    gcApplyBubbleSurface();
+    gcSetVar(page, '--chat-font-size', g('font-size'));
+    gcSetVar(page, '--chat-bubble-pad', g('bubble-size'));
     // v3.28.x：对齐聊天美化——气泡边缘圆角 / 时间轴颜色 / 正在输入颜色
-    page.style.setProperty('--chat-bubble-radius', g('bubble-radius'));
-    page.style.setProperty('--msg-time-ink', g('time-ink'));
-    page.style.setProperty('--typing-ink', g('typing-ink'));
-    page.style.setProperty('--send-bg', g('send-bg'));
-    page.style.setProperty('--send-ink', g('send-ink'));
-    page.style.setProperty('--msg-av-radius', g('av-shape') === 'square' ? '10px' : '50%');
+    gcSetVar(page, '--chat-bubble-radius', g('bubble-radius'));
+    gcSetVar(page, '--msg-time-ink', g('time-ink'));
+    gcSetVar(page, '--typing-ink', g('typing-ink'));
+    gcSetVar(page, '--send-bg', g('send-bg'));
+    gcSetVar(page, '--send-ink', g('send-ink'));
+    gcSetVar(page, '--msg-av-radius', g('av-shape') === 'square' ? '10px' : '50%');
+    // FIX 2026-09-17 #697：栏位不透明度 / 位置微调（与单聊 #655 同款 --cs-* 局部变量，
+    // CSS 规则在 group-chat.css 按 #page-group-chat 作用域接管，不动 chat-main.css 共享规则）
+    gcSetVar(page, '--cs-head-opacity', String(gcClampNum(g('head-op'), 0, 100, 92) / 100));
+    gcSetVar(page, '--cs-input-opacity', String(gcClampNum(g('input-op'), 0, 100, 92) / 100));
+    gcSetVar(page, '--cs-head-inset', gcClampNum(g('head-inset'), 0, 80, 0) + 'px');
+    gcSetVar(page, '--cs-input-inset', gcClampNum(g('input-inset'), 0, 80, 0) + 'px');
     const sendBtn = document.getElementById('gc-send');
-    if (sendBtn) sendBtn.style.display = g('send-show') === 'hide' ? 'none' : '';
+    if (sendBtn) { if (g('send-show') === 'hide') gcSetVar(sendBtn, 'display', 'none'); else gcDelVar(sendBtn, 'display'); }
     // 时间轴样式：page 级类（始终挂类，含默认 under-av 的还原规则，隔离聊天页 body 级类）
-    GC_BEAUTY_STYLES.forEach(s => page.classList.remove('cs-time-' + s.value));
-    page.classList.add('cs-time-' + g('time-style'));
+    // #966：只摘「挂着的那一个」、只挂「还没挂的那一个」——原写法每调用白摘 5 个不存在的类。
+    const wantTime = 'cs-time-' + g('time-style');
+    GC_BEAUTY_STYLES.forEach(s => { const c = 'cs-time-' + s.value; if (c !== wantTime) gcSetCls(page, c, false); });
+    gcSetCls(page, wantTime, true);
     // 壁纸（>6MB 异常存量清掉回默认，同聊天页防护）
     let bg = g('bg');
     if (bg && typeof bg === 'string' && bg.length > 6 * 1024 * 1024) {
@@ -380,6 +452,11 @@
     else gPersistTimer = setTimeout(gRunPersist, 2500);
   }
   function gFlushPersistNow() {
+    // #814：导入/清空重置（__resetting，data-backup.js doImportGo / personalize.js 清除置位）窗口内
+    // 禁止收口写——整包导入/清空都是整库替换后刷新，窗口期卸载/锁屏（beforeunload/visibilitychange）
+    // 把内存里的旧群聊记录写回＝盖掉刚换入的数据。函数头闸一并覆盖下方全部收口调用点；
+    // 导入窗口期进度浮层挡交互、无正常落盘需求，导入中止路径会撤屏障恢复原状。纯标志位零开销。
+    if (window.__resetting) return;
     const run = gPersistRun;
     gPersistRun = null;
     gPersistTimer = null;
@@ -393,7 +470,8 @@
   async function gcNormalizeMedia() {
     if (!window.mochiMediaTokenize) return;
     const seen = new Map();
-    const collect = (v) => { if (typeof v === 'string' && v.indexOf('data:image/') === 0 && v.length >= 1024 && !seen.has(v)) seen.set(v, null); };
+    const isImgPayload = window.chatIsDataImgLikeSrc || window.chatIsDataImgSrc; // FIX #948 与单聊/池闸门同口径（octet-stream 图候选也进池，不再整段内联）
+    const collect = (v) => { if (typeof v === 'string' && isImgPayload && isImgPayload(v) && v.length >= 1024 && !seen.has(v)) seen.set(v, null); };
     for (let i = 0; i < msgs.length; i++) {
       const r = msgs[i];
       if (!r) continue;
@@ -517,6 +595,11 @@
   window.addEventListener('beforeunload', () => gFlushPersistNow());
   function loadMsgs() {
     const key = groupMsgKey(curGid);
+    // #710：读库前置位（口径同单聊 #703）——LS 同步 parse 前先让进度条就位；落定/切群即收
+    gcAuthPending = true;
+    const seq = ++gcLoadSeq;
+    updateGcLoading();
+    setTimeout(function () { gcLoadSettle(seq); }, 12000); // 兜底：idbGet 迟迟不落定也不把进度条挂死
     try { msgs = JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { msgs = []; }
     if (!Array.isArray(msgs)) msgs = [];
     try {
@@ -526,15 +609,28 @@
           // key 不再是当前群的键就整包丢弃；否则旧群数据会覆盖当前群 msgs 并被下次
           // 保存回写进新群的存储键（A 群历史灌进 B 群）
           if (key !== groupMsgKey(curGid)) return;
-          if (v === undefined || v === null) return;
+          // #710：无权威数据（键不存在/读取超时兜底返回空）＝没有更多内容要等了，收起进度条
+          if (v === undefined || v === null) { gcLoadSettle(seq); return; }
           // #426：IDB 值双形态兼容——小记录为 JSON 字符串（与旧数据一致），大记录为数组直存
           let a = null;
           if (Array.isArray(v)) a = v;
           else { try { const p = JSON.parse(v); if (Array.isArray(p)) a = p; } catch (e2) {} }
-          if (a && a.length >= msgs.length) { msgs = a; renderAll(); }
-        }).catch(() => {});
-      }
-    } catch (e) {}
+          // #772：进群时已按 LS 快照渲染过一次（enterGroupChat 的 renderAll），IDB 权威回来若
+          // 与快照同条数且快照非 lite（小记录快照＝全量同内容），再整页 renderAll 是纯重复——
+          // body.innerHTML 全清重渲＋图片重新解码＝首次打开网页冷启动 IDB 读取稍慢时，
+          // 两次渲染间隔肉眼可见＝「聊天记录闪一下才正常」。只在权威确实更多、或快照被
+          // 裁剪/lite 化（大记录场景）时才重渲；内容始终采纳权威（msgs = a）。
+          if (a && a.length >= msgs.length) {
+            let snapLite = false;
+            for (let i = 0; i < msgs.length; i++) { if (msgs[i] && msgs[i]._lsLite) { snapLite = true; break; } }
+            const sameAsRendered = a.length === msgs.length && !snapLite;
+            msgs = a;
+            if (!sameAsRendered) renderAll();
+          }
+          gcLoadSettle(seq); // #710：权威落定（合入或放弃）即收起进度条
+        }).catch(() => { gcLoadSettle(seq); });
+      } else { gcLoadSettle(seq); }
+    } catch (e) { gcLoadSettle(seq); }
   }
 
   // ---- 渲染 ----
@@ -678,21 +774,19 @@
       // 撤回图片可看 #248：媒体记录即时从 rec.text/rec.parts 重拼缩略图视图（优先于
       // 存量占位快照 rec.orig——老数据撤回时只存了 [图片] 占位也能看图）
       b.dataset.orig = gcRetractMediaHtml(rec) || rec.orig || gcRetractFallbackHtml(rec);
+      // FIX #572e：媒体分支（gcRetractMediaHtml）只给图 ⇒ 展开后情绪 tag 会消失；这里只在「选中视图里
+      // 没有情绪块」时补上（快照分支自带、兜底分支已在函数内补过，都不会重复）。
+      // 注意：上一行是哨兵 #276 的锚（媒体 > 快照 > 兜底的优先级），逐字保留不动。
+      if (b.dataset.orig.indexOf('msg-moods') < 0) b.dataset.orig += gcRetractMoodHtml(rec);
       const who = rec.side === 'out' ? '我' : memberName(rec.cid);
       b.innerHTML = '<span style="opacity:.6;font-size:12px;cursor:pointer">' + who + '撤回了一条消息</span>';
       b.style.cursor = 'pointer';
-      // FIX 2026-09-16 #572 点开撤回原文「全部聊天消息都会弹和闪」（用户报，明说以前没有＝回归，
-      // 单聊群聊都有）：展开＝把原文写回这条气泡本身，提示只有一行、原文必更高 ⇒ 该气泡当场变高，
-      // .chat-body（#gc-body 同挂该类）是纵向 flex 列表，下面每条消息都要重新排位＝整列被顶走。
-      // 内核原生滚动锚定本会补掉这份高度差（#199 之前一直开着），但 base.css 的
-      // .chat-body{overflow-anchor:none}（#199 治滚动抖动）关了它，#316 只在解钉期动态挂
-      // .scroll-anchor-auto 开回——轻点撤回提示是 touchstart 解钉、touchend 又回钉，展开发生在回钉
-      // 之后＝锚定正关着，补偿无人做。此处按单聊 bindToggle 同口径自己补：贴底回钉、非贴底按高度差
-      // 把视口钉回，其它消息原地不动。
+      // FIX 2026-09-16 #572d（用户点名：要「我原来的模式」）：群聊恢复原来的「点一下在气泡里就地
+      // 展开、再点收回」——#572b 的浮层版用户不要（浮层再像也是弹窗，不是「那条消息在聊天流里变回
+      // 原文」）。就地展开＝气泡当场变高、列表必然被推动（这是该模式自带语义，非回归），故本处不加
+      // 滚动补偿，交互/观感与原来逐行一致（安全兜底 gcRetractMediaHtml/gcRetractFallbackHtml 是 #244
+      // 就有的，保留）。
       b.onclick = function () {
-        const prevTop = body.scrollTop;
-        const prevH = body.scrollHeight;
-        const wasBottom = gcAtBottom();
         if (b.dataset.showing === '1') {
           b.innerHTML = '<span style="opacity:.6;font-size:12px;cursor:pointer">' + who + '撤回了一条消息</span>';
           b.dataset.showing = '0';
@@ -700,10 +794,8 @@
           b.innerHTML = b.dataset.orig;
           b.dataset.showing = '1';
         }
-        const dH = body.scrollHeight - prevH;
-        if (dH) { if (wasBottom) scrollToBottom(); else body.scrollTop = prevTop + dH; }
       };
-    } else if (rec.type === 'sticker' || rec.type === 'image' || (rec.type !== 'voice' && window.mochiMediaIsToken && window.mochiMediaIsToken(rec.text))) {
+    } else if (rec.type === 'sticker' || rec.type === 'image' || (rec.type !== 'voice' && window.chatIsImgSrcLike && window.chatIsImgSrcLike(rec.text))) {
       // FIX 2026-09-12 #383 存量乱码自愈：修复前令牌卡曾以 type:text 入群聊库（气泡直出
       // @@m:hash 串），渲染补认裸令牌走图片分支（<img src> 令牌照常被 media-pool 观察器解图）
       if (rec.type !== 'sticker' && rec.type !== 'image') rec.type = 'image';
@@ -714,7 +806,7 @@
       b.innerHTML = quoteStr + (rec.type === 'image'
         ? '<img class="msg-img msg-img-big" src="' + attrEsc(rec.text) + '" alt="图片" loading="lazy" decoding="async">'
         : '<img class="msg-img msg-img-sm" src="' + attrEsc(rec.text) + '" alt="表情" loading="lazy" decoding="async">');
-    } else if (rec.type === 'voice' || (String(rec.text || '').indexOf('|||') >= 0 && /@@m:[0-9a-f]{32}$/.test(String(rec.text || '')))) {
+    } else if (rec.type === 'voice' || (String(rec.text || '').indexOf('|||') >= 0 && /@@m:[0-9a-f]{32}$/.test(String(rec.text || ''))) || (window.chatIsDataAudioSrc && window.chatIsDataAudioSrc(rec.text))) {
       // FIX 2026-09-13 #395 群聊补认「名称|||@@m:hash」令牌语音（与单聊同口径，存量消息不再直出令牌串）
       b.style.padding = '8px 10px';
       b.style.background = '';
@@ -803,12 +895,40 @@
   // 贴底跟随与 DOM 窗口裁剪逻辑不变（裁剪跳过分页按钮）
   let gcRenderStart = 0;
   const GC_EARLIER_CHUNK = 150;
+  // FIX 2026-09-20 #893：进群同窗跳过的指纹——「屏上这窗消息」（同群、同条数、首条 ts、
+  // 末条 ts/方向/正文长度/图语音标记）＋「渲染会读到的成员名/头像、我的名像、昵称显示开关」
+  // 的廉价签名。renderAll 结束时登记 gcRenderedFp；enterGroupChat 重算对比，一致＝屏上已经
+  // 是要显示的内容，整窗 innerHTML 重清重渲 200 条、图片头像全部重新解码＝「每次进群聊天
+  // 记录滚动闪一下才恢复」（PWA 装桌面后每次进出都走这条路）。任何一项变了签名必变＝照旧
+  // 重建，展示结果与旧逻辑一字不差；gcSwitchDirty（contact-switched 挂起，#249）独立于指纹
+  // 直接强制重建。
+  let gcRenderedFp = '__none__';
+  function gcMembersFp() {
+    try {
+      const ms = getMembers();
+      let s = '';
+      for (let i = 0; i < ms.length; i++) {
+        const av = String(memberAvatar(ms[i].id) || '');
+        s += ms[i].id + ':' + memberName(ms[i].id) + ':' + av.length + ':' + av.slice(-24) + ';';
+      }
+      const mav = String(myAvatar() || '');
+      return s + '|me:' + myName() + ':' + mav.length + ':' + mav.slice(-24) + '|sn:' + (gcBeautyGet('show-name') || '');
+    } catch (e) { return 'fp_err:' + Date.now(); } // 读不到指纹＝签名必不匹配＝保守重建
+  }
+  function gcEntrySig() {
+    const n = msgs.length;
+    const last = n ? msgs[n - 1] : null;
+    return curGid + '|' + n + '|' + (n ? msgs[0].ts : '') + '|' +
+      (last ? [last.ts, last.side || '', String(last.text || '').length, last.img !== undefined ? 'i' : '', last.voice !== undefined ? 'v' : ''].join(':') : '') +
+      '|' + gcMembersFp();
+  }
   function renderAll() {
     body.innerHTML = '';
     const n = msgs.length;
     gcRenderStart = Math.max(0, n - RENDER_MAX);
     if (gcRenderStart > 0) body.appendChild(gcEarlierBtn());
     for (let i = gcRenderStart; i < n; i++) renderMsg(msgs[i], i);
+    gcRenderedFp = gcEntrySig(); // #893：登记「屏上窗口指纹」，进群同窗跳过的比较基准
     followGcBottom(true); // #371：进页滚底同走三连写（内核可能丢弃单次 scrollTop 写入）
   }
   function gcEarlierBtn() {
@@ -951,7 +1071,7 @@
     const t = document.createElement('span');
     t.className = 'chat-draft-quote-text';
     const raw = String(gcLastQuote.text || '');
-    t.textContent = (thumb && raw.indexOf('data:') === 0) ? '' : (raw || '图片');
+    t.textContent = (thumb && (window.chatIsInlineDataSrc ? window.chatIsInlineDataSrc(raw) : raw.indexOf('data:') === 0)) ? '' : (raw || '图片'); // FIX #948 内联载荷判据统一口径（变体形态不再把 base64 写进预览条）
     bar.appendChild(t);
     const xBtn = document.createElement('button');
     xBtn.className = 'chat-draft-x chat-draft-quote-x';
@@ -1008,7 +1128,7 @@
     saveMsgs();
     renderMsg(rec);
     followGcBottom(true);
-    if (window.playSfx) window.playSfx('out');
+    if (window.playSfxGc) window.playSfxGc('out'); // #698d：走群聊专属音效（未设置回退单聊）
     if (input) { input.textContent = ''; try { input._gcLastTyped = ''; } catch (e2) {} } // #401 清空同步作废快照（程序化清空不派发 input 事件，防幻影重发）
     gcDraftImgs = [];
     renderGcDraft();
@@ -1024,7 +1144,7 @@
     saveMsgs();
     renderMsg(rec);
     followGcBottom(true);
-    if (window.playSfx) window.playSfx('in');
+    if (window.playSfxGc) window.playSfxGc('in'); // #698d：走群聊专属音效（未设置回退单聊）
   }
   function gcIsVisible() {
     const p = document.getElementById('page-group-chat');
@@ -1072,9 +1192,31 @@
     saveMsgs();
     renderMsg(rec);
     followGcBottom(true);
-    if (window.playSfx) window.playSfx('out');
+    if (window.playSfxGc) window.playSfxGc('out'); // #698d：走群聊专属音效（未设置回退单聊）
     // 表情不带文字，无 @提及，成员按概率随机回复
     scheduleReply('');
+  }
+  // v3.26.x #636：颜文字/emoji 文字卡在群聊直接发送（面板回调第二个参数 kind==='text' 区分于图片）
+  function sendGcText(t) {
+    if (!t) return;
+    const rec = { side: 'out', text: t, ts: Date.now() };
+    const qv = gcTakeQuoteValue();
+    if (qv) rec.quote = qv;
+    msgs.push(rec);
+    saveMsgs();
+    renderMsg(rec);
+    followGcBottom(true);
+    if (window.playSfxGc) window.playSfxGc('out'); // #698d：走群聊专属音效（未设置回退单聊）
+    scheduleReply('');
+  }
+  // v3.26.x #691：颜文字/emoji 填入群聊输入栏（与聊天页同一个模式开关；尾部追加，不清空已打的字）。
+  //   模式读全局根键 chat-textcard-direct（聊天设置→表情包 的「颜文字/emoji 点击直接发送」），
+  //   默认关＝填入输入栏，发不发由用户点「发送」决定。
+  function gcInsertTextToInput(t) {
+    if (!input || typeof t !== 'string' || !t) return;
+    input.textContent = (input.textContent || '') + t;
+    // 程序化写入不派发 input 事件，补一条带 bubbles 的让「最近输入快照」与所见内容同步（#401 同口径）
+    try { input.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {}
   }
 
   // ---- 回复内容生成（从该成员字卡池随机选，兜底数组） ----
@@ -1084,6 +1226,7 @@
     const d = {
       'gc-prob': 60, 'gc-rs-min': 1, 'gc-rs-max': 40,
       'gc-reply-min': 1, 'gc-reply-max': 2,
+      'gc-cs-normal': 0, 'gc-cs-trigger-name': 1, 'gc-cs-trigger-bar': 0,
       'gc-touch-prob': 5, 'gc-sticker-prob': 10, 'gc-emoji-prob': 5, 'gc-image-prob': 5, 'gc-voice-prob': 10,
       'gc-kaomoji-prob': 5, 'gc-quote-prob': 30, 'gc-rc-prob': 25, 'gc-rc-refix': 35,
       'gc-py-en': 1, 'gc-py-prob': 50, 'gc-py-min': 2, 'gc-py-max': 5
@@ -1138,17 +1281,18 @@
       cards.forEach(c => {
         if (typeof c !== 'string' || !c) return;
         if (pokeSet && pokeSet.has(c)) return; // 拍一拍字卡只走拍一拍模式，不进普通回复池
-        if (c.indexOf('data:') === 0) return; // 图片已按媒体分类取
-        if (c.indexOf('|||') >= 0) return; // 语音已按媒体分类取
-        // FIX 2026-09-12 #383 群聊同款：#377 令牌化后裸 @@m:hash 卡体无 |||、非 data:，
-        // 旧两道守卫漏过＝令牌卡入群聊文字池被当文字直出（与 chat.js getPool 同批修复）
-        if (c && window.mochiMediaIsToken && window.mochiMediaIsToken(c)) return;
+        // FIX 2026-09-12 #383 群聊同款：#377 令牌化后裸 @@m:hash 卡体无 |||、非 data:，旧两道守卫
+        // 漏过＝令牌卡入群聊文字池被当文字直出（与 chat.js getPool 同批修复）。
+        // FIX 2026-09-20 #948 三道守卫（data:/|||/裸令牌）收成 chat.js 导出的同一条统一判据：
+        // 大小写＋前导空白不敏感、且认「正文中间夹着真令牌」——变体形态漏过即被成员抽中当文字发出。
+        if (window.chatHasMediaPayload ? window.chatHasMediaPayload(c)
+          : (c.indexOf('data:') === 0 || c.indexOf('|||') >= 0 || (window.mochiMediaIsToken && window.mochiMediaIsToken(c)))) return;
         // FIX 2026-09-15 #533 群聊同款：链接导入的媒体字卡（裸 http(s) 图链，存于字卡库
         // 【表情包/图片】分类）不进文字池——否则群成员抽中即把链接当文字发进群（与
         // chat.js getPool / mail.js mailCardPool 同批修复）
         if (/^https?:\/\//i.test(c)) return; // 图链卡不进群聊文字池
         if (/[\uD800-\uDBFF]/.test(c) || /^[😀-🙏🌀-🫿]/u.test(c)) emoji.push(c);
-        else if (/[\(（｡◕(◕)(づ｡(¬)]/.test(c) && /[\)）】)]/.test(c)) kaomoji.push(c);
+        else if (window.chatIsBracketedKaomojiCard ? window.chatIsBracketedKaomojiCard(c) : (/[\(（｡◕(◕)(づ｡(¬)]/.test(c) && /[\)）】)]/.test(c))) kaomoji.push(c); // FIX #1152 与单聊同一判据
         else text.push(c);
       });
     } catch (e) {}
@@ -1171,7 +1315,7 @@
               if (isOff && isOff('main', card)) return;
               if (typeof card !== 'string' || !card) return;
               if (/[\uD800-\uDBFF]/.test(card)) emoji.push(card);
-              else if (/[\(（｡◕(◕)(づ｡(¬)]/.test(card) && /[\)）】)]/.test(card)) kaomoji.push(card);
+              else if (window.chatIsBracketedKaomojiCard ? window.chatIsBracketedKaomojiCard(card) : (/[\(（｡◕(◕)(づ｡(¬)]/.test(card) && /[\)）】)]/.test(card))) kaomoji.push(card); // FIX #1152 默认字卡兜底同判据
               else text.push(card);
             });
           });
@@ -1208,8 +1352,10 @@
         t = pick(pool.text) || FALLBACK_REPLIES[Math.floor(Math.random() * FALLBACK_REPLIES.length)];
       }
     }
-if (type === 'text' && pool.kaomoji.length && hit(c['gc-kaomoji-prob'])) {
-t += ' ' + pick(pool.kaomoji);
+// #1203 同单聊口径：群聊「多字卡回复」总开关关闭＝每个成员每条消息只用一张字卡，颜文字卡不再追加
+if (type === 'text' && c['gc-py-en'] === 1 && pool.kaomoji.length && hit(c['gc-kaomoji-prob'])) {
+const gkj = pick(pool.kaomoji);
+t += (window.chatKaoJoinSep ? window.chatKaoJoinSep(t, gkj, page, body) : '\n') + gkj; // #1051 同单聊：行末放不下才硬换行；#1212 「放得下」借单聊同一份实测（群聊页/群聊容器各传各的，量不到时回 '\n'）
 }
 // v3.26.x #163：文本回复按成员所在桌面混入默认字卡（同聊天页 genOneReply 的
 // getDefaultCards 覆盖语义，dc-overall-chat 概率+分类占比+各开关内部同源生效）——
@@ -1283,14 +1429,18 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
   }
   // 投递一条回复到指定群：同群走原路径（渲染+音效），跨群只落存储。返回该消息在
   // 来源群数组中的下标（供撤回定时器定位），失败返回 -1
-  function gcDeliverReply(gid, rec, sfx) {
+  // forceFollow：用户当刻主动要的回应（#1023 点「继续说」）——本函数是群聊侧「成员回复落地」
+  //   的唯一出口，跟底在此收口；该传参加工成 followGcBottom(true)，绕过「用户已接管滚动就不
+  //   打扰」的闸（gcUserGcScrollTouched），落地即贴底并把接管标记清掉（后续成员回复照常跟底）。
+  //   与单聊 #492 的 chatUserFollowScroll 同一语义；TA 自发回复不传，闸语义零改动。
+  function gcDeliverReply(gid, rec, sfx, forceFollow) {
     if (!gcGroupAlive(gid)) return -1;
     if (gid === curGid) {
       msgs.push(rec);
       saveMsgs();
       renderMsg(rec, msgs.length - 1);
-      followGcBottom();
-      if (sfx && window.playSfx) window.playSfx(sfx);
+      followGcBottom(!!forceFollow);
+      if (sfx && window.playSfxGc) window.playSfxGc(sfx);
       return msgs.length - 1;
     }
     try {
@@ -1304,17 +1454,39 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
   // 媒体给占位、文本走转义，绝不 innerHTML 直出原始 rec.text
   function gcRetractFallbackHtml(rec) {
     const ph = (t) => '<span style="opacity:.6;font-size:12px">' + t + '</span>';
-    if (rec.type === 'image') return ph('[图片]');
-    if (rec.type === 'sticker') return ph('[表情包]');
-    if (rec.type === 'voice') return ph('[语音]');
-    if (rec.parts && rec.parts.length) {
+    let html = '';
+    if (rec.type === 'image') html = ph('[图片]');
+    else if (rec.type === 'sticker') html = ph('[表情包]');
+    else if (rec.type === 'voice') html = ph('[语音]');
+    else if (rec.parts && rec.parts.length) {
       const imgs = rec.parts.filter(p => p.k === 'img').length;
       const txt = rec.parts.filter(p => p.k === 'text').map(p => p.v).join(' ');
-      return (imgs ? ph('[图片]') : '') +
+      html = (imgs ? ph('[图片]') : '') +
         // FIX 2026-09-13 #394 群聊撤回段文本走内嵌令牌助手（同 #385 单聊撤回段口径）
         (txt ? '<span style="opacity:.85;word-break:break-word">' + (window.mochiInlineTextHtml ? window.mochiInlineTextHtml(txt) : escTxtBr(txt)) + '</span>' : '');
+    } else {
+      html = '<span style="opacity:.85;word-break:break-word">' + (window.mochiInlineTextHtml ? window.mochiInlineTextHtml(rec.text || '') : escTxtBr(rec.text || '')) + '</span>';
     }
-    return '<span style="opacity:.85;word-break:break-word">' + (window.mochiInlineTextHtml ? window.mochiInlineTextHtml(rec.text || '') : escTxtBr(rec.text || '')) + '</span>';
+    return html + gcRetractMoodHtml(rec);
+  }
+  // FIX 2026-09-16 #572e（用户点检「原内容和 tag 能不能正常显示」）：撤回消息点开后看到的「原文视图」
+  // 必须和撤回态一样带情绪字卡 tag——撤回态下 tag 渲染在提示行下方（本文件 renderMsg 的情绪块没有
+  // !retracted 闸），可一点开就把整个气泡内容换成兜底视图/媒体视图，tag 就凭空消失。口径：快照分支
+  // （rec.orig，撤回瞬间的 innerHTML）自带情绪块不再追加（防重复）；兜底与媒体分支补上；已被撤回的
+  // 那几条（rec.retractedMood）按 partialRetract 口径剔除。与单聊 retractSafeHtml 同源。
+  function gcRetractMoodHtml(rec) {
+    try {
+      const moods = (rec && Array.isArray(rec.mood)) ? rec.mood : [];
+      const live = moods.filter((md, mi) => md && String(md.tag || '').trim() && !(rec.retractedMood && rec.retractedMood.indexOf(mi) >= 0));
+      if (!live.length) return '';
+      return '<div class="msg-moods">' + live.map(md => {
+        const tag = md.tag || '情绪';
+        const label = md.label == null ? '' : String(md.label);
+        const dup = label !== '' && label === String(rec.text == null ? '' : rec.text);
+        return '<div class="msg-mood' + (md.tag === '交流意图' ? ' msg-intent' : '') + '"><span class="msg-mood-tag">' + escTxt(tag) + '</span>' +
+          (dup || label === '' ? '' : '<span>' + escTxt(label) + '</span>') + '</div>';
+      }).join('') + '</div>';
+    } catch (e) { return ''; }
   }
   // 撤回图片可看 #248：媒体消息的「点击查看」视图即时从记录数据生成缩略图——
   // 图片/表情/含图组合的 src 本就持久化在 rec.text / rec.parts 里，渲染时重拼 img
@@ -1377,20 +1549,21 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
   }
   // v3.9.x：成员回复——按群聊回复设置：回复速度/条数/拍一拍/表情包/emoji/图片/语音/
   // 颜文字/引用/撤回（含撤回补发），与聊天页被动回复语义一致
-  function memberReply(cid, quoteText, gid) {
+  function memberReply(cid, quoteText, gid, continuation) {
     if (gid === undefined) gid = curGid; // FIX 串群 #242：未传时兜底当前群
     const c = gcCfg();
+    const immediate = continuation && c['gc-cs-normal'] !== 1;
     const name = memberName(cid);
     const rsMin = Math.max(1, Number(c['gc-rs-min']) || 1);
     const rsMax = Math.max(rsMin, Number(c['gc-rs-max']) || rsMin);
-    const delay = (rsMin + Math.random() * Math.max(1, rsMax - rsMin)) * 1000;
+    const delay = immediate ? 0 : (rsMin + Math.random() * Math.max(1, rsMax - rsMin)) * 1000;
     if (gid === curGid) showTyping(name);
     setTimeout(() => {
       if (gid === curGid) hideTyping();
       // 拍一拍分支（同聊天页：命中则不回文字，直接拍）
       if (hit(c['gc-touch-prob'])) {
         const rec = { side: 'in', cid: cid, name: name, text: gcPokeText(cid), special: 'poke', ts: Date.now() };
-        gcDeliverReply(gid, rec, 'in'); // FIX 串群 #242：落回来源群
+        gcDeliverReply(gid, rec, 'in', continuation); // FIX 串群 #242：落回来源群 · #1023 continuation＝用户点「继续说」要的回应，落地强制贴底
         return;
       }
       // 回复条数（min/max 调反时兜底至少 1 条）
@@ -1423,7 +1596,7 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
               if (window.addChatCount) window.addChatCount();
             } catch (e) {}
           }
-          const myIdx = gcDeliverReply(gid, rec, 'in'); // FIX 串群 #242：落回来源群
+          const myIdx = gcDeliverReply(gid, rec, 'in', continuation); // FIX 串群 #242：落回来源群 · #1023 continuation＝用户点「继续说」要的回应，落地强制贴底（上翻态也滑过来）
           if (i < count - 1 && gid === curGid) showTyping(name);
           // 撤回 + 撤回补发
           if (hit(c['gc-rc-prob'])) {
@@ -1450,7 +1623,7 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
                   })();
                 }, 700);
               }
-            }, 900);
+            }, randInt(1000, 3000)); // #890：撤回延迟 1~3 秒随机（与单聊 retractDelayMs 同口径），不再固定 900ms 秒撤
           }
           })();
         }, i * randInt(1200, 2800));
@@ -1458,9 +1631,11 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
     }, delay);
   }
   // v3.9.x：@ 的成员必定回复；其余成员按「每个联系人回复概率」独立掷骰，命中才回
-  function scheduleReply(userText) {
-    const gid = curGid; // FIX 串群 #242：捕获调度时的群，回复/撤回一律落回发起群
-    const members = getMembers();
+  // —— 这一段是「一轮里成员怎么接话」，与你在群里发几句无关；发几句并成几轮由下面的分流决定。
+  function gcReplyRound(userText, atGid) {
+    const gid = atGid || curGid; // FIX 串群 #242：一律落回发起群；#1376 并轮后「到点时你可能已经在别的群里」，故发起群随轮带走
+    const g0 = groups.find(x => x.id === gid) || currentGroup();
+    const members = groupMemberList(g0);
     if (!members.length) return;
     const c = gcCfg();
     // 检测 @提及
@@ -1482,10 +1657,38 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
     });
   }
 
+  // 你在群里连着发的那几条算**一轮**，与单聊共用同一个开关（回复设置 →「连发的算一轮」，
+  // 默认关闭＝一切照旧：每发一条各排一批，群员各自按 gc-rs-min~max 抽延迟）。
+  // 打开后：一轮只让成员们接一次话——你发 5 句不会引来 5 批回复；每多补一句把这轮的收口往后推
+  // GC_TURN_HOLD，最多替你等 GC_TURN_HOLD_MAX（你一直说，总得给人插嘴的时候）；@ 谁、引用什么都以
+  // 这一轮最后那句为准。**每个群各排各的轮**（切到别的群发消息不会顶掉这个群排着的轮）。
+  // 这里只收「哪几句算一轮」的边，成员各自的回复延迟仍走 memberReply 原来的抽样，不额外加一层等待。
+  const GC_TURN_HOLD = 1500, GC_TURN_HOLD_MAX = 8000;
+  const gcTurns = {}; /* gid -> { due, cap, timer, text } */
+  // 只认全局那一枚（gc-turn-en）：早先用按联系人存的 turn-en，群聊会不会并轮就跟着「你最后打开的那位联系人」变
+  function gcTurnOn() { try { return Number(((window.replyCfg && window.replyCfg()) || {})['gc-turn-en']) === 1; } catch (e) { return false; } }
+  window.__gcTurnKeys = function () { try { return Object.keys(gcTurns); } catch (e) { return []; } }; // 只读诊断：哪几个群各排着一轮
+  function scheduleReply(userText) {
+    if (!gcTurnOn()) return gcReplyRound(userText);
+    const gid = curGid;
+    if (!gid) return gcReplyRound(userText);
+    const nowT = Date.now();
+    let t = gcTurns[gid];
+    if (!t) t = gcTurns[gid] = { due: nowT + GC_TURN_HOLD, cap: nowT + GC_TURN_HOLD_MAX, timer: 0, text: userText };
+    else {
+      t.due = Math.min(t.cap, Math.max(t.due, nowT + GC_TURN_HOLD)); // 不早于原计划、不晚于这一轮的封顶
+      t.text = userText;
+    }
+    clearTimeout(t.timer);
+    t.timer = setTimeout(() => { if (gcTurns[gid] === t) delete gcTurns[gid]; gcReplyRound(t.text, gid); }, Math.max(0, t.due - nowT));
+  }
+
   // ---- 进入/退出 ----
   function updateGroupName() {
     const g = currentGroup();
-    const n = getMembers().length;
+    // #698a：人数含我——getMembers() 只列联系人成员，「我」也是群成员，+1（与成员面板里
+    // 「我」那行对齐；单聊顶栏无人数不受影响）
+    const n = getMembers().length + 1;
     const nm = (g && g.name) ? g.name : '群聊';
     if (nameEl) nameEl.textContent = nm + '(' + n + ')';
   }
@@ -1497,7 +1700,13 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
     if (page) page.hidden = false;
     updateGroupName();
     loadMsgs();
-    renderAll();
+    // FIX 2026-09-20 #893：进群同窗跳过——屏上窗口与当前数据同窗同貌（无挂起脏标记、有内容、
+    // 指纹一致）时只回底，不整窗重建；变化时照旧 renderAll（#772 权威复核在其后照常兜底）。
+    if (!gcSwitchDirty && body.children.length && gcEntrySig() === gcRenderedFp) {
+      followGcBottom(true); // #371 同窗跳过：回底同走三连写
+    } else {
+      renderAll();
+    }
     gcSwitchDirty = false; // FIX #249：进群即全量重建（loadMsgs+renderAll），切桌挂起的脏标记就地清账
     hideTyping(); // FIX 串群 #242 家族：打字指示器全局共享，进群清掉其他群残留
     syncGcInputBtns(); // 进入群聊时按当前桌面设置刷新语音/继续说/批量按钮显隐
@@ -1554,9 +1763,10 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
   });
 
   // ---- 成员列表面板 ----
-  function renderMembersPanel() {
-    if (!membersBody) return;
-    membersBody.innerHTML = '';
+  // #794 群聊设置 UI 重设计（用户「有的功能没有放在顶部的tag」）：成员列表 DOM 生成拆成
+  // fillMembersList(el)，三点菜单「群成员」面板与设置面板「成员」tag 内嵌段共用同一份生成
+  //（同源双渲染），动作路径（移除/添加成员→renderMembersPanel 或 refreshGroupViews）两边自动同步。
+  function fillMembersList(el) {
     // v3.26.x：自定义群可移除成员 / 添加成员；default 群成员动态跟随全部联系人，不提供
     const isCustom = curGid !== 'default';
     const meRow = document.createElement('div');
@@ -1566,7 +1776,7 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
     meRow.innerHTML = '<div class="gc-mp-av"></div><span class="gc-mp-name">' + escapeHtml(myName()) +
       '<span class="gc-mp-sub">' + (meDesk ? '桌面昵称：' + escapeHtml(meDesk) : '') + '</span></span><span class="gc-mp-tag">我</span>';
     fillAv(meRow.querySelector('.gc-mp-av'), myAvatar());
-    membersBody.appendChild(meRow);
+    el.appendChild(meRow);
     getMembers().forEach(m => {
       const row = document.createElement('div');
       row.className = 'gc-mp-item';
@@ -1580,15 +1790,21 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
         e.stopPropagation();
         removeMemberFromGroup(m.id);
       });
-      membersBody.appendChild(row);
+      el.appendChild(row);
     });
     if (isCustom) {
       const addRow = document.createElement('div');
       addRow.className = 'gc-mp-add';
       addRow.innerHTML = '<button class="gc-set-btn">＋ 添加成员</button>';
       addRow.querySelector('button').addEventListener('click', () => { openMemberPicker('add'); });
-      membersBody.appendChild(addRow);
+      el.appendChild(addRow);
     }
+  }
+  function renderMembersPanel() {
+    if (membersBody) { membersBody.innerHTML = ''; fillMembersList(membersBody); }
+    // #794：设置面板「成员」tag 内嵌段同步（面板开着才有该节点；关着时下次打开整段重建）
+    const emb = document.querySelector('#gc-set-body .gc-set-members-list');
+    if (emb) { emb.innerHTML = ''; fillMembersList(emb); }
   }
   // 移除成员（自定义群）：确认后从该群 members 剔除，成员不再参与本群回复/@
   function removeMemberFromGroup(cid) {
@@ -1610,14 +1826,187 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
     refreshGroupViews();
     toast('已移除成员');
   }
-  // 点击群名标题 → 打开群聊列表面板（切换 / 新建 / 删除群聊；群成员入口在三点菜单）
-  if (nameEl) nameEl.addEventListener('click', () => { renderGroupsPanel(); if (groupsPanel) groupsPanel.hidden = false; });
+  // 点击群名标题：#698b（用户直派「点顶部群聊昵称会打开切换群聊页面，影响使用，删掉」）——
+  // 不再打开群聊列表面板；切换/新建/删除群聊走右上角三点菜单「切换群聊」（入口不变）。
+  // #676 的「点顶部昵称触发一轮继续说」保留（那是该点击的既定语义，弹面板才是被投诉点）。
+  if (nameEl) nameEl.addEventListener('click', () => {
+    if (gcCfg()['gc-cs-trigger-name'] === 1) gcCsFireContinue();
+  });
+
+  // ---- #698c：头像互动 / 昵称互动（用户直派「群聊没有头像互动和昵称互动」） ----
+  // 对齐单聊 avatar-lib 的核心交互：池子存多条（头像=dataURL 已压缩 / 昵称=文字），
+  // 点池子条目＝立即换成该目标的群聊形象（写 gc-profiles，与设置面板手工设置同一路径），
+  // 并发一条「×× 更换了头像/昵称」系统消息。池子按目标（我 / 各成员）分开存，
+  // 全局键 xy-home-v2:gc-avpool / gc-nickpool（群聊形象本就全局，不随桌面隔离）。
+  // 与单聊的差异（刻意从简）：不做 1-8 小时定时随机更换与邀请弹窗（那套机制绑定
+  // 单聊 cs-avatar-* 键与桌面计时器），群聊版先做「池子 + 点击即换 + 随机换一个」。
+  const interPanel = document.getElementById('gc-inter-panel');
+  const interBody = document.getElementById('gc-inter-body');
+  const interTitle = document.getElementById('gc-inter-title');
+  const interClose = document.getElementById('gc-inter-close');
+  let interMode = 'av';   // 'av' 头像池 | 'nick' 昵称池
+  let interTarget = 'me'; // 'me' | <cid>
+  const INTER_KEYS = { av: 'gc-avpool', nick: 'gc-nickpool' };
+  function interPoolLoad() {
+    try {
+      const v = JSON.parse(gcProfileStore().get(INTER_KEYS[interMode]) || '{}');
+      return (v && typeof v === 'object') ? v : {};
+    } catch (e) { return {}; }
+  }
+  function interPoolSave(map) {
+    try { gcProfileStore().set(INTER_KEYS[interMode], JSON.stringify(map)); } catch (e) {}
+  }
+  function interTargets() { return ['me'].concat(getMembers().map(m => m.id)); }
+  function interCurVal(key) {
+    const p = gcProfileGet(key);
+    return interMode === 'av' ? (p.avatar || '') : (p.name || '');
+  }
+  // 换形象后的系统消息（居中样式，复用拍一拍/决定结果那路渲染；不响音效）
+  function gcInterSys(text) {
+    try {
+      const rec = { side: 'in', cid: 'system', name: '系统', text: text, ts: Date.now(), special: 'system' };
+      msgs.push(rec); saveMsgs(); renderMsg(rec); followGcBottom(true);
+    } catch (e) {}
+  }
+  function interApply(data) {
+    if (!data) return;
+    if (interMode === 'av') gcProfileSet(interTarget, undefined, data);
+    else gcProfileSet(interTarget, data, undefined);
+    const who = interTarget === 'me' ? myName() : memberName(interTarget);
+    gcInterSys(who + (interMode === 'av' ? ' 更换了头像' : ' 更换了昵称'));
+    renderInterPanel();
+  }
+  function renderInterPanel() {
+    if (!interBody) return;
+    if (interTitle) interTitle.textContent = interMode === 'av' ? '头像互动' : '昵称互动';
+    interBody.innerHTML = '';
+    // —— 换谁（目标 pills）——
+    const pills = document.createElement('div');
+    pills.className = 'gc-inter-pills';
+    interTargets().forEach(key => {
+      const b = document.createElement('button');
+      b.className = 'gc-inter-pill' + (key === interTarget ? ' on' : '');
+      b.textContent = key === 'me' ? myName() : memberName(key);
+      b.addEventListener('click', () => { interTarget = key; renderInterPanel(); });
+      pills.appendChild(b);
+    });
+    interBody.appendChild(pills);
+    const hint = document.createElement('div');
+    hint.className = 'gc-inter-hint';
+    hint.textContent = interMode === 'av'
+      ? '点一张头像＝立即换成 TA 的群聊头像；先选上方目标再点。'
+      : '点一个昵称＝立即换成 TA 的群聊昵称；先选上方目标再点。';
+    interBody.appendChild(hint);
+    // —— 池子 ——
+    const map = interPoolLoad();
+    const list = Array.isArray(map[interTarget]) ? map[interTarget] : [];
+    const curVal = interCurVal(interTarget);
+    const grid = document.createElement('div');
+    grid.className = interMode === 'av' ? 'gc-inter-grid' : 'gc-inter-grid nick';
+    list.forEach((data, i) => {
+      const cell = document.createElement('div');
+      cell.className = 'gc-inter-cell' + (data === curVal ? ' cur' : '');
+      if (interMode === 'av') {
+        const av = document.createElement('div');
+        av.className = 'gc-inter-av';
+        fillAv(av, data);
+        cell.appendChild(av);
+      } else {
+        const nm = document.createElement('span');
+        nm.className = 'gc-inter-nick';
+        nm.textContent = data;
+        cell.appendChild(nm);
+      }
+      const del = document.createElement('button');
+      del.className = 'gc-inter-del';
+      del.textContent = '✕';
+      del.title = '从池子里删除';
+      del.addEventListener('click', (e) => {
+        e.stopPropagation();
+        list.splice(i, 1);
+        if (!list.length) delete map[interTarget]; else map[interTarget] = list;
+        interPoolSave(map);
+        renderInterPanel();
+      });
+      cell.appendChild(del);
+      cell.addEventListener('click', () => interApply(data));
+      grid.appendChild(cell);
+    });
+    if (!list.length) {
+      const empty = document.createElement('div');
+      empty.className = 'gc-inter-hint';
+      empty.textContent = interMode === 'av' ? '池子还是空的，先「上传头像」加几张。' : '池子还是空的，先「添加昵称」加几个。';
+      grid.appendChild(empty);
+    }
+    interBody.appendChild(grid);
+    // —— 操作行：添加 / 随机换一个 ——
+    const ops = document.createElement('div');
+    ops.className = 'gc-inter-ops';
+    const addBtn = document.createElement('button');
+    addBtn.className = 'gc-set-btn';
+    addBtn.textContent = interMode === 'av' ? '上传头像' : '添加昵称';
+    // FIX 2026-09-18 #738：原生 label 激活兜底（只挂头像模式；昵称按钮不能变成选图）
+    if (interMode === 'av' && window.mochiFilePickLabel) window.mochiFilePickLabel(addBtn, gcAvatarPickInput);
+    addBtn.addEventListener('click', (e) => {
+      // FIX 2026-09-18 #756：原 fromLabel 早退在国产内核（label 不转发）时把 JS 兜底也跳过＝
+      // 「上传头像点了没反应」。改为 guard 事后确认未弹出再补 click（仅头像模式需要）。
+      if (interMode === 'av') {
+        // FIX 2026-09-20 #920：兜底腿改走全站统一三腿（showPicker→click；小米系对合成 click 静默不弹）
+        var _fb = () => { window.mochiFilePickFire(gcAvatarPickInput, { onFail: () => toast('无法打开相册，请重试') }); };
+        if (window.mochiFilePickGuard) window.mochiFilePickGuard(gcAvatarPickInput, _fb);
+        else _fb();
+        pickAvatarFile((data) => {
+          if (!data) return;
+          const m2 = interPoolLoad();
+          const l2 = Array.isArray(m2[interTarget]) ? m2[interTarget] : [];
+          if (l2.indexOf(data) >= 0) { toast('这张头像已在池子里'); return; }
+          l2.push(data);
+          m2[interTarget] = l2;
+          interPoolSave(m2);
+          renderInterPanel();
+          toast('已加入头像池');
+        });
+      } else {
+        if (!window.openModal) return;
+        window.openModal('添加昵称', '', (v) => {
+          const t = (v == null ? '' : String(v)).replace(/[\u00AD\u200B-\u200F\u202A-\u202E\u2060-\u2064\u206A-\u206F\uFEFF\u180E]/g, '').trim().slice(0, 30);
+          if (!t) { toast('昵称不能为空'); return; }
+          const m2 = interPoolLoad();
+          const l2 = Array.isArray(m2[interTarget]) ? m2[interTarget] : [];
+          if (l2.indexOf(t) >= 0) { toast('这个昵称已在池子里'); return; }
+          l2.push(t);
+          m2[interTarget] = l2;
+          interPoolSave(m2);
+          renderInterPanel();
+        }, { maxlength: 30 });
+      }
+    });
+    const randBtn = document.createElement('button');
+    randBtn.className = 'gc-set-btn';
+    randBtn.textContent = '随机换一个';
+    randBtn.addEventListener('click', () => {
+      const l2 = (Array.isArray(map[interTarget]) ? map[interTarget] : []).filter(x => x !== curVal);
+      if (!l2.length) { toast('池子里没有别的可换了'); return; }
+      interApply(l2[Math.floor(Math.random() * l2.length)]);
+    });
+    ops.appendChild(addBtn);
+    ops.appendChild(randBtn);
+    interBody.appendChild(ops);
+  }
+  function openInterPanel(mode) {
+    interMode = mode || interMode;
+    if (interTargets().indexOf(interTarget) < 0) interTarget = 'me';
+    renderInterPanel();
+    if (interPanel) interPanel.hidden = false;
+  }
+  if (interClose) interClose.addEventListener('click', () => { if (interPanel) interPanel.hidden = true; });
   if (membersClose) membersClose.addEventListener('click', () => { if (membersPanel) membersPanel.hidden = true; });
 
   // ---- 群聊列表面板（v3.26.x：切换 / 新建 / 删除群聊） ----
-  function renderGroupsPanel() {
-    if (!gpBody) return;
-    gpBody.innerHTML = '';
+  // #794 群聊设置 UI 重设计：列表 DOM 生成拆成 fillGroupsList(el)，三点菜单「切换群聊」面板
+  // 与设置面板「群聊」tag 内嵌段共用同一份生成；切群/删群路径经 refreshGroupViews→
+  // renderSettingsPanel（面板开着时）与本函数尾部同步，内嵌段自动跟随。
+  function fillGroupsList(el) {
     groups.forEach(g => {
       const row = document.createElement('div');
       row.className = 'gc-mp-item gc-gp-item' + (g.id === curGid ? ' cur' : '');
@@ -1629,7 +2018,7 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
             : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.4 3.8 5.5 3.8 9S14.5 18.6 12 21c-2.5-2.4-3.8-5.5-3.8-9S9.5 5.4 12 3z"/></svg>') +
         '</div>' +
         '<span class="gc-mp-name">' + escapeHtml(g.name) +
-          '<span class="gc-mp-sub">成员 ' + n + ' 人' + (g.id === 'default' ? ' · 全部联系人' : '') + '</span></span>' +
+          '<span class="gc-mp-sub">成员 ' + (n + 1) + ' 人' + (g.id === 'default' ? ' · 全部联系人' : '') + '</span></span>' +
         (g.id === curGid ? '<span class="gc-mp-tag gc-gp-cur">当前</span>' : '') +
         (g.id !== 'default' ? '<button class="gc-set-btn ghost gc-gp-del">删除</button>' : '');
       const delBtn = row.querySelector('.gc-gp-del');
@@ -1639,9 +2028,11 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
       });
       row.addEventListener('click', () => {
         switchGroup(g.id);
+        // 仅收三点菜单的列表面板；设置面板「群聊」tag 内嵌段保持打开（switchGroup 内部
+        // 经 refreshGroupViews 重建设置面板，「当前」标记随新群移动）
         if (groupsPanel) groupsPanel.hidden = true;
       });
-      gpBody.appendChild(row);
+      el.appendChild(row);
     });
     // 新建群聊
     const newRow = document.createElement('div');
@@ -1650,7 +2041,17 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>' +
       '</div><span class="gc-mp-name">新建群聊</span>';
     newRow.addEventListener('click', startCreateGroup);
-    gpBody.appendChild(newRow);
+    // FIX 2026-09-22 #1016（用户直派「添加群聊功能图层的位置不对，在最底下，不在最上面」）：
+    // 「新建群聊」行置顶（原为末尾 appendChild）——fillGroupsList 是三点菜单列表面板与设置面板
+    // 「群聊」tag 内嵌段共用的同一份渲染，两处一起置顶。
+    // 同 #1016 的菜单项接线：本行也是 #1018 批从产物回填到 src（原批只提了产物，src 缺失）。
+    el.insertBefore(newRow, el.firstChild);
+  }
+  function renderGroupsPanel() {
+    if (gpBody) { gpBody.innerHTML = ''; fillGroupsList(gpBody); }
+    // #794：设置面板「群聊」tag 内嵌段同步（面板开着才有该节点）
+    const emb = document.querySelector('#gc-set-body .gc-set-groups-list');
+    if (emb) { emb.innerHTML = ''; fillGroupsList(emb); }
   }
   // 切换群聊：落盘当前群 → 换群 id → 载入该群消息并重渲染
   function switchGroup(gid) {
@@ -1791,11 +2192,16 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
     showMoreMenu(moreMenu.hidden);
   });
   document.addEventListener('click', () => showMoreMenu(false));
-  const moreMembers = document.getElementById('gc-more-members');
-  if (moreMembers) moreMembers.addEventListener('click', () => {
+  // FIX 2026-09-22 #1016（用户直派「添加群聊…没有放在点击群聊右上角 群聊设置 tag 的并列」）：
+  // 三点菜单里与「群聊设置」并列补一项「新建群聊」（静态锚点 #gc-more-newgroup，位次在其之前），
+  // 走的就是设置面板里那条同一个 startCreateGroup()——不新开第二条建群链。
+  // 本代码块是 2026-09-22 #1018 批从产物回填到 src 的：#1016 当时只把产物（index.html /
+  // js/group-chat.js）与 build.mjs 提了，src 侧缺失 ⇒ 任何一次从 src 的重新构建都会静默删掉
+  // 这个入口（它的哨兵 #1016a~c 也因此常红）。回填内容逐字对齐产物行为（见 WORKLOG）。
+  const moreNewGroup = document.getElementById('gc-more-newgroup');
+  if (moreNewGroup) moreNewGroup.addEventListener('click', () => {
     showMoreMenu(false);
-    renderMembersPanel();
-    if (membersPanel) membersPanel.hidden = false;
+    startCreateGroup();
   });
   const moreSettings = document.getElementById('gc-more-settings');
   if (moreSettings) moreSettings.addEventListener('click', () => {
@@ -1803,13 +2209,13 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
     renderSettingsPanel();
     if (settingsPanel) settingsPanel.hidden = false;
   });
-  // v3.26.x：三点菜单「切换群聊」→ 打开群聊列表面板（新建 / 切换 / 删除）
+  // #816 三点菜单精简：「群成员」「切换群聊」与设置面板「成员」「群聊」tag 功能完全重复，
+  // 只留「群聊设置」一项。JS 侧摘除菜单节点（template.html 他域在途不碰，面板节点保留
+  // 不动）；若后续恢复入口，把这两行 remove() 删掉即可，面板渲染函数都还在。
+  const moreMembers = document.getElementById('gc-more-members');
   const moreGroups = document.getElementById('gc-more-groups');
-  if (moreGroups) moreGroups.addEventListener('click', () => {
-    showMoreMenu(false);
-    renderGroupsPanel();
-    if (groupsPanel) groupsPanel.hidden = false;
-  });
+  if (moreMembers) moreMembers.remove();
+  if (moreGroups) moreGroups.remove();
 
   // ---- 群聊设置面板（v3.9.x：我的群聊形象 + 成员群聊形象） ----
   const settingsPanel = document.getElementById('gc-settings-panel');
@@ -1828,48 +2234,44 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
     clearTimeout(t._timer);
     t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
   }
-  // 头像压缩（与聊天设置一致：最长边 256、JPEG 0.85）
-  function compressHead(dataUrl, maxSide) {
-    return new Promise((resolve) => {
-      try {
-        if (typeof dataUrl !== 'string' || !dataUrl || dataUrl.length > 8 * 1024 * 1024) { resolve(null); return; }
-        const img = new Image();
-        img.onload = () => {
-          try {
-            if (img.width * img.height > 26000000) { resolve(null); return; }
-            const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
-            const w = Math.max(1, Math.round(img.width * scale));
-            const h = Math.max(1, Math.round(img.height * scale));
-            const c = document.createElement('canvas');
-            c.width = w; c.height = h;
-            c.getContext('2d').drawImage(img, 0, 0, w, h);
-            resolve(c.toDataURL('image/jpeg', 0.85));
-          } catch (e) { resolve(null); }
-        };
-        img.onerror = () => resolve(null);
-        img.src = dataUrl;
-      } catch (e) { resolve(null); }
+  // FIX 2026-09-25 #1270：群头像压缩原先是「base64 超 8MB 先拒 ＋ 解码后超 2600 万像素再拒」——
+  // 所有现代手机照片一律判成「图片过大」（＝换群头像怎么传都失败），而那次整幅解码本身又是
+  // 白屏大退的内存来源（48MP＝192MB 位图）。现由 img-ingest.js 统一收口：先嗅文件头像素，支持
+  // 边解边缩的内核按目标尺寸解，不支持才明确报「换图」。最长边 256 口径不变。
+  // FIX 2026-09-18 #717：群聊头像选择器改「常驻挂文档」（#677 同族）——原本点击时动态创建、
+  // 未挂进文档就 click()：红米/真我等 Android Edge 系静默忽略不弹选择器（点了没反应）、iOS
+  // Safari 选完不保证派发 change。与 chat-settings.js headInput 已验证套路一致；压缩口径
+  // 最长边 256 不变（#1270 只把实现换进统一解码闸）。
+  let gcAvatarPickCb = null;
+  const gcAvatarPickInput = document.createElement('input');
+  gcAvatarPickInput.type = 'file'; gcAvatarPickInput.accept = 'image/*';
+  gcAvatarPickInput.id = 'gc-avatar-pick';
+  // FIX 2026-09-18 #738：sr-only clip 写法＋原生 label 兜底（device.js mochiFilePickLabel）
+  gcAvatarPickInput.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:1;margin:0;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;';
+  document.body.appendChild(gcAvatarPickInput);
+  gcAvatarPickInput.onchange = () => {
+    const f = gcAvatarPickInput.files && gcAvatarPickInput.files[0];
+    gcAvatarPickInput.value = ''; // 允许重选同一文件
+    if (!f) return;
+    const cb = gcAvatarPickCb; gcAvatarPickCb = null;
+    if (!window.mochiImgIngest) { toast('图片处理组件没加载上（缓存过旧或离线），请重新打开页面再试'); return; }
+    // FIX 2026-09-25 #1270：File 直接进闸，不再 readAsDataURL 造多 MB base64 字符串
+    window.mochiImgIngest(f, { maxSide: 256, quality: 0.85, tag: 'gc-head' }).then((r) => {
+      if (!r || r.st !== 'ok' || !r.data) { toast(window.mochiImgIngestMiss(r, '群头像')); return; }
+      if (cb) cb(r.data);
     });
-  }
+  };
   function pickAvatarFile(cb) {
-    const input = document.createElement('input');
-    input.type = 'file'; input.accept = 'image/*';
-    input.onchange = () => {
-      const f = input.files && input.files[0];
-      if (!f) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        compressHead(reader.result, 256).then(data => {
-          if (!data) { toast('图片过大或格式不支持，请换一张小图'); return; }
-          cb(data);
-        });
-      };
-      reader.readAsDataURL(f);
-    };
-    input.click();
+    gcAvatarPickCb = cb;
+    // FIX 2026-09-20 #920：激活腿改走全站统一三腿（showPicker→click；小米系对合成 click 静默不弹）
+    window.mochiFilePickFire(gcAvatarPickInput, { onFail: () => { gcAvatarPickCb = null; toast('无法打开相册，请重试'); } });
   }
-  // 渲染设置面板：主视图（我的群聊 + 成员群聊形象 + 美化入口） / 美化视图（同聊天设置的美化行）
-  let gcBeautyView = false;
+  // 渲染设置面板：主视图（顶部 tag：形象/成员/群聊/回复/美化/通用/数据）
+  // #816 退役旧「美化聊天」子视图（gcBeautyView 整页替换那套）：「通用」里的入口现在直接
+  // 切到「美化」tag，美化全站只剩这一套 UI，不会再出现「同一个功能两个门、进去不一样」。
+  // FIX 2026-09-17 #697：记住当前顶部 tag——美化段的控件改一下就走 gcBeautySet → renderSettingsPanel
+  // 整段重建，不复位就会把用户弹回「形象」（单聊设置页同款处理：只重画不换 tab）
+  let gcSetTab = 'profile';
   function setPanelTitle(t) {
     try {
       const h = settingsPanel && settingsPanel.querySelector('.gc-set-head span');
@@ -1880,34 +2282,46 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
     if (!settingsBody) return;
 
     settingsBody.innerHTML = '';
-    if (gcBeautyView) { setPanelTitle('美化聊天'); renderBeautyView(); return; }
-    setPanelTitle('群聊设置');
+    // #816 标题带群名：自定义群显示「群聊设置 · 群名」，多群切换时知道在设置谁；默认群不叠字
+    const gName = String((currentGroup() && currentGroup().name) || '').trim();
+    setPanelTitle(curGid !== 'default' && gName ? '群聊设置 · ' + gName : '群聊设置');
     renderMainSettingsView();
   }
   function renderMainSettingsView() {
     const esc = escapeHtml;
-    // v3.29.x：顶部 tag 分类（形象/回复/通用/数据）——复用全站 .them-tabs/.them-tab 观感
-    //（暗色随变量适配），点击互斥显隐对应 .gc-set-sec 段；默认「形象」。
+    // v3.29.x：顶部 tag 分类——复用全站 .them-tabs/.them-tab 观感（暗色随变量适配），
+    // 点击互斥显隐对应 .gc-set-sec 段；默认「形象」。
+    // FIX 2026-09-17 #697：「美化聊天」由「通用」下的子视图升成独立顶部 tag（用户：「美化聊天功能
+    // 没有在顶部变成单独tag」）——美化段内容复用 renderBeautyView(host)，控件改一下整段重建时按
+    // gcSetTab 复位，不弹回「形象」；「通用」里那一行保留为快捷入口（点它切到美化 tag，不再进子视图）
+    // #794 群聊设置 UI 重设计（用户「有的功能没有放在顶部的tag啊」）：tag 5→7——新增
+    // 「成员」（与三点菜单「群成员」面板同源的成员管理）与「群聊」（与「切换群聊」面板
+    // 同源的切换/新建/删除）；「回复」段镜像全站「设置→回复设置→群聊被动回复」的全部参数
+    //（见下方回复段，读写同一批 reply-gc-* 全局键，两处即时同步）。
     const tabsRow = document.createElement('div');
     tabsRow.className = 'them-tabs gc-set-tabs';
-    const GTABS = [['profile', '形象'], ['reply', '回复'], ['general', '通用'], ['data', '数据']];
-    tabsRow.innerHTML = GTABS.map((t, i) =>
-      '<div class="them-tab' + (i === 0 ? ' active' : '') + '" data-gt="' + t[0] + '">' + t[1] + '</div>').join('');
+    const GTABS = [['profile', '形象'], ['members', '成员'], ['group', '群聊'], ['reply', '回复'], ['beauty', '美化'], ['general', '通用'], ['data', '数据']];
+    if (!GTABS.some(t => t[0] === gcSetTab)) gcSetTab = 'profile';
+    tabsRow.innerHTML = GTABS.map(t =>
+      '<div class="them-tab' + (t[0] === gcSetTab ? ' active' : '') + '" data-gt="' + t[0] + '">' + t[1] + '</div>').join('');
     settingsBody.appendChild(tabsRow);
     const secs = {};
-    GTABS.forEach((t, i) => {
+    GTABS.forEach(t => {
       const s = document.createElement('div');
       s.className = 'gc-set-sec';
       s.dataset.gt = t[0];
-      if (i !== 0) s.hidden = true;
+      if (t[0] !== gcSetTab) s.hidden = true;
       settingsBody.appendChild(s);
       secs[t[0]] = s;
     });
     tabsRow.addEventListener('click', (e) => {
       const tab = e.target.closest('.them-tab');
       if (!tab) return;
+      gcSetTab = tab.dataset.gt;
       tabsRow.querySelectorAll('.them-tab').forEach(x => x.classList.toggle('active', x === tab));
       GTABS.forEach(t => { secs[t[0]].hidden = (t[0] !== tab.dataset.gt); });
+      // 美化段按需渲染：首屏按默认 tag 建视图，切过来时才第一次画（改值重建由本函数末尾统一处理）
+      if (gcSetTab === 'beauty' && !secs.beauty.innerHTML) renderBeautyView(secs.beauty);
     });
     // 各段写入指针：sec('x') 后续 appendChild 落到对应 tag 段
     let curSec = null;
@@ -2002,6 +2416,14 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
       const p = gcProfileGet(m.id);
       (curSec||settingsBody).appendChild(item(m.id, p.name || '', p.avatar || '', deskPartnerName(m.id)));
     });
+    // —— #698c 头像互动/昵称互动入口（池子管理半框） ——
+    const interRow = document.createElement('div');
+    interRow.className = 'gc-set-ops';
+    interRow.innerHTML = '<button class="gc-set-btn" data-inter="av">头像互动</button>' +
+      '<button class="gc-set-btn" data-inter="nick">昵称互动</button>';
+    interRow.querySelector('[data-inter="av"]').addEventListener('click', () => openInterPanel('av'));
+    interRow.querySelector('[data-inter="nick"]').addEventListener('click', () => openInterPanel('nick'));
+    (curSec||settingsBody).appendChild(interRow);
     // —— 成员昵称显示（v3.16.x：是否在消息头像上方显示群聊昵称） ——
     const nmRow = beautyRow('成员昵称显示', gcBeautyGet('show-name') === 'on' ? '头像上方显示' : '不显示', () => {
       pickGcPills('show-name', '成员昵称显示', [
@@ -2009,6 +2431,32 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
       ], 'off');
     });
     (curSec||settingsBody).appendChild(nmRow);
+    // —— #794「成员」tag：群成员管理（与三点菜单「群成员」面板同源渲染） ——
+    sec('members');
+    const tM = document.createElement('div');
+    tM.className = 'gc-set-title';
+    tM.textContent = '群成员';
+    (curSec||settingsBody).appendChild(tM);
+    const memList = document.createElement('div');
+    memList.className = 'gc-set-members-list';
+    (curSec||settingsBody).appendChild(memList);
+    fillMembersList(memList);
+    if (curGid === 'default') {
+      const mNote = document.createElement('div');
+      mNote.className = 'gc-set-note';
+      mNote.textContent = '默认群聊的成员跟随全部联系人，不能单独增删；要自选成员请用「群聊」tag 新建群聊。';
+      (curSec||settingsBody).appendChild(mNote);
+    }
+    // —— #794「群聊」tag：切换 / 新建 / 删除群聊（与三点菜单「切换群聊」面板同源渲染） ——
+    sec('group');
+    const tG = document.createElement('div');
+    tG.className = 'gc-set-title';
+    tG.textContent = '切换 / 新建群聊';
+    (curSec||settingsBody).appendChild(tG);
+    const gpList = document.createElement('div');
+    gpList.className = 'gc-set-groups-list';
+    (curSec||settingsBody).appendChild(gpList);
+    fillGroupsList(gpList);
     // —— 群聊回复（v3.28.x：全局生效于全部联系人，与回复设置页） ——
     sec('reply');
     const tR = document.createElement('div');
@@ -2020,8 +2468,73 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
     (curSec||settingsBody).appendChild(gcStepperRow('回复速度最长（秒）', 'gc-rs-max', 2, Infinity, 1));
     const rNote = document.createElement('div');
     rNote.className = 'gc-set-note';
-    rNote.textContent = '这里的回复概率与速度对所有群聊成员统一生效（全局）；完整的每项概率/条数/开关在「设置 → 回复设置 → 群聊被动回复」里调整。';
+    rNote.textContent = '这里与「设置 → 回复设置 → 群聊被动回复」是同一份设置：对所有群聊成员统一生效（全局、不随桌面隔离），两边修改即时同步。';
     (curSec||settingsBody).appendChild(rNote);
+    // #794「有的功能没有放在顶部的tag」：群聊设置「回复」tag 镜像全站「回复设置 → 群聊被动回复」
+    // 的全部参数（标签/边界/步长与 template.html 同段一字不差），读写同一批 reply-gc-* 全局键。
+    const rTitle = (t) => {
+      const el = document.createElement('div');
+      el.className = 'gc-set-title';
+      el.textContent = t;
+      (curSec||settingsBody).appendChild(el);
+    };
+    const rStep = (label, k, min, max, step) => { (curSec||settingsBody).appendChild(gcStepperRow(label, k, min, max, step)); };
+    // —— 回复条数 ——
+    rTitle('回复条数');
+    rStep('回复条数最少', 'gc-reply-min', 1, 10, 1);
+    rStep('回复条数最多', 'gc-reply-max', 1, 20, 1);
+    const cntNote = document.createElement('div');
+    cntNote.className = 'gc-set-note';
+    cntNote.textContent = '这两项＝你每发 1 条消息，群里每个回你的成员就各回你几条（在最少~最多之间随机，默认 1~2 条）。注意：这是「每条消息、每个成员」的条数，不是 TA 一天最多发几条，不建议调大——成员是各算各的（调到 5、3 个人同时回你＝一屏 15 条），你连着发的每句话还各触发一批。嫌刷屏就把这两项都调成 1；关掉下方「多字卡回复」总开关也能锁死一条（关闭后设几条都只回 1 条）。撤回后的补发不占本上限，所以实际收到的可能比这里设的条数多。';
+    (curSec||settingsBody).appendChild(cntNote);
+    // —— 内容概率 ——
+    rTitle('内容概率');
+    rStep('拍一拍概率', 'gc-touch-prob', 0, 100, 5);
+    rStep('表情包概率', 'gc-sticker-prob', 0, 100, 5);
+    rStep('emoji 概率', 'gc-emoji-prob', 0, 100, 5);
+    rStep('图片概率', 'gc-image-prob', 0, 100, 5);
+    rStep('语音概率', 'gc-voice-prob', 0, 100, 5);
+    rStep('颜文字附加概率', 'gc-kaomoji-prob', 0, 100, 5);
+    rStep('引用概率', 'gc-quote-prob', 0, 100, 5);
+    rStep('撤回概率', 'gc-rc-prob', 0, 100, 5);
+    rStep('撤回补发概率', 'gc-rc-refix', 0, 100, 5);
+    // —— 多字卡回复 ——
+    // 镜像开关（gc-py-en / gc-cs-*）读写走 window.replyCfg / window.saveReplyCfg：gc-* 自动路由
+    // 到全局 reply-gc-* 存储；gc-cs-* 保存时 saveReplyCfg 派发 'gc-continue-say-changed'，
+    // 群聊输入栏「继续说」按钮显隐随之联动（group-chat.js syncGcInputBtns 监听该事件）。
+    const gcReplyToggleRow = (label, sub, key) => {
+      const row = document.createElement('div');
+      row.className = 'gc-set-item gc-set-toggle';
+      row.innerHTML =
+        '<div class="gc-set-info"><div class="gc-set-name">' + esc(label) +
+        (sub ? '<span class="gc-set-sub">' + esc(sub) + '</span>' : '') + '</div></div>' +
+        '<label class="toggle"><input type="checkbox"><span class="tk"></span></label>';
+      const cb = row.querySelector('input');
+      let on = false;
+      try { const c = (window.replyCfg ? window.replyCfg() : gcCfg()) || {}; on = Number(c[key]) === 1; } catch (e) {}
+      cb.checked = on;
+      cb.addEventListener('change', () => { try { if (window.saveReplyCfg) window.saveReplyCfg(key, cb.checked ? 1 : 0); } catch (e) {} });
+      return row;
+    };
+    rTitle('多字卡回复');
+    (curSec||settingsBody).appendChild(gcReplyToggleRow('多字卡回复', '总开关：关闭后每个成员每条消息只回一条、只用一张字卡', 'gc-py-en'));
+    rStep('触发概率', 'gc-py-prob', 0, 100, 5);
+    rStep('最少条数', 'gc-py-min', 1, 10, 1);
+    rStep('最多条数', 'gc-py-max', 2, 10, 1);
+    // —— 让对方继续说 ——
+    rTitle('让对方继续说');
+    (curSec||settingsBody).appendChild(gcReplyToggleRow('按正常回复时间', '未开启时，点击后联系人立即回复', 'gc-cs-normal'));
+    (curSec||settingsBody).appendChild(gcReplyToggleRow('点顶部昵称触发', '', 'gc-cs-trigger-name'));
+    (curSec||settingsBody).appendChild(gcReplyToggleRow('底部聊天栏按钮触发', '', 'gc-cs-trigger-bar'));
+    const csNote = document.createElement('div');
+    csNote.className = 'gc-set-note';
+    csNote.textContent = '点顶部昵称（群名）/底部按钮会触发新一轮回复，条数仍按上面设置抽取，会叠在正常回复之外；顶部那枚常驻继续说按钮已收进底部输入栏这一排（与单聊同位置）。这枚开关同时决定单聊与群聊输入栏上「继续说」按钮的显隐，两页各开各的也行（单聊那份开关在本联系人桌面的回复设置里）。开启昵称触发后，切换群聊请用本面板「群聊」tag。';
+    (curSec||settingsBody).appendChild(csNote);
+    // —— #816 底部说明（原挂在「通用」tag 尾部：讲回复来源的说明归「回复」tag） ——
+    const note = document.createElement('div');
+    note.className = 'gc-set-note';
+    note.textContent = '成员回复内容来自：公用字卡 + 该成员桌面专属字卡 + 系统默认字卡；某成员桌面关闭【聊天使用】，聊天和群聊里这个成员都不再使用系统默认字卡。';
+    (curSec||settingsBody).appendChild(note);
     // —— 输入与消息（对齐聊天设置「功能」页镜像开关：群聊页内可直接改这些状态） ——
     sec('general');
     const tIn = document.createElement('div');
@@ -2055,6 +2568,35 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
     // 允许删除成员消息（气泡操作菜单出现「删除」，真删除不可恢复）
     (curSec||settingsBody).appendChild(gcToggleRow('允许删除成员消息', '点击成员消息气泡可在操作菜单里删除该条消息', 'cs-del-ta-msg',
       (en) => toast(en ? '已开启：点击成员消息可在操作菜单里删除该条消息' : '已关闭删除成员消息功能')));
+    // 输入栏按钮位置（v3.27.x 用户直派「群聊设置里可以和聊天设置里一样移动这个按钮的位置」）：
+    // 点行开聊天设置那一份排序面板（window.mochiInputOrderPanel）——顺序存每联系人键
+    // cs-input-order，chat.js applyInputBtnOrder 按 data-io 令牌给单聊与群聊两排输入栏设同一个
+    // flex order，所以这里改完两页一起变，不存在「群聊单独一套顺序」。面板只有一份、浮在 body 上。
+    const ioRow = document.createElement('div');
+    ioRow.className = 'gc-set-item gc-set-link';
+    ioRow.id = 'gc-input-order-row';
+    ioRow.innerHTML =
+      '<div class="gc-set-av">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h11M4 16h11"/><path d="M18 6l3 2-3 2M18 14l3 2-3 2"/></svg>' +
+      '</div>' +
+      '<div class="gc-set-info"><div class="gc-set-name">输入栏按钮位置<span class="gc-set-sub">自定义底部输入栏这一排图标的左右顺序（录音 / 继续说 / 更多 / 表情 / 输入框 / 图片 / 批量发送），「发送」固定在最右端；与单聊共用同一份顺序，只管位置、不改各按钮的开关</span></div></div>' +
+      '<span class="gc-set-chev">›</span>';
+    ioRow.addEventListener('click', () => {
+      if (!window.mochiInputOrderPanel) { toast('排序面板还没就绪，请稍后再试'); return; }
+      window.mochiInputOrderPanel.open();
+    });
+    (curSec||settingsBody).appendChild(ioRow);
+    // 排列变化即时回显（面板里点 ←→ / 恢复默认都会派发同一事件）
+    const ioSync = () => {
+      const v = ioRow.querySelector('.gc-set-desk');
+      const txt = window.mochiInputOrderPanel ? window.mochiInputOrderPanel.valueText() : '';
+      if (v) v.textContent = txt;
+    };
+    const ioVal = document.createElement('div');
+    ioVal.className = 'gc-set-desk';
+    ioRow.querySelector('.gc-set-info').appendChild(ioVal);
+    document.addEventListener('chat-input-order-changed', ioSync);
+    ioSync();
     // —— 群聊数据（对齐聊天设置「数据」页：导出/导入/清空当前群记录） ——
     sec('data');
     const tD = document.createElement('div');
@@ -2160,12 +2702,12 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
     }));
     // 导入：读取 JSON → 预览确认 → 覆盖当前群记录（兼容单聊导出/裸数组/整份备份）
     (curSec||settingsBody).appendChild(gcDataLink('导入聊天记录', '从 JSON 文件导入并覆盖当前群聊记录', false, () => {
-      const inp = document.createElement('input');
-      inp.type = 'file';
-      inp.accept = '.json,application/json';
-      inp.onchange = () => {
-        const f = inp.files && inp.files[0];
-        if (!f) return;
+      // FIX 2026-09-18 #755：统一走 window.mochiFilePick（原实现 detached＋无 label＋accept 迟到）
+      window.mochiFilePick({
+        id: 'mochi-gc-import-pick', accept: window.mochiDataPickAccept, // #1413：与整机导入同一份并集（窄串会让转存后改了类型的备份灰显）
+        onFiles: (files) => {
+        const f = files && files[0];
+        if (!f) { toast('没有取到文件，请再选一次'); return; }
         const reader = new FileReader();
         reader.onload = () => {
           let data;
@@ -2203,8 +2745,8 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
         };
         reader.onerror = () => { toast('文件读取失败，请重试'); };
         reader.readAsText(f, 'utf-8');
-      };
-      inp.click();
+        }
+      });
     }));
     // 清空当前群记录（危险操作二次确认；自定义群连消息键一并清）
     (curSec||settingsBody).appendChild(gcDataLink('删除全部聊天记录', '清空「' + curGroupName + '」的全部消息（不可恢复）', true, () => {
@@ -2229,13 +2771,12 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
         '<div class="gc-set-desk">气泡颜色、壁纸、字体、时间轴样式等</div>' +
       '</div>' +
       '<span class="gc-set-chev">›</span>';
-    bRow.addEventListener('click', () => { gcBeautyView = true; renderSettingsPanel(); });
+    // #816 「美化聊天」入口：切到顶部「美化」tag（旧实现开整页替换的子视图，与美化 tag
+    // 两套并存、长相行为都不一致——现在全站只剩美化 tag 这一套）
+    bRow.addEventListener('click', () => { gcSetTab = 'beauty'; renderSettingsPanel(); });
     (curSec||settingsBody).appendChild(bRow);
-    // —— 底部说明 ——
-    const note = document.createElement('div');
-    note.className = 'gc-set-note';
-    note.textContent = '成员回复内容来自：公用字卡 + 该成员桌面专属字卡 + 系统默认字卡；某成员桌面关闭【聊天使用】，聊天和群聊里这个成员都不再使用系统默认字卡。';
-    (curSec||settingsBody).appendChild(note);
+    // FIX 2026-09-17 #697：美化 tag 段——选中时才渲染（面板每次重建都重画一次，取值始终最新）
+    if (gcSetTab === 'beauty') renderBeautyView(secs.beauty);
   }
 
   // 主设置视图行（成员昵称显示等）：纯文字行，与美化视图的 set-row 图标行分开
@@ -2249,14 +2790,11 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
   // ================= 美化视图（#288 重设计：对齐聊天设置页观感——gs-title 分组标题 +
   // set-group.glass 玻璃卡片 + set-row 图标行，样式类全站通用/暗色随变量适配；
   // 行类保留 gc-set-row、.txt 仅放行名，供 verify-gc-color / verify-gc-settings 按文本点行） =================
-  function renderBeautyView() {
+  // FIX 2026-09-17 #697：host 参数——传「美化」tag 段时渲染进段里
+  //（#816：旧「无 host＝子视图模式」已随 gcBeautyView 一并退役，现在只会以 tag 段形式渲染）
+  function renderBeautyView(host) {
     const g = gcBeautyGet;
-    // 返回主设置
-    const back = document.createElement('div');
-    back.className = 'gc-set-back';
-    back.innerHTML = '<span class="arr">‹</span> 返回群聊设置';
-    back.addEventListener('click', () => { gcBeautyView = false; renderSettingsPanel(); });
-    settingsBody.appendChild(back);
+    const rootEl = host || settingsBody;
     const svgIco = (p) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + p + '</svg>';
     const ICO = {
       bg: svgIco('<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5-9 9"/>'),
@@ -2282,20 +2820,31 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
       const ttl = document.createElement('div');
       ttl.className = 'gs-title';
       ttl.textContent = t;
-      settingsBody.appendChild(ttl);
+      rootEl.appendChild(ttl);
       curGroup = document.createElement('div');
       curGroup.className = 'set-group glass';
-      settingsBody.appendChild(curGroup);
+      rootEl.appendChild(curGroup);
     };
     const add = (label, val, fn, ico) => {
       const row = document.createElement('div');
       row.className = 'set-row gc-set-row';
       row.innerHTML = '<div class="ico">' + (ico || '') + '</div><span class="txt">' + escapeHtml(label) + '</span><span class="val">' + escapeHtml(val) + '</span>';
       row.addEventListener('click', fn);
-      (curGroup || settingsBody).appendChild(row);
+      (curGroup || rootEl).appendChild(row);
       return row;
     };
     const bgLabel = (v, def) => v === def ? '默认 ' + def : v;
+    // FIX 2026-09-17 #697：边看边调入口（与单聊 #673 同款，配色跟随主题色 var(--btn-bg)）
+    const liveBtn = document.createElement('button');
+    liveBtn.type = 'button';
+    liveBtn.id = 'gc-live-adjust';
+    liveBtn.style.cssText = 'display:flex;align-items:center;gap:10px;width:calc(100% - 24px);margin:10px 12px 0;padding:11px 14px;border:1px solid var(--btn-bg,#111);border-radius:12px;background:color-mix(in srgb, var(--btn-bg,#111) 10%, transparent);color:var(--ink,#111);text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent;flex-shrink:0';
+    liveBtn.innerHTML = '<span style="flex:1;min-width:0">' +
+      '<span style="display:block;font-size:15px;font-weight:700;line-height:1.25">边看边调</span>' +
+      '<span style="display:block;font-size:11.5px;font-weight:400;opacity:.85;margin-top:2px">打开调色条：群聊在上、控件在下，改哪看哪、即时生效；标题行可按住往上拖让位</span>' +
+      '</span><span style="flex:none;font-size:12px;font-weight:700;padding:7px 10px;border:1px solid var(--btn-bg,#111);border-radius:999px;background:var(--btn-bg,#111);color:var(--btn-ink,#fff);white-space:nowrap">点击开启 ›</span>';
+    liveBtn.addEventListener('click', openGcBeautyDrawer);
+    rootEl.insertBefore(liveBtn, rootEl.firstChild);
     // —— 壁纸 ——
     gtitle('壁纸');
     add('聊天壁纸', g('bg') ? '已设置' : '未设置', () => pickGcWallpaper(), ICO.bg);
@@ -2306,6 +2855,14 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
     add('我的消息文字颜色', bgLabel(g('out-ink'), '#ffffff'), () => pickGcColor('out-ink', '我的消息文字颜色', gcInkSwatches()), ICO.ink);
     add('联系人气泡颜色', bgLabel(g('in-bg'), '#ffffff'), () => pickGcColor('in-bg', '联系人气泡颜色', GC_BUBBLE_BG), ICO.palette);
     add('联系人消息文字颜色', bgLabel(g('in-ink'), '#111111'), () => pickGcColor('in-ink', '联系人消息文字颜色', gcInkSwatches()), ICO.ink);
+    // FIX 2026-09-17 #697：气泡底色不透明度（对齐单聊「聊天气泡透明度」）
+    add('气泡透明度', gcClampNum(g('bubble-op'), 0, 100, 100) + '%', () => pickGcSlider('bubble-op', '聊天气泡透明度', '只调气泡底色，文字始终清晰', 0, 100, '%'), ICO.eye);
+    // FIX 2026-09-17 #697：栏位不透明度 / 位置微调（对齐单聊「顶栏/底栏与气泡透明」组）
+    gtitle('顶栏 / 底栏');
+    add('顶栏不透明度', gcClampNum(g('head-op'), 0, 100, 92) + '%', () => pickGcSlider('head-op', '顶栏不透明度', '0% 全透明、100% 不透明，文字按钮不变淡', 0, 100, '%', '--cs-head-opacity'), ICO.sendbar);
+    add('底栏不透明度', gcClampNum(g('input-op'), 0, 100, 92) + '%', () => pickGcSlider('input-op', '输入栏不透明度', '0% 全透明、100% 不透明，文字按钮不变淡', 0, 100, '%', '--cs-input-opacity'), ICO.sendbar);
+    add('顶栏下移', gcClampNum(g('head-inset'), 0, 80, 0) + 'px', () => pickGcSlider('head-inset', '顶栏向下移动', '留白参与布局，消息区随之缩短', 0, 80, 'px', '--cs-head-inset'), ICO.clock);
+    add('底栏上移', gcClampNum(g('input-inset'), 0, 80, 0) + 'px', () => pickGcSlider('input-inset', '底栏向上移动', '留白参与布局，消息区随之缩短', 0, 80, 'px', '--cs-input-inset'), ICO.clock);
     // —— 发送按钮 ——
     gtitle('发送按钮');
     add('发送按钮显示/隐藏', g('send-show') === 'hide' ? '隐藏' : '显示', () => pickGcPills('send-show', '显示发送按钮', [
@@ -2358,36 +2915,51 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
       pills: pills, pill: gcBeautyGet(key) || def, noInput: true
     });
   }
-  // 群聊壁纸上传（同聊天设置：按物理像素上限压缩）
-  function pickGcWallpaper() {
-    const input = document.createElement('input');
-    input.type = 'file'; input.accept = 'image/*';
-    input.onchange = () => {
-      const f = input.files && input.files[0];
-      if (!f) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        const img = new Image();
-        img.onload = () => {
-          try {
-            const dpr = Math.max(1, window.devicePixelRatio || 1);
-            const screenH = (window.screen && window.screen.height) || 1920;
-            const maxSide = Math.min(4096, Math.max(2160, Math.round(screenH * dpr)));
-            const c = document.createElement('canvas');
-            const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
-            c.width = Math.max(1, Math.round(img.width * scale));
-            c.height = Math.max(1, Math.round(img.height * scale));
-            c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-            gcBeautySet('bg', c.toDataURL('image/jpeg', 0.85));
-            toast('群聊壁纸已应用');
-          } catch (e) { toast('壁纸处理失败，请换一张'); }
-        };
-        img.onerror = () => { toast('图片读取失败，请换一张'); };
-        img.src = reader.result;
-      };
-      reader.readAsDataURL(f);
+  // FIX 2026-09-17 #697：栏位/气泡数值滑杆（0-100% 或 0-80px）。
+  // 拖动即时预览（onChange 直接写页面变量/重算 rgba），点「应用」才落库（同 pickGcBubbleRadius 口径）
+  function pickGcSlider(key, title, label, min, max, unit, cssVar) {
+    if (!window.openModal) return;
+    const page = document.getElementById('page-group-chat');
+    const def = GC_BEAUTY_DEFAULTS[key];
+    const cur = gcClampNum(gcBeautyGet(key), min, max, gcClampNum(def, min, max, min));
+    const preview = (n) => {
+      if (!page) return;
+      if (key === 'bubble-op') { gcApplyBubbleSurfaceWith(n); return; }
+      if (!cssVar) return;
+      page.style.setProperty(cssVar, unit === '%' ? String(n / 100) : n + 'px');
     };
-    input.click();
+    window.openModal(title, '', (v) => {
+      gcBeautySet(key, gcClampNum(v, min, max, cur));
+    }, {
+      noInput: true,
+      slider: {
+        min: min, max: max, step: 1, value: cur,
+        label: label, unit: unit, preview: true,
+        onChange: (val) => preview(gcClampNum(val, min, max, cur))
+      }
+    });
+  }
+  // 群聊壁纸上传（同聊天设置：按物理像素上限压缩）
+  // FIX 2026-09-18 #755：统一走 window.mochiFilePick（原实现 detached＋无 label＋accept 迟到）
+  function pickGcWallpaper() {
+    window.mochiFilePick({
+      id: 'mochi-gc-wallpaper-pick', accept: 'image/*',
+      onFiles: (files) => {
+      const f = files && files[0];
+      if (!f) { toast('没有取到图片，请再选一次'); return; }
+      if (!window.mochiImgIngest) { toast('图片处理组件没加载上（缓存过旧或离线），请重新打开页面再试'); return; }
+      // FIX 2026-09-25 #1270：原实现 readAsDataURL + 整幅解码（48MP 照片＝192MB 位图）后画到最高
+      // 4096px 的画布上＝iOS 直接回收页面（壁纸导入白屏大退）。同一口径交给统一解码闸：
+      // 嗅到超预算就按目标边长边解边缩，产物照样过字节收敛。
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      const screenH = (window.screen && window.screen.height) || 1920;
+      window.mochiImgIngest(f, { maxSide: Math.min(4096, Math.max(2160, Math.round(screenH * dpr))), quality: 0.85, tag: 'gc-wall' }).then((r) => {
+        if (!r || r.st !== 'ok' || !r.data) { toast(window.mochiImgIngestMiss(r, '群聊壁纸')); return; }
+        gcBeautySet('bg', r.data);
+        toast('群聊壁纸已应用');
+      });
+      }
+    });
   }
   // 气泡框大小（openTCPanel 预设 + 自定义，同聊天设置）
   function pickGcBubbleSize() {
@@ -2448,11 +3020,12 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
       '<input class="tc-input" id="gc-font-name" placeholder="也可直接输入字体名，如 Microsoft YaHei"' + (cur && cur.indexOf('data:') !== 0 && cur.indexOf('http') !== 0 ? ' value="' + String(cur).replace(/"/g, '&quot;').replace(/</g, '&lt;') + '"' : '') + '></div>' +
       '<div class="mail-actions"><button class="cc-tool" id="gc-font-upload">上传字体</button><button class="cc-tool" id="gc-font-clear">恢复默认</button><button class="cc-tool" id="gc-font-ok">应用</button></div>');
     document.getElementById('gc-font-upload').addEventListener('click', () => {
-      const inp = document.createElement('input');
-      inp.type = 'file'; inp.accept = '.ttf,.otf,.woff,.woff2';
-      inp.onchange = () => {
-        const f = inp.files && inp.files[0];
-        if (!f) return;
+      // FIX 2026-09-18 #755：统一走 window.mochiFilePick（原实现 detached＋无 label＋accept 迟到）
+      window.mochiFilePick({
+        id: 'mochi-gc-fontdlg-pick', accept: '.ttf,.otf,.woff,.woff2',
+        onFiles: (files) => {
+        const f = files && files[0];
+        if (!f) { toast('没有取到字体文件，请再选一次'); return; }
         toast('正在读取字体文件…');
         const reader = new FileReader();
         reader.onload = () => {
@@ -2462,8 +3035,8 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
         };
         reader.onerror = () => { toast('字体文件读取失败，请重试'); };
         reader.readAsDataURL(f);
-      };
-      inp.click();
+        }
+      });
     });
     document.getElementById('gc-font-clear').addEventListener('click', () => {
       gcBeautySet('font', '');
@@ -2510,19 +3083,419 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
     });
   }
 
+  // ================= v3.34.x #697：群聊美化「边看边调」（对齐单聊 #673 / 桌面 #527） =================
+  // 用户：「群聊设置里的美化聊天……没有和聊天里一样的完整美化功能包括边看边调」。
+  // 形态与单聊 openChatBeautyDrawer 逐字同款：关掉设置面板（群聊页露出来）→ 底部半透明抽屉
+  // （40vh 上限、可收起）→ 控件即时写 gc-beauty 并 applyGcBeauty，改哪看哪、无「确定/取消」。
+  // 刻意不加 backdrop-filter（AGENTS.md 的 iOS 卡顿红线）。
+  function gcDrawerEl() {
+    let d = document.getElementById('gc-beauty-drawer');
+    if (!d) {
+      d = document.createElement('div');
+      d.id = 'gc-beauty-drawer';
+      document.body.appendChild(d);
+      d.addEventListener('click', (e) => e.stopPropagation());
+    }
+    return d;
+  }
+  function hideGcBeautyDrawer() {
+    const d = document.getElementById('gc-beauty-drawer');
+    if (d) d.style.display = 'none';
+  }
+  // 点桌面图标/底部导航/群聊返回 = 离开群聊页，抽屉跟着收（否则浮在半空盖住别页）
+  document.addEventListener('click', (e) => {
+    const t = e.target;
+    if (!t || !t.closest) return;
+    if (t.closest('.tab') || t.closest('#gc-back') || t.closest('.app[data-app]')) hideGcBeautyDrawer();
+  }, true);
+  let gcDrawerSec = 'bubble';
+  // v8.29 #1008：群聊抽屉此前完全没有拖动（单聊 #760 实现时没有同步过来——同族只改一半，
+  // 用户「托标题行可上移」在群聊里点不着），这里补齐：会话内记忆、不落盘（纯 UI 位置）。
+  let gcDockBot = null;
+  function gcDrawerApplyBottom() {
+    const d = document.getElementById('gc-beauty-drawer');
+    if (!d) return;
+    d.style.bottom = (gcDockBot || 0) + 'px';
+  }
+  function openGcBeautyDrawer() {
+    try { if (settingsPanel) settingsPanel.hidden = true; } catch (e) {}
+    const d = gcDrawerEl();
+    d.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:95;max-height:40vh;transition:bottom .16s ease;background:var(--card-bg,#fff);background:color-mix(in srgb, var(--card-bg,#fff) 72%, transparent);color:var(--ink,#111);box-shadow:0 -6px 24px rgba(0,0,0,.18);border-radius:16px 16px 0 0;overflow-y:auto;overflow-x:hidden;padding:0 12px calc(10px + var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px)));box-sizing:border-box;display:flex;flex-direction:column;gap:8px';
+    d.innerHTML = '';
+    const grip = document.createElement('div');
+    grip.style.cssText = 'width:36px;height:4px;border-radius:2px;background:var(--card-border,#ddd);margin:7px auto 0;flex:none';
+    d.appendChild(grip);
+    const mkMini = (label, fn, cssExtra) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = label;
+      b.style.cssText = 'flex:none;border:1px solid var(--card-border,#ddd);background:var(--btn-cancel-bg,#fafafa);color:var(--ink,#111);font-size:11.5px;border-radius:8px;padding:4px 9px;cursor:pointer' + (cssExtra || '');
+      b.addEventListener('click', fn);
+      return b;
+    };
+    // v8.29 #1008：grip 与标题行可竖向拖动（口径与单聊 #760 / 桌面 #1008 逐字一致：pointer 事件
+    // + setPointerCapture，否则触摸序列会被内核抢成滚动＝「抖一下拖不动」；标题行里的按钮让行）。
+    const bindGcDockDrag = (el) => {
+      el.style.touchAction = 'none';
+      el.style.cursor = 'grab';
+      let sy = 0, sb = 0, drag = false;
+      el.addEventListener('pointerdown', (e) => {
+        if (e.target.closest('button')) return;
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        drag = true; sy = e.clientY; sb = gcDockBot || 0;
+        d.style.transition = 'none'; // 拖动期间关掉 bottom 过渡，保证跟手
+        try { el.setPointerCapture(e.pointerId); } catch (er) {}
+        e.preventDefault();
+      });
+      el.addEventListener('pointermove', (e) => {
+        if (!drag) return;
+        gcDockBot = Math.max(0, Math.min(Math.round(window.innerHeight * 0.6), Math.round(sb + sy - e.clientY)));
+        gcDrawerApplyBottom();
+        e.preventDefault();
+      });
+      const up = () => {
+        if (!drag) return;
+        drag = false;
+        d.style.transition = 'bottom .16s ease';
+        if ((gcDockBot || 0) < 24) gcDockBot = null; // 接近底部＝吸附回贴底
+        gcDrawerApplyBottom();
+      };
+      el.addEventListener('pointerup', up);
+      el.addEventListener('pointercancel', up);
+    };
+    bindGcDockDrag(grip);
+    const hd = document.createElement('div');
+    hd.style.cssText = 'display:flex;align-items:center;gap:8px;flex:none';
+    const hdTxt = document.createElement('span');
+    hdTxt.textContent = '边看边调（即时生效）';
+    hdTxt.style.cssText = 'font-size:13px;font-weight:700;flex:none';
+    // v8.29 #1008：把「标题行可拖动」写出来（用户直派「用户并不知道有这个功能」）——提示挂在
+    // 标题行里，收起正文区后仍看得见。
+    const hdHint = document.createElement('span');
+    hdHint.textContent = '按住标题行上下拖 · 让开看群聊';
+    hdHint.style.cssText = 'font-size:11px;color:var(--muted,#888);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+    const panelBody = document.createElement('div');
+    panelBody.style.cssText = 'display:flex;flex-direction:column;gap:8px;flex:none';
+    const body = document.createElement('div');
+    body.style.cssText = 'display:flex;flex-direction:column;gap:8px;flex:none';
+    const foldBtn = mkMini('收起', () => {
+      const willFold = panelBody.style.display !== 'none';
+      panelBody.style.display = willFold ? 'none' : 'flex';
+      foldBtn.textContent = willFold ? '展开' : '收起';
+    });
+    const closeBtn = mkMini('\u2715', () => {
+      hideGcBeautyDrawer();
+      // FIX 2026-09-17 #697：与单聊 #673 同口径——✕ 关抽屉回「群聊设置 → 美化」，
+      // 不回就成了「浮层一关只能在群聊页干瞪眼」
+      try { gcSetTab = 'beauty'; renderSettingsPanel(); if (settingsPanel) settingsPanel.hidden = false; } catch (e) {}
+    }, ';padding:4px 8px');
+    hd.appendChild(hdTxt); hd.appendChild(hdHint); hd.appendChild(foldBtn); hd.appendChild(closeBtn);
+    d.appendChild(hd);
+    bindGcDockDrag(hd); // grip 只有 4px 高，标题行才是主拖拽把手
+    const chipsRow = document.createElement('div');
+    chipsRow.style.cssText = 'display:flex;gap:6px;flex:none';
+    panelBody.appendChild(chipsRow);
+    panelBody.appendChild(body);
+    d.appendChild(panelBody);
+    const mkSlider = (label, get, set, min, max, step, unit, preview) => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:8px';
+      const lb = document.createElement('span');
+      lb.textContent = label;
+      lb.style.cssText = 'font-size:11.5px;color:var(--muted,#888);flex:none;width:86px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+      const inp = document.createElement('input');
+      inp.type = 'range'; inp.min = min; inp.max = max; inp.step = step || 1;
+      const cur = gcClampNum(get(), min, max, min);
+      inp.value = String(cur);
+      inp.style.cssText = 'flex:1;min-width:0';
+      const vv = document.createElement('span');
+      vv.style.cssText = 'font-size:11px;color:var(--muted,#999);flex:none;width:46px;text-align:right';
+      vv.textContent = cur + unit;
+      inp.addEventListener('input', () => {
+        const n = gcClampNum(inp.value, min, max, cur);
+        vv.textContent = n + unit;
+        if (preview) preview(n);
+        set(n);
+      });
+      row.appendChild(lb); row.appendChild(inp); row.appendChild(vv);
+      return row;
+    };
+    const mkPills = (label, items, get, set) => {
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'display:flex;flex-direction:column;gap:5px';
+      const lb = document.createElement('span');
+      lb.textContent = label;
+      lb.style.cssText = 'font-size:11.5px;color:var(--muted,#888)';
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap';
+      const cur = get();
+      const paint = (onBtn) => Array.prototype.forEach.call(row.children, c => {
+        const on = c === onBtn;
+        c.style.background = on ? 'var(--ink,#111)' : 'var(--btn-cancel-bg,#fafafa)';
+        c.style.color = on ? 'var(--bg-b,#fff)' : 'var(--ink,#111)';
+        c.style.borderColor = on ? 'var(--ink,#111)' : 'var(--card-border,#ddd)';
+      });
+      items.forEach(it => {
+        const b = document.createElement('button');
+        b.type = 'button'; b.textContent = it.label;
+        b.style.cssText = 'font-size:11.5px;padding:5px 9px;border-radius:8px;cursor:pointer;border:1px solid var(--card-border,#ddd);background:var(--btn-cancel-bg,#fafafa);color:var(--ink,#111)';
+        if (it.value === cur) paint(b);
+        b.addEventListener('click', () => { set(it.value); paint(b); });
+        row.appendChild(b);
+      });
+      wrap.appendChild(lb); wrap.appendChild(row);
+      return wrap;
+    };
+    let colorItems = [];
+    let paletteHost = null;
+    const mkColorItem = (label, key, def, swatchList) => {
+      const el = document.createElement('div');
+      el.style.cssText = 'display:flex;align-items:center;gap:7px;padding:6px 8px;border:1px solid var(--card-border,#ddd);border-radius:9px;cursor:pointer;min-width:0';
+      const sw = document.createElement('span');
+      const curGet = () => { try { return gcBeautyGet(key) || def; } catch (e) { return def; } };
+      sw.style.cssText = 'width:18px;height:18px;border-radius:5px;border:1px solid var(--card-border,#ddd);flex:none;background:' + curGet();
+      const tx = document.createElement('span');
+      tx.textContent = label;
+      tx.style.cssText = 'font-size:11.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+      const paint = () => { sw.style.background = curGet(); };
+      const curSet = (v) => {
+        try { gcBeautySet(key, v === null ? '' : v); } catch (e) {}
+        paint();
+      };
+      el.appendChild(sw); el.appendChild(tx); paint();
+      el.addEventListener('click', () => {
+        colorItems.forEach(it => { it.el.style.borderColor = 'var(--card-border,#ddd)'; });
+        el.style.borderColor = 'var(--ink,#111)';
+        renderGcPalette({ el, label, curGet, curSet, swatchList });
+      });
+      colorItems.push({ el, paint });
+      return el;
+    };
+    const renderGcPalette = (item) => {
+      if (!paletteHost) return;
+      paletteHost.innerHTML = '';
+      const strip = document.createElement('div');
+      strip.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap';
+      const cur = String(item.curGet() || '').toLowerCase();
+      (item.swatchList || []).forEach(swItem => {
+        const dot = document.createElement('span');
+        const c = swItem.color;
+        dot.style.cssText = 'width:23px;height:23px;border-radius:7px;border:1px solid ' + (String(c).toLowerCase() === cur ? 'var(--ink,#111)' : 'var(--card-border,#ddd)') + ';cursor:pointer;flex:none;background:' + c;
+        dot.title = swItem.label || c;
+        dot.addEventListener('click', () => { item.curSet(c); renderGcPalette(item); });
+        strip.appendChild(dot);
+      });
+      const defBtn = document.createElement('button');
+      defBtn.type = 'button'; defBtn.textContent = '默认';
+      defBtn.style.cssText = 'font-size:11px;padding:3px 8px;border:1px solid var(--card-border,#ddd);border-radius:8px;background:var(--btn-cancel-bg,#fafafa);color:var(--ink,#111);cursor:pointer';
+      defBtn.addEventListener('click', () => { item.curSet(null); renderGcPalette(item); });
+      strip.appendChild(defBtn);
+      const hexBtn = document.createElement('button');
+      hexBtn.type = 'button'; hexBtn.textContent = '手输色值';
+      hexBtn.style.cssText = 'font-size:11px;padding:3px 8px;border:1px solid var(--card-border,#ddd);border-radius:8px;background:var(--btn-cancel-bg,#fafafa);color:var(--ink,#111);cursor:pointer';
+      hexBtn.addEventListener('click', () => {
+        if (!window.openModal) return;
+        window.openModal('输入' + item.label + '色值', String(item.curGet() || '#111111'), (v) => {
+          const c = String(v || '').trim();
+          if (!/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(c)) { toast('请输入 # 开头的色值，如 #ffd6e0'); return; }
+          item.curSet(c); renderGcPalette(item);
+        }, { placeholder: '#ffd6e0' });
+      });
+      strip.appendChild(hexBtn);
+      paletteHost.appendChild(strip);
+      const tip = document.createElement('div');
+      tip.style.cssText = 'font-size:10.5px;color:var(--muted,#999);margin-top:5px';
+      tip.textContent = '正在调「' + item.label + '」，点色块即时生效';
+      paletteHost.appendChild(tip);
+    };
+    const mkGrid = (items) => {
+      const grid = document.createElement('div');
+      grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:6px';
+      items.forEach(el => grid.appendChild(el));
+      return grid;
+    };
+    const mkNote = (txt) => {
+      const n = document.createElement('div');
+      n.style.cssText = 'font-size:10.5px;color:var(--muted,#999);line-height:1.5';
+      n.textContent = txt;
+      return n;
+    };
+    const mkAct = (label, fn) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.textContent = label;
+      b.style.cssText = 'padding:8px;border:1px solid var(--card-border,#ddd);border-radius:9px;background:var(--btn-cancel-bg,#fafafa);color:var(--ink,#111);font-size:11.5px;cursor:pointer';
+      b.addEventListener('click', fn);
+      return b;
+    };
+    const page = document.getElementById('page-group-chat');
+    const SECS = [
+      { key: 'bubble', label: '气泡', build: () => {
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'display:flex;flex-direction:column;gap:8px';
+        wrap.appendChild(mkGrid([
+          mkColorItem('我的气泡色', 'out-bg', '#111111', GC_BUBBLE_BG),
+          mkColorItem('我的文字色', 'out-ink', '#ffffff', gcInkSwatches()),
+          mkColorItem('联系人气泡色', 'in-bg', '#ffffff', GC_BUBBLE_BG),
+          mkColorItem('联系人文字色', 'in-ink', '#111111', gcInkSwatches())
+        ]));
+        paletteHost = document.createElement('div');
+        wrap.appendChild(paletteHost);
+        wrap.appendChild(mkSlider('气泡透明度', () => gcBeautyGet('bubble-op'), v => gcBeautySet('bubble-op', v), 0, 100, 1, '%', (n) => gcApplyBubbleSurfaceWith(n)));
+        wrap.appendChild(mkSlider('气泡圆角', () => parseInt(gcBeautyGet('bubble-radius'), 10) || 0, v => gcBeautySet('bubble-radius', v + 'px'), 0, 40, 1, 'px', (n) => { if (page) page.style.setProperty('--chat-bubble-radius', n + 'px'); }));
+        wrap.appendChild(mkPills('气泡字号', GC_FONT_SIZES, () => gcBeautyGet('font-size'), v => gcBeautySet('font-size', v)));
+        wrap.appendChild(mkPills('气泡框大小', GC_BUBBLE_SIZES, () => gcBeautyGet('bubble-size'), v => gcBeautySet('bubble-size', v)));
+        wrap.appendChild(mkPills('头像形状', [{ label: '圆形', value: 'circle' }, { label: '方形', value: 'square' }], () => gcBeautyGet('av-shape'), v => gcBeautySet('av-shape', v)));
+        wrap.appendChild(mkPills('时间轴样式', GC_BEAUTY_STYLES, () => gcBeautyGet('time-style'), v => gcBeautySet('time-style', v)));
+        return wrap;
+      } },
+      { key: 'bar', label: '栏位', build: () => {
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'display:flex;flex-direction:column;gap:8px';
+        wrap.appendChild(mkSlider('顶栏不透明度', () => gcBeautyGet('head-op'), v => gcBeautySet('head-op', v), 0, 100, 1, '%', (n) => { if (page) page.style.setProperty('--cs-head-opacity', String(n / 100)); }));
+        wrap.appendChild(mkSlider('底栏不透明度', () => gcBeautyGet('input-op'), v => gcBeautySet('input-op', v), 0, 100, 1, '%', (n) => { if (page) page.style.setProperty('--cs-input-opacity', String(n / 100)); }));
+        wrap.appendChild(mkSlider('顶栏下移', () => gcBeautyGet('head-inset'), v => gcBeautySet('head-inset', v), 0, 80, 1, 'px', (n) => { if (page) page.style.setProperty('--cs-head-inset', n + 'px'); }));
+        wrap.appendChild(mkSlider('底栏上移', () => gcBeautyGet('input-inset'), v => gcBeautySet('input-inset', v), 0, 80, 1, 'px', (n) => { if (page) page.style.setProperty('--cs-input-inset', n + 'px'); }));
+        wrap.appendChild(mkGrid([
+          mkColorItem('发送按钮色', 'send-bg', '#111111', GC_SEND_BG),
+          mkColorItem('发送文字色', 'send-ink', '#ffffff', GC_INK_COLORS),
+          mkColorItem('正在输入颜色', 'typing-ink', '#8a8a8a', GC_INK_COLORS),
+          mkColorItem('时间轴颜色', 'time-ink', '#111111', GC_INK_COLORS)
+        ]));
+        paletteHost = null;
+        wrap.appendChild(mkNote('不透明度 0% 全透明、100% 不透明，文字按钮不变淡；「顶栏下移/底栏上移」拖着就能把栏位上下挪位，按需微调（双击滑杆回默认），只作用于群聊页。'));
+        return wrap;
+      } },
+      { key: 'type', label: '字体 · 其他', build: () => {
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'display:flex;flex-direction:column;gap:8px';
+        const finp = document.createElement('input');
+        finp.type = 'text'; finp.className = 'tc-input';
+        finp.placeholder = '字体名，如 Microsoft YaHei（清空＝恢复默认）';
+        const fv = gcBeautyGet('font');
+        if (fv && fv.indexOf('data:') !== 0 && fv.indexOf('http') !== 0) finp.value = fv;
+        finp.style.cssText = 'width:100%;box-sizing:border-box;padding:9px 11px;font-size:13px;border:1px solid var(--card-border,#ddd);border-radius:9px;background:var(--bg-b,#fff);color:var(--ink,#111)';
+        finp.addEventListener('input', () => { gcBeautySet('font', (finp.value || '').trim()); });
+        wrap.appendChild(mkNote('群聊字体（边打边看，清空输入框即恢复默认）'));
+        wrap.appendChild(finp);
+        wrap.appendChild(mkAct('上传字体文件（ttf / otf / woff / woff2）', () => {
+          // FIX 2026-09-18 #755：统一走 window.mochiFilePick（原实现 detached＋无 label＋accept 迟到）
+          window.mochiFilePick({
+            id: 'mochi-gc-font-pick', accept: '.ttf,.otf,.woff,.woff2',
+            onFiles: (files) => {
+              const f = files && files[0];
+              if (!f) { toast('没有取到字体文件，请再选一次'); return; }
+              toast('正在读取字体文件…');
+              const reader = new FileReader();
+              reader.onload = () => { gcBeautySet('font', reader.result); toast('字体已应用到群聊页'); };
+              reader.onerror = () => { toast('字体文件读取失败，请重试'); };
+              reader.readAsDataURL(f);
+            }
+          });
+        }));
+        const ta = document.createElement('textarea');
+        ta.className = 'tc-input'; ta.rows = 3;
+        ta.placeholder = '气泡 CSS，如 border-radius:20px;box-shadow:0 2px 8px rgba(0,0,0,.12)';
+        ta.style.cssText = 'width:100%;box-sizing:border-box;padding:9px 11px;font-size:12.5px;border:1px solid var(--card-border,#ddd);border-radius:9px;background:var(--bg-b,#fff);color:var(--ink,#111);resize:vertical';
+        try { ta.value = gcBeautyGet('css') || ''; } catch (e) {}
+        let cssTimer = null;
+        ta.addEventListener('input', () => {
+          clearTimeout(cssTimer);
+          cssTimer = setTimeout(() => {
+            const el = ta;
+            let v = '';
+            try { v = el.value || ''; } catch (e) {}
+            if (!String(v).trim()) {
+              try {
+                const box = el.__ceBox || (el.parentNode && el.parentNode.querySelector('.ce-box'));
+                const t = box ? (box.innerText || box.textContent || '') : '';
+                if (String(t).trim()) v = String(t);
+              } catch (e) {}
+            }
+            gcBeautySet('css', String(v).trim());
+          }, 160);
+        });
+        wrap.appendChild(mkNote('气泡 CSS（边写边套用，只对群聊页生效）'));
+        wrap.appendChild(ta);
+        wrap.appendChild(mkAct('换群聊壁纸 / 清空壁纸', () => {
+          hideGcBeautyDrawer();
+          setTimeout(() => {
+            if (gcBeautyGet('bg')) { gcBeautySet('bg', ''); toast('已恢复默认壁纸'); }
+            else pickGcWallpaper();
+          }, 0);
+        }));
+        wrap.appendChild(mkNote('想逐项精调（含美化方案保存/导出等）回群聊设置→美化，点对应一行即可。'));
+        return wrap;
+      } }
+    ];
+    const paintGcChips = (key) => {
+      Array.prototype.forEach.call(chipsRow.children, c => {
+        const on = c.dataset.sec === key;
+        const bg = on ? 'var(--ink,#111)' : 'var(--btn-cancel-bg,#fafafa)';
+        if (c.style.background !== bg) c.style.background = bg;
+        const fg = on ? 'var(--bg-b,#fff)' : 'var(--ink,#111)';
+        if (c.style.color !== fg) c.style.color = fg;
+        const bd = on ? 'var(--ink,#111)' : 'var(--card-border,#ddd)';
+        if (c.style.borderColor !== bd) c.style.borderColor = bd;
+      });
+    };
+    const renderSec = (key) => {
+      // v8.29 #1008：点亮态只在真变化时写（同单聊口径；重建控件区的行为保留，见单聊注释）。
+      gcDrawerSec = key;
+      paintGcChips(key);
+      body.innerHTML = '';
+      paletteHost = null;
+      colorItems = [];
+      const sec = SECS.filter(s => s.key === key)[0];
+      if (sec) body.appendChild(sec.build());
+    };
+    SECS.forEach(s => {
+      const c = document.createElement('button');
+      c.type = 'button'; c.textContent = s.label; c.dataset.sec = s.key;
+      c.style.cssText = 'flex:1;font-size:11.5px;padding:5px 0;border:1px solid var(--card-border,#ddd);border-radius:8px;background:var(--btn-cancel-bg,#fafafa);color:var(--ink,#111);cursor:pointer';
+      c.addEventListener('click', () => renderSec(s.key));
+      chipsRow.appendChild(c);
+    });
+    renderSec(gcDrawerSec);
+    gcDrawerApplyBottom();
+    d.style.display = 'flex';
+  }
+
   // ================= 群聊美化方案（v3.28.x：保存/应用/改名/删除/导出/导入） =================
   // 与聊天美化方案同语义，键为 gc-beauty 的各子键，存储于全局命名空间（所有桌面通用）
   const GC_SCHEMES_KEY = 'gc-beauty-schemes';
   const GC_BEAUTY_KEYS = [
     'bg', 'css', 'font', 'font-size', 'bubble-size', 'bubble-radius',
     'av-shape', 'time-style', 'time-ink', 'typing-ink',
+    // FIX 2026-09-17 #697：新增三组与单聊对齐的键——方案导出/导入/应用要一并带上
+    'bubble-op', 'head-op', 'input-op', 'head-inset', 'input-inset',
     'out-bg', 'out-ink', 'in-bg', 'in-ink', 'send-bg', 'send-ink', 'send-show'
   ];
   const gcSchemesStore = () => { try { return gcProfileStore(); } catch (e) { return null; } };
   const getGcSchemes = () => {
     try { const s = gcSchemesStore(); const a = JSON.parse((s && s.get(GC_SCHEMES_KEY)) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
   };
-  const saveGcSchemesList = (arr) => { try { const s = gcSchemesStore(); if (s) s.set(GC_SCHEMES_KEY, JSON.stringify(arr)); } catch (e) {} };
+  // FIX 2026-09-27 #1342k：与桌面/聊天美化同一把闸（判据与文案只留一份，见 idb.js #1342i 批注）。
+  // 带壁纸的方案是 IDB-only 大键（#808 那条提醒自陈「一张几百 KB～1MB+」），而这里的读法是同步口——
+  // 读空未确认时再做一次「取列表→改→整本写回」＝库里那本方案被顶成一格。
+  const saveGcSchemesList = (arr) => {
+    try {
+      const s = gcSchemesStore();
+      if (!s) return false;
+      if (window.xyBigWriteBlocked && window.xyBigWriteBlocked(s, GC_SCHEMES_KEY, '群聊美化方案')) return false;
+      s.set(GC_SCHEMES_KEY, JSON.stringify(arr));
+      return true;
+    } catch (e) { return false; }
+  };
+  // #808 方案防炸提醒：方案会把当前壁纸整张打包进方案（bg 是高分辨率 JPEG 的 base64，
+  // 一张几百 KB～1MB+），带壁纸的方案存多了会把本地存储与备份导出文件撑爆——本批只做
+  // 「提醒 + 拒绝重复入库」，不改 #373「应用=真覆盖」的任何数据语义。
+  const GC_SCHEME_WARN_LEN = 2 * 1024 * 1024; // 方案总占用 ≥2MB 提醒清理
+  const GC_SCHEME_WARN_CNT = 10;              // 方案个数 ≥10 提醒清理
+  // base64 串长 → 约实际字节（4 字符 3 字节），取整显示
+  const gcPrettyKb = (len) => {
+    const kb = (len || 0) * 3 / 4 / 1024;
+    return kb >= 1024 ? (Math.round(kb / 102.4) / 10) + ' MB' : Math.max(1, Math.round(kb)) + ' KB';
+  };
   const collectGcBeauty = () => {
     const data = {};
     GC_BEAUTY_KEYS.forEach(k => { const v = gcBeautyGet(k); if (v !== '' && v !== null && v !== undefined) data[k] = v; });
@@ -2554,6 +3527,13 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
       // 与弹窗「将覆盖全部联系人桌面的群聊美化设置」的承诺不符
       GC_BEAUTY_KEYS.forEach(k => { if (!(s.data && s.data[k] !== undefined)) { try { gcBeautySet(k, ''); } catch (e) {} } });
       applyGcBeautyData(s.data || {});
+      // #816 应用时收掉可能挂着的「预览」条并清暂存：预览 A 未点使用/还原又来应用 B，
+      // 旧预览条还写着「正在预览 A」，此时点还原会把刚应用的 B 整个撤掉——状态错位
+      try {
+        gcPreviewBackup = null;
+        const pb = document.getElementById('gc-beauty-preview-bar');
+        if (pb) pb.style.display = 'none';
+      } catch (e) {}
       hideGcSchemeModal(m);
       toast('已应用「' + s.name + '」，群聊立即生效');
     }, { noInput: true, staticText: '将覆盖全部联系人桌面的群聊美化设置，立即生效', pills: [{ label: '应用', value: 'ok' }] });
@@ -2566,7 +3546,7 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
       if (v !== 'ok') return;
       const list = getGcSchemes();
       list.splice(idx, 1);
-      saveGcSchemesList(list);
+      if (!saveGcSchemesList(list)) return;   // #1342k
       toast('已删除方案');
       window.openGcBeautySchemes();
     }, { noInput: true, staticText: '删除后不可恢复', pills: [{ label: '删除', value: 'ok' }] });
@@ -2650,6 +3630,12 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
     const chips = gcBeautySummary(data);
     if (!chips.length) { const e = document.createElement('span'); e.textContent = '以上传壁纸/气泡等设置为主'; e.style.cssText = 'font-size:10.5px;color:var(--muted,#999)'; sum.appendChild(e); }
     else chips.forEach(c => { const el = document.createElement('span'); el.textContent = c; el.style.cssText = 'font-size:10.5px;color:var(--muted,#666);background:var(--card-soft,#f2f3f5);border:1px solid var(--card-border,#eee);padding:2px 8px;border-radius:999px'; sum.appendChild(el); });
+    // #808 含壁纸方案保存前明示体积：壁纸是最重的一份拷贝，别让用户无感囤积
+    const warn = data.bg ? document.createElement('div') : null;
+    if (warn) {
+      warn.style.cssText = 'font-size:10.5px;line-height:1.55;color:var(--danger-ink,#a32d2d);background:var(--danger-soft,#fff5f5);border:1px solid rgba(163,45,45,.25);border-radius:8px;padding:7px 9px;margin:-6px 0 10px';
+      warn.textContent = '⚠ 此方案将包含当前壁纸（约 ' + gcPrettyKb(String(data.bg).length) + '）。壁纸最占存储，带壁纸的方案别存太多，否则本地存储和备份文件会被撑爆，建议只留常用的 1～2 个。';
+    }
     const inp = document.createElement('input');
     inp.placeholder = '例如：简约白、情侣粉气泡…'; inp.maxLength = 20;
     inp.style.cssText = 'width:100%;box-sizing:border-box;padding:9px 11px;font-size:13px;border:1px solid var(--card-border,#ddd);border-radius:9px;background:var(--bg-b,#fff);color:var(--ink,#111)';
@@ -2660,15 +3646,20 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
       const name = (inp.value || '').trim();
       if (!name) { inp.style.borderColor = '#e05a5a'; return; }
       const list = getGcSchemes();
+      // #808 防囤积：内容完全相同（含壁纸）的方案不再重复入库，报出已有方案名——
+      // 同一套美化想换个名字记，先删旧的或改名，别一份一份复制着存
+      const snap = JSON.stringify(data);
+      const dup = list.find(it => JSON.stringify(it.data || {}) === snap);
+      if (dup) { toast('已有内容完全相同的方案「' + dup.name + '」，不用重复保存'); return; }
       list.push({ name, time: Date.now(), data });
-      saveGcSchemesList(list);
+      if (!saveGcSchemesList(list)) return;   // #1342k：不写、也不谎报「已保存」
       x.style.display = 'none'; x.hidden = true;
       toast('已保存方案「' + name + '」，所有桌面通用');
       const m = document.getElementById('gc-beauty-scheme-manager');
       if (m && !m.hidden) window.openGcBeautySchemes();
     });
     act.appendChild(cancel); act.appendChild(ok);
-    wrap.appendChild(hd); wrap.appendChild(pv); wrap.appendChild(sub); wrap.appendChild(sum); wrap.appendChild(inp); wrap.appendChild(act);
+    wrap.appendChild(hd); wrap.appendChild(pv); wrap.appendChild(sub); wrap.appendChild(sum); if (warn) wrap.appendChild(warn); wrap.appendChild(inp); wrap.appendChild(act);
     x.appendChild(wrap);
     x.style.display = 'flex'; x.hidden = false;
     setTimeout(() => { try { inp.focus(); } catch (e) {} }, 60);
@@ -2715,7 +3706,8 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
     const ctl = window.openModal('编辑方案名称', s.name, (name) => {
       name = (name || '').trim();
       if (!name) { ctl.hint('名称不能为空'); ctl.stay(); return; }
-      s.name = name; saveGcSchemesList(list); toast('已重命名');
+      s.name = name; if (!saveGcSchemesList(list)) { ctl.stay(); return; }   // #1342k
+      toast('已重命名');
       window.openGcBeautySchemes();
     }, { maxlength: 20, placeholder: '输入方案名称' });
   }
@@ -2787,11 +3779,24 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
     const box = document.createElement('div');
     box.style.cssText = 'width:min(92vw,420px);max-height:80vh;display:flex;flex-direction:column;background:var(--card-bg,#fff);color:var(--ink,#111);border-radius:16px;padding:18px;box-shadow:0 8px 30px rgba(0,0,0,.2)';
     const head = document.createElement('div');
-    head.innerHTML = '<div style="font-size:16px;font-weight:600;margin-bottom:4px">群聊美化方案</div><div style="font-size:12px;color:var(--muted,#888);margin-bottom:12px">方案在所有联系人桌面通用（含气泡颜色/CSS、背景图、字体、圆角、时间轴等），点「应用」一键切换群聊外观</div>';
+    head.innerHTML = '<div style="font-size:16px;font-weight:600;margin-bottom:4px">群聊美化方案</div><div style="font-size:12px;color:var(--muted,#888);margin-bottom:12px">方案在所有联系人桌面通用（含气泡颜色/CSS、背景图、字体、圆角、时间轴等），点「应用」一键切换群聊外观；壁纸最占存储，带壁纸的方案别存太多</div>';
     box.appendChild(head);
     const list = document.createElement('div');
-    list.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin-bottom:12px;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;flex:1;min-height:0';
+    list.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin-bottom:12px;overflow-y:auto;overflow-x:hidden;flex:1;min-height:0';
     const schemes = getGcSchemes();
+    // #808 存储用量恒显一行 + 超限清理提醒：方案总占用 ≥2MB 或个数 ≥10 时点名「撑爆存储/备份」
+    let totalLen = 0, wallCnt = 0;
+    schemes.forEach(s => { totalLen += JSON.stringify(s.data || {}).length; if (s.data && s.data.bg) wallCnt++; });
+    const stat = document.createElement('div');
+    stat.style.cssText = 'font-size:11px;color:var(--muted,#999);margin:-6px 0 10px';
+    stat.textContent = '已存 ' + schemes.length + ' 个方案 · 约占 ' + gcPrettyKb(totalLen) + (wallCnt ? ' · 其中 ' + wallCnt + ' 个含壁纸' : '');
+    box.appendChild(stat);
+    if (totalLen >= GC_SCHEME_WARN_LEN || schemes.length >= GC_SCHEME_WARN_CNT) {
+      const big = document.createElement('div');
+      big.style.cssText = 'font-size:11.5px;line-height:1.55;color:var(--danger-ink,#a32d2d);background:var(--danger-soft,#fff5f5);border:1px solid rgba(163,45,45,.25);border-radius:8px;padding:7px 10px;margin:-4px 0 10px';
+      big.textContent = '⚠ 方案偏多或偏大（已约 ' + gcPrettyKb(totalLen) + '），会把本地存储和备份导出文件撑爆。建议删掉不用的方案，或只保留不带壁纸的方案。';
+      box.appendChild(big);
+    }
     if (!schemes.length) {
       const empty = document.createElement('div');
       empty.innerHTML = '<div style="font-size:13px;color:var(--muted,#999);text-align:center;padding:20px 0">还没有保存的群聊美化方案<br>先点下方「保存当前为方案」</div>';
@@ -2837,10 +3842,11 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
     m.appendChild(box);
     m.style.display = 'flex'; m.hidden = false;
   }
-  // FIX 2026-09-12 #376 关闭面板时复位美化子视图：在「美化聊天」子视图里关掉面板后
-  // 重开，原实现直接落在美化视图而非群聊设置主页（gcBeautyView 残留未复位）
-  if (settingsClose) settingsClose.addEventListener('click', () => { gcBeautyView = false; if (settingsPanel) settingsPanel.hidden = true; });
-  if (settingsPanel) settingsPanel.addEventListener('click', (e) => { if (e.target === settingsPanel) { gcBeautyView = false; settingsPanel.hidden = true; } });
+  // FIX 2026-09-12 #376 关闭面板时复位顶部 tag：重开落在「形象」而非离开时的位置
+  // FIX 2026-09-17 #697 同口径：独立「美化」tag 也要复位（否则关在美化 tag 上、重开仍落在美化）
+  // #816 旧 gcBeautyView 子视图已退役，复位只剩 gcSetTab 一件事
+  if (settingsClose) settingsClose.addEventListener('click', () => { gcSetTab = 'profile'; if (settingsPanel) settingsPanel.hidden = true; });
+  if (settingsPanel) settingsPanel.addEventListener('click', (e) => { if (e.target === settingsPanel) { gcSetTab = 'profile'; settingsPanel.hidden = true; } });
 
   // ---- @提及面板 ----
   function renderAtPanel() {
@@ -2893,14 +3899,26 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
   }
   function syncGcInputBtns() {
     if (gcMicBtn) gcMicBtn.style.display = gcSettingOn('cs-voice-send') ? '' : 'none';
-    if (gcContinueBtn) gcContinueBtn.style.display = gcSettingOn('cs-trigger-bar') ? '' : 'none';
+    // 继续说＝群聊唯一入口（顶部那枚已撤销）：显隐与单聊输入栏同源——本联系人桌面开关
+    // cs-trigger-bar 或 回复设置→群聊「底部聊天栏按钮触发」（gc-cs-trigger-bar）任一为开即显示
+    // FIX 2026-09-29 #1419（作者点头一并收掉）：原写法读的是命名空间里的裸键 cs-trigger-bar，而**全站没有任何一处写
+    // 这枚键**——单聊那枚开关经 reply-settings 的 saveReplyCfg 存成 reply-cs-trigger-bar（同排的 cs-voice-send /
+    // cs-batch-send 确实是裸键，只有这一枚不是）。于是上面注释里「单聊开关或群聊开关任一为开即显示」的前半句
+    // 一直是死的：单聊开着继续说、群聊那排却藏着。改问单聊同一把现成的尺——chat.js 的 window.mochiContinueBarOn
+    // （#1419 第二半：replyCfg 未就绪时它直读存储键，不吃合并顺序）；拿不到该出口时退回直读 reply-cs-trigger-bar。
+    // 群聊自己那枚 gc-cs-trigger-bar 照常生效；两条都关才藏。零机型／零 UA 分支。
+    if (gcContinueBtn) gcContinueBtn.style.display = ((window.mochiContinueBarOn ? window.mochiContinueBarOn() : gcSettingOn('reply-cs-trigger-bar')) || gcCfg()['gc-cs-trigger-bar'] === 1) ? '' : 'none';
     if (gcBatchBtn) gcBatchBtn.style.display = gcSettingOn('cs-batch-send') ? '' : 'none';
   }
   // 「继续说」：和聊天页 continueChat 同语义——强制让成员回复（无 @ 时随机 1-2 个，不按回复概率过滤）
+  // #676：continuation=true 时受回复设置「群聊 · 让对方继续说」三开关约束——
+  // · gc-cs-normal 关（默认）＝点击后立即回复，不走 gc-rs-min/max 正常回复时间；
+  //   开＝按正常回复时间（gc-rs-min~gc-rs-max 随机延迟）
   function gcContinueSay() {
     const gid = curGid; // FIX 串群 #242：同 scheduleReply 绑定来源群
     const members = getMembers();
     if (!members.length) return;
+    const c = gcCfg();
     const mentioned = [];
     if (input) {
       const t = (input.innerText || '').trim();
@@ -2910,9 +3928,10 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
       ? mentioned.slice()
       : members.slice(0, Math.max(1, Math.min(2, members.length))).map(m => m.id);
     chosen.forEach((cid, i) => {
-      setTimeout(() => memberReply(cid, '', gid), i * (1200 + Math.random() * 1600));
+      const gap = c['gc-cs-normal'] === 1 ? i * (1200 + Math.random() * 1600) : i * 400;
+      setTimeout(() => memberReply(cid, '', gid, true), gap);
     });
-    if (window.playSfx) window.playSfx('in');
+    if (window.playSfxGc) window.playSfxGc('in'); // #698d：走群聊专属音效（未设置回退单聊）
   }
   // 语音：复用聊天页录音半框，录完发到群聊
   function gcSendVoice(dataUrl, durSec) {
@@ -2922,7 +3941,7 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
     saveMsgs();
     renderMsg(rec, msgs.length - 1);
     followGcBottom(true);
-    if (window.playSfx) window.playSfx('out');
+    if (window.playSfxGc) window.playSfxGc('out'); // #698d：走群聊专属音效（未设置回退单聊）
     scheduleReply('');
   }
   // 批量发送：复用聊天页批量面板，条目发到群聊（文字/图片/表情各成一条）
@@ -2949,7 +3968,7 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
       }
     });
     followGcBottom(true);
-    if (window.playSfx) window.playSfx('out');
+    if (window.playSfxGc) window.playSfxGc('out'); // #698d：走群聊专属音效（未设置回退单聊）
     scheduleReply('');
   }
   // #152：与聊天页 chat-continue-btn 同款防吞——安卓键盘收起叠着手势时输入栏位移，
@@ -2983,6 +4002,7 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
   document.addEventListener('voice-send-changed', syncGcInputBtns);
   document.addEventListener('batch-send-changed', syncGcInputBtns);
   document.addEventListener('continue-say-changed', syncGcInputBtns);
+  document.addEventListener('gc-continue-say-changed', syncGcInputBtns);
   // 切换桌面后（群聊成员/设置可能变化）刷新按钮显隐
   document.addEventListener('contact-switched', syncGcInputBtns);
 
@@ -3047,47 +4067,84 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
     const epEl = document.getElementById('emoji-panel');
     if (epEl && !epEl.hidden) { window.closeEmojiPanelForInsert && window.closeEmojiPanelForInsert(); return; }
     // allowUrl：链接保存的表情在群聊里直接发送（仅信纸插入才限 data:）
-    window.openEmojiPanelForInsert((src) => sendGcSticker(src), { allowUrl: true });
+    // #636：kind==='text' 是颜文字/emoji 文字卡，走纯文字消息
+    // #691：文字卡改看聊天设置里的模式——默认「填入群聊输入栏」，开了「点击直接发送」才直接发出
+    window.openEmojiPanelForInsert((src, kind) => {
+      if (kind !== 'text') { sendGcSticker(src); return; }
+      if (window.textCardDirectMode && window.textCardDirectMode()) { sendGcText(src); return; }
+      gcInsertTextToInput(src);
+    }, { allowUrl: true, textModeApplies: true }); // #691i：群聊点卡片行为受模式键支配，面板内保留模式切换按钮
     // mail-emoji-mode 会把面板压低到 bottom:64px（写信页布局），群聊页与聊天页一致用默认 96px
     document.body.classList.remove('mail-emoji-mode');
   });
 
   // ---- 插入图片按钮：多选图片 → 压缩 → 草稿条预览，随发送合并为组合消息（同聊天页）----
-  if (gcImgBtn) gcImgBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
+  // FIX 2026-09-18 #753（#677/#717/#738 同族）：原实现是全站最弱的一档——**每次点击现场 new
+  // 一个 input 且从未挂进文档**就 `fi.click()`。三重问题叠加：
+  //   ① 未挂文档 → iOS Safari 不保证派发 change/带上 files（#677 实录「加了图片会消失」）；
+  //   ② 纯 JS 合成 click → 小米系等分叉内核静默忽略（#739 实录「点了没反应」）；
+  //   ③ 无 label 兜底、无 accept 前置保证 → iOS 首次激活退回通用文件选择器（相册不在候选里）。
+  // 改为与聊天页 chat.js 完全同构：**常驻一个 sr-only input 挂 body** + accept 在 click 之前
+  // + 原生 label 兜底（#738 device.js mochiFilePickLabel）+ fromLabel 跳过 JS click 防双开。
+  // 压缩管线（720 / JPEG 0.85 画布压缩、解码失败按原图兜底）一字不动。
+  let gcImgInput = null;
+  function gcImgPicker() {
+    if (gcImgInput) {
+      try { gcImgInput.accept = 'image/*'; } catch (e) {}
+      return gcImgInput;
+    }
     const fi = document.createElement('input');
-    fi.type = 'file'; fi.accept = 'image/*'; fi.multiple = true;
+    fi.type = 'file';
+    fi.id = 'gc-img-pick'; // 常驻身份（诊断/测试句柄）
+    // sr-only clip 写法（不用 display:none——#717/#738 已全站收口的写法）
+    fi.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:1;margin:0;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;';
+    // accept 必须落在 click 之前（否则 iOS 首次激活退回文件管理器而非相册）
+    fi.accept = 'image/*'; fi.multiple = true;
     fi.onchange = () => {
       const files = Array.prototype.slice.call(fi.files || []);
-      if (!files.length) return;
+      fi.value = ''; // 允许重选同一张
+      // 空 FileList：与聊天页同口径给可见反馈，不再静默吞掉（#677h）
+      if (!files.length) { toast('没有取到图片，请再选一次'); return; }
+      // FIX 2026-09-25 #1270：原来是「每张各自先读成 base64 → 整幅解码 → 解码失败或画布给出空图
+      // 就把整张原图 dataURL 推进草稿」——多选几张现代手机照片＝几十 MB base64 字符串
+      // 加 192MB 位图同时压在渲染进程（＝发图白屏大退），塞进草稿的原图还会把本地存储撑爆。
+      // 现改为逐张串行过统一解码闸（同一时刻只有一张在解），没成功的这张如实跳过并给一句提示。
+      if (!window.mochiImgIngest) { toast('图片处理组件没加载上（缓存过旧或离线），请重新打开页面再试'); return; }
+      let gcImgMiss = 0;
+      let gcImgChain = Promise.resolve();
       files.forEach(f => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const img = new Image();
-          img.onload = () => {
-            try {
-              const c = document.createElement('canvas');
-              const scale = Math.min(1, 720 / Math.max(img.width, img.height));
-              c.width = Math.max(1, Math.round(img.width * scale));
-              c.height = Math.max(1, Math.round(img.height * scale));
-              c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-              gcDraftImgs.push(c.toDataURL('image/jpeg', 0.85));
-            } catch (err) {
-              gcDraftImgs.push(reader.result);
-            }
-            renderGcDraft();
-          };
-          // 解码失败（HEIC/损坏图）按原图兜底，不静默丢失
-          img.onerror = () => {
-            gcDraftImgs.push(reader.result);
-            renderGcDraft();
-          };
-          img.src = reader.result;
-        };
-        reader.readAsDataURL(f);
+        gcImgChain = gcImgChain.then(() => window.mochiImgIngest(f, { maxSide: 720, quality: 0.85, tag: 'gc-draft' }).then((r) => {
+          if (!r || r.st !== 'ok' || !r.data) { gcImgMiss++; return; }
+          gcDraftImgs.push(r.data);
+          renderGcDraft();
+        }));
       });
+      gcImgChain.then(() => { if (gcImgMiss) toast('有 ' + gcImgMiss + ' 张图片没能导入，请换一张小图或用系统相机重拍'); });
     };
-    fi.click();
+    document.body.appendChild(fi);
+    gcImgInput = fi;
+    // 原生 label 激活层（等 input 挂进文档、id/accept 就位后才接）
+    if (window.mochiFilePickLabel && gcImgBtn) window.mochiFilePickLabel(gcImgBtn, fi);
+    // FIX 2026-09-21 #1002（第九波续）：群聊输入栏「插入图片」同样铺「真·可点 input」层——手指物理落在
+    // 真 input 上，选择器由浏览器原生默认动作弹出，不再依赖 label 转发 / JS 合成 click / showPicker。
+    if (window.mochiFilePickSurface && gcImgBtn) window.mochiFilePickSurface(gcImgBtn, { id: 'gc-img-tap', accept: 'image/*', multiple: true, owner: fi });
+    return fi;
+  }
+  // FIX 2026-09-21 #1002：**绑定时**就铺一次真·可点 input 层（放在点按处理器里＝第一次点按赶不上）
+  try { if (window.mochiFilePickSurface && gcImgBtn) window.mochiFilePickSurface(gcImgBtn, { id: 'gc-img-tap', accept: 'image/*', multiple: true, owner: gcImgPicker() }); } catch (err) {}
+  if (gcImgBtn) gcImgBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const fi = gcImgPicker();
+    // 输入栏整段重建后按钮是新节点、label 层会丢 ⇒ 每次点按幂等补挂（只在缺失时补）
+    try { if (window.mochiFilePickLabel) window.mochiFilePickLabel(gcImgBtn, fi); } catch (err) {}
+    // #1002：按钮被整段重建过也把 surface 层幂等补回来
+    try { if (window.mochiFilePickSurface) window.mochiFilePickSurface(gcImgBtn, { id: 'gc-img-tap', accept: 'image/*', multiple: true, owner: fi }); } catch (err) {}
+    // FIX 2026-09-18 #756：原 fromLabel 早退在国产内核（label 存在但不转发）时连 JS 兜底
+    // 一起跳过＝「插图片点了完全没反应」；改由 guard 事后确认真未弹出再补 click
+    // FIX 2026-09-20 #920：兜底腿改走全站统一三腿（showPicker→click；小米系对合成 click 静默不弹）
+    var _fb = () => { window.mochiFilePickFire(fi, { onFail: () => toast('无法打开图片选择器，请重试') }); };
+    if (window.mochiFilePickGuard) window.mochiFilePickGuard(fi, _fb);
+    else _fb();
   });
 
   // 点击面板背景关闭
@@ -3098,6 +4155,7 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
   let gcActiveMsgEl = null;
   let gcActiveMsgSnap = null; // FIX 2026-09-13 #407：菜单打开时的消息身份快照（防 msgs 重排后 gcIdx 错位，对齐聊天页）
   function closeGcMsgActions() {
+    if (gcMsgActions && typeof gcMsgActions.__maFollowStop === 'function') { try { gcMsgActions.__maFollowStop(); } catch (e) {} } // FIX 2026-09-16 #642 摘跟随监听
     if (gcMsgActions) gcMsgActions.hidden = true;
     gcActiveMsgEl = null;
     gcActiveMsgSnap = null;
@@ -3140,23 +4198,13 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
         delBtn.hidden = !(delEn && side === 'in');
       }
       gcMsgActions.hidden = false;
-      // 定位：气泡上方居中，放不下换下方；clamp 在视口内（与聊天页同款算法）
+      // FIX 2026-09-16 #642 定位与跟随都交给共享助手 window.mochiFollowActionBar（chat.js 定义，
+      // 单聊群聊一份实现）：定位算法与旧块一致（上方居中、放不下换下方、clamp 视口内），打开后
+      // 键盘开合动画/Edge iOS vv 平移/来消息贴底滚动/图片撑高都会实时跟随气泡重算，修「群聊操作条
+      // 乱跑/飞到离气泡很远的地方」同款（旧实现只定位一次＝视口一变就留在原地）
       try {
-        const bRect = bk.getBoundingClientRect();
-        const aw = gcMsgActions.offsetWidth || 120;
-        const ah = gcMsgActions.offsetHeight || 50;
-        const vv = window.visualViewport;
-        const vw = vv ? vv.width : window.innerWidth;
-        const vh = vv ? vv.height : window.innerHeight;
-        let x = bRect.left + bRect.width / 2 - aw / 2;
-        x = Math.max(10, Math.min(vw - aw - 10, x));
-        let y = bRect.top - ah - 8;
-        const below = bRect.bottom + 8;
-        const aboveFits = y >= 50;
-        const belowFits = below + ah <= vh - 8;
-        y = aboveFits || !belowFits ? y : below;
-        gcMsgActions.style.left = x + 'px';
-        gcMsgActions.style.top = y + 'px';
+        const _gPlace = window.mochiFollowActionBar && window.mochiFollowActionBar(gcMsgActions, bk, closeGcMsgActions);
+        if (_gPlace) _gPlace();
       } catch (err) {}
     }
     let gcHoldTimer = null;
@@ -3319,28 +4367,76 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
   const gcPokeCloseBtn = document.getElementById('gc-poke-close');
   let gcPokeCid = null;
   const GC_POKE_PRESETS = ['拍了拍你', '戳了戳你的脸蛋', '弹了一下你的额头', '揉了揉你的头发', '捏了捏你的脸颊', '拍了拍你的肩膀'];
-  function gcPokeActions() {
-    const out = GC_POKE_PRESETS.slice();
-    try { (window.getPokeCards() || []).forEach(x => { if (typeof x === 'string' && x && out.indexOf(x) < 0) out.push(x); }); } catch (e) {}
-    [['poke-groups-mine', false], ['poke-user-mine', true]].forEach(([k, flat]) => {
-      try {
-        const v = JSON.parse(window.activeStore().get(k) || 'null');
-        if (flat && Array.isArray(v)) {
-          v.forEach(x => { if (typeof x === 'string' && x.trim() && out.indexOf(x) < 0) out.push(x); });
-        } else if (Array.isArray(v)) {
-          v.forEach(g => { if (Array.isArray(g) && Array.isArray(g[1])) g[1].forEach(x => { if (typeof x === 'string' && x.trim() && out.indexOf(x) < 0) out.push(x); }); });
-        }
-      } catch (e) {}
-    });
+  // FIX 2026-09-17 #648g 拍一拍短语池媒体守卫（与 chat.js pokeTextOnly 同口径）——
+  // 自建分组/字卡库【拍一拍】里混入的令牌/图链/||| 卡不进面板、不被发出
+  function gcPokeTextOnly(x) {
+    if (typeof x !== 'string' || !x.trim()) return false;
+    if (x.indexOf('data:') === 0 || x.indexOf('|||') >= 0 || x.indexOf('@@m:') >= 0) return false;
+    if (/^https?:\/\//i.test(x)) return false;
+    return true;
+  }
+  // #1027 分组条：原面板把「预设 + 字卡库【拍一拍】各分组 + 我的自建分组」摊平成一条
+  // 长列表，分组名在群聊里整个丢失（用户反馈「群聊的拍一拍功能没有分组 tag」）。改为与单聊
+  // 同款 .poke-groups chip 条按分组筛选——chip 与暗色样式复用聊天页现成规则，零 CSS 新增。
+  // 合集口径不变：同一批卡、同样全局去重（先到先得），只是按来源拆开摆。
+  const gcPokeBar = document.createElement('div');
+  gcPokeBar.className = 'poke-groups';
+  if (gcPokeCard && gcPokeList) gcPokeCard.insertBefore(gcPokeBar, gcPokeList);
+  let gcPokeCur = '';
+  function gcPokePrefGet() { try { return window.activeStore().get('gc-poke-group') || ''; } catch (e) { return ''; } }
+  function gcPokePrefSet(k) { try { window.activeStore().set('gc-poke-group', k); } catch (e) {} }
+  function gcPokeJson(key) {
+    try {
+      const v = JSON.parse(window.activeStore().get(key) || 'null');
+      return Array.isArray(v) ? v : [];
+    } catch (e) { return []; }
+  }
+  function gcPokeGroups() {
+    const seen = new Set();
+    const out = [];
+    const push = (scope, label, cards) => {
+      const list = (cards || []).filter(x => {
+        if (!gcPokeTextOnly(x) || seen.has(x)) return false;
+        seen.add(x);
+        return true;
+      });
+      if (list.length) out.push({ key: scope + '|' + label, label, cards: list });
+    };
+    push('preset', '预设', GC_POKE_PRESETS);
+    // 字卡库【拍一拍】分类（公用 + 当前桌面专属的合并视图，与 getPokeCards 同一批卡）
+    let lib = [];
+    try { lib = (window.getPokeGroups && window.getPokeGroups()) || []; } catch (e) {}
+    lib.forEach(g => { if (Array.isArray(g) && Array.isArray(g[1]) && g[0]) push('lib', String(g[0]), g[1]); });
+    // 当前桌面「我的拍一拍」自建分组 + 存量扁平列表（同 chat.js pokeUserGroupsInit 的读法）
+    gcPokeJson('poke-groups-mine').forEach(g => { if (Array.isArray(g) && Array.isArray(g[1]) && g[0]) push('mine', String(g[0]), g[1]); });
+    push('legacy', '我的新增', gcPokeJson('poke-user-mine'));
     return out;
   }
   function gcClosePokeCard() { if (gcPokeCard) gcPokeCard.hidden = true; gcPokeCid = null; }
+  function renderGcPokeBar(groups) {
+    if (!gcPokeBar) return;
+    gcPokeBar.innerHTML = '';
+    // 只有一个来源时不占一行（没有可切换的对象）；.poke-groups 自带 display:flex，
+    // 会盖掉 [hidden] 的 UA 规则，所以这里用行内样式收
+    if (groups.length < 2) { gcPokeBar.style.display = 'none'; return; }
+    gcPokeBar.style.display = '';
+    groups.forEach(g => {
+      const c = document.createElement('span');
+      c.className = 'emoji-g-chip' + (gcPokeCur === g.key ? ' sel' : '');
+      c.textContent = g.label + g.cards.length;
+      c.addEventListener('click', (e) => { e.stopPropagation(); gcPokeCur = g.key; gcPokePrefSet(g.key); renderGcPokeList(); });
+      gcPokeBar.appendChild(c);
+    });
+  }
   function renderGcPokeList() {
     if (!gcPokeList) return;
+    const groups = gcPokeGroups();
+    if (!groups.some(g => g.key === gcPokeCur)) gcPokeCur = groups.length ? groups[0].key : '';
+    renderGcPokeBar(groups);
     gcPokeList.innerHTML = '';
-    const acts = gcPokeActions();
-    if (!acts.length) { gcPokeList.innerHTML = '<div class="cc-empty">暂无拍一拍文字</div>'; return; }
-    acts.forEach((a) => {
+    const cur = groups.find(g => g.key === gcPokeCur);
+    if (!cur) { gcPokeList.innerHTML = '<div class="cc-empty">暂无拍一拍文字</div>'; return; }
+    cur.cards.forEach((a) => {
       const d = document.createElement('div');
       d.className = 'cc-item glass';
       d.innerHTML = '<div class="cc-txt"><div class="t">' + escapeHtml(a) + '</div></div>';
@@ -3352,6 +4448,7 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
     if (!gcPokeCard || !gcPokeList) return;
     closeGcMsgActions(); // 菜单开着时先收，防双浮层叠着（stopPropagation 会跳过 document 收菜单那条路）
     gcPokeCid = cid;
+    gcPokeCur = gcPokePrefGet(); // 键按桌面命名空间存，切桌面后开面板要重新落位
     if (gcPokeNameEl) gcPokeNameEl.textContent = memberName(cid);
     renderGcPokeList();
     gcPokeCard.hidden = false;
@@ -3384,7 +4481,7 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
     saveMsgs();
     renderMsg(rec);
     followGcBottom(true);
-    if (window.playSfx) window.playSfx('out');
+    if (window.playSfxGc) window.playSfxGc('out'); // #698d：走群聊专属音效（未设置回退单聊）
     // 被拍成员按既有成员回复链反应（拍回来/回消息，概率走群聊回复设置）——
     // 对齐聊天页拍一拍后 TA 会已读/拍回/回复的语义
     setTimeout(() => { try { memberReply(cid, rec.text, curGid); } catch (err) {} }, 1200 + Math.random() * 1600);
