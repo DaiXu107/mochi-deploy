@@ -540,6 +540,7 @@
     try { if (window.mochiContactEntryFlow) window.mochiContactEntryFlow(); } catch (e) {}
   }
   // 二传修饰：自动跳过开屏——仅在用户开启「关闭开屏公告」且年龄确认已通过、数据与页面就绪后触发。
+  let readyForced = false;
   const autoSkip = function () {
     if (!skipSplash) return;
     if (!ageOk) return;
@@ -563,7 +564,7 @@
   // mochi-restore-slow 慢标志（仍要进入也要求 ready 门控下的显隐路径）。现 20s
   // 未就绪时 readyForced=true：进入门控按已就绪放行（仍要求滑到底），点进入走
   // forceEnter 同款「数据仍在加载」提示；数据随后真就绪时 ready() 优先、标志自动失效。
-  let readyForced = false;
+  // readyForced 已在上方 autoSkip 前声明。
   function updateEnterState() {
     const r = ready() || readyForced;
     const ok = r && scrolledBottom && ageOk; // #315c：年龄确认与滑到底并列为可点条件

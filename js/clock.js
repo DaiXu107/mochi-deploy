@@ -391,6 +391,7 @@ try { window.hydrateLibScopes(['own']).catch(function () {}); } catch (e) {}
 } catch (e) {}
 try { if (window.mochiContactEntryFlow) window.mochiContactEntryFlow(); } catch (e) {}
 }
+let readyForced = false;
 const autoSkip = function () {
 if (!skipSplash) return;
 if (!ageOk) return;
@@ -406,7 +407,6 @@ bottom = splashBox.scrollHeight - splashBox.scrollTop - splashBox.clientHeight <
 }
 if (bottom !== scrolledBottom) { scrolledBottom = bottom; updateEnterState(); }
 }
-let readyForced = false;
 function updateEnterState() {
 const r = ready() || readyForced;
 const ok = r && scrolledBottom && ageOk; // #315c：年龄确认与滑到底并列为可点条件
