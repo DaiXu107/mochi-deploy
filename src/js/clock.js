@@ -336,6 +336,20 @@
 (function () {
   const splash = document.getElementById('splash');
   if (!splash) return;
+  // 二传修饰：系统页「关闭开屏公告」开关——开启后本机跳过开屏直接进入功能界面。
+  // 仍保留首次年龄确认闸门（ageOk），避免跳过合规声明；数据与页面就绪后才自动进入。
+  const skipStore = (function () { try { return window.xyStore ? window.xyStore('xy-home-v2') : null; } catch (e) { return null; } })();
+  const SKIP_KEY = 'splash-skip-en';
+  let skipSplash = false;
+  try { skipSplash = skipStore ? skipStore.get(SKIP_KEY) === '1' : false; } catch (e) {}
+  const skipToggle = document.getElementById('splash-skip-en');
+  if (skipToggle) {
+    skipToggle.checked = skipSplash;
+    skipToggle.addEventListener('change', function () {
+      skipSplash = !!skipToggle.checked;
+      try { if (skipStore) skipStore.set(SKIP_KEY, skipSplash ? '1' : '0'); } catch (e) {}
+    });
+  }
   // 2026-10-01（作者直派「已完结停更」收口）：版本块只留静态一行，部署时间/实时秒/检测行退役
   //（#splash-ver-live 不复存在，此处原每秒刷新逻辑随之删除；#splash-ver 的 data-build-ts 仍供诊断读）。
   // v3.5.111：开屏含公告 → 点击进入才进页面（点任意处或「点击进入」按钮均可）
@@ -525,6 +539,14 @@
     // 放在数据已就绪的进入收尾处；缺失或异常都不阻断进入。
     try { if (window.mochiContactEntryFlow) window.mochiContactEntryFlow(); } catch (e) {}
   }
+  // 二传修饰：自动跳过开屏——仅在用户开启「关闭开屏公告」且年龄确认已通过、数据与页面就绪后触发。
+  const autoSkip = function () {
+    if (!skipSplash) return;
+    if (!ageOk) return;
+    if (!loaded() || !(ready() || readyForced)) return;
+    finishEnter();
+  };
+  autoSkip();
   let scrolledBottom = false;
   function checkScrolled() {
     let bottom = true;
@@ -604,16 +626,18 @@
   // 字体缩放/旋转等导致内容高度变化时重新判定是否已到底
   window.addEventListener('resize', checkMandScrolled);
   // 页面加载完成 → 刷新进入状态（window load + readyState 轮询双保险）
-  window.addEventListener('load', function () { windowLoaded = true; updateEnterState(); });
+  window.addEventListener('load', function () { windowLoaded = true; updateEnterState(); autoSkip(); });
   // 30 秒兜底：页面个别资源挂起导致 load 永不触发时，到点视为已加载，避免开屏永远卡住
   setTimeout(function () { if (!windowLoaded) { windowLoaded = true; updateEnterState(); } }, 30000);
   // 数据回填完成 → 刷新状态（事件 + 轮询双保险：空数据场景只置标志不派发事件）
-  document.addEventListener('mochi-restore-done', updateEnterState);
+  document.addEventListener('mochi-restore-done', function () { updateEnterState(); autoSkip(); });
   // idbRestore 12 秒保险丝触发 → 标记较慢，显示「仍要进入」逃生口（不自动进入）
   document.addEventListener('mochi-restore-slow', function () { slow = true; updateEnterState(); });
   document.addEventListener('mochi-notice-rendered', checkScrolled);
   // 轮询：数据就绪 + 已到底后停止；期间持续校正滚动/高度变化
   const readyPoll = setInterval(() => {
+    if (splash.classList.contains('hide')) { clearInterval(readyPoll); return; }
+    autoSkip();
     if (ready() && scrolledBottom) { clearInterval(readyPoll); return; }
     updateEnterState();
     checkScrolled();
@@ -627,6 +651,7 @@
       slow = true;
       readyForced = true;
       updateEnterState();
+      autoSkip();
     }
   }, 20000);
 })();

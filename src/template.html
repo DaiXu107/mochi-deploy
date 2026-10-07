@@ -1771,6 +1771,14 @@
         <div class="gs-sub" id="applock-qa-sub">纯本地功能：<b>默认开启</b>——首次答对问答题后本机永久放行（不再重复询问），可单独使用；关掉即彻底不问。锁屏时也可输暗号直接永久跳过问答层。</div>
       </div>
       <div class="set-group glass">
+        <div class="set-row">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14a1 1 0 011 1v5a1 1 0 01-1 1h-5v2h2a3 3 0 013 3v4h-2v-4a1 1 0 00-1-1H8a1 1 0 00-1 1v4H5v-4a3 3 0 013-3h2v-2H5a1 1 0 01-1-1V5a1 1 0 011-1z"/></svg></div>
+          <div class="txt">关闭开屏公告<span class="sub">开启后每次打开直接进入功能界面，不再显示长公告开屏</span></div>
+          <label class="toggle"><input type="checkbox" id="splash-skip-en"><span class="tk"></span></label>
+        </div>
+        <div class="gs-sub" id="splash-skip-sub">开启后不再显示开屏公告，直接进入功能界面。<b>首次使用仍需先确认已年满 18 周岁并同意声明</b>；之后想重新查看公告时，关闭本开关并刷新页面即可。</div>
+      </div>
+      <div class="set-group glass">
         <div class="gs-row"><span>后台保活</span><label class="toggle"><input type="checkbox" id="bg-keepalive"><span class="tk"></span></label></div>
         <!-- v3.44.x：保活音频可选——默认内置静音音频 / 用户上传自定义音频（逻辑在 bg-keep.js） -->
         <div class="gs-row"><span>保活音频</span><button class="bg-notify-test" id="bg-keep-audio-btn" type="button">默认静音音频</button></div>

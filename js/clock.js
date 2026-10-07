@@ -254,6 +254,18 @@ if (dirty) run(); // 强刷回写
 (function () {
 const splash = document.getElementById('splash');
 if (!splash) return;
+const skipStore = (function () { try { return window.xyStore ? window.xyStore('xy-home-v2') : null; } catch (e) { return null; } })();
+const SKIP_KEY = 'splash-skip-en';
+let skipSplash = false;
+try { skipSplash = skipStore ? skipStore.get(SKIP_KEY) === '1' : false; } catch (e) {}
+const skipToggle = document.getElementById('splash-skip-en');
+if (skipToggle) {
+skipToggle.checked = skipSplash;
+skipToggle.addEventListener('change', function () {
+skipSplash = !!skipToggle.checked;
+try { if (skipStore) skipStore.set(SKIP_KEY, skipSplash ? '1' : '0'); } catch (e) {}
+});
+}
 const hide = () => {
 if (splash.classList.contains('hide')) return;
 splash.classList.add('hide');
@@ -379,6 +391,13 @@ try { window.hydrateLibScopes(['own']).catch(function () {}); } catch (e) {}
 } catch (e) {}
 try { if (window.mochiContactEntryFlow) window.mochiContactEntryFlow(); } catch (e) {}
 }
+const autoSkip = function () {
+if (!skipSplash) return;
+if (!ageOk) return;
+if (!loaded() || !(ready() || readyForced)) return;
+finishEnter();
+};
+autoSkip();
 let scrolledBottom = false;
 function checkScrolled() {
 let bottom = true;
@@ -435,12 +454,14 @@ if (foldToggleEl) foldToggleEl.addEventListener('click', function (e) { e.stopPr
 if (mandEnter) mandEnter.addEventListener('click', (e) => { e.stopPropagation(); if (mandBottom) finishEnter(); });
 if (mandScroll) mandScroll.addEventListener('scroll', checkMandScrolled, { passive: true });
 window.addEventListener('resize', checkMandScrolled);
-window.addEventListener('load', function () { windowLoaded = true; updateEnterState(); });
+window.addEventListener('load', function () { windowLoaded = true; updateEnterState(); autoSkip(); });
 setTimeout(function () { if (!windowLoaded) { windowLoaded = true; updateEnterState(); } }, 30000);
-document.addEventListener('mochi-restore-done', updateEnterState);
+document.addEventListener('mochi-restore-done', function () { updateEnterState(); autoSkip(); });
 document.addEventListener('mochi-restore-slow', function () { slow = true; updateEnterState(); });
 document.addEventListener('mochi-notice-rendered', checkScrolled);
 const readyPoll = setInterval(() => {
+if (splash.classList.contains('hide')) { clearInterval(readyPoll); return; }
+autoSkip();
 if (ready() && scrolledBottom) { clearInterval(readyPoll); return; }
 updateEnterState();
 checkScrolled();
@@ -450,6 +471,7 @@ if (!ready()) {
 slow = true;
 readyForced = true;
 updateEnterState();
+autoSkip();
 }
 }, 20000);
 })();
