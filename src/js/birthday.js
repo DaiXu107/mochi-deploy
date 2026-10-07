@@ -1,4 +1,4 @@
-// ===== 功能：生日分区（我的生日全局 / 梦角生日按联系人 / 日历多人生日标记 / 生日字卡） =====
+// ===== 功能：生日分区（我的生日全局 / 梦角生日按联系人 / 日历多人生日标记 / 生日字卡双分区） =====
 // 二传增补，尽量独立运行：只读 window.activeStore / window.activePrefix / window.xyStore /
 // window.getContacts / window.contactNameFor / window.chatPartnerName / window.toast / window.mochiLunar，
 // 不改其他模块数据。
@@ -9,9 +9,11 @@
 
   const PARTNER_KEYS = { type: 'birthday-type', solar: 'birthday-solar', lunar: 'birthday-lunar', leap: 'birthday-lunar-leap' };
   const SELF_KEYS = { type: 'birthday-self-type', solar: 'birthday-self-solar', lunar: 'birthday-self-lunar', leap: 'birthday-self-lunar-leap' };
-  const CARDS_KEY = 'birthday-cards';
+  const SELF_CARDS_KEY = 'birthday-cards-self';
+  const PARTNER_CARDS_KEY = 'birthday-cards-partner';
+  const LEGACY_CARDS_KEY = 'birthday-cards';
 
-  const DEFAULT_CARDS = [
+  const DEFAULT_SELF_CARDS = [
     '生日快乐宝贝。愿你的每个愿望都实现，我每年都会陪在你身边。',
     '又陪宝贝长大一岁啦。谢谢你来到我的世界，愿今天所有的甜都奔向你，也愿我永远是你最安心的归处。',
     '宝贝生日快乐呀！愿你的笑容永远明亮，而我负责一直爱你、宠你、偏袒你。',
@@ -23,6 +25,16 @@
     '生日快乐，我的小朋友。你可以永远撒娇、永远被宠、永远做自己。我会牵着你的手，陪你把每一个明天都过成喜欢的模样。',
     '今天许愿的时候，记得留一个关于我们的愿望。生日快乐宝贝，愿我们年年有今日，岁岁有彼此，长长久久不分离。'
   ];
+  const DEFAULT_PARTNER_CARDS = [
+    '今天我生日，宝贝准备送我什么礼物呀？',
+    '宝贝宝贝，今天要对我说点什么呀？',
+    '我今年的生日愿望就是永远陪在宝贝说身边，宝贝永远爱我。'
+  ];
+  const RAIN_EMOJIS = ['🎂', '🎉', '🎈', '🧁', '👑', '✨', '🎁', '🍰'];
+  const CHAT_COOLDOWN_MS = 12 * 60 * 1000;
+  const CHAT_PROB = 40;
+
+  let currentSection = 'self';
 
   function toast(msg) {
     try { if (typeof window.toast === 'function') window.toast(msg); } catch (e) {}
@@ -131,35 +143,56 @@
     return allEntries().filter(e => isSameDay(birthdayDateInYear(e.b, now.getFullYear()), now));
   }
 
-  function getCards() {
+  function normalizeCards(raw, defaults) {
     try {
-      const raw = store.get(CARDS_KEY);
+      if (!Array.isArray(raw)) return null;
+      if (raw.some(x => typeof x === 'string')) {
+        return raw.map(x => typeof x === 'string' ? { t: x, def: defaults.indexOf(x) >= 0 } : (x && typeof x.t === 'string' ? { t: x.t, def: !!x.def } : null))
+          .filter(x => x && x.t);
+      }
+      return raw.filter(x => x && typeof x.t === 'string' && x.t).map(x => ({ t: x.t, def: !!x.def }));
+    } catch (e) { return null; }
+  }
+
+  function getCards(section) {
+    const isSelf = section === 'self';
+    const key = isSelf ? SELF_CARDS_KEY : PARTNER_CARDS_KEY;
+    const defaults = isSelf ? DEFAULT_SELF_CARDS : DEFAULT_PARTNER_CARDS;
+    const target = isSelf ? rootStore() : store;
+    try {
+      const raw = target.get(key);
       if (raw) {
-        let arr = JSON.parse(raw);
-        if (Array.isArray(arr)) {
-          if (arr.some(x => typeof x === 'string')) {
-            arr = arr.map(x => typeof x === 'string' ? { t: x, def: DEFAULT_CARDS.indexOf(x) >= 0 } : (x && typeof x.t === 'string' ? { t: x.t, def: !!x.def } : null));
-          } else {
-            arr = arr.map(x => x && typeof x.t === 'string' ? { t: x.t, def: !!x.def } : null);
-          }
-          arr = arr.filter(x => x && x.t);
-          return arr;
-        }
+        const arr = normalizeCards(JSON.parse(raw), defaults);
+        if (arr) return arr;
       }
     } catch (e) {}
-    const seeded = DEFAULT_CARDS.map(t => ({ t: t, def: true }));
-    try { store.set(CARDS_KEY, JSON.stringify(seeded)); } catch (e) {}
+    if (isSelf) {
+      try {
+        const legacy = target.get(LEGACY_CARDS_KEY);
+        if (legacy) {
+          const arr = normalizeCards(JSON.parse(legacy), defaults);
+          if (arr) {
+            try { target.set(key, JSON.stringify(arr)); } catch (e) {}
+            try { target.remove(LEGACY_CARDS_KEY); } catch (e) {}
+            return arr;
+          }
+        }
+      } catch (e) {}
+    }
+    const seeded = defaults.map(t => ({ t: t, def: true }));
+    try { target.set(key, JSON.stringify(seeded)); } catch (e) {}
     return seeded.slice();
   }
 
-  function saveCards(arr) {
-    try { store.set(CARDS_KEY, JSON.stringify(arr || [])); } catch (e) {}
+  function saveCards(section, arr) {
+    const key = section === 'self' ? SELF_CARDS_KEY : PARTNER_CARDS_KEY;
+    const target = section === 'self' ? rootStore() : store;
+    try { target.set(key, JSON.stringify(arr || [])); } catch (e) {}
   }
 
-  function placeholderFor(entry) {
-    const n = String(entry.name || '').trim();
-    if (n && n !== 'TA' && n !== '默认' && n !== '我') return n;
-    return '宝贝';
+  function userNick() {
+    const n = selfDisplayName();
+    return n || '宝贝';
   }
 
   function titleFor(entry) {
@@ -172,21 +205,22 @@
     return '今天是' + who + (entry.b.type === 'lunar' ? '农历' : '公历') + '生日，愿这一岁被爱和好运包围。';
   }
 
-  function pickCardFor(entry) {
-    const cards = getCards();
+  function pickCardForSection(section, random) {
+    const cards = getCards(section);
     if (!cards.length) return null;
+    if (random) return cards[Math.floor(Math.random() * cards.length)];
     const now = new Date();
-    const base = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate() + '|' + entry.kind + '|' + (entry.cid || 'self');
+    const base = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate() + '|' + section;
     let hash = 0;
     for (let i = 0; i < base.length; i++) hash = (hash * 31 + base.charCodeAt(i)) >>> 0;
     return cards[hash % cards.length];
   }
 
-  function cardTextFor(entry) {
-    const card = pickCardFor(entry);
+  function cardTextForSection(section, random) {
+    const card = pickCardForSection(section, random);
     if (!card) return '';
     if (card.def) {
-      const name = placeholderFor(entry);
+      const name = userNick();
       if (name !== '宝贝') return String(card.t).split('宝贝').join(name);
     }
     return card.t;
@@ -230,7 +264,7 @@
         head.appendChild(title);
         const text = document.createElement('div');
         text.className = 'birthday-banner-text';
-        text.textContent = cardTextFor(entry);
+        text.textContent = cardTextForSection(entry.kind === 'self' ? 'self' : 'partner', false);
         const sub = document.createElement('div');
         sub.className = 'birthday-banner-sub';
         sub.textContent = subFor(entry);
@@ -319,6 +353,7 @@
       refreshProfileUI(kind, readFn());
       renderBanners();
       applyCalendarMarks();
+      applyAvatarRings();
       toast(kind === 'self' ? '我的生日已保存，所有桌面的日历都会标记' : '梦角生日已保存，每年日历都会自动标记');
     });
     refreshProfileUI(kind, readFn());
@@ -338,7 +373,7 @@
     const list = document.getElementById('bday-list');
     if (!list) return;
     list.innerHTML = '';
-    const cards = getCards();
+    const cards = getCards(currentSection);
     if (!cards.length) {
       const empty = document.createElement('div');
       empty.className = 'bday-empty';
@@ -363,9 +398,9 @@
       del.className = 'bday-list-del';
       del.textContent = '删除';
       del.addEventListener('click', () => {
-        const cur = getCards();
+        const cur = getCards(currentSection);
         cur.splice(i, 1);
-        saveCards(cur);
+        saveCards(currentSection, cur);
         renderCardsList();
         updateEntryCount();
       });
@@ -377,16 +412,40 @@
 
   function updateEntryCount() {
     const el = document.getElementById('cc-birthday-count');
-    if (el) el.textContent = getCards().length;
+    if (el) el.textContent = getCards('self').length + getCards('partner').length;
+  }
+
+  function setCardSection(section) {
+    currentSection = section === 'partner' ? 'partner' : 'self';
+    const label = currentSection === 'self' ? '我的生日' : '梦角生日';
+    const tabs = document.getElementById('bday-card-tabs');
+    if (tabs) tabs.querySelectorAll('.cc-tab').forEach(btn => {
+      btn.classList.toggle('sel', btn.getAttribute('data-bday-section') === currentSection);
+    });
+    const formTitle = document.getElementById('bday-form-title');
+    if (formTitle) formTitle.textContent = '添加「' + label + '」祝福（每行一句）';
+    const listTitle = document.getElementById('bday-list-title');
+    if (listTitle) listTitle.textContent = label + '字卡列表';
+    const addBtn = document.getElementById('bday-batch-add');
+    if (addBtn) addBtn.textContent = '添加到' + label;
+    const textarea = document.getElementById('bday-batch');
+    if (textarea) textarea.placeholder = '每行一句，如：\n' + (currentSection === 'self' ? '生日快乐宝贝。' : '今天我生日，宝贝准备送我什么礼物呀？');
+    renderCardsList();
   }
 
   function initCardsPage() {
+    const tabs = document.getElementById('bday-card-tabs');
+    if (tabs) tabs.addEventListener('click', e => {
+      const btn = e.target.closest('.cc-tab');
+      if (!btn) return;
+      setCardSection(btn.getAttribute('data-bday-section') === 'partner' ? 'partner' : 'self');
+    });
     const entry = document.getElementById('li-birthday-cards');
     const page = document.getElementById('page-birthday-cards');
     if (entry && page) entry.addEventListener('click', () => {
       document.querySelectorAll('.page').forEach(p => p.hidden = true);
       page.hidden = false;
-      renderCardsList();
+      setCardSection(currentSection);
     });
     const back = document.getElementById('birthday-cards-back');
     if (back) back.addEventListener('click', () => {
@@ -399,15 +458,15 @@
     if (add && textarea) add.addEventListener('click', () => {
       const lines = textarea.value.split('\n').map(s => s.trim()).filter(Boolean);
       if (!lines.length) { toast('请先输入生日祝福，每行一句'); return; }
-      const cur = getCards();
+      const cur = getCards(currentSection);
       lines.forEach(t => cur.push({ t: t, def: false }));
-      saveCards(cur);
+      saveCards(currentSection, cur);
       textarea.value = '';
       renderCardsList();
       updateEntryCount();
       toast('已添加 ' + lines.length + ' 张生日字卡');
     });
-    renderCardsList();
+    setCardSection(currentSection);
     updateEntryCount();
   }
 
@@ -419,8 +478,10 @@
         fn: function (kw) {
           const out = [];
           const k = String(kw || '').toLowerCase();
-          getCards().forEach(c => {
-            if (!k || c.t.toLowerCase().indexOf(k) >= 0) out.push({ t: c.t, cat: '生日字卡' });
+          [['self', '我的生日'], ['partner', '梦角生日']].forEach(pair => {
+            getCards(pair[0]).forEach(c => {
+              if (!k || c.t.toLowerCase().indexOf(k) >= 0) out.push({ t: c.t, cat: pair[1] });
+            });
           });
           return out;
         }
@@ -428,9 +489,126 @@
     } catch (e) {}
   }
 
+  function todayStr() {
+    const n = new Date();
+    return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0');
+  }
+
+  function isBirthdayTodayFor(b) {
+    const now = new Date();
+    return isSameDay(birthdayDateInYear(b, now.getFullYear()), now);
+  }
+
+  function selfEntryToday() {
+    const b = readSelfBirthday();
+    if (!b || !isBirthdayTodayFor(b)) return null;
+    return { kind: 'self', cid: '', name: selfDisplayName(), b: b };
+  }
+
+  function partnerEntryToday() {
+    const cid = window.__activeCid || 'default';
+    const b = readBirthdayFrom(storeForCid(cid), PARTNER_KEYS);
+    if (!b || !isBirthdayTodayFor(b)) return null;
+    return { kind: 'partner', cid: cid, name: partnerDisplayName(cid), b: b };
+  }
+
+  function checkChat() {
+    if (!window.chatAddIn) return;
+    const h = new Date().getHours();
+    if (h >= 23 || h < 6) return;
+    const now = Date.now();
+
+    const self = selfEntryToday();
+    if (self) {
+      const r = rootStore();
+      const last = parseInt((r && r.get('birthday-self-chat-last')) || '0', 10);
+      if (r && (!last || now - last >= CHAT_COOLDOWN_MS) && Math.random() * 100 < CHAT_PROB) {
+        const text = cardTextForSection('self', true);
+        if (text) {
+          try { window.chatAddIn(text, { tag: '生日祝福', nightAllow: true }); } catch (e) {}
+          try { r.set('birthday-self-chat-last', String(now)); } catch (e) {}
+          return;
+        }
+      }
+    }
+
+    const partner = partnerEntryToday();
+    if (partner) {
+      const last = parseInt(store.get('birthday-partner-chat-last') || '0', 10);
+      if ((!last || now - last >= CHAT_COOLDOWN_MS) && Math.random() * 100 < CHAT_PROB) {
+        const text = cardTextForSection('partner', true);
+        if (text) {
+          try { window.chatAddIn(text, { tag: '生日祝福', nightAllow: true }); } catch (e) {}
+          try { store.set('birthday-partner-chat-last', String(now)); } catch (e) {}
+        }
+      }
+    }
+  }
+  window.birthdayCheckChat = checkChat;
+
+  function applyAvatarRings() {
+    const self = !!selfEntryToday();
+    const partner = !!partnerEntryToday();
+    const avUser = document.getElementById('avatar-user');
+    const avPartner = document.getElementById('avatar-partner');
+    const chatPartner = document.getElementById('chat-partner-av');
+    if (avUser) {
+      avUser.classList.toggle('bday-ring', self);
+      avUser.classList.toggle('bday-ring-crown', self);
+    }
+    if (avPartner) {
+      avPartner.classList.toggle('bday-ring', partner);
+      avPartner.classList.toggle('bday-ring-crown', partner);
+    }
+    if (chatPartner) {
+      chatPartner.classList.toggle('bday-ring', partner);
+      chatPartner.classList.toggle('bday-ring-crown', partner);
+    }
+  }
+
+  function birthdayEmojiRain() {
+    if (!selfEntryToday() && !partnerEntryToday()) return;
+    if (!document.body || !document.createElement) return;
+    try {
+      const old = document.getElementById('bday-emoji-rain');
+      if (old) old.remove();
+    } catch (e) {}
+    const layer = document.createElement('div');
+    layer.id = 'bday-emoji-rain';
+    layer.className = 'bday-emoji-rain';
+    for (let i = 0; i < 24; i++) {
+      const s = document.createElement('span');
+      s.className = 'bday-emoji';
+      s.textContent = RAIN_EMOJIS[Math.floor(Math.random() * RAIN_EMOJIS.length)];
+      s.style.left = Math.round(Math.random() * 100) + '%';
+      s.style.fontSize = Math.round(16 + Math.random() * 14) + 'px';
+      s.style.animationDuration = (2.6 + Math.random() * 2.2).toFixed(2) + 's';
+      s.style.animationDelay = (Math.random() * 0.8).toFixed(2) + 's';
+      layer.appendChild(s);
+    }
+    document.body.appendChild(layer);
+    setTimeout(() => { try { if (layer.parentNode) layer.parentNode.removeChild(layer); } catch (e) {} }, 5200);
+  }
+
+  function watchHomeReturn() {
+    const phone = document.getElementById('page-phone');
+    if (!phone || typeof MutationObserver === 'undefined') return;
+    let visible = !phone.hidden;
+    const mo = new MutationObserver(() => {
+      const nowVisible = !phone.hidden;
+      if (nowVisible && !visible) {
+        applyAvatarRings();
+        birthdayEmojiRain();
+      }
+      visible = nowVisible;
+    });
+    mo.observe(phone, { attributes: true, attributeFilter: ['hidden'] });
+  }
+
   function refreshAll() {
     renderBanners();
     applyCalendarMarks();
+    applyAvatarRings();
     refreshMemoryUI();
     updateEntryCount();
   }
@@ -439,6 +617,7 @@
   initCardsPage();
   registerSearch();
   refreshAll();
+  watchHomeReturn();
 
   const grid = document.getElementById('cal-grid');
   if (grid && typeof MutationObserver !== 'undefined') {
@@ -448,4 +627,7 @@
 
   document.addEventListener('contact-switched', refreshAll);
   document.addEventListener('contact-renamed', refreshAll);
+  document.addEventListener('mochi-fg-resume', function () { try { checkChat(); } catch (e) {} });
+  setInterval(function () { try { checkChat(); } catch (e) {} }, 300000);
+  setTimeout(function () { try { checkChat(); } catch (e) {} }, 3000);
 })();

@@ -6386,6 +6386,7 @@ saveMsgs();
 }, 500);
 }
 try { window.periodCheckCare && window.periodCheckCare(); } catch (e) {}
+try { window.birthdayCheckChat && window.birthdayCheckChat(); } catch (e) {}
 }
 if (willRetractR) {
 setTimeout(() => {

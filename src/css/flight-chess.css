@@ -1,0 +1,25 @@
+#chat-flight-panel .poke-card-scroll { min-height:0; max-height:none; }
+.fc-wrap { display:flex; flex-direction:column; align-items:center; gap:10px; padding:6px 4px 4px; width:100%; }
+.fc-players { display:flex; align-items:center; justify-content:center; gap:10px; width:100%; }
+.fc-side { display:inline-flex; align-items:center; gap:5px; font-size:13px; font-weight:700; border-radius:14px; padding:4px 12px; }
+.fc-side-you { color:#d9466c; background:rgba(255,107,129,.13); }
+.fc-side-ta { color:#2f6fd8; background:rgba(79,140,255,.13); }
+.fc-vs { font-size:11px; color:var(--muted); letter-spacing:1px; }
+.fc-stage { position:relative; width:100%; max-width:430px; margin:0 auto; display:flex; justify-content:center; align-items:center; }
+.fc-canvas { width:100%; height:auto; display:block; border-radius:12px; background:#fff8ec; box-shadow:0 8px 22px rgba(31,38,58,.12); touch-action:manipulation; user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent; }
+.fc-overlay { border-radius:12px; }
+.fc-controls { display:flex; align-items:center; justify-content:center; gap:12px; width:100%; }
+.fc-dice { width:52px; height:52px; border-radius:14px; border:2px solid #3a7fd5; background:#fff; color:#2f6fd8; display:flex; align-items:center; justify-content:center; font-size:30px; font-weight:800; font-variant-numeric:tabular-nums; box-shadow:inset 0 -3px 0 rgba(58,127,213,.18); }
+.fc-roll-btn { padding:11px 24px; border-radius:22px; border:none; background:#3a7fd5; color:#fff; font-size:15px; font-weight:700; cursor:pointer; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+.fc-roll-btn:active { transform:scale(.96); }
+.fc-roll-btn:disabled { opacity:.45; }
+.fc-status { min-height:20px; font-size:13px; color:var(--muted); text-align:center; padding:0 6px; }
+.fc-legend { display:flex; flex-wrap:wrap; justify-content:center; gap:6px 12px; font-size:11px; color:var(--muted); padding:0 6px; }
+.fc-legend span { white-space:nowrap; }
+#chat-flight-panel .fc-overlay .pong-overlay-btns { flex-wrap:wrap; justify-content:center; }
+#chat-flight-panel .fc-overlay .pong-overlay-btn { white-space:nowrap; }
+#chat-flight-panel.game-fs .poke-card-scroll { display:flex; flex-direction:column; overflow:hidden; padding:0; }
+#chat-flight-panel.game-fs .fc-wrap { flex:1; min-height:0; justify-content:center; gap:min(2vh,12px); }
+#chat-flight-panel.game-fs .fc-stage { max-width:min(94vw,620px); flex:0 1 auto; }
+#chat-flight-panel.game-fs .fc-canvas { max-height:70vh; width:auto; }
+#chat-flight-panel.game-fs .fc-controls { flex-shrink:0; }

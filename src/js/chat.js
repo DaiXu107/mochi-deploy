@@ -8563,6 +8563,7 @@ saveMsgs();
 }
 // v3.14.x：移除 20% 预掷门控——与 checkCare 内部概率叠加后第 2 天起触发率仅 ~12%，体感「只有第一天会关心」；防刷屏由其内部同日一条冷却兜底
 try { window.periodCheckCare && window.periodCheckCare(); } catch (e) {}
+try { window.birthdayCheckChat && window.birthdayCheckChat(); } catch (e) {}
 }
 if (willRetractR) {
 	setTimeout(() => {

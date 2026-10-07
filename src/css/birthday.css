@@ -57,6 +57,25 @@
 }
 .bday-empty { padding:14px 2px; font-size:12px; color:var(--muted); line-height:1.6; }
 
+.deco-avatar.bday-ring, .ch-av.bday-ring { position:relative; }
+.deco-avatar.bday-ring .ring, .ch-av.bday-ring {
+  border-color:transparent;
+  box-shadow:0 0 0 3px #ffb27a, 0 8px 22px rgba(255,138,165,.35);
+}
+.deco-avatar.bday-ring::after, .ch-av.bday-ring::after {
+  content:'🎂';
+  position:absolute; top:-9px; right:-7px; z-index:3;
+  font-size:18px; line-height:1; pointer-events:none;
+  filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
+}
+.deco-avatar.bday-ring-crown::after { content:'👑'; }
+
+.bday-emoji-rain { position:fixed; inset:0; overflow:hidden; pointer-events:none; z-index:9999; }
+.bday-emoji {
+  position:absolute; top:-34px; line-height:1;
+  animation-name:bday-emoji-fall; animation-timing-function:ease-in; animation-fill-mode:forwards;
+}
+
 @keyframes bday-in {
   from { opacity:0; transform:translateY(10px) scale(.98); }
   to { opacity:1; transform:translateY(0) scale(1); }
@@ -69,4 +88,7 @@
   0% { transform:translateY(-14px) rotate(0deg); opacity:.9; }
   85% { opacity:.9; }
   100% { transform:translateY(120px) rotate(360deg); opacity:0; }
+}
+@keyframes bday-emoji-fall {
+  to { transform:translateY(110vh) rotate(360deg); opacity:.15; }
 }

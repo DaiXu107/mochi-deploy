@@ -268,6 +268,7 @@
       { n: '连连看', d: '合作消除同款图案，连线不超两个弯', k: '连连看 游戏', go: ['.app[data-app="chat"]', '#more-linkup'] },
       { n: '消消乐', d: '轮流交换凑三连，连锁连消冲目标分', k: '消消乐 三消 游戏', go: ['.app[data-app="chat"]', '#more-match3'] },
       { n: '心意币拍卖会', d: '与 TA 轮番举牌，落槌价真实扣款', k: '拍卖 拍卖会 心意币', go: ['.app[data-app="chat"]', '#more-auction'] },
+      { n: '飞行棋', d: '双人掷骰飞行，落点可送回对方飞机', k: '飞行棋 飞机 骰子 游戏', go: ['.app[data-app="chat"]', '#more-flight'] },
       { n: '游乐室', d: '小游戏战绩、徽章、摆件图鉴一览', k: '游乐室 战绩 徽章 摆件 图鉴', go: ['.app[data-app="home"]', '#home-arcade-entry'] }
     ] },
     { g: '手机桌面与工具', items: [
