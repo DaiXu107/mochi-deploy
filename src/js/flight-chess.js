@@ -1,9 +1,12 @@
-// ===== 功能：飞行棋（聊天页更多功能 → 小游戏） =====
-// 双人飞行棋：海洋手绘棋盘底图 + 3D 骰子，四主题基地，选择相对两角开局。
-// 每方 4 枚棋子，掷 6 起飞；落点可撞回对方，同格己方棋子可叠放并一起移动。
+// ===== 功能：飞行棋（聊天页 / 群聊更多功能 → 小游戏） =====
+// 2~4 人飞行棋：海洋手绘棋盘底图 + 3D 骰子，四主题基地。
+// 聊天页 = 双人模式（你 vs TA，相对两角开局，战绩按联系人桌面保存）；
+// 群聊页 = 群成员对战：群人数（含你）≤4 直接开局，>4 由你勾选邀请成员（你 + 最多 3 人）；
+// 除你以外的座位都由 AI 自动掷骰走子（同款 3D 动画）。
+// 每方 4 枚棋子，掷 6 起飞；落点可撞回其他玩家，同格己方棋子可叠放并一起移动。
 // 特殊格按底图印刷结算：前进 / 后退 / 再来一次 / 出局 / 碰碰车 / 护盾 / 燃烧卡路里
 // / 美味的诱惑（停一回合）/ 恐怖箱（随机效果）；护盾可抵挡出局与被撞。
-// 对方由 AI 自动掷骰（同款 3D 动画）。战绩按联系人桌面存 localStorage；入口自绑定（不改 chat.js）。
+// 入口自绑定（chat.js / group-chat.js 仅放开群聊模式按钮白名单）。
 (function () {
   const panel = document.getElementById('chat-flight-panel');
   if (!panel) return;
@@ -15,8 +18,10 @@
   const overlayEl = document.getElementById('fc-overlay');
   const ovTitleEl = document.getElementById('fc-ov-title');
   const ovBodyEl = document.getElementById('fc-ov-body');
+  const pickEl = document.getElementById('fc-pick');
   const startBtn = document.getElementById('fc-btn-start');
   const startBtn2 = document.getElementById('fc-btn-start2');
+  const gstartBtn = document.getElementById('fc-btn-gstart');
   const rollBtn = document.getElementById('fc-roll');
   const diceSceneEl = document.getElementById('fc-dice');
   const diceCubeEl = document.getElementById('fc-dice-cube');
@@ -162,14 +167,25 @@
   const sfxCapture = () => { beep(220, 0.08, 0.16); setTimeout(() => beep(180, 0.1, 0.14), 70); };
   const sfxWin = () => { beep(660, 0.12, 0.16); setTimeout(() => beep(880, 0.2, 0.16), 120); };
 
-  function newState(pair) {
+  function newState(themes, names, isGroup) {
+    const n = themes.length;
+    const pieces = [], shields = [], skip = [], finished = [];
+    for (let i = 0; i < n; i++) {
+      pieces.push([-1, -1, -1, -1]);
+      shields.push([false, false, false, false]);
+      skip.push(false);
+      finished.push(0);
+    }
     return {
-      pair: pair,
+      themes: themes,
+      names: names,
+      n: n,
+      isGroup: !!isGroup,
       turn: 0,
-      pieces: [[-1, -1, -1, -1], [-1, -1, -1, -1]],
-      shields: [[false, false, false, false], [false, false, false, false]],
-      skip: [false, false],
-      finished: [0, 0],
+      pieces: pieces,
+      shields: shields,
+      skip: skip,
+      finished: finished,
       dice: 0,
       rolled: false,
       busy: false,
@@ -179,10 +195,14 @@
     };
   }
 
-  function themeIdx(side) { return st ? st.pair[side] : PAIRS[pairIdx][side]; }
+  function themeIdx(side) { return st ? st.themes[side] : PAIRS[pairIdx][side]; }
   function themeOf(side) { return THEMES[themeIdx(side)]; }
   function startOf(side) { return START[themeIdx(side)]; }
   function entryOf(side) { return ENTRY[themeIdx(side)]; }
+  function sideName(side) {
+    if (side === 0) return '你';
+    return (st && st.names && st.names[side]) || partnerName();
+  }
 
   function px(point) { return { x: point[0], y: point[1] }; }
   function baseCenter(ti, idx) { return px(BASE_PX[ti][idx]); }
@@ -316,7 +336,7 @@
   }
 
   function drawPieces() {
-    for (let side = 0; side < 2; side++) {
+    for (let side = 0; side < st.n; side++) {
       const ti = themeIdx(side);
       const groups = {};
       for (let idx = 0; idx < 4; idx++) {
@@ -356,6 +376,8 @@
   function showOverlay(title, body, mode) {
     if (ovTitleEl) ovTitleEl.textContent = title;
     if (ovBodyEl) ovBodyEl.textContent = body;
+    if (pickEl) pickEl.hidden = true;
+    if (gstartBtn) gstartBtn.hidden = true;
     if (startBtn) { startBtn.hidden = false; startBtn.textContent = mode === 'start' ? pairLabel(0) : '再来一局'; }
     if (startBtn2) { startBtn2.hidden = mode !== 'start'; startBtn2.textContent = pairLabel(1); }
     if (overlayEl) overlayEl.hidden = false;
@@ -363,7 +385,7 @@
   function hideOverlay() { if (overlayEl) overlayEl.hidden = true; }
 
   function rulesText() {
-    return '双方各 4 枚棋子，掷 6 才能起飞，落点可把对方撞回基地；同格己方棋子可叠放并一起移动。特殊格按棋盘印刷结算（🍰 美味的诱惑＝停一回合，🎁 恐怖箱＝随机效果），先让 4 枚全部抵达中心获胜。';
+    return '每方 4 枚棋子，掷 6 才能起飞，落点可把其他玩家撞回基地；同格己方棋子可叠放并一起移动。特殊格按棋盘印刷结算（🍰 美味的诱惑＝停一回合，🎁 恐怖箱＝随机效果），先让 4 枚全部抵达中心获胜。';
   }
   function showStartOverlay() {
     const s = loadStats();
@@ -373,7 +395,80 @@
 
   function newGame(pair) {
     pairIdx = pair;
-    st = newState(PAIRS[pair]);
+    const name = partnerName();
+    st = newState(PAIRS[pair].slice(), ['你', name], false);
+    clearTimeout(taTimer);
+    taTimer = null;
+    hideOverlay();
+    setNames();
+    setStatus('你（' + themeOf(0).emoji + '）先掷骰子');
+    setDice(0);
+    updateControls();
+    draw();
+  }
+
+  // ===== 群聊模式：成员名单与选人 =====
+  let gcMembers = [];
+  let gcSeats = [];
+  let gcGroupName = '';
+  function gcSeatThemes(n) {
+    if (n >= 4) return [0, 1, 2, 3];
+    if (n === 3) return [0, 1, 2];
+    return [0, 2];
+  }
+  function renderPicker(locked) {
+    if (!pickEl) return;
+    pickEl.textContent = '';
+    const checkedSet = {};
+    gcSeats.forEach((m) => { checkedSet[m.id] = 1; });
+    gcMembers.forEach((m) => {
+      const lab = document.createElement('label');
+      lab.className = 'fc-pick-chip';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = !!checkedSet[m.id];
+      cb.disabled = !!locked;
+      const span = document.createElement('span');
+      span.textContent = m.name || m.id;
+      lab.appendChild(cb);
+      lab.appendChild(span);
+      cb.addEventListener('change', () => {
+        if (cb.checked) {
+          if (gcSeats.length >= 3) { cb.checked = false; return; }
+          gcSeats.push({ id: m.id, name: m.name || m.id });
+        } else {
+          gcSeats = gcSeats.filter((s) => s.id !== m.id);
+        }
+        if (gstartBtn) gstartBtn.textContent = '开始对局（' + (gcSeats.length + 1) + '人）';
+      });
+      pickEl.appendChild(lab);
+    });
+  }
+  function showGroupOverlay(members, gname) {
+    gcMembers = members || [];
+    gcGroupName = gname || '群聊';
+    const total = gcMembers.length + 1;
+    const direct = total <= 4;
+    gcSeats = gcMembers.slice(0, 3);
+    const themes = gcSeatThemes(gcSeats.length + 1);
+    const roster = '⭐ 你' + gcSeats.map((m, i) => ' · ' + THEMES[themes[i + 1]].emoji + ' ' + (m.name || m.id)).join('');
+    const body = direct
+      ? gcGroupName + ' 共 ' + total + ' 人（含你），不超过 4 人，全部成员直接入座：\n' + roster
+      : gcGroupName + ' 共 ' + total + ' 人（含你），超过 4 人：勾选要邀请的成员（你 + 最多 3 人，默认已选前 3 位）';
+    if (ovTitleEl) ovTitleEl.textContent = '群聊飞行棋';
+    if (ovBodyEl) ovBodyEl.textContent = body;
+    if (pickEl) { pickEl.hidden = false; renderPicker(direct); }
+    if (startBtn) startBtn.hidden = true;
+    if (startBtn2) { startBtn2.hidden = false; startBtn2.textContent = '1v1 对战 TA'; }
+    if (gstartBtn) { gstartBtn.hidden = false; gstartBtn.textContent = '开始对局（' + (gcSeats.length + 1) + '人）'; }
+    if (overlayEl) overlayEl.hidden = false;
+  }
+  function startGroupGame() {
+    const seats = gcSeats.slice(0, 3);
+    if (!seats.length) return;
+    const themes = gcSeatThemes(seats.length + 1);
+    const names = ['你'].concat(seats.map((s) => s.name || '成员'));
+    st = newState(themes, names, true);
     clearTimeout(taTimer);
     taTimer = null;
     hideOverlay();
@@ -482,29 +577,31 @@
   }
 
   function doBump(side, group) {
-    const opp = 1 - side;
     const candidates = [];
-    for (let i = 0; i < 4; i++) {
-      const p = st.pieces[opp][i];
-      if (p >= 0 && p < 52) candidates.push(i);
+    for (let k = 0; k < st.n; k++) {
+      if (k === side) continue;
+      for (let i = 0; i < 4; i++) {
+        const p = st.pieces[k][i];
+        if (p >= 0 && p < 52) candidates.push({ side: k, idx: i });
+      }
     }
     if (candidates.length) {
       const curRaw = st.pieces[side][group[0]];
       const cur = (curRaw >= 0 && curRaw < 52) ? curRaw : entryOf(side);
       let best = candidates[0], bd = Infinity;
-      candidates.forEach((i) => {
-        const p = st.pieces[opp][i];
+      candidates.forEach((c) => {
+        const p = st.pieces[c.side][c.idx];
         const d = Math.min(Math.abs(p - cur), 52 - Math.abs(p - cur));
-        if (d < bd) { bd = d; best = i; }
+        if (d < bd) { bd = d; best = c; }
       });
-      if (st.shields[opp][best]) {
-        st.shields[opp][best] = false;
+      if (st.shields[best.side][best.idx]) {
+        st.shields[best.side][best.idx] = false;
         sfxCapture();
-        return { extra: false, skipCollision: true, msg: '碰碰车被对方护盾挡下', finished: 0 };
+        return { extra: false, skipCollision: true, msg: '碰碰车被 ' + sideName(best.side) + ' 的护盾挡下', finished: 0 };
       }
-      st.pieces[opp][best] = -1;
+      st.pieces[best.side][best.idx] = -1;
       sfxCapture();
-      return { extra: false, skipCollision: true, msg: '碰碰车把对方棋子撞回基地', finished: 0 };
+      return { extra: false, skipCollision: true, msg: '碰碰车把 ' + sideName(best.side) + ' 的棋子撞回基地', finished: 0 };
     }
     moveGroupMain(side, group, -2);
     return { extra: false, skipCollision: false, msg: '碰碰车空车，自己后退 2 格', finished: 0 };
@@ -569,17 +666,18 @@
 
   function applyCollision(side, pos) {
     if (pos < 0 || pos >= 52) return { msg: '' };
-    const opp = 1 - side;
-    const hits = piecesAt(opp, pos);
-    if (!hits.length) return { msg: '' };
     let sent = 0, blocked = 0;
-    hits.forEach((i) => {
-      if (st.shields[opp][i]) { st.shields[opp][i] = false; blocked++; }
-      else { st.pieces[opp][i] = -1; sent++; }
-    });
+    for (let k = 0; k < st.n; k++) {
+      if (k === side) continue;
+      const hits = piecesAt(k, pos);
+      hits.forEach((i) => {
+        if (st.shields[k][i]) { st.shields[k][i] = false; blocked++; }
+        else { st.pieces[k][i] = -1; sent++; }
+      });
+    }
     if (sent || blocked) sfxCapture();
     let msg = '';
-    if (sent) msg = '撞回对方 ' + sent + ' 枚';
+    if (sent) msg = '撞回 ' + sent + ' 枚';
     if (blocked) msg = (msg ? msg + '，' : '') + '护盾挡下 ' + blocked + ' 枚';
     return { msg: msg };
   }
@@ -591,20 +689,18 @@
     st.over = true;
     st.winner = side;
     st.busy = false;
-    const s = loadStats();
-    if (side === 0) s.w++; else s.l++;
-    saveStats(s);
+    let stats = null;
+    if (!st.isGroup) {
+      stats = loadStats();
+      if (side === 0) stats.w++; else stats.l++;
+      saveStats(stats);
+    }
     sfxWin();
     draw();
     updateControls();
-    const name = partnerName();
-    showOverlay(
-      side === 0 ? '你赢啦 ✈️' : name + ' 赢啦 ✈️',
-      side === 0
-        ? '4 枚棋子全部抵达中心。累计：你 ' + s.w + ' 胜 · ' + name + ' ' + s.l + ' 胜'
-        : name + ' 的 4 枚棋子先到中心。累计：你 ' + s.w + ' 胜 · ' + name + ' ' + s.l + ' 胜',
-      'result'
-    );
+    const name = sideName(side);
+    const body = (side === 0 ? '你的' : name + ' 的') + ' 4 枚棋子先全部抵达中心' + (stats ? '。累计：你 ' + stats.w + ' 胜 · ' + partnerName() + ' ' + stats.l + ' 胜' : '，本局获胜');
+    showOverlay(side === 0 ? '你赢啦 ✈️' : name + ' 赢啦 ✈️', body, 'result');
   }
 
   function passTurn(next) {
@@ -617,13 +713,12 @@
     updateControls();
     if (st.skip[next]) {
       st.skip[next] = false;
-      const nm = next === 0 ? '你' : partnerName();
-      setStatus(nm + ' 被美味诱惑，停一回合 🍰');
-      taTimer = setTimeout(() => { if (st && !st.over) passTurn(1 - next); }, 1000);
+      setStatus(sideName(next) + ' 被美味诱惑，停一回合 🍰');
+      taTimer = setTimeout(() => { if (st && !st.over) passTurn((next + 1) % st.n); }, 1000);
       return;
     }
     if (next === 0) setStatus('轮到你了');
-    else { setStatus(partnerName() + ' 的回合'); scheduleTaTurn(800); }
+    else { setStatus(sideName(next) + ' 的回合'); scheduleTaTurn(800); }
   }
 
   function afterMove(side, again) {
@@ -636,9 +731,9 @@
     updateControls();
     if (again) {
       if (side === 0) setStatus('再掷一次骰子');
-      else { setStatus(partnerName() + ' 再掷一次'); scheduleTaTurn(800); }
+      else { setStatus(sideName(side) + ' 再掷一次'); scheduleTaTurn(800); }
     } else {
-      passTurn(1 - side);
+      passTurn((side + 1) % st.n);
     }
   }
 
@@ -647,7 +742,7 @@
     const fromPos = st.pieces[side][idx];
     const group = fromPos === -1 ? [idx] : piecesAt(side, fromPos);
     const prev = previewMove(side, idx, dice);
-    const name = side === 0 ? '你' : partnerName();
+    const name = sideName(side);
     const parts = [];
     let extra = false;
     group.forEach((i) => { st.pieces[side][i] = prev.to; });
@@ -690,7 +785,7 @@
     sfxRoll();
     draw();
     updateControls();
-    const name = side === 0 ? '你' : partnerName();
+    const name = sideName(side);
     if (st.movable.length === 0) {
       setStatus(name + ' 掷出 ' + d + '，没有可移动的棋子');
       taTimer = setTimeout(() => {
@@ -742,7 +837,10 @@
       if (eff === 'horror') score -= 5;
       if (eff === 'bump') score += 10;
       if (pv.to >= 0 && pv.to < 52) {
-        for (let j = 0; j < 4; j++) if (st.pieces[1 - side][j] === pv.to) score += 320;
+        for (let k = 0; k < st.n; k++) {
+          if (k === side) continue;
+          for (let j = 0; j < 4; j++) if (st.pieces[k][j] === pv.to) score += 320;
+        }
       }
       if (st.pieces[side][idx] === -1) score += 18;
       if (score > bestScore) { bestScore = score; best = idx; }
@@ -750,18 +848,18 @@
     return best;
   }
 
-  function taRoll() {
-    if (!st || st.over || st.turn !== 1 || st.rolled || st.busy) return;
+  function aiRoll(side) {
+    if (!st || st.over || st.turn !== side || st.rolled || st.busy) return;
     st.busy = true;
     updateControls();
-    setStatus(partnerName() + ' 掷骰中…');
+    setStatus(sideName(side) + ' 掷骰中…');
     const d = rollDice();
-    rollAnim(d, () => settleRoll(1, d));
+    rollAnim(d, () => settleRoll(side, d));
   }
 
   function scheduleTaTurn(delay) {
     clearTimeout(taTimer);
-    taTimer = setTimeout(taRoll, delay);
+    taTimer = setTimeout(() => { if (st && !st.over && st.turn !== 0) aiRoll(st.turn); }, delay);
   }
 
   function onCanvasDown(e) {
@@ -786,7 +884,31 @@
 
   function setNames() {
     const name = partnerName();
-    const pair = st ? st.pair : PAIRS[pairIdx];
+    if (st && st.isGroup) {
+      // 群聊模式：重建玩家栏（每座位一个彩色名牌，含 2 人群局）
+      const row = document.getElementById('fc-players');
+      if (row) {
+        row.textContent = '';
+        for (let i = 0; i < st.n; i++) {
+          if (i > 0) {
+            const vs = document.createElement('span');
+            vs.className = 'fc-vs';
+            vs.textContent = 'VS';
+            row.appendChild(vs);
+          }
+          const chip = document.createElement('span');
+          chip.className = 'fc-side';
+          const th = THEMES[themeIdx(i)];
+          chip.textContent = th.emoji + ' ' + sideName(i);
+          chip.style.color = th.dark;
+          chip.style.background = th.light;
+          row.appendChild(chip);
+        }
+      }
+      if (partnerNameEl) partnerNameEl.textContent = '群聊';
+      return;
+    }
+    const pair = st ? st.themes : PAIRS[pairIdx];
     const a = THEMES[pair[0]], b = THEMES[pair[1]];
     if (userSideEl) {
       userSideEl.textContent = a.emoji + ' 你';
@@ -808,41 +930,27 @@
     if (fsBtn) fsBtn.textContent = isFs ? '⤢' : '⛶';
   }
 
-  function openPanel() {
-    try { if (isFs) toggleFs(); } catch (e) {}
-    panel.hidden = false;
-    if (!boardReady && !boardImg.src) boardImg.src = 'assets/fc-board.jpg';
-    setNames();
-    updateControls();
-    draw();
-    if (st && st.over) {
-      const s = loadStats();
-      const name = partnerName();
-      showOverlay(
-        st.winner === 0 ? '你赢啦 ✈️' : name + ' 赢啦 ✈️',
-        st.winner === 0
-          ? '4 枚棋子全部抵达中心。累计：你 ' + s.w + ' 胜 · ' + name + ' ' + s.l + ' 胜'
-          : name + ' 的 4 枚棋子先到中心。累计：你 ' + s.w + ' 胜 · ' + name + ' ' + s.l + ' 胜',
-        'result'
-      );
-    } else if (st && !st.over && st.turn === 1 && !st.busy) {
-      // 恢复被中断的 AI 回合（关面板会清计时器，重开时把回合接上）
+  // 恢复被中断的回合（关面板会清计时器，重开时把回合接上）
+  function resumeTurn() {
+    if (!st || st.over) return;
+    if (st.turn >= 1 && !st.busy) {
+      const ai = st.turn;
       if (st.rolled && st.dice > 0) {
-        const mv = legalMoves(1, st.dice);
+        const mv = legalMoves(ai, st.dice);
         st.movable = mv;
         if (mv.length === 0) {
-          setStatus(partnerName() + ' 掷出 ' + st.dice + '，没有可移动的棋子');
-          taTimer = setTimeout(() => { if (st && !st.over && st.turn === 1 && st.rolled) afterMove(1, st.dice === 6); }, 700);
+          setStatus(sideName(ai) + ' 掷出 ' + st.dice + '，没有可移动的棋子');
+          taTimer = setTimeout(() => { if (st && !st.over && st.turn === ai && st.rolled) afterMove(ai, st.dice === 6); }, 700);
         } else {
-          const chosen = chooseAiMove(1, st.dice);
-          setStatus(partnerName() + ' 掷出 ' + st.dice + '，移动棋子 ' + (chosen + 1));
-          taTimer = setTimeout(() => { if (st && !st.over && st.turn === 1 && st.rolled) { st.busy = true; executeMove(1, chosen, st.dice); } }, 700);
+          const chosen = chooseAiMove(ai, st.dice);
+          setStatus(sideName(ai) + ' 掷出 ' + st.dice + '，移动棋子 ' + (chosen + 1));
+          taTimer = setTimeout(() => { if (st && !st.over && st.turn === ai && st.rolled) { st.busy = true; executeMove(ai, chosen, st.dice); } }, 700);
         }
       } else if (!st.rolled) {
-        setStatus(partnerName() + ' 的回合');
+        setStatus(sideName(ai) + ' 的回合');
         scheduleTaTurn(600);
       }
-    } else if (st && !st.over && st.turn === 0 && !st.busy && st.rolled) {
+    } else if (st.turn === 0 && !st.busy && st.rolled) {
       // 恢复被中断的玩家回合：重新高亮可走棋子；无可走则自动过回合
       const mv = legalMoves(0, st.dice);
       st.movable = mv;
@@ -853,9 +961,43 @@
         setStatus('掷出 ' + st.dice + '，点击高亮棋子移动');
         draw();
       }
-    } else if (!st || st.over) {
-      showStartOverlay();
     }
+  }
+
+  function resultOverlay() {
+    if (!st) return;
+    const name = sideName(st.winner);
+    let stats = null;
+    if (!st.isGroup) stats = loadStats();
+    const body = (st.winner === 0 ? '你的' : name + ' 的') + ' 4 枚棋子先全部抵达中心' + (stats ? '。累计：你 ' + stats.w + ' 胜 · ' + partnerName() + ' ' + stats.l + ' 胜' : '，本局获胜');
+    showOverlay(st.winner === 0 ? '你赢啦 ✈️' : name + ' 赢啦 ✈️', body, 'result');
+  }
+
+  function openPanel() {
+    try { if (isFs) toggleFs(); } catch (e) {}
+    panel.hidden = false;
+    if (!boardReady && !boardImg.src) boardImg.src = 'assets/fc-board.jpg';
+    setNames();
+    updateControls();
+    draw();
+    if (st && st.over) resultOverlay();
+    else if (st && !st.over) resumeTurn();
+    else showStartOverlay();
+  }
+
+  function openPanelGroup() {
+    try { if (isFs) toggleFs(); } catch (e) {}
+    panel.hidden = false;
+    if (!boardReady && !boardImg.src) boardImg.src = 'assets/fc-board.jpg';
+    setNames();
+    updateControls();
+    draw();
+    if (st && st.over) { resultOverlay(); return; }
+    if (st && !st.over) { resumeTurn(); return; }
+    const info = (window.gcActiveMembers && window.gcActiveMembers()) || null;
+    const members = info ? info.members : [];
+    if (members.length + 1 < 2) { showStartOverlay(); return; }
+    showGroupOverlay(members, info.name);
   }
 
   function closePanel() {
@@ -871,6 +1013,7 @@
   if (fsBtn) fsBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleFs(); });
   if (startBtn) startBtn.addEventListener('click', () => newGame(0));
   if (startBtn2) startBtn2.addEventListener('click', () => newGame(1));
+  if (gstartBtn) gstartBtn.addEventListener('click', () => startGroupGame());
   if (rollBtn) rollBtn.addEventListener('click', humanRoll);
   if (soundBtn) soundBtn.addEventListener('click', () => {
     soundOn = !soundOn;
@@ -894,7 +1037,10 @@
       hideIds.forEach((id) => { const el = document.getElementById(id); if (el) el.hidden = true; });
       try { if (window.closeAvlib) window.closeAvlib(); } catch (err) {}
       try { if (window.closePongPanel) window.closePongPanel(); } catch (err) {}
-      try { openPanel(); } catch (err) {
+      try {
+        if (window.gcIsVisible && window.gcIsVisible()) openPanelGroup();
+        else openPanel();
+      } catch (err) {
         try { panel.hidden = false; showStartOverlay(); } catch (e2) {}
         try { console.error('[flight] open failed', err); } catch (e2) {}
       }

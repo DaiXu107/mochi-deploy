@@ -58,6 +58,12 @@
 .fc-legend span { white-space:nowrap; }
 #chat-flight-panel .fc-overlay .pong-overlay-btns { flex-wrap:wrap; justify-content:center; }
 #chat-flight-panel .fc-overlay .pong-overlay-btn { white-space:nowrap; }
+/* 群聊飞行棋：成员勾选（≤4 人直接开局时为锁定名单展示） */
+.fc-pick { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; padding:8px 4px 2px; max-height:180px; overflow:auto; }
+.fc-pick-chip { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:16px; background:rgba(79,140,255,.12); border:1.5px solid rgba(79,140,255,.35); font-size:13px; font-weight:600; color:#2f6fd8; cursor:pointer; user-select:none; -webkit-user-select:none; }
+.fc-pick-chip input { width:15px; height:15px; accent-color:#3a7fd5; margin:0; }
+.fc-pick-chip:has(input:checked) { background:rgba(58,127,213,.2); border-color:#3a7fd5; }
+.fc-pick-chip:has(input:disabled) { cursor:default; opacity:.9; }
 #chat-flight-panel.game-fs .poke-card-scroll { display:flex; flex-direction:column; overflow:hidden; padding:0; }
 #chat-flight-panel.game-fs .fc-wrap { flex:1; min-height:0; justify-content:center; gap:min(2vh,12px); }
 #chat-flight-panel.game-fs .fc-stage { max-width:min(94vw,620px); flex:0 1 auto; }

@@ -926,6 +926,14 @@ return !!(p && !p.hidden);
 }
 window.gcSendDecisionText = gcSendDecisionText;
 window.gcIsVisible = gcIsVisible;
+window.gcActiveMembers = function () {
+try {
+const g = currentGroup();
+if (!g) return null;
+const members = groupMemberList(g).map((c) => ({ id: c.id, name: (c && c.name) || c.id }));
+return { gid: g.id, name: g.name || '群聊', members: members };
+} catch (e) { return null; }
+};
 window.gcWriteGroupMsgs = function (gid, arr) {
 try {
 if (!Array.isArray(arr)) return false;
@@ -3417,7 +3425,7 @@ gcMorePanel.addEventListener('click', (e) => {
 const item = e.target.closest('.more-item');
 if (!item) return;
 if (gcMoreAt && (item === gcMoreAt || item.contains(gcMoreAt))) return;
-const keepInGroup = (item.id === 'more-decide' || item.id === 'more-gdecide');
+const keepInGroup = (item.id === 'more-decide' || item.id === 'more-gdecide' || item.id === 'more-flight');
 gcMorePanel.hidden = true;
 gcSetMoreTopbar(false);
 if (keepInGroup) return;

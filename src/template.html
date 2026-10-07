@@ -6157,7 +6157,7 @@
         </div>
         <div class="poke-card-scroll">
           <div class="fc-wrap">
-            <div class="fc-players">
+            <div class="fc-players" id="fc-players">
               <span class="fc-side fc-side-you" id="fc-user-side">⭐ 你</span>
               <span class="fc-vs">VS</span>
               <span class="fc-side fc-side-ta" id="fc-partner-side">🐚 <span id="fc-side-name">TA</span></span>
@@ -6167,9 +6167,11 @@
               <div class="pong-overlay fc-overlay" id="fc-overlay" hidden>
                 <div class="pong-overlay-title" id="fc-ov-title">飞行棋</div>
                 <div class="pong-overlay-body" id="fc-ov-body"></div>
+                <div class="fc-pick" id="fc-pick" hidden></div>
                 <div class="pong-overlay-btns">
                   <button class="pong-overlay-btn fc-pair-btn" id="fc-btn-start" type="button">开始对局</button>
                   <button class="pong-overlay-btn fc-pair-btn" id="fc-btn-start2" type="button" hidden>开始对局</button>
+                  <button class="pong-overlay-btn fc-pair-btn" id="fc-btn-gstart" type="button" hidden>开始对局</button>
                 </div>
               </div>
             </div>

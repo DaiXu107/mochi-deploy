@@ -7311,7 +7311,7 @@ const moreGridFun = document.getElementById('more-grid-fun');
 const moreGridAsk = document.getElementById('more-grid-ask');
 const MORE_CATS = ['chat', 'game', 'tool', 'ask'];
 let moreGroupMode = false;
-const GROUP_MORE_ITEM_IDS = new Set(['more-decide', 'more-gdecide', 'more-search', 'more-divine']);
+const GROUP_MORE_ITEM_IDS = new Set(['more-decide', 'more-gdecide', 'more-search', 'more-divine', 'more-flight']);
 function applyMoreCat(cat, group) {
 if (group === true || group === false) moreGroupMode = group;
 if (moreGroupMode) cat = 'tool'; // 群聊模式强制锁定「工具」分类

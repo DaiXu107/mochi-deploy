@@ -1152,6 +1152,15 @@
   }
   window.gcSendDecisionText = gcSendDecisionText;
   window.gcIsVisible = gcIsVisible;
+  // v8.57 群聊飞行棋：暴露当前群名与成员列表（不含「我」），供 flight-chess.js 群聊模式开局/选人
+  window.gcActiveMembers = function () {
+    try {
+      const g = currentGroup();
+      if (!g) return null;
+      const members = groupMemberList(g).map((c) => ({ id: c.id, name: (c && c.name) || c.id }));
+      return { gid: g.id, name: g.name || '群聊', members: members };
+    } catch (e) { return null; }
+  };
   // v3.36.x #582：把某个群的历史写回本地（供设置页「导入数据 → 仅聊天记录」一次性恢复全部群聊，
   // data-backup.js importChatAllGo 调用；本文件是群聊键 xy-home-v2:gc-msgs-<gid> /
   // xy-home-v2:group-chat-msgs 的唯一写入方，gcLiteSnapArray/gcWriteMsgs 的规矩都由这里守）。
@@ -4038,7 +4047,7 @@ if (defs && defs.type === 'text' && defs.text) t = defs.text;
       if (gcMoreAt && (item === gcMoreAt || item.contains(gcMoreAt))) return;
       // v3.26.x：帮我决定/多人决定 面板已移到 .phone 级，群聊里可直接在本页使用（不切聊天页），
       // 结果发送到群聊（decision.js/group-decision.js 通过 gcIsVisible 判断群聊上下文）
-      const keepInGroup = (item.id === 'more-decide' || item.id === 'more-gdecide');
+      const keepInGroup = (item.id === 'more-decide' || item.id === 'more-gdecide' || item.id === 'more-flight');
       gcMorePanel.hidden = true;
       gcSetMoreTopbar(false);
       if (keepInGroup) return;
