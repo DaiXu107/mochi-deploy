@@ -1924,16 +1924,7 @@ html.tablet #page-chat.cs-bg-on > #cs-bg-layer { min-height:100vh; min-height:ma
 
 
 
-/* v8.58：顶栏 TA 名字列（名字 + 小灰字状态行）+ 听歌吸附 chip */
+/* v8.58：顶栏 TA 名字列（名字 + 小灰字状态行） */
 .ch-id { flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:1px; }
 .ch-id .ch-name { flex:none; font-size:16px; }
 .ch-status { font-size:10.5px; color:var(--muted,#9aa3ad); line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.ch-music { flex-shrink:0; display:inline-flex; align-items:center; gap:4px; max-width:112px; height:26px; padding:0 10px; border-radius:13px; background:rgba(79,140,255,.13); color:#2f6fd8; cursor:pointer; overflow:hidden; }
-.ch-music-ico { font-size:12px; flex-shrink:0; }
-.ch-music-track { font-size:11px; font-weight:600; white-space:nowrap; }
-.ch-music.marquee .ch-music-track { display:inline-block; animation:chMusicMarquee 9s linear infinite; }
-.ch-music.paused .ch-music-track { color:#7a8699; }
-@keyframes chMusicMarquee {
-  0% { transform:translateX(64px); }
-  100% { transform:translateX(-100%); }
-}

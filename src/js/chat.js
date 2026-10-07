@@ -2660,10 +2660,8 @@ document.addEventListener('mochi-wrj-heal', function () { try { updateChatPartne
 document.addEventListener('contact-renamed', function () { try { updateChatPartnerName(); } catch (e) {} });
 } catch (e) {}
 
-// ===== v8.58 顶栏 TA 状态行（状态字卡随机轮换；通话中优先显示时长）+ 听歌 chip（悬浮窗缩小吸附） =====
+// ===== v8.58 顶栏 TA 状态行（状态字卡随机轮换；通话中优先显示时长） =====
 const pStatus = document.getElementById('chat-partner-status');
-const mChip = document.getElementById('chat-music-chip');
-const mTrack = document.getElementById('chat-music-track');
 function fcPrefix58() { return (window.activePrefix && window.activePrefix()) || 'xy-home-v2'; }
 function fmtCallDur(sec) {
   const m = Math.floor(sec / 60), s = sec % 60;
@@ -2695,9 +2693,9 @@ function renderPartnerStatus() {
     const cs = window.getCallState();
     // 只显示与当前联系人（桌面）的通话，跨桌面通话不串台
     if (cs && cs.cid === (window.__activeCid || 'default')) {
-      if (cs.status === 'connected') txt = '📞 通话中 · ' + fmtCallDur(cs.durationSec);
-      else if (cs.status === 'calling') txt = '📞 呼叫中…';
-      else if (cs.status === 'ringing') txt = '📞 来电中…';
+      if (cs.status === 'connected') txt = '通话中 · ' + fmtCallDur(cs.durationSec);
+      else if (cs.status === 'calling') txt = '呼叫中…';
+      else if (cs.status === 'ringing') txt = '来电中…';
     }
   }
   if (!txt && onChat) txt = pickPartnerStatus();
@@ -2706,40 +2704,15 @@ function renderPartnerStatus() {
   if (txt) { pStatus.textContent = txt; pStatus.hidden = false; }
   else pStatus.hidden = true;
 }
-let lastChipKey = null;
-function renderMusicChip() {
-  if (!mChip || !mTrack) return;
-  const onChat = chatVisible();
-  const st = window.musicNowState ? window.musicNowState() : null;
-  const min = window.musicFloatMinGet ? window.musicFloatMinGet() : false;
-  const show = !!(onChat && st && st.name && min);
-  const key = show ? (st.id + '|' + (st.playing ? 'p' : 's') + '|' + st.name) : '';
-  if (key === lastChipKey) return;
-  lastChipKey = key;
-  if (!show) { mChip.hidden = true; return; }
-  const txt = (st.playing ? '' : '⏸ ') + st.name + (st.artist ? ' · ' + st.artist : '');
-  mTrack.textContent = txt;
-  mChip.classList.toggle('marquee', txt.length > 10);
-  mChip.classList.toggle('paused', !st.playing);
-  mChip.hidden = false;
-}
-if (mChip) {
-  mChip.addEventListener('click', () => {
-    try { if (window.musicFloatExpand) window.musicFloatExpand(); } catch (e) {}
-  });
-}
 setInterval(() => {
   if (!chatVisible()) return;
   renderPartnerStatus();
-  renderMusicChip();
 }, 1000);
 try {
-  document.addEventListener('mochi-music-chip', () => { try { renderMusicChip(); } catch (e) {} });
   ['contact-switched', 'contact-renamed', 'mochi-wrj-heal'].forEach((ev) => {
     document.addEventListener(ev, () => {
-      lastStatusText = null; lastChipKey = null;
+      lastStatusText = null;
       try { renderPartnerStatus(); } catch (e) {}
-      try { renderMusicChip(); } catch (e) {}
     });
   });
 } catch (e) {}

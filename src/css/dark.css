@@ -1143,5 +1143,3 @@
 [data-theme="dark"] .modal.modal--warn .modal-static { background:rgba(232,56,44,.16); border-color:rgba(255,122,107,.5); }
 [data-theme="dark"] .modal.modal--warn .modal-static .modal-static-key { color:#ff8a7a; }
 
-[data-theme="dark"] .ch-music { background:var(--dark-hover); color:var(--dark-soft); }
-[data-theme="dark"] .ch-music.paused .ch-music-track { color:var(--dark-muted,#8a93a5); }

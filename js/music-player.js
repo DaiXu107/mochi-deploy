@@ -2859,7 +2859,6 @@ const e = document.getElementById(id);
 if (e) e.textContent = t;
 });
 }
-chipNotify(); // v8.58：播放/暂停态变化 → 聊天顶栏听歌 chip 同步
 }
 function updatePlayerBar() {
 const bar = document.getElementById('sm-player-bar');
@@ -2920,7 +2919,6 @@ function toggleFloatMin() {
 floatMin = !floatMin;
 applyFloatMin();
 syncPlayIcons(audio && !audio.paused);
-chipNotify(); // v8.58：折叠/展开变化 → 聊天顶栏 chip 显隐同步
 }
 function floatOwnSurfaceShown() {
 try {
@@ -2954,21 +2952,14 @@ el.style.top = y + 'px';
 store.set('music-float-pos', JSON.stringify({ left: el.style.left, top: el.style.top }));
 } catch (e) {}
 }
-function chatPageFloatSnap() {
-try {
-if (!floatMin) return false;
-const p = document.getElementById('page-chat');
-return !!(p && !p.hidden);
-} catch (e) { return false; }
-}
 function renderFloat() {
 const el = document.getElementById('sm-float');
 if (!el) return;
 const m = findTrack(currentId);
-el.hidden = !(settings.floatEn && !floatClosed && currentId && audio && m) || floatHideByWidget || floatOwnSurfaceShown() || chatPageFloatSnap();
+el.hidden = !(settings.floatEn && !floatClosed && currentId && audio && m) || floatHideByWidget || floatOwnSurfaceShown();
 if (!el.hidden) clampFloatPos(); // #994：可见这一次确保位置在当前视口内
 applyFloatMin();
-if (!m) { chipNotify(); return; }
+if (!m) return;
 document.getElementById('sm-f-name').textContent = m.name || '未知歌曲';
 const miniName = document.getElementById('sm-f-mini-name');
 if (miniName) miniName.textContent = m.name || '未知歌曲';
@@ -2981,7 +2972,7 @@ if (fCur) fCur.textContent = '00:00';
 syncPlayIcons(audio && !audio.paused);
 syncHeartIcons();
 }
-['page-phone', 'page-music', 'page-chat'].forEach(function (id) {
+['page-phone', 'page-music'].forEach(function (id) {
 const p = document.getElementById(id);
 if (!p || typeof MutationObserver === 'undefined') return;
 try {
@@ -2990,18 +2981,6 @@ new MutationObserver(function () { renderFloat(); })
 } catch (e) {}
 });
 window.musicFloatGet = function () { return !!settings.floatEn; };
-window.musicNowState = function () {
-const m = findTrack(currentId);
-return {
-id: currentId || '',
-playing: !!(audio && !audio.paused),
-name: m ? (m.name || '未知歌曲') : '',
-artist: m ? (m.artist || '') : ''
-};
-};
-window.musicFloatMinGet = function () { return !!floatMin; };
-window.musicFloatExpand = function () { if (floatMin) toggleFloatMin(); };
-function chipNotify() { try { window.dispatchEvent(new Event('mochi-music-chip')); } catch (e) {} }
 window.musicFloatSet = function (en) {
 settings.floatEn = !!en;
 floatClosed = false;
