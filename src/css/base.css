@@ -326,6 +326,12 @@ input.mochi-pick-surface::-webkit-file-upload-button { display:none; }
    加 .under-modal 压到 80（personalize close() 不挂钩子，由 clock.js 在打开时加、
    MutationObserver 监听 mask[hidden] 恢复） */
 .splash.under-modal { z-index:80; }
+/* #1537（2026-10-01 作者报「开屏点【输入密码解锁】打开的图层不在开屏」）：上方启动期性能规则
+   「.splash:not(.hide) ~ .phone { visibility:hidden }」把 modal-mask（.phone 子元素）连同祖先
+   一起藏了＝弹层开了但不可见。本规则与 .under-modal 同开同关（clock.js 打开时挂、关窗时
+   MutationObserver 摘），只在弹窗在场时把 .phone 的可见性还回来，弹窗一关回到隐藏省电态；
+   与第 108 行规则同特异性、靠书写顺序在后取胜。z 90 > 80 的层级交给 #319 那条。 */
+.splash.under-modal ~ .phone { visibility:visible; }
 /* 章节容器：编号在章节内重新从 1 开始；章节间拉开间距；折叠章节样式 */
 .splash-sec-wrap { counter-reset: notice; }
 .splash-sec-wrap + .splash-sec-wrap { margin-top:16px; }
