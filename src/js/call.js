@@ -1251,6 +1251,7 @@
     return {
       status: currentCall.status,           // ringing(来电) | calling(呼出中) | connected(通话中)
       direction: currentCall.direction,     // in | out
+      cid: currentCall.cid || '',           // v8.58：顶栏状态行按联系人过滤（跨桌面通话不串台）
       name: currentCall.name || partnerName(),
       durationSec: Math.max(0, Math.floor((Date.now() - start) / 1000))
     };

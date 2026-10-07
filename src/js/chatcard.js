@@ -206,7 +206,8 @@
     return ownPoolCache;
   }
   // 合并视图：当前作用域字卡 + 公用字卡（同分类分组拼接；只读，供回复池/搜索用）
-  const CC_TYPES = ['text', 'kaomoji', 'emoji', 'sticker', 'image', 'poke', 'voice'];
+  // v8.58：「status」状态字卡——字卡页独立分类，仅聊天顶栏状态行抽取，不进任何回复池
+  const CC_TYPES = ['text', 'kaomoji', 'emoji', 'sticker', 'image', 'poke', 'voice', 'status'];
   // v3.32.x：其他互动功能字卡（自定义）——与系统预设【其他互动功能字卡】同 13 个功能分类。
   // 存本作用域 cc-groups 的同名字段（公用库/专属库双作用域与分组停用开关全部沿用），
   // 管理页（page-custom-cards）功能分类 tab 可查看/编辑/删除，各功能经 default-cards.js
@@ -4162,10 +4163,19 @@
     const g = replyPoolGroups();
     const out = [];
     // v3.32.x：功能字卡分类（fish/eat/…）不进聊天通用回复池——它们只归对应功能抽取
+    // v8.58：状态字卡同样不进回复池，只在聊天顶栏状态行显示
     Object.keys(g).forEach(t => {
-      if (CC_FUNC_KEYS.indexOf(t) >= 0) return;
+      if (CC_FUNC_KEYS.indexOf(t) >= 0 || t === 'status') return;
       g[t].forEach(([name, arr]) => arr.forEach(c => out.push(c)));
     });
+    return out;
+  };
+  // v8.58：状态字卡池（供聊天顶栏 TA 状态行随机抽取）
+  window.getStatusCards = function () {
+    maybeHydrateReplyPool();
+    const g = replyPoolGroups();
+    const out = [];
+    (g['status'] || []).forEach(([name, arr]) => arr.forEach(c => { if (ccFuncTextOnly(c)) out.push(c); }));
     return out;
   };
   // 拍一拍字卡（自定义字卡里【拍一拍】分类）
@@ -4536,9 +4546,9 @@
     try { if (window.hydrateLibForCid) window.hydrateLibForCid(cid); } catch (e) {}
     const g = replyPoolGroupsFor(cid);
     const out = [];
-    // v3.32.x：功能字卡分类不进聊天/群聊通用回复池（同 getCustomCards）
+    // v3.32.x：功能字卡分类不进聊天/群聊通用回复池（同 getCustomCards）；v8.58 状态字卡同样除外
     Object.keys(g).forEach(t => {
-      if (CC_FUNC_KEYS.indexOf(t) >= 0) return;
+      if (CC_FUNC_KEYS.indexOf(t) >= 0 || t === 'status') return;
       (g[t] || []).forEach(([name, arr]) => (arr || []).forEach(c => out.push(c)));
     });
     return out;

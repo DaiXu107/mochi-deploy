@@ -3575,6 +3575,7 @@
         if (e) e.textContent = t;
       });
     }
+    chipNotify(); // v8.58：播放/暂停态变化 → 聊天顶栏听歌 chip 同步
   }
   function updatePlayerBar() {
     const bar = document.getElementById('sm-player-bar');
@@ -3649,6 +3650,7 @@
     floatMin = !floatMin;
     applyFloatMin();
     syncPlayIcons(audio && !audio.paused);
+    chipNotify(); // v8.58：折叠/展开变化 → 聊天顶栏 chip 显隐同步
   }
   // FIX 2026-09-16 #587 悬浮小框「点了没反应」的元凶是它自己压住了音乐控件：
   //   #sm-float 默认 left:12px;top:80px、宽 230px、高随系统字体浮动（实测 107px），
@@ -3697,14 +3699,22 @@
       store.set('music-float-pos', JSON.stringify({ left: el.style.left, top: el.style.top }));
     } catch (e) {}
   }
+  // v8.58：聊天页折叠＝吸附进顶栏（聊天页可见且折叠时悬浮小框整体让位给顶栏 chip）
+  function chatPageFloatSnap() {
+    try {
+      if (!floatMin) return false;
+      const p = document.getElementById('page-chat');
+      return !!(p && !p.hidden);
+    } catch (e) { return false; }
+  }
   function renderFloat() {
     const el = document.getElementById('sm-float');
     if (!el) return;
     const m = findTrack(currentId);
-    el.hidden = !(settings.floatEn && !floatClosed && currentId && audio && m) || floatHideByWidget || floatOwnSurfaceShown();
+    el.hidden = !(settings.floatEn && !floatClosed && currentId && audio && m) || floatHideByWidget || floatOwnSurfaceShown() || chatPageFloatSnap();
     if (!el.hidden) clampFloatPos(); // #994：可见这一次确保位置在当前视口内
     applyFloatMin();
-    if (!m) return;
+    if (!m) { chipNotify(); return; }
     document.getElementById('sm-f-name').textContent = m.name || '未知歌曲';
     const miniName = document.getElementById('sm-f-mini-name');
     if (miniName) miniName.textContent = m.name || '未知歌曲';
@@ -3721,7 +3731,7 @@
   //   进/出音乐页）不会主动调 renderFloat——观察 #page-phone / #page-music 的 hidden
   //   属性变化补一次重算，保证切页后悬浮小框显隐即时跟上。仅监听这两个节点的单个属性，
   //   无定时器、无全树监听，切页零额外开销。
-  ['page-phone', 'page-music'].forEach(function (id) {
+  ['page-phone', 'page-music', 'page-chat'].forEach(function (id) {
     const p = document.getElementById(id);
     if (!p || typeof MutationObserver === 'undefined') return;
     try {
@@ -3733,6 +3743,19 @@
   // 每桌面独立）。chat-settings.js 加载早于本文件，运行时调用；与音乐页 #music-float-en、
   // 音乐设置 #sm-set-float 完全同源（复用 saveSettings/syncFloatToggle/renderFloat 流程）。
   window.musicFloatGet = function () { return !!settings.floatEn; };
+  // v8.58：聊天顶栏听歌状态 chip 用的接口组（当前曲目 / 折叠态 / 展开悬浮窗）
+  window.musicNowState = function () {
+    const m = findTrack(currentId);
+    return {
+      id: currentId || '',
+      playing: !!(audio && !audio.paused),
+      name: m ? (m.name || '未知歌曲') : '',
+      artist: m ? (m.artist || '') : ''
+    };
+  };
+  window.musicFloatMinGet = function () { return !!floatMin; };
+  window.musicFloatExpand = function () { if (floatMin) toggleFloatMin(); };
+  function chipNotify() { try { window.dispatchEvent(new Event('mochi-music-chip')); } catch (e) {} }
   window.musicFloatSet = function (en) {
     settings.floatEn = !!en;
     floatClosed = false;

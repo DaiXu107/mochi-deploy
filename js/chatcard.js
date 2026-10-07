@@ -134,7 +134,7 @@ ccTokenizeGiantMedia(ownPoolCache, 'own');
 }
 return ownPoolCache;
 }
-const CC_TYPES = ['text', 'kaomoji', 'emoji', 'sticker', 'image', 'poke', 'voice'];
+const CC_TYPES = ['text', 'kaomoji', 'emoji', 'sticker', 'image', 'poke', 'voice', 'status'];
 const CC_FUNC_KEYS = ['fish', 'eat', 'period', 'water', 'garden', 'sync', 'reach', 'cjian', 'room', 'piggy', 'drift', 'interact', 'music',
 'mjfree']; // #317 梦角自由造句：程序生成的重造句卡（dream-free.js），管理页可查看/删除，不进聊天通用池
 const CC_ALL_TYPES = CC_TYPES.concat(CC_FUNC_KEYS);
@@ -3298,9 +3298,16 @@ maybeHydrateReplyPool();
 const g = replyPoolGroups();
 const out = [];
 Object.keys(g).forEach(t => {
-if (CC_FUNC_KEYS.indexOf(t) >= 0) return;
+if (CC_FUNC_KEYS.indexOf(t) >= 0 || t === 'status') return;
 g[t].forEach(([name, arr]) => arr.forEach(c => out.push(c)));
 });
+return out;
+};
+window.getStatusCards = function () {
+maybeHydrateReplyPool();
+const g = replyPoolGroups();
+const out = [];
+(g['status'] || []).forEach(([name, arr]) => arr.forEach(c => { if (ccFuncTextOnly(c)) out.push(c); }));
 return out;
 };
 window.getPokeCards = function () {
@@ -3568,7 +3575,7 @@ try { if (window.hydrateLibForCid) window.hydrateLibForCid(cid); } catch (e) {}
 const g = replyPoolGroupsFor(cid);
 const out = [];
 Object.keys(g).forEach(t => {
-if (CC_FUNC_KEYS.indexOf(t) >= 0) return;
+if (CC_FUNC_KEYS.indexOf(t) >= 0 || t === 'status') return;
 (g[t] || []).forEach(([name, arr]) => (arr || []).forEach(c => out.push(c)));
 });
 return out;

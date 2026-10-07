@@ -1927,6 +1927,86 @@ try {
 document.addEventListener('mochi-wrj-heal', function () { try { updateChatPartnerName(); } catch (e) {} });
 document.addEventListener('contact-renamed', function () { try { updateChatPartnerName(); } catch (e) {} });
 } catch (e) {}
+const pStatus = document.getElementById('chat-partner-status');
+const mChip = document.getElementById('chat-music-chip');
+const mTrack = document.getElementById('chat-music-track');
+function fcPrefix58() { return (window.activePrefix && window.activePrefix()) || 'xy-home-v2'; }
+function fmtCallDur(sec) {
+const m = Math.floor(sec / 60), s = sec % 60;
+return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+}
+function pickPartnerStatus() {
+let pool = [];
+try { pool = window.getStatusCards ? window.getStatusCards() : []; } catch (e) {}
+if (!pool.length) return '';
+try {
+const k = fcPrefix58() + ':ta-status';
+const raw = localStorage.getItem(k);
+if (raw) {
+const o = JSON.parse(raw);
+if (o && o.t && Date.now() - o.t < 1800000 && pool.indexOf(o.v) >= 0) return o.v;
+}
+} catch (e) {}
+const v = pool[Math.floor(Math.random() * pool.length)];
+try { localStorage.setItem(fcPrefix58() + ':ta-status', JSON.stringify({ t: Date.now(), v: v })); } catch (e) {}
+return v;
+}
+let lastStatusText = null;
+function renderPartnerStatus() {
+if (!pStatus) return;
+let txt = '';
+const onChat = chatVisible();
+if (onChat && window.getCallState) {
+const cs = window.getCallState();
+if (cs && cs.cid === (window.__activeCid || 'default')) {
+if (cs.status === 'connected') txt = '📞 通话中 · ' + fmtCallDur(cs.durationSec);
+else if (cs.status === 'calling') txt = '📞 呼叫中…';
+else if (cs.status === 'ringing') txt = '📞 来电中…';
+}
+}
+if (!txt && onChat) txt = pickPartnerStatus();
+if (txt === lastStatusText) return;
+lastStatusText = txt;
+if (txt) { pStatus.textContent = txt; pStatus.hidden = false; }
+else pStatus.hidden = true;
+}
+let lastChipKey = null;
+function renderMusicChip() {
+if (!mChip || !mTrack) return;
+const onChat = chatVisible();
+const st = window.musicNowState ? window.musicNowState() : null;
+const min = window.musicFloatMinGet ? window.musicFloatMinGet() : false;
+const show = !!(onChat && st && st.name && min);
+const key = show ? (st.id + '|' + (st.playing ? 'p' : 's') + '|' + st.name) : '';
+if (key === lastChipKey) return;
+lastChipKey = key;
+if (!show) { mChip.hidden = true; return; }
+const txt = (st.playing ? '' : '⏸ ') + st.name + (st.artist ? ' · ' + st.artist : '');
+mTrack.textContent = txt;
+mChip.classList.toggle('marquee', txt.length > 10);
+mChip.classList.toggle('paused', !st.playing);
+mChip.hidden = false;
+}
+if (mChip) {
+mChip.addEventListener('click', () => {
+try { if (window.musicFloatExpand) window.musicFloatExpand(); } catch (e) {}
+});
+}
+setInterval(() => {
+if (!chatVisible()) return;
+renderPartnerStatus();
+renderMusicChip();
+}, 1000);
+try {
+document.addEventListener('mochi-music-chip', () => { try { renderMusicChip(); } catch (e) {} });
+['contact-switched', 'contact-renamed', 'mochi-wrj-heal'].forEach((ev) => {
+document.addEventListener(ev, () => {
+lastStatusText = null; lastChipKey = null;
+try { renderPartnerStatus(); } catch (e) {}
+try { renderMusicChip(); } catch (e) {}
+});
+});
+} catch (e) {}
 const typingEl = document.getElementById('chat-typing');
 let typingOn = false;
 let typingDueAt = 0;

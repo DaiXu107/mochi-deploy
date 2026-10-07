@@ -815,7 +815,7 @@ executeMove(0, best, st.dice);
 }
 function setNames() {
 const name = partnerName();
-if (st && st.n > 2) {
+if (st && st.isGroup) {
 const row = document.getElementById('fc-players');
 if (row) {
 row.textContent = '';

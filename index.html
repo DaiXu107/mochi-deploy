@@ -3147,6 +3147,18 @@ border:1.5px solid transparent; background:var(--btn-bg,#111); color:var(--btn-i
 [data-theme="dark"] .voice-card.recording .voice-wave i { opacity:.9; }
 [data-theme="dark"] .msg-voice-play.voice-play-btn { background:rgba(255,255,255,.1); border-color:rgba(255,255,255,.16); }
 [data-theme="dark"] .voice-rec-btn { border-color:rgba(255,255,255,.28); color:#fff; }
+.ch-id { flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:1px; }
+.ch-id .ch-name { flex:none; font-size:16px; }
+.ch-status { font-size:10.5px; color:var(--muted,#9aa3ad); line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ch-music { flex-shrink:0; display:inline-flex; align-items:center; gap:4px; max-width:112px; height:26px; padding:0 10px; border-radius:13px; background:rgba(79,140,255,.13); color:#2f6fd8; cursor:pointer; overflow:hidden; }
+.ch-music-ico { font-size:12px; flex-shrink:0; }
+.ch-music-track { font-size:11px; font-weight:600; white-space:nowrap; }
+.ch-music.marquee .ch-music-track { display:inline-block; animation:chMusicMarquee 9s linear infinite; }
+.ch-music.paused .ch-music-track { color:#7a8699; }
+@keyframes chMusicMarquee {
+0% { transform:translateX(64px); }
+100% { transform:translateX(-100%); }
+}
 #page-chatcard { scrollbar-width:none; -ms-overflow-style:none; }
 #page-chatcard::-webkit-scrollbar { display:none; }
 .chat-title { font-size:22px; font-weight:700; padding:4px 2px 8px; letter-spacing:1px; }
@@ -9260,6 +9272,8 @@ color: var(--card-bg, #1e1e1e);
 [data-theme="dark"] .modal.modal--warn .modal-title { color:#ff7a6b; }
 [data-theme="dark"] .modal.modal--warn .modal-static { background:rgba(232,56,44,.16); border-color:rgba(255,122,107,.5); }
 [data-theme="dark"] .modal.modal--warn .modal-static .modal-static-key { color:#ff8a7a; }
+[data-theme="dark"] .ch-music { background:var(--dark-hover); color:var(--dark-soft); }
+[data-theme="dark"] .ch-music.paused .ch-music-track { color:var(--dark-muted,#8a93a5); }
 .garden-weather-bar {
 display:flex; align-items:center; gap:8px;
 padding:10px 18px; font-size:13px; color:var(--muted);
@@ -11106,7 +11120,7 @@ to { transform:translateY(110vh) rotate(360deg); opacity:.15; }
            （名称+版号 / 部署时间+实时秒 / 版本检测行）收成一行；检测行随 ver-check.js 退役删除。
            data-build-ts / data-version 两属性保留：device.js 诊断、bg-keep 自检、pwa.js 旧包检测
            仍只读属性（诊断版本号走 data-version 兜底，device.js 两处缓存原生支持）。 -->
-      <div class="splash-ver" id="splash-ver" data-build-ts="1791378719804" data-version="v8.1">
+      <div class="splash-ver" id="splash-ver" data-build-ts="1791380941494" data-version="v8.1">
         <span class="sv-app">Mochi 字卡传讯 已完结停更</span>
       </div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
@@ -12189,6 +12203,8 @@ to { transform:translateY(110vh) rotate(360deg); opacity:.15; }
         <button class="cc-tab" data-type="image"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5-9 9"/></svg>图片</button>
         <button class="cc-tab" data-type="poke"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 000 18"/><circle cx="12" cy="12" r="2"/></svg>拍一拍</button>
         <button class="cc-tab" data-type="voice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>语音</button>
+        <!-- v8.58：状态字卡——短状态文案池，聊天顶栏 TA 名字下方随机轮换显示，不参与聊天回复 -->
+        <button class="cc-tab" data-type="status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>状态</button>
         <!-- v3.32.x：其他互动功能字卡（自定义）——与系统预设【其他互动功能字卡】同分类，
              用户自建的功能字卡存本作用域 cc-groups 同名字段，各功能经 getLibPool 并入抽取；
              13 个功能 tab 仅「其他互动功能字卡」入口显示，公用/专属入口隐藏（openCcPage 按入口切换） -->
@@ -16035,7 +16051,16 @@ to { transform:translateY(110vh) rotate(360deg); opacity:.15; }
           <svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </span>
         <span class="ch-av" id="chat-partner-av" title="点击查看 TA 的日常"></span>
-        <span class="ch-name" id="chat-partner-name" title="点击让对方继续说">TA</span>
+        <!-- v8.58：名字下方小灰字状态行（状态字卡随机轮换；通话中优先显示通话时长），
+             名字右侧音乐 chip（歌曲悬浮窗缩小后吸附于此，歌名自动滚动） -->
+        <div class="ch-id" id="chat-partner-id">
+          <span class="ch-name" id="chat-partner-name" title="点击让对方继续说">TA</span>
+          <span class="ch-status" id="chat-partner-status" hidden></span>
+        </div>
+        <span class="ch-music" id="chat-music-chip" hidden title="点击展开歌曲悬浮窗">
+          <span class="ch-music-ico">🎵</span>
+          <span class="ch-music-track" id="chat-music-track"></span>
+        </span>
         <span class="ch-settings" id="chat-settings-btn" title="聊天设置">
           <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>
         </span>
@@ -23023,4 +23048,4 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 </body>
 </html>
 
-<!-- __MOCHI_EOF__ muy4myik -->
+<!-- __MOCHI_EOF__ muy5yks6 -->
