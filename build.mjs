@@ -375,7 +375,7 @@ if (!sw.includes('const BUILD_INFO')) {
 }
 // PERF-PLAN 阶段 1：sw 预缓存带上外置清单（离线首启/弱网首装才有 ext 可用）；
 // 完整性校验 isCompleteHtml 只对 index 生效（sw.js isIndexUrl 分支），js 文件直接 c.put。
-sw = sw.replace(/const PRECACHE = \[[^\]]*\];/, 'const PRECACHE = ' + JSON.stringify(['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-180.png'].concat(extFiles.map(f => './js/' + f))) + ';');
+sw = sw.replace(/const PRECACHE = \[[^\]]*\];/, 'const PRECACHE = ' + JSON.stringify(['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-180.png', './assets/fc-board.jpg'].concat(extFiles.map(f => './js/' + f))) + ';');
 writeFileSync(swPath, sw);
 console.log('已复制 PWA 文件 → ' + pwaFiles.join(', ') + '（sw 缓存版本: mochi-' + buildStamp + '）');
 } else {

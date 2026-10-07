@@ -64,3 +64,6 @@ diag-*.html
 tools/tmp-triage-cache/
 tools/tmp-triage-report.txt
 REAL-DEVICE-CHECK.md
+
+# 飞行棋棋盘底图（游戏资源，需入库部署）
+!assets/fc-board.jpg
