@@ -898,6 +898,11 @@
         <div class="ci"><div class="n">今日情话·我的添加</div><div class="m">你添加的桌面每日情话</div></div>
         <div class="t" id="cc-quote-count-mine">0</div>
       </div>
+      <div class="chat-item glass" id="li-birthday-cards">
+        <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><path d="M5 20c0-8 3-12 7-12s7 4 7 12"/><path d="M8 8c0-3 1.5-5 4-5s4 2 4 5"/><path d="M12 3v.5"/><path d="M9.5 3.5c-.4.8-.5 1.7-.5 2.5"/><path d="M14.5 3.5c.4.8.5 1.7.5 2.5"/></svg></div>
+        <div class="ci"><div class="n">生日字卡</div><div class="m">生日当天用于首页和日历祝福的字卡</div></div>
+        <div class="t" id="cc-birthday-count">0</div>
+      </div>
       <div class="chat-item glass" id="li-ta-ask-mine">
         <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
         <div class="ci"><div class="n">TA的询问·我的添加</div><div class="m">你添加的开放式提问</div></div>
@@ -1463,6 +1468,28 @@
       <div id="cq-mine-list" style="padding:8px 14px 14px"></div>
     </div>
     <div class="cal-card-title" style="padding:0 2px">桌面每天会从这些情话里随机展示一句</div>
+  </div>
+</div>
+
+<!-- 生日字卡（自定义字卡库） -->
+<div class="page" id="page-birthday-cards" hidden>
+  <div class="chat-head">
+    <span class="ch-back" id="birthday-cards-back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </span>
+    <span class="ch-name">生日字卡</span>
+  </div>
+  <div class="gs-scroll">
+    <div class="set-group glass">
+      <div class="cal-card-title" style="padding:14px 14px 0">添加生日祝福（每行一句）</div>
+      <div class="tc-addform">
+        <textarea id="bday-batch" class="tc-input" rows="6" placeholder="每行一句，如：&#10;生日快乐宝贝。&#10;愿你的每个愿望都实现。"></textarea>
+        <button class="ta-add-btn" style="width:100%" id="bday-batch-add">添加到生日字卡</button>
+      </div>
+      <div class="cal-card-title" style="padding:14px 14px 0">生日字卡列表</div>
+      <div id="bday-list" style="padding:8px 14px 14px"></div>
+    </div>
+    <div class="cal-card-title" style="padding:0 2px">这些字卡只在生日当天用于首页和日历祝福；「宝贝」只会在【初始生日字卡】中按当天寿星昵称替换——自己生日用我的昵称，梦角生日用该梦角昵称；自己添加的字卡保持原文。</div>
   </div>
 </div>
 
@@ -4345,6 +4372,7 @@
         <span class="ch-name">日历</span>
       </div>
       <div class="cal-scroll">
+        <div class="birthday-banner-stack" id="birthday-cal-stack" hidden></div>
         <!-- 月历（上移：选日期 → 看详情） -->
         <div class="cal-card glass" id="cal-grid-card">
           <div class="cal-month-head">
@@ -4868,6 +4896,7 @@
         <button class="fav-tab" data-htab="quotes">情话存档</button>
       </div>
       <div class="cal-scroll">
+        <div class="birthday-banner-stack" id="birthday-home-stack" data-hpanel="*" hidden></div>
         <div class="cal-card glass" data-hpanel="av">
           <div class="cal-card-title">换头像记录</div>
           <div id="home-av"></div>
@@ -5317,6 +5346,38 @@
           </div>
           <div class="mem-days"><b id="mem-love-days">—</b> 天</div>
           <div class="mem-date-txt" id="mem-love-date"></div>
+        </div>
+        <!-- 生日分区（二传增补：我的生日全局；梦角生日按联系人分别设置；日历汇总显示所有生日） -->
+        <div class="mem-card glass mem-birthday-card">
+          <div class="mem-card-label">我的生日</div>
+          <div class="mem-type-row" id="bday-self-type-row">
+            <button type="button" class="mem-type-pill sel" data-bday-type="solar">公历生日</button>
+            <button type="button" class="mem-type-pill" data-bday-type="lunar">农历生日</button>
+          </div>
+          <div class="bday-date-wrap">
+            <input type="number" id="bday-self-month" class="mem-add-input bday-num" min="1" max="12" placeholder="月" inputmode="numeric">
+            <input type="number" id="bday-self-day" class="mem-add-input bday-num" min="1" max="31" placeholder="日" inputmode="numeric">
+          </div>
+          <div class="gs-row bday-leap-row" id="bday-self-leap-wrap" hidden><span>农历闰月</span><label class="toggle"><input type="checkbox" id="bday-self-leap"><span class="tk"></span></label></div>
+          <button type="button" class="mem-add" id="bday-self-save">保存我的生日</button>
+          <div class="mem-tip glass" style="margin-top:10px">我的生日只设一次，所有桌面共用；设置后每年日历都会自动标记。</div>
+          <div class="mem-date-txt bday-status" id="bday-self-status"></div>
+        </div>
+
+        <div class="mem-card glass mem-birthday-card">
+          <div class="mem-card-label">梦角生日（对方）</div>
+          <div class="mem-type-row" id="bday-partner-type-row">
+            <button type="button" class="mem-type-pill sel" data-bday-type="solar">公历生日</button>
+            <button type="button" class="mem-type-pill" data-bday-type="lunar">农历生日</button>
+          </div>
+          <div class="bday-date-wrap">
+            <input type="number" id="bday-partner-month" class="mem-add-input bday-num" min="1" max="12" placeholder="月" inputmode="numeric">
+            <input type="number" id="bday-partner-day" class="mem-add-input bday-num" min="1" max="31" placeholder="日" inputmode="numeric">
+          </div>
+          <div class="gs-row bday-leap-row" id="bday-partner-leap-wrap" hidden><span>农历闰月</span><label class="toggle"><input type="checkbox" id="bday-partner-leap"><span class="tk"></span></label></div>
+          <button type="button" class="mem-add" id="bday-partner-save">保存梦角生日</button>
+          <div class="mem-tip glass" style="margin-top:10px">每个联系人各自设置；日历会汇总显示所有联系人的生日。</div>
+          <div class="mem-date-txt bday-status" id="bday-partner-status"></div>
         </div>
         <!-- 下一个纪念日倒计时 -->
         <div class="mem-card glass">

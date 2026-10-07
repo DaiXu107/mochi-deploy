@@ -10446,6 +10446,73 @@ font-family:inherit; padding:4px 2px; cursor:pointer; -webkit-tap-highlight-colo
 .set-row .txt { font-size: calc(14px + var(--mochi-text-adj, 0px)); }
 .set-row .txt .sub { font-size: calc(11.5px + var(--mochi-text-adj, 0px)); }
 .gc-set-row .txt { font-size: calc(14px + var(--mochi-text-adj, 0px)); }
+.mem-birthday-card .mem-card-label { color:var(--ink); }
+.bday-date-wrap { display:flex; gap:8px; margin-top:10px; }
+.bday-date-wrap .bday-num { flex:1; min-width:0; }
+.bday-leap-row { padding:8px 2px 0; }
+.bday-status { margin-top:10px; font-size:12px; color:var(--muted); line-height:1.6; }
+.birthday-banner {
+position:relative;
+overflow:hidden;
+padding:14px 16px;
+border-radius:16px;
+background:
+radial-gradient(120% 90% at 12% 0%, rgba(255,183,197,.28) 0%, transparent 46%),
+radial-gradient(120% 110% at 88% 12%, rgba(255,214,165,.24) 0%, transparent 44%),
+linear-gradient(135deg, var(--card-bg,#fff) 0%, var(--card-bg,#fff) 100%);
+box-shadow:inset 0 0 0 1px rgba(255,130,150,.16), 0 14px 34px rgba(255,120,150,.14);
+animation:bday-in .6s ease both;
+}
+.birthday-banner-stack { display:flex; flex-direction:column; gap:10px; margin-bottom:10px; }
+.birthday-banner-stack[hidden] { display:none; }
+.birthday-banner-head { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+.birthday-banner-cake { font-size:22px; line-height:1; animation:bday-pop 1.4s ease infinite; }
+.birthday-banner-title { font-size:16px; font-weight:800; letter-spacing:.5px; color:var(--ink); }
+.birthday-banner-text { font-size:13.5px; line-height:1.75; color:var(--ink); white-space:pre-wrap; }
+.birthday-banner-sub { margin-top:7px; font-size:11px; line-height:1.6; color:var(--muted); }
+.bday-confetti {
+position:absolute; left:0; top:-10px; width:9px; height:15px; border-radius:2px;
+opacity:.85; pointer-events:none; z-index:1;
+animation:bday-fall linear forwards;
+}
+.bday-candy { display:inline-block; margin-right:2px; font-size:13px; }
+.cal-cell.birthday-day {
+position:relative;
+color:#fff;
+background:linear-gradient(135deg,#ff8aa5,#ffb27a);
+font-weight:800;
+box-shadow:0 6px 16px rgba(255,110,140,.30);
+}
+.cal-cell.birthday-day::after {
+content:'🎂';
+position:absolute; right:2px; top:2px; font-size:10px; line-height:1;
+filter:drop-shadow(0 1px 1px rgba(0,0,0,.15));
+}
+.bday-list-item {
+display:flex; align-items:flex-start; gap:10px; padding:11px 0;
+border-bottom:1px solid var(--line); font-size:13px; line-height:1.7; color:var(--ink);
+}
+.bday-list-item:last-child { border-bottom:0; }
+.bday-list-text { flex:1; white-space:pre-wrap; }
+.bday-def { display:inline-block; margin-right:6px; padding:1px 6px; border-radius:999px; background:linear-gradient(135deg,#ff8aa5,#ffb27a); color:#fff; font-size:10px; font-weight:700; vertical-align:2px; }
+.bday-list-del {
+flex-shrink:0; border:none; background:transparent; color:var(--muted);
+font-size:12px; font-weight:600; padding:2px 4px; cursor:pointer;
+}
+.bday-empty { padding:14px 2px; font-size:12px; color:var(--muted); line-height:1.6; }
+@keyframes bday-in {
+from { opacity:0; transform:translateY(10px) scale(.98); }
+to { opacity:1; transform:translateY(0) scale(1); }
+}
+@keyframes bday-pop {
+0%,100% { transform:scale(1) rotate(-3deg); }
+50% { transform:scale(1.16) rotate(3deg); }
+}
+@keyframes bday-fall {
+0% { transform:translateY(-14px) rotate(0deg); opacity:.9; }
+85% { opacity:.9; }
+100% { transform:translateY(120px) rotate(360deg); opacity:0; }
+}
 </style>
 </head>
 <body>
@@ -10951,7 +11018,7 @@ font-family:inherit; padding:4px 2px; cursor:pointer; -webkit-tap-highlight-colo
            （名称+版号 / 部署时间+实时秒 / 版本检测行）收成一行；检测行随 ver-check.js 退役删除。
            data-build-ts / data-version 两属性保留：device.js 诊断、bg-keep 自检、pwa.js 旧包检测
            仍只读属性（诊断版本号走 data-version 兜底，device.js 两处缓存原生支持）。 -->
-      <div class="splash-ver" id="splash-ver" data-build-ts="1791343393427" data-version="v8.0">
+      <div class="splash-ver" id="splash-ver" data-build-ts="1791348004918" data-version="v8.0">
         <span class="sv-app">Mochi 字卡传讯 已完结停更</span>
       </div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
@@ -11317,6 +11384,11 @@ font-family:inherit; padding:4px 2px; cursor:pointer; -webkit-tap-highlight-colo
         <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.5h11a1 1 0 011 1v16l-6.5-4-6.5 4v-16a1 1 0 011-1z"/></svg></div>
         <div class="ci"><div class="n">今日情话·我的添加</div><div class="m">你添加的桌面每日情话</div></div>
         <div class="t" id="cc-quote-count-mine">0</div>
+      </div>
+      <div class="chat-item glass" id="li-birthday-cards">
+        <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><path d="M5 20c0-8 3-12 7-12s7 4 7 12"/><path d="M8 8c0-3 1.5-5 4-5s4 2 4 5"/><path d="M12 3v.5"/><path d="M9.5 3.5c-.4.8-.5 1.7-.5 2.5"/><path d="M14.5 3.5c.4.8.5 1.7.5 2.5"/></svg></div>
+        <div class="ci"><div class="n">生日字卡</div><div class="m">生日当天用于首页和日历祝福的字卡</div></div>
+        <div class="t" id="cc-birthday-count">0</div>
       </div>
       <div class="chat-item glass" id="li-ta-ask-mine">
         <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
@@ -11883,6 +11955,28 @@ font-family:inherit; padding:4px 2px; cursor:pointer; -webkit-tap-highlight-colo
       <div id="cq-mine-list" style="padding:8px 14px 14px"></div>
     </div>
     <div class="cal-card-title" style="padding:0 2px">桌面每天会从这些情话里随机展示一句</div>
+  </div>
+</div>
+
+<!-- 生日字卡（自定义字卡库） -->
+<div class="page" id="page-birthday-cards" hidden>
+  <div class="chat-head">
+    <span class="ch-back" id="birthday-cards-back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </span>
+    <span class="ch-name">生日字卡</span>
+  </div>
+  <div class="gs-scroll">
+    <div class="set-group glass">
+      <div class="cal-card-title" style="padding:14px 14px 0">添加生日祝福（每行一句）</div>
+      <div class="tc-addform">
+        <textarea id="bday-batch" class="tc-input" rows="6" placeholder="每行一句，如：&#10;生日快乐宝贝。&#10;愿你的每个愿望都实现。"></textarea>
+        <button class="ta-add-btn" style="width:100%" id="bday-batch-add">添加到生日字卡</button>
+      </div>
+      <div class="cal-card-title" style="padding:14px 14px 0">生日字卡列表</div>
+      <div id="bday-list" style="padding:8px 14px 14px"></div>
+    </div>
+    <div class="cal-card-title" style="padding:0 2px">这些字卡只在生日当天用于首页和日历祝福；「宝贝」只会在【初始生日字卡】中按当天寿星昵称替换——自己生日用我的昵称，梦角生日用该梦角昵称；自己添加的字卡保持原文。</div>
   </div>
 </div>
 
@@ -14765,6 +14859,7 @@ font-family:inherit; padding:4px 2px; cursor:pointer; -webkit-tap-highlight-colo
         <span class="ch-name">日历</span>
       </div>
       <div class="cal-scroll">
+        <div class="birthday-banner-stack" id="birthday-cal-stack" hidden></div>
         <!-- 月历（上移：选日期 → 看详情） -->
         <div class="cal-card glass" id="cal-grid-card">
           <div class="cal-month-head">
@@ -15288,6 +15383,7 @@ font-family:inherit; padding:4px 2px; cursor:pointer; -webkit-tap-highlight-colo
         <button class="fav-tab" data-htab="quotes">情话存档</button>
       </div>
       <div class="cal-scroll">
+        <div class="birthday-banner-stack" id="birthday-home-stack" data-hpanel="*" hidden></div>
         <div class="cal-card glass" data-hpanel="av">
           <div class="cal-card-title">换头像记录</div>
           <div id="home-av"></div>
@@ -15737,6 +15833,38 @@ font-family:inherit; padding:4px 2px; cursor:pointer; -webkit-tap-highlight-colo
           </div>
           <div class="mem-days"><b id="mem-love-days">—</b> 天</div>
           <div class="mem-date-txt" id="mem-love-date"></div>
+        </div>
+        <!-- 生日分区（二传增补：我的生日全局；梦角生日按联系人分别设置；日历汇总显示所有生日） -->
+        <div class="mem-card glass mem-birthday-card">
+          <div class="mem-card-label">我的生日</div>
+          <div class="mem-type-row" id="bday-self-type-row">
+            <button type="button" class="mem-type-pill sel" data-bday-type="solar">公历生日</button>
+            <button type="button" class="mem-type-pill" data-bday-type="lunar">农历生日</button>
+          </div>
+          <div class="bday-date-wrap">
+            <input type="number" id="bday-self-month" class="mem-add-input bday-num" min="1" max="12" placeholder="月" inputmode="numeric">
+            <input type="number" id="bday-self-day" class="mem-add-input bday-num" min="1" max="31" placeholder="日" inputmode="numeric">
+          </div>
+          <div class="gs-row bday-leap-row" id="bday-self-leap-wrap" hidden><span>农历闰月</span><label class="toggle"><input type="checkbox" id="bday-self-leap"><span class="tk"></span></label></div>
+          <button type="button" class="mem-add" id="bday-self-save">保存我的生日</button>
+          <div class="mem-tip glass" style="margin-top:10px">我的生日只设一次，所有桌面共用；设置后每年日历都会自动标记。</div>
+          <div class="mem-date-txt bday-status" id="bday-self-status"></div>
+        </div>
+
+        <div class="mem-card glass mem-birthday-card">
+          <div class="mem-card-label">梦角生日（对方）</div>
+          <div class="mem-type-row" id="bday-partner-type-row">
+            <button type="button" class="mem-type-pill sel" data-bday-type="solar">公历生日</button>
+            <button type="button" class="mem-type-pill" data-bday-type="lunar">农历生日</button>
+          </div>
+          <div class="bday-date-wrap">
+            <input type="number" id="bday-partner-month" class="mem-add-input bday-num" min="1" max="12" placeholder="月" inputmode="numeric">
+            <input type="number" id="bday-partner-day" class="mem-add-input bday-num" min="1" max="31" placeholder="日" inputmode="numeric">
+          </div>
+          <div class="gs-row bday-leap-row" id="bday-partner-leap-wrap" hidden><span>农历闰月</span><label class="toggle"><input type="checkbox" id="bday-partner-leap"><span class="tk"></span></label></div>
+          <button type="button" class="mem-add" id="bday-partner-save">保存梦角生日</button>
+          <div class="mem-tip glass" style="margin-top:10px">每个联系人各自设置；日历会汇总显示所有联系人的生日。</div>
+          <div class="mem-date-txt bday-status" id="bday-partner-status"></div>
         </div>
         <!-- 下一个纪念日倒计时 -->
         <div class="mem-card glass">
@@ -17824,7 +17952,7 @@ font-family:inherit; padding:4px 2px; cursor:pointer; -webkit-tap-highlight-colo
   // v3.5.123：readonly 起手（防 Chrome 密码弹条破坏表单签名）——这里立即解除，
   // 早于所有功能模块，任何设备都不会出现输入框不可用的情况
   (function () { var _ci = document.getElementById('chat-input'); if (_ci) _ci.readOnly = false; })();
-window.__jsErrors = window.__jsErrors || []; window.__mochiLoaded = window.__mochiLoaded || []; window.__mochiErrLoaded = window.__mochiErrLoaded || []; window.__mochiBootAt = Date.now(); window.__mochiJsFiles = ["device.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","room.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","pwa.js","cjian.js","feature-hub.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"]; window.__mochiExtFiles = ["idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","room.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","cjian.js","feature-hub.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"];
+window.__jsErrors = window.__jsErrors || []; window.__mochiLoaded = window.__mochiLoaded || []; window.__mochiErrLoaded = window.__mochiErrLoaded || []; window.__mochiBootAt = Date.now(); window.__mochiJsFiles = ["device.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","room.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","pwa.js","cjian.js","feature-hub.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"]; window.__mochiExtFiles = ["idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","room.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","cjian.js","feature-hub.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"];
 (function () { try {
 (function () {
 try { window.__jsErrors = window.__jsErrors || []; } catch (e0) {}
@@ -22673,6 +22801,8 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 <script defer src="js/ta-mood.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('ta-mood.js')"></script>
 <script defer src="js/music-player.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('music-player.js')"></script>
 <script defer src="js/calendar.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('calendar.js')"></script>
+<script defer src="js/lunar.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('lunar.js')"></script>
+<script defer src="js/birthday.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('birthday.js')"></script>
 <script defer src="js/divination.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('divination.js')"></script>
 <script defer src="js/avatar-lib.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('avatar-lib.js')"></script>
 <script defer src="js/ta-ask.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('ta-ask.js')"></script>
@@ -22744,4 +22874,4 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 </body>
 </html>
 
-<!-- __MOCHI_EOF__ muxjlsib -->
+<!-- __MOCHI_EOF__ muxmcmra -->
