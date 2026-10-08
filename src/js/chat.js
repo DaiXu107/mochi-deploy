@@ -2678,6 +2678,24 @@ function statusRotProb() {
     return (typeof v === 'number' && isFinite(v)) ? Math.max(0, Math.min(100, v)) : 50;
   } catch (e) { return 50; }
 }
+// 状态记录读写：走 xyStore（内存缓存 + localStorage + IndexedDB）。
+// 【根因修复·不停轮换】原实现用裸 localStorage：配额满／隐私模式时 setItem 静默失败，
+// 时间戳永远不落盘 → 每次 1s tick 都判定「冷却已到」→ 状态每秒重抽（实时跳动）。
+// xyStore.set 无条件写内存缓存、get 优先读内存缓存，写入失败也能在会话内稳定推进冷却。
+function statusStoreGet() {
+  try {
+    if (window.xyStore) return window.xyStore(fcPrefix58()).get('ta-status');
+    return localStorage.getItem(fcPrefix58() + ':ta-status');
+  } catch (e) { return null; }
+}
+function statusStoreSet(v) {
+  try {
+    if (window.xyStore) { window.xyStore(fcPrefix58()).set('ta-status', v); return; }
+    localStorage.setItem(fcPrefix58() + ':ta-status', v);
+  } catch (e) {}
+}
+// 会话内内存兜底 { key, v, t }：即使存储层异常，也保证同会话内冷却时间戳持续推进（防每秒重抽）
+let statusMem = null;
 function pickPartnerStatus() {
   let pool = [];
   try { pool = window.getStatusCards ? window.getStatusCards() : []; } catch (e) {}
@@ -2685,22 +2703,26 @@ function pickPartnerStatus() {
   const k = fcPrefix58() + ':ta-status';
   const now = Date.now();
   let cur = null, lastT = 0;
-  try {
-    const raw = localStorage.getItem(k);
-    if (raw) {
-      const o = JSON.parse(raw);
-      if (o && typeof o.v === 'string') { cur = o.v; lastT = Number(o.t) || 0; }
-    }
-  } catch (e) {}
+  if (statusMem && statusMem.key === k) { cur = statusMem.v; lastT = statusMem.t; }
+  else {
+    try {
+      const raw = statusStoreGet();
+      if (raw) {
+        const o = JSON.parse(raw);
+        if (o && typeof o.v === 'string') { cur = o.v; lastT = Number(o.t) || 0; }
+      }
+    } catch (e) {}
+  }
   const curValid = cur !== null && pool.indexOf(cur) >= 0;
-  // 未到冷却且当前状态仍在池里：保持（不掷骰子）
-  if (curValid && now - lastT < STATUS_COOLDOWN_MS) return cur;
+  // 未到冷却且当前状态仍在池里：保持（不掷骰子、不写存储）
+  if (curValid && now - lastT < STATUS_COOLDOWN_MS) { statusMem = { key: k, v: cur, t: lastT }; return cur; }
   // 到冷却（或首次 / 当前状态失效）：按概率决定是否切换；未命中＝保持当前并把时间戳前移，
   // 避免到冷却后每秒重复掷骰子造成「实时跳动」
   let v;
   if (curValid && Math.random() * 100 >= statusRotProb()) v = cur;
   else v = pool[Math.floor(Math.random() * pool.length)];
-  try { localStorage.setItem(k, JSON.stringify({ t: now, v: v })); } catch (e) {}
+  statusMem = { key: k, v: v, t: now }; // 先推进内存时间戳（存储失败也不影响冷却）
+  statusStoreSet(JSON.stringify({ t: now, v: v }));
   return v;
 }
 let lastStatusText = null;

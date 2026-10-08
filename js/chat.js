@@ -1941,6 +1941,19 @@ const v = c ? c['st-rot-prob'] : null;
 return (typeof v === 'number' && isFinite(v)) ? Math.max(0, Math.min(100, v)) : 50;
 } catch (e) { return 50; }
 }
+function statusStoreGet() {
+try {
+if (window.xyStore) return window.xyStore(fcPrefix58()).get('ta-status');
+return localStorage.getItem(fcPrefix58() + ':ta-status');
+} catch (e) { return null; }
+}
+function statusStoreSet(v) {
+try {
+if (window.xyStore) { window.xyStore(fcPrefix58()).set('ta-status', v); return; }
+localStorage.setItem(fcPrefix58() + ':ta-status', v);
+} catch (e) {}
+}
+let statusMem = null;
 function pickPartnerStatus() {
 let pool = [];
 try { pool = window.getStatusCards ? window.getStatusCards() : []; } catch (e) {}
@@ -1948,19 +1961,23 @@ if (!pool.length) return '';
 const k = fcPrefix58() + ':ta-status';
 const now = Date.now();
 let cur = null, lastT = 0;
+if (statusMem && statusMem.key === k) { cur = statusMem.v; lastT = statusMem.t; }
+else {
 try {
-const raw = localStorage.getItem(k);
+const raw = statusStoreGet();
 if (raw) {
 const o = JSON.parse(raw);
 if (o && typeof o.v === 'string') { cur = o.v; lastT = Number(o.t) || 0; }
 }
 } catch (e) {}
+}
 const curValid = cur !== null && pool.indexOf(cur) >= 0;
-if (curValid && now - lastT < STATUS_COOLDOWN_MS) return cur;
+if (curValid && now - lastT < STATUS_COOLDOWN_MS) { statusMem = { key: k, v: cur, t: lastT }; return cur; }
 let v;
 if (curValid && Math.random() * 100 >= statusRotProb()) v = cur;
 else v = pool[Math.floor(Math.random() * pool.length)];
-try { localStorage.setItem(k, JSON.stringify({ t: now, v: v })); } catch (e) {}
+statusMem = { key: k, v: v, t: now }; // 先推进内存时间戳（存储失败也不影响冷却）
+statusStoreSet(JSON.stringify({ t: now, v: v }));
 return v;
 }
 let lastStatusText = null;
