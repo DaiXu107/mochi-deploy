@@ -353,11 +353,11 @@
         <div class="splash-mandatory-head">
           <div class="splash-mandatory-title">进入前 · 作者必读公告</div>
           <!-- #315c：进入前最后一屏补年龄红线——与开屏免责卡口径一致，防御链收口 -->
-          <div class="splash-mandatory-sub">本站禁止未满 18 周岁的未成年人使用；以下为作者停更公告，请阅读（滑到底部后可确认进入）</div>
+          <div class="splash-mandatory-sub">本站禁止未满 18 周岁的未成年人使用；以下为作者停更公告，请阅读</div>
         </div>
         <!-- 2026-09-28（用户直派「公告第二页最顶写」并给出定稿原文）：原文一字未动，只补标题＋分卡＝本页卡片体例；
              本页最顶那张 pinned 卡刻意不带 `.splash-mandatory-date`（本卡自己就是日期表，再挂一个日期会多出一个假诱饵）；
-             纯静态 DOM：不改门控（clock.js 的 mandBottom / finishEnter 一字未动，仍须滑到底才能确认进入）、不进 notice.json。
+             纯静态 DOM：门控为仅勾选年龄确认即可进入（不再要求滑到底）、不进 notice.json。
              ⚠ 本卡第一行「2026.08.12 开始制作」＝二级密码的后 4 位（99+0812）。作者 2026-09-28 拍板：日期一直是很简单的字面意思、
              不是隐藏答案，所以同批把九处指路改成「第一页的章节目录里和第二页最顶那张时间线卡都写着」（clock.js 3／applock.js 3／本页 tip 与摘要行／notice.json 摘要行）；
              #1000 系列的针与 tools/verify-1000-pw-hint.mjs 的 S7・B4 两条断言要同批换锚，落点见 WORKLOG。 -->
@@ -387,8 +387,8 @@
              「按日期顺序追加在页 2 最末」的旧口径（那句 today 已不成立，别照它回滚）：
              下一批若也要默认展开，接在 fix-guide 卡之后、`<details` 之前；否则加进 details 内末尾按日期排。
              折叠用原生 details/summary，零 JS；**不要给它加默认展开的属性**（＝撤销用户要的「其他折叠起来」）。
-             门控一字未动（clock.js 的 mandBottom / finishEnter 仍只看滚动容器）：展开后内容变长，
-             「未滑到底」会重新成立＝确认按钮重新置灰、提示条重新出现，须再滑到底才能进入——这是设计不是故障。
+             门控已改为仅勾选年龄确认即可进入（不再要求滑到底）：展开后内容变长，
+             也不影响进入按钮的可点状态（进入只依赖下方的年龄确认勾选）。
              不进 notice.json（#995 起既定口径：强制页从不在线覆盖，notice.json 只覆盖页 1 公告列表与摘要）。
              ⚠️ 本注释刻意不复述任何正文原句（连 needle 也不写）：注释会随构建进产物，写了等于把哨兵钉在自己身上，
              而且会让「按原话顺序排列」这类顺序断言先在注释里命中一次（本批实测踩过，见 tools/verify-1215 的 S3）。 -->
@@ -454,7 +454,7 @@
              100% 依赖和信任、作者也是 0 经验开搓的；②网站只做了一个半月，停更后不解答任何问题、代码一直全开源
              可看可学可二改；③上面推荐的两个可白嫖 AI 的额度只是当下、以后不知道、仅供参考）——
              与 #975（两页各处的「AI 也会出错和骗人」）同源，本卡是页 2 侧的展开说明。
-             纯静态 DOM：不改门控（clock.js 的 mandBottom / finishEnter 一字未动，仍须滑到底才能确认进入）、
+             纯静态 DOM：门控为仅勾选年龄确认即可进入（不再要求滑到底）、
              不进 notice.json（强制页从不在线覆盖，notice.json 只覆盖页 1 公告列表与摘要）。 -->
         <div class="splash-mandatory-card" id="splash-mandatory-aicaveat">
           <div class="splash-mandatory-date">2026.09.21</div>
@@ -475,7 +475,7 @@
              2026-09-22 追记（#1045，作者本人给出修改稿）：第二卡第二段中段改写——「有人不清楚现状却对外说…这不是自相矛盾吗？
              网站本来就是免费的，为什么还要说这种话。也是力竭了。」→「有人不清楚现状有对外说类似…完全自相矛盾，这网站本来就是免费的，
              一直是免费的，请不要在外面乱传。」＝语气收敛、口径不变（一直免费/没收过钱/怕停更后被传成收费）；两卡其余各段一字未动。
-             纯静态 DOM：不改门控（clock.js 的 mandBottom / finishEnter 一字未动，仍须滑到底才能确认进入）、
+             纯静态 DOM：门控为仅勾选年龄确认即可进入（不再要求滑到底）、
              不进 notice.json（强制页从不在线覆盖，notice.json 只覆盖页 1 公告列表与摘要）。 -->
         <div class="splash-mandatory-card" id="splash-mandatory-respect">
           <div class="splash-mandatory-date">2026.09.22</div>
@@ -541,8 +541,6 @@
            而这一刻他盯着的是这里、不会去翻公告章节。默认 hidden，只在
            「数据多未就绪(slow)」或「数据已就绪但整页 5.5MB 资源还没加载完」时由 clock.js 显示 -->
       <div class="splash-loading-sub" id="splash-loading-sub" hidden>首次打开要先联网下载整个网站的代码，再取回存在你本机的数据；网速慢、设备越旧、数据越多都会更慢，属正常，不是坏了。若长时间停在「正在加载页面」，多与当前网络连不上有关（某些 WiFi 对本站不稳定），换一个网络（WiFi 与流量互换）再试通常就能打开。</div>
-      <!-- v3.8.y：必须把公告滑到底才能进入——未到底时按钮置灰不可点，下方提示滑动 -->
-      <div class="splash-enter-hint" id="splash-enter-hint" hidden>请滑到底部后进入</div>
       <!-- #315c：一次性年龄确认勾选——勾选后才可进入（clock.js 门控），确认一次后永久记住；
            把免责从「默认你看了」升级为「明确勾选确认」，未勾选时进入按钮置灰 -->
       <label class="splash-age" id="splash-age-row" hidden>
@@ -3099,7 +3097,7 @@
             <summary><span class="lg-num">31</span><span class="lg-name">开屏 / 系统</span><span class="lg-count">8</span></summary>
             <div class="lg-body">
           <div class="lic-li">开屏加载动画（含公告 / 版本时间 / 数据加载等待 / 我已阅读并知晓）</div>
-          <div class="lic-li">开屏有一次性的<b>年龄确认闸门</b>：勾选「已年满 18 周岁并同意全部说明」并把说明滑到底，「点击进入」才可点；本站禁止未成年人使用，确认后不再重复询问（免责声明改版时会再确认一次，确认记录只保存在你自己设备的浏览器本地、不上传）。</div>
+          <div class="lic-li">开屏有一次性的<b>年龄确认闸门</b>：勾选「已年满 18 周岁并同意全部说明」，「点击进入」才可点；本站禁止未成年人使用，确认后不再重复询问（免责声明改版时会再确认一次，确认记录只保存在你自己设备的浏览器本地、不上传）。</div>
           <div class="lic-li">开屏公告远程化：notice.json 在线覆盖公告文案</div>
           <div class="lic-li">状态栏显示真实时间（每 15 秒校准一次）</div>
           <div class="lic-li">底部 tab：桌面 / 字卡库 / 设置，独立全屏页导航与状态栏隐藏</div>
@@ -3502,6 +3500,11 @@
             <div class="gs-row"><span>点顶部昵称触发</span><label class="toggle"><input type="checkbox" id="cs-trigger-name"><span class="tk"></span></label></div>
             <div class="gs-row"><span>底部聊天栏按钮触发</span><label class="toggle"><input type="checkbox" id="cs-trigger-bar"><span class="tk"></span></label></div>
             <div class="gs-sub">点顶部昵称/底部按钮会触发新一轮回复，条数仍按上面设置抽取，会叠在正常回复之外</div>
+          </div>
+          <div class="gs-title">TA 状态行（名字下方小灰字）</div>
+          <div class="set-group glass">
+            <div class="gs-row"><span>状态轮换概率</span><div class="stepper" data-k="st-rot-prob" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="st-rot-prob-val" readonly><button class="stp-max">+</button></div></div>
+            <div class="gs-sub">聊天顶栏 TA 名字下方的小灰字状态（来自字卡页【状态】分类的状态字卡，不参与聊天回复）。状态切换有 60 分钟最小冷却：到冷却后按此概率决定是否换一条，未命中则保持当前、再等下一轮。调 0＝永不自动换，调 100＝每次到冷却必换。按联系人桌面独立保存。</div>
           </div>
           </div>
           <!-- 字卡与概率组：回复内容占比 / 系统预设字卡触发概率 / 多字卡回复 -->

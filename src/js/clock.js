@@ -376,16 +376,15 @@
   //   当日已读后再次打开才保持折叠——forceExpand 供在线/离线渲染统一读取。
   window.__splashForceExpand = !seenToday;
   // v3.8.z：全折叠+必读摘要——各章节默认收起、靠目录跳转；摘要承担必读。
-  //   "每日首次强读"仍然生效（首次须滑到底才可进入），但不再展开全部章节。
+  //   "每日首次强读"仍然生效（首次默认展开各章节便于阅读），但不再展开全部章节。
   //   移除首开 forceExpand 全展开逻辑（默认折叠即可）。
   const enterEl = document.getElementById('splash-enter');
   const loadingEl = document.getElementById('splash-loading');
   // #657：开屏等待较久时的「为什么慢」一行说明（默认 hidden，判据见 updateEnterState）
   const loadingSubEl = document.getElementById('splash-loading-sub');
-  const hintEl = document.getElementById('splash-enter-hint');
   // #315c：一次性年龄确认闸门——勾选「已年满 18 周岁并同意全部说明」后才可进入；
   //   确认记录按声明版本记住（xy-home-v2:age-confirmed），本版已确认则开屏自动勾上不重复打断。
-  //   与「滑到底」并列为进入前置条件：未勾选时按钮置灰（updateEnterState），
+  //   是进入的前置条件：未勾选时按钮置灰（updateEnterState），
   //   enter/forceEnter 双入口都拦截。checkbox 行为 label 包裹，点击文字即可勾选。
   // #1475 同意存证：记录从裸 '1' 改存 JSON（t＝勾选时间戳、v＝声明版本＝免责卡「最后更新」日期），
   //   仅保存在设备浏览器本地、不上传；开屏按版本比对，声明改版后旧确认自动失效＝重新勾选一次（re-consent）。
@@ -435,38 +434,10 @@
   //   30 秒兜底：个别资源挂起导致 load 永不触发时，到点视为已加载，避免开屏永远卡住。
   let windowLoaded = false;
   const loaded = () => windowLoaded || (typeof document !== 'undefined' && document.readyState === 'complete');
-  // v3.8.y：整页一体滚动——滚动判定用 .splash-box（顶部+公告一起滚，需滚到整页底部）
+  // 二传修饰（用户要求）：移除「强制公告页滑到底才能进入」的门控。原第二页强制公告
+  // （#splash-mandatory）内容已并入第一页（.splash-mandatory-scroll），进入仅依赖
+  // 下方的年龄确认勾选（ageOk）；点击进入直接 finishEnter，不再有滑到底判定。
   const splashBox = document.getElementById('splash-box');
-  // v3.8.x：开屏即公告1页——原「开屏公告 + 进入后的报修确认层」两页合并为一页，
-  //   全部说明已直接展示在开屏上，点【点击进入】即进入（点击即视为已阅读知晓），不再弹二次确认层。
-  //   只允许点按钮进入（长公告需滚动阅读，避免误触整屏直接跳过）。
-  // v3.8.y：必须把整页滑到底才能进入——未到底时按钮置灰不可点（无法跳过阅读）。
-  // v3.26.x：点击进入后强制观看公告——每次进入都先弹 #splash-mandatory 强制公告页
-  // （作者道别公告：二传二改 / 月底停更 / 二级密码），必须把该页滑到底、点
-  // 【我已阅读并确认进入】（finishEnter）才真正隐藏开屏进入；未到底时按钮置灰不可点。
-  const mandEl = document.getElementById('splash-mandatory');
-  const mandScroll = document.getElementById('splash-mandatory-scroll');
-  const mandEnter = document.getElementById('splash-mandatory-enter');
-  const mandHint = document.getElementById('splash-mandatory-hint');
-  let mandBottom = false;
-  function updateMandState() {
-    if (mandHint) mandHint.hidden = !!mandBottom;
-    if (mandEnter) mandEnter.classList.toggle('is-disabled', !mandBottom);
-  }
-  function checkMandScrolled() {
-    if (!mandScroll) return;
-    const b = mandScroll.scrollHeight - mandScroll.scrollTop - mandScroll.clientHeight <= 8;
-    if (b !== mandBottom) { mandBottom = b; updateMandState(); }
-  }
-  function showMandatory() {
-    if (splash.classList.contains('hide')) return;
-    if (!mandEl) { finishEnter(); return; } // 锚点缺失兜底：不卡死进入入口
-    mandEl.hidden = false;
-    if (mandScroll) mandScroll.scrollTop = 0;
-    mandBottom = false;
-    updateMandState();
-    checkMandScrolled();
-  }
   // #797a（2026-09-19）：强制进入（保险丝放行）后的常驻「数据仍在加载」顶条——
   //   原先只有一次性弹窗，点掉之后应用里再无任何「还在加载」指示，用户在空列表上
   //   继续点＝把「还没回填」当 bug 报。横幅复用 .ver-update-bar 固定顶条形态
@@ -548,26 +519,16 @@
     finishEnter();
   };
   autoSkip();
-  let scrolledBottom = false;
-  function checkScrolled() {
-    let bottom = true;
-    if (splashBox) {
-      // 内容可能由 notice.json 异步填充：未溢出/尚未渲染时视为已到底，
-      // 渲染后高度变化由轮询 + 「mochi-notice-rendered」事件重新判定
-      bottom = splashBox.scrollHeight - splashBox.scrollTop - splashBox.clientHeight <= 8;
-    }
-    if (bottom !== scrolledBottom) { scrolledBottom = bottom; updateEnterState(); }
-  }
   // v3.26.x #135：20 秒硬保险丝——数据层有未知永久挂起形态（iPad 7 + Edge：
   // indexedDB.open 永不落地 → __mochiDataReady 永不置位 → updateEnterState 的
   // ready() 恒假 → 「点击进入/仍要进入」永远出不来，开屏彻底死锁）。此前只有
   // mochi-restore-slow 慢标志（仍要进入也要求 ready 门控下的显隐路径）。现 20s
-  // 未就绪时 readyForced=true：进入门控按已就绪放行（仍要求滑到底），点进入走
+  // 未就绪时 readyForced=true：进入门控按已就绪放行，点进入走
   // forceEnter 同款「数据仍在加载」提示；数据随后真就绪时 ready() 优先、标志自动失效。
   // readyForced 已在上方 autoSkip 前声明。
   function updateEnterState() {
     const r = ready() || readyForced;
-    const ok = r && scrolledBottom && ageOk; // #315c：年龄确认与滑到底并列为可点条件
+    const ok = r && ageOk; // #315c：年龄确认勾选后才可进入
     if (loadingEl) {
       // 数据未就绪 → 仍在加载数据；数据已就绪但页面资源未加载完 → 提示等待页面
       loadingEl.hidden = r && loaded();
@@ -580,7 +541,6 @@
       const loadingShown = loadingEl ? !loadingEl.hidden : false;
       loadingSubEl.hidden = !(loadingShown && ((!ready() && slow) || (r && !loaded())));
     }
-    if (hintEl) hintEl.hidden = !r || !loaded() || ok;
     if (enterEl) {
       enterEl.hidden = !r || !loaded();
       enterEl.classList.toggle('is-disabled', !ok); // div 上设 disabled 属性不落 DOM，用 class 控制置灰
@@ -591,41 +551,33 @@
   }
   const enter = () => {
     if (splash.classList.contains('hide')) return;
-    // v3.26.x #135：未真就绪但已硬放行（20s 保险丝）→ 进强制公告页，
-    // 确认进入时（finishEnter）弹「数据仍在加载」提示（不静默进入，用户知情数据可能不全）
+    // v3.26.x #135：未真就绪但已硬放行（20s 保险丝）→ 直接进入，
+    // finishEnter 会弹「数据仍在加载」提示（不静默进入，用户知情数据可能不全）
     if (!ready()) {
-      if (readyForced) { showMandatory(); }
+      if (readyForced) { finishEnter(); }
       return; // 数据未就绪且未硬放行：禁止进入（原有门控）
     }
-    if (!scrolledBottom || !loaded() || !ageOk) return; // 未滑到底 / 页面未加载完 / 未确认年满18：禁止进入
+    if (!loaded() || !ageOk) return; // 页面未加载完 / 未确认年满18：禁止进入
     // 今日首次进入（本次仍强制通读）→ 记下已读，当日再次打开不再展开全文
     if (!seenToday) {
       try { localStorage.setItem(seenKey, '1'); seenToday = true; } catch (e) {}
     }
-    // v3.26.x：点击进入后强制观看公告——不再直接 hide，先弹强制公告页，
-    // 滑到底点【我已阅读并确认进入】（finishEnter）才真正隐藏开屏进入
-    showMandatory();
+    finishEnter();
   };
-  // v3.26.x：数据较慢时用户主动「仍要进入」——强制公告页不区分数据快慢，
-  // 任何入口进入都先读公告；确认进入后由 finishEnter 提示数据可能不全
+  // v3.26.x：数据较慢时用户主动「仍要进入」——同样要求先勾选年龄确认；
+  // 直接进入，由 finishEnter 提示数据可能不全
   const forceEnter = () => {
     if (splash.classList.contains('hide')) return;
     if (!ageOk) return; // #315c：逃生口同样要求先勾选年龄确认
     if (!seenToday) {
       try { localStorage.setItem(seenKey, '1'); seenToday = true; } catch (e) {}
     }
-    showMandatory();
+    finishEnter();
   };
   updateEnterState();
-  if (splashBox) splashBox.addEventListener('scroll', checkScrolled, { passive: true });
   if (enterEl) enterEl.addEventListener('click', (e) => { e.stopPropagation(); enter(); });
   if (forceEnterEl) forceEnterEl.addEventListener('click', (e) => { e.stopPropagation(); forceEnter(); });
   if (foldToggleEl) foldToggleEl.addEventListener('click', function (e) { e.stopPropagation(); if (splashBox) { splashBox.classList.toggle('splash-folded'); foldToggleEl.textContent = splashBox.classList.contains('splash-folded') ? '展开公告详情' : '折叠公告详情'; } });
-  // v3.26.x：强制公告页——滑到底才可确认进入（mandBottom 未到底时按钮 is-disabled 不可点）
-  if (mandEnter) mandEnter.addEventListener('click', (e) => { e.stopPropagation(); if (mandBottom) finishEnter(); });
-  if (mandScroll) mandScroll.addEventListener('scroll', checkMandScrolled, { passive: true });
-  // 字体缩放/旋转等导致内容高度变化时重新判定是否已到底
-  window.addEventListener('resize', checkMandScrolled);
   // 页面加载完成 → 刷新进入状态（window load + readyState 轮询双保险）
   window.addEventListener('load', function () { windowLoaded = true; updateEnterState(); autoSkip(); });
   // 30 秒兜底：页面个别资源挂起导致 load 永不触发时，到点视为已加载，避免开屏永远卡住
@@ -634,14 +586,12 @@
   document.addEventListener('mochi-restore-done', function () { updateEnterState(); autoSkip(); });
   // idbRestore 12 秒保险丝触发 → 标记较慢，显示「仍要进入」逃生口（不自动进入）
   document.addEventListener('mochi-restore-slow', function () { slow = true; updateEnterState(); });
-  document.addEventListener('mochi-notice-rendered', checkScrolled);
-  // 轮询：数据就绪 + 已到底后停止；期间持续校正滚动/高度变化
+  // 轮询：数据就绪后停止；期间持续刷新进入状态
   const readyPoll = setInterval(() => {
     if (splash.classList.contains('hide')) { clearInterval(readyPoll); return; }
     autoSkip();
-    if (ready() && scrolledBottom) { clearInterval(readyPoll); return; }
+    if (ready()) { clearInterval(readyPoll); return; }
     updateEnterState();
-    checkScrolled();
   }, 300);
   // 20 秒硬保险丝：数据极端异常未就绪时①置 slow 显示「仍要进入」逃生口（idbRestore
   //   12s 的 mochi-restore-slow 通常已先触发，这里兜底事件丢失场景）；②置 readyForced
@@ -804,7 +754,7 @@ function buildSplashToc(list) {
       } else if (data.hide) {
         notice.style.display = 'none';
       }
-      // 公告渲染完成（或隐藏）→ 通知开屏重新判定"是否已滑到底"
+      // 公告渲染完成（或隐藏）→ 通知（历史：曾供开屏「是否已滑到底」判定监听，现无监听方）
       document.dispatchEvent(new Event('mochi-notice-rendered'));
     })
     .catch(function () { /* 失败：保留模板默认公告 */ });

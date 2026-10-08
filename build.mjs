@@ -1629,7 +1629,7 @@ const FIX_SENTINELS = [
   // ==== 2026-09-14 #315c 免责声明细化+年龄确认闸门（四条细化文案+18周岁红线+心理援助热线；勾选 xy-home-v2:age-confirmed 后才可进入，clock.js 门控）====
   { name: '#315c 免责细化文案在位（删则退回旧一句话免责：虚构娱乐边界/热线/数据自担全丢）', file: 'template.html', needle: '预先编写的随机代码随机触发' },
   { name: '#315c 年龄确认勾选框·静态锚点（删则开屏无勾选行=免责举证降级为默认已读）', file: 'template.html', needle: 'id="splash-age-check"' },
-  { name: '#315c 年龄确认·clock.js 门控（删 ageOk 判定则未勾选也能进入=闸门失效）', file: 'js/clock.js', needle: "const ok = r && scrolledBottom && ageOk;" },
+  { name: '#315c 年龄确认·clock.js 门控（删 ageOk 判定则未勾选也能进入=闸门失效）', file: 'js/clock.js', needle: "const ok = r && ageOk;" },
   // ==== 2026-09-11 #316 聊天记录滚动跳动/闪烁（#199 overflow-anchor:none 连带关掉 Chromium 原生锚定：浏览图片较多历史时上方图片解码撑高无人补偿=内容被推走；解钉动态开回锚定、钉住态维持 none 防 #199 对打）====
   { name: '#316 解钉开滚动锚定·接线（删则用户手动滚动后锚定仍关、图片撑高继续推走视口=聊天记录一直跳；行为断言 tools/verify-chat-anchor.mjs）', file: 'js/chat.js', needle: 'function unpinChatAndAnchor() {' },
   { name: '#316 解钉开滚动锚定·CSS 开关（删则类挂了也不生效，Chromium 锚定回不来；钉住态 #199 none 语义不变）', file: 'css/base.css', needle: '.chat-body.scroll-anchor-auto { overflow-anchor: auto; }' },
@@ -1802,8 +1802,8 @@ const FIX_SENTINELS = [
   // ==== 2026-09-12 #383 联系人消息乱码直出 @@m:hash（华为畅享70Pro Chrome 报障，多机型全现）——#377 巨型库令牌化后裸 @@m:hash 卡体无 |||、非 data:，getPool 旧两道守卫全漏过＝令牌卡入文字池被当文字直出；normCell 补认裸令牌让存量乱码刷新自愈回图片 ====
   { name: '#383 getPool 媒体令牌卡不进文字池（删则令牌卡再入池被当文字发出。#943 起四道守卫收成 chatHasMediaPayload 一条统一判据，锚点随新写法、语义只强不弱）', file: 'js/chat.js', needle: 'if (typeof c === \'string\' && chatHasMediaPayload(c)) return;' },
   { name: '#383 归一化裸令牌 text 补 type=image（删则存量乱码消息永停留文字气泡。#943 起该判据收口到 chatIsImgSrcLike，锚点收到「令牌＝图片引用」这一条必然存在的分支）', file: 'js/chat.js', needle: 'if (window.mochiMediaIsToken && window.mochiMediaIsToken(s)) return true;' },
-  // ==== 2026-09-13 #384 开屏点击进入后强制观看公告（作者道别公告：二传二改/月底停更/二级密码）——每次进入先弹 #splash-mandatory，必须滑到底、点【我已阅读并确认进入】才真正进入；门控=未到底时确认按钮 is-disabled 不可点（clock.js mandBottom/finishEnter） ====
-  { name: '#384 强制公告滑到底才可确认进入（删则强制公告可跳过，进入不再必读）', file: 'js/clock.js', needle: 'if (mandBottom) finishEnter();' },
+  // ==== 2026-09-13 #384 开屏点击进入后强制观看公告——已按二传用户要求移除「滑到底」门控（进入仅依赖年龄确认勾选）；absent 哨兵防回流 ====
+  { name: '#384 强制公告滑到底门控已移除（回流=又出现 mandBottom 滑到底判定）', file: 'js/clock.js', needle: 'if (mandBottom) finishEnter();', absent: true },
   // ==== 2026-09-13 #385 联系人消息乱码·令牌夹在文字中间直出（续 #383）——#383 只治「整条 text 是裸令牌」（normCell 升 type=image）；多字卡回复 pickN.join(' ') 拼出的混合文本消息里 @@m:hash 嵌在正文中间，type 仍 text，渲染端 escTxtBr 原样铺出令牌串＝乱码（聊天/群聊公用库共享多机型全现）。消费者边界（气泡渲染）统一把内嵌 @@m:<hash32> 行内转 <img>，交 media-pool 观察器解图，存量/新收/任一浏览器不再直出令牌串 ====
   { name: '#385 内嵌令牌转行内图·chat 助手核心逻辑（split 令牌正则——删则令牌串不再转 <img>/<img class=msg-inline-tok> 直出乱码。#948 起同一条 split 并切内联 dataURL 载荷，锚点取两者共同前缀（data: 分支改大小写显式字符类，故不锚其后缀））', file: 'js/chat.js', needle: 's.split(/(@@m:[0-9a-f]{32}|' },
   { name: '#385 chat 文本气泡渲染调用内嵌令牌助手（删调用则助手在但不用，混合乱码消息仍直出令牌串）', file: 'js/chat.js', needle: 'window.mochiInlineTextHtml(T(__rawText))' },

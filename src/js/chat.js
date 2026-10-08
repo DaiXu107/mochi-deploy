@@ -2667,21 +2667,40 @@ function fmtCallDur(sec) {
   const m = Math.floor(sec / 60), s = sec % 60;
   return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
 }
-// 状态字卡：每 30 分钟换一条；无状态字卡则隐藏
+// 状态字卡：最小冷却 60 分钟，到冷却后按「状态轮换概率」决定是否换一条；
+// 未到冷却／未命中概率＝保持当前；无状态字卡则隐藏。
+// 概率键 reply-st-rot-prob（%，默认 50，随联系人桌面保存；设置：回复设置 → 聊天 → TA 状态行）。
+const STATUS_COOLDOWN_MS = 60 * 60 * 1000; // 60 分钟最小冷却
+function statusRotProb() {
+  try {
+    const c = window.replyCfg ? window.replyCfg() : null;
+    const v = c ? c['st-rot-prob'] : null;
+    return (typeof v === 'number' && isFinite(v)) ? Math.max(0, Math.min(100, v)) : 50;
+  } catch (e) { return 50; }
+}
 function pickPartnerStatus() {
   let pool = [];
   try { pool = window.getStatusCards ? window.getStatusCards() : []; } catch (e) {}
   if (!pool.length) return '';
+  const k = fcPrefix58() + ':ta-status';
+  const now = Date.now();
+  let cur = null, lastT = 0;
   try {
-    const k = fcPrefix58() + ':ta-status';
     const raw = localStorage.getItem(k);
     if (raw) {
       const o = JSON.parse(raw);
-      if (o && o.t && Date.now() - o.t < 1800000 && pool.indexOf(o.v) >= 0) return o.v;
+      if (o && typeof o.v === 'string') { cur = o.v; lastT = Number(o.t) || 0; }
     }
   } catch (e) {}
-  const v = pool[Math.floor(Math.random() * pool.length)];
-  try { localStorage.setItem(fcPrefix58() + ':ta-status', JSON.stringify({ t: Date.now(), v: v })); } catch (e) {}
+  const curValid = cur !== null && pool.indexOf(cur) >= 0;
+  // 未到冷却且当前状态仍在池里：保持（不掷骰子）
+  if (curValid && now - lastT < STATUS_COOLDOWN_MS) return cur;
+  // 到冷却（或首次 / 当前状态失效）：按概率决定是否切换；未命中＝保持当前并把时间戳前移，
+  // 避免到冷却后每秒重复掷骰子造成「实时跳动」
+  let v;
+  if (curValid && Math.random() * 100 >= statusRotProb()) v = cur;
+  else v = pool[Math.floor(Math.random() * pool.length)];
+  try { localStorage.setItem(k, JSON.stringify({ t: now, v: v })); } catch (e) {}
   return v;
 }
 let lastStatusText = null;

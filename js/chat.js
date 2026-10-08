@@ -1933,20 +1933,34 @@ function fmtCallDur(sec) {
 const m = Math.floor(sec / 60), s = sec % 60;
 return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
 }
+const STATUS_COOLDOWN_MS = 60 * 60 * 1000; // 60 分钟最小冷却
+function statusRotProb() {
+try {
+const c = window.replyCfg ? window.replyCfg() : null;
+const v = c ? c['st-rot-prob'] : null;
+return (typeof v === 'number' && isFinite(v)) ? Math.max(0, Math.min(100, v)) : 50;
+} catch (e) { return 50; }
+}
 function pickPartnerStatus() {
 let pool = [];
 try { pool = window.getStatusCards ? window.getStatusCards() : []; } catch (e) {}
 if (!pool.length) return '';
-try {
 const k = fcPrefix58() + ':ta-status';
+const now = Date.now();
+let cur = null, lastT = 0;
+try {
 const raw = localStorage.getItem(k);
 if (raw) {
 const o = JSON.parse(raw);
-if (o && o.t && Date.now() - o.t < 1800000 && pool.indexOf(o.v) >= 0) return o.v;
+if (o && typeof o.v === 'string') { cur = o.v; lastT = Number(o.t) || 0; }
 }
 } catch (e) {}
-const v = pool[Math.floor(Math.random() * pool.length)];
-try { localStorage.setItem(fcPrefix58() + ':ta-status', JSON.stringify({ t: Date.now(), v: v })); } catch (e) {}
+const curValid = cur !== null && pool.indexOf(cur) >= 0;
+if (curValid && now - lastT < STATUS_COOLDOWN_MS) return cur;
+let v;
+if (curValid && Math.random() * 100 >= statusRotProb()) v = cur;
+else v = pool[Math.floor(Math.random() * pool.length)];
+try { localStorage.setItem(k, JSON.stringify({ t: now, v: v })); } catch (e) {}
 return v;
 }
 let lastStatusText = null;

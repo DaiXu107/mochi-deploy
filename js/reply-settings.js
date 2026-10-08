@@ -32,6 +32,7 @@ const DEFAULTS = {
 'as-badge': 1,
 'as-badge-star': 0, 'as-badge-moon': 0, 'as-badge-spark': 0, 'as-badge-paw': 0,
 'as-badge-rand': 1,
+'st-rot-prob': 50,
 'ai-rps-en': 1, 'ai-rps-prob': 8, 'ai-game-en': 1, 'ai-game-prob': 5,
 'ai-cuddle-en': 1, 'ai-cuddle-prob': 5,
 'ai-cc-en': 1, 'ai-cc-prob': 4,

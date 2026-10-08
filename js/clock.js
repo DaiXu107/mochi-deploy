@@ -283,7 +283,6 @@ window.__splashForceExpand = !seenToday;
 const enterEl = document.getElementById('splash-enter');
 const loadingEl = document.getElementById('splash-loading');
 const loadingSubEl = document.getElementById('splash-loading-sub');
-const hintEl = document.getElementById('splash-enter-hint');
 const AGE_KEY = 'xy-home-v2:age-confirmed';
 const AGE_VER = '2026-09-30';
 let ageOk = false;
@@ -320,29 +319,6 @@ try { if (window.__mochiDataSlow) slow = true; } catch (e) {} // 事件先于监
 let windowLoaded = false;
 const loaded = () => windowLoaded || (typeof document !== 'undefined' && document.readyState === 'complete');
 const splashBox = document.getElementById('splash-box');
-const mandEl = document.getElementById('splash-mandatory');
-const mandScroll = document.getElementById('splash-mandatory-scroll');
-const mandEnter = document.getElementById('splash-mandatory-enter');
-const mandHint = document.getElementById('splash-mandatory-hint');
-let mandBottom = false;
-function updateMandState() {
-if (mandHint) mandHint.hidden = !!mandBottom;
-if (mandEnter) mandEnter.classList.toggle('is-disabled', !mandBottom);
-}
-function checkMandScrolled() {
-if (!mandScroll) return;
-const b = mandScroll.scrollHeight - mandScroll.scrollTop - mandScroll.clientHeight <= 8;
-if (b !== mandBottom) { mandBottom = b; updateMandState(); }
-}
-function showMandatory() {
-if (splash.classList.contains('hide')) return;
-if (!mandEl) { finishEnter(); return; } // 锚点缺失兜底：不卡死进入入口
-mandEl.hidden = false;
-if (mandScroll) mandScroll.scrollTop = 0;
-mandBottom = false;
-updateMandState();
-checkMandScrolled();
-}
 function showDataPendingBanner() {
 if (document.getElementById('mochi-data-banner')) return;
 const bar = document.createElement('div');
@@ -399,17 +375,9 @@ if (!loaded() || !(ready() || readyForced)) return;
 finishEnter();
 };
 autoSkip();
-let scrolledBottom = false;
-function checkScrolled() {
-let bottom = true;
-if (splashBox) {
-bottom = splashBox.scrollHeight - splashBox.scrollTop - splashBox.clientHeight <= 8;
-}
-if (bottom !== scrolledBottom) { scrolledBottom = bottom; updateEnterState(); }
-}
 function updateEnterState() {
 const r = ready() || readyForced;
-const ok = r && scrolledBottom && ageOk; // #315c：年龄确认与滑到底并列为可点条件
+const ok = r && ageOk; // #315c：年龄确认勾选后才可进入
 if (loadingEl) {
 loadingEl.hidden = r && loaded();
 loadingEl.textContent = (!ready() && slow) ? '数据较多，仍在加载…' : (r ? '正在加载页面…' : '正在加载数据…');
@@ -418,7 +386,6 @@ if (loadingSubEl) {
 const loadingShown = loadingEl ? !loadingEl.hidden : false;
 loadingSubEl.hidden = !(loadingShown && ((!ready() && slow) || (r && !loaded())));
 }
-if (hintEl) hintEl.hidden = !r || !loaded() || ok;
 if (enterEl) {
 enterEl.hidden = !r || !loaded();
 enterEl.classList.toggle('is-disabled', !ok); // div 上设 disabled 属性不落 DOM，用 class 控制置灰
@@ -429,14 +396,14 @@ if (foldToggleEl) foldToggleEl.hidden = !ageOk;
 const enter = () => {
 if (splash.classList.contains('hide')) return;
 if (!ready()) {
-if (readyForced) { showMandatory(); }
+if (readyForced) { finishEnter(); }
 return; // 数据未就绪且未硬放行：禁止进入（原有门控）
 }
-if (!scrolledBottom || !loaded() || !ageOk) return; // 未滑到底 / 页面未加载完 / 未确认年满18：禁止进入
+if (!loaded() || !ageOk) return; // 页面未加载完 / 未确认年满18：禁止进入
 if (!seenToday) {
 try { localStorage.setItem(seenKey, '1'); seenToday = true; } catch (e) {}
 }
-showMandatory();
+finishEnter();
 };
 const forceEnter = () => {
 if (splash.classList.contains('hide')) return;
@@ -444,27 +411,21 @@ if (!ageOk) return; // #315c：逃生口同样要求先勾选年龄确认
 if (!seenToday) {
 try { localStorage.setItem(seenKey, '1'); seenToday = true; } catch (e) {}
 }
-showMandatory();
+finishEnter();
 };
 updateEnterState();
-if (splashBox) splashBox.addEventListener('scroll', checkScrolled, { passive: true });
 if (enterEl) enterEl.addEventListener('click', (e) => { e.stopPropagation(); enter(); });
 if (forceEnterEl) forceEnterEl.addEventListener('click', (e) => { e.stopPropagation(); forceEnter(); });
 if (foldToggleEl) foldToggleEl.addEventListener('click', function (e) { e.stopPropagation(); if (splashBox) { splashBox.classList.toggle('splash-folded'); foldToggleEl.textContent = splashBox.classList.contains('splash-folded') ? '展开公告详情' : '折叠公告详情'; } });
-if (mandEnter) mandEnter.addEventListener('click', (e) => { e.stopPropagation(); if (mandBottom) finishEnter(); });
-if (mandScroll) mandScroll.addEventListener('scroll', checkMandScrolled, { passive: true });
-window.addEventListener('resize', checkMandScrolled);
 window.addEventListener('load', function () { windowLoaded = true; updateEnterState(); autoSkip(); });
 setTimeout(function () { if (!windowLoaded) { windowLoaded = true; updateEnterState(); } }, 30000);
 document.addEventListener('mochi-restore-done', function () { updateEnterState(); autoSkip(); });
 document.addEventListener('mochi-restore-slow', function () { slow = true; updateEnterState(); });
-document.addEventListener('mochi-notice-rendered', checkScrolled);
 const readyPoll = setInterval(() => {
 if (splash.classList.contains('hide')) { clearInterval(readyPoll); return; }
 autoSkip();
-if (ready() && scrolledBottom) { clearInterval(readyPoll); return; }
+if (ready()) { clearInterval(readyPoll); return; }
 updateEnterState();
-checkScrolled();
 }, 300);
 setTimeout(() => {
 if (!ready()) {

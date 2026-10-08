@@ -442,14 +442,9 @@ input.mochi-pick-surface::-webkit-file-upload-button { display:none; }
   transition:opacity .35s ease, transform .12s ease;
 }
 .splash-enter:active { opacity:.75; transform:scale(.97); }
-/* v3.8.y：未滑到底时进入按钮置灰不可点（无法跳过公告阅读） */
+/* 未勾选年龄确认时进入按钮置灰不可点（无滑动门控） */
 .splash-enter.is-disabled { opacity:.3; box-shadow:none; pointer-events:none; }
 .splash-enter[hidden] { display:none; }
-/* 未滑到底时的提示文字（按钮置灰 + 提示滑动） */
-.splash-enter-hint {
-  margin-top:8px; font-size:11px; color:var(--hint-ink); letter-spacing:1px;
-}
-.splash-enter-hint[hidden] { display:none; }
 /* #315c：年龄确认勾选行——label 包裹整行可点，checkbox 原生控件保证可访问性与举证形态 */
 .splash-age {
   display:flex; align-items:flex-start; gap:7px;
@@ -531,17 +526,8 @@ input.mochi-pick-surface::-webkit-file-upload-button { display:none; }
 }
 .splash-force-enter:active { opacity:.6; }
 .splash-force-enter[hidden] { display:none; }
-/* v3.26.x：点击进入后强制观看公告页——全屏覆盖开屏，每次进入先读作者公告：
-   必须把 .splash-mandatory-scroll 滑到底、点【我已阅读并确认进入】才真正进入
-   （未到底时按钮 is-disabled 置灰不可点，门控在 clock.js，不可删除或绕过） */
-.splash-mandatory {
-  position:absolute; inset:0; z-index:20;
-  background:var(--card-bg);
-  display:flex; flex-direction:column;
-  box-sizing:border-box;
-  padding:22px 18px calc(22px + var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px)));
-}
-.splash-mandatory[hidden] { display:none; }
+/* 二传修饰（用户要求）：原「强制公告页」全屏覆盖层已并入第一页，.splash-mandatory 全屏层
+   与底部确认区（.splash-mandatory-foot / -hint / -enter）随滑到底门控一并移除。 */
 .splash-mandatory-scroll {
   flex:1; min-height:0; width:min(322px, 100%); margin:0 auto;
   overflow-y:auto; box-sizing:border-box; padding:4px 2px 16px;
@@ -585,24 +571,6 @@ input.mochi-pick-surface::-webkit-file-upload-button { display:none; }
 .splash-mandatory-fold[open] > .splash-mandatory-fold-sum { margin-bottom:12px; }
 .splash-mandatory-fold[open] > .splash-mandatory-fold-sum::after { content:"▴"; }
 .splash-mandatory-end { text-align:center; font-size:11px; color:var(--hint-ink); letter-spacing:2px; padding:2px 0 4px; }
-/* 底部确认区（常驻不随内容滚动）：提示 + 确认按钮 */
-.splash-mandatory-foot {
-  width:min(322px, 100%); margin:0 auto; box-sizing:border-box;
-  display:flex; flex-direction:column; align-items:center;
-  padding:12px 18px 0;
-}
-.splash-mandatory-hint { margin-bottom:12px; font-size:11px; color:var(--hint-ink); letter-spacing:1px; }
-.splash-mandatory-hint[hidden] { display:none; }
-.splash-mandatory-enter {
-  display:inline-block; padding:12px 34px;
-  background:var(--btn-bg); color:var(--btn-ink); font-size:13px; font-weight:700;
-  border-radius:99px; letter-spacing:2px; cursor:pointer;
-  -webkit-tap-highlight-color:transparent; user-select:none;
-  box-shadow:0 3px 10px rgba(0,0,0,.12);
-  transition:opacity .35s ease, transform .12s ease;
-}
-.splash-mandatory-enter:active { opacity:.75; transform:scale(.97); }
-.splash-mandatory-enter.is-disabled { opacity:.3; box-shadow:none; pointer-events:none; }
 @keyframes splash-pop {
   0% { transform:scale(.8); opacity:0; }
   100% { transform:scale(1); opacity:1; }
