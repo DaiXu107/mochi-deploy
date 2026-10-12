@@ -92,3 +92,27 @@
 @keyframes bday-emoji-fall {
   to { transform:translateY(110vh) rotate(360deg); opacity:.15; }
 }
+
+/* ===== 二传增补：纪念日特殊天数/节日 头像框（爱心 ❤️ / 庆祝 🎉） ===== */
+.deco-avatar.anniv-ring, .ch-av.anniv-ring { position:relative; }
+.deco-avatar.anniv-ring .ring, .ch-av.anniv-ring {
+  border-color:transparent;
+  box-shadow:0 0 0 3px #ff7aa8, 0 8px 22px rgba(255,105,155,.38);
+}
+.deco-avatar.anniv-ring::after, .ch-av.anniv-ring::after {
+  content:'❤️';
+  position:absolute; top:-9px; right:-7px; z-index:3;
+  font-size:18px; line-height:1; pointer-events:none;
+  filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
+}
+.deco-avatar.anniv-ring-fest, .ch-av.anniv-ring-fest { position:relative; }
+.deco-avatar.anniv-ring-fest .ring, .ch-av.anniv-ring-fest {
+  border-color:transparent;
+  box-shadow:0 0 0 3px #ffd166, 0 8px 22px rgba(255,180,80,.35);
+}
+.deco-avatar.anniv-ring-fest::after, .ch-av.anniv-ring-fest::after {
+  content:'🎉';
+  position:absolute; top:-9px; right:-7px; z-index:3;
+  font-size:18px; line-height:1; pointer-events:none;
+  filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
+}

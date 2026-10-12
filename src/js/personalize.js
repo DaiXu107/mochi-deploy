@@ -9281,7 +9281,8 @@ bindAdjDrag(headTop, false); // #1534：拖标题行移动面板（与桌面美�
     }
     const d = new Date(start + 'T00:00:00');
     if (isNaN(d.getTime())) return;
-    const days = Math.max(1, Math.floor((new Date() - d) / 864e5));
+    // v8.57：纪念日天数含开始日——开始日当天=第 1 天，之后每天 +1（原 floor 差值不含当天）
+    const days = Math.floor((new Date() - d) / 864e5) + 1;
     const fmt = start.split('-').join('.');
     // 爱情向=「我们在一起」，亲情/友情向=「我们相识」；设置了关系称呼时以称呼为对象（如「和姐姐相识」）
     const role = relRole();
@@ -9422,7 +9423,7 @@ bindAdjDrag(headTop, false); // #1534：拖标题行移动面板（与桌面美�
       const isCount = it.type === 'count' || diff > 0;
       const label = isCount
         ? (diff > 0 ? '还有 ' + diff + ' 天' : '就是今天')
-        : '已 ' + Math.abs(diff) + ' 天';
+        : '已 ' + (Math.abs(diff) + 1) + ' 天'; // v8.57：含开始日（开始日当天=第 1 天）
       const fmt = it.date.split('-').join('.');
       d.innerHTML =
         '<span class="me-name">' + it.name + '</span>' +
@@ -9438,6 +9439,97 @@ bindAdjDrag(headTop, false); // #1534：拖标题行移动面板（与桌面美�
       list.appendChild(d);
     });
   }
+  // ================= 纪念日特效：特殊天数 / 节日（掉落 emoji + 头像框） =================
+  // v8.57：生日那套「掉落 emoji + 头像光环」复用到纪念日——
+  //   特殊天数（含开始日后的「已相伴第 N 天」命中 99/520/666/999…）= 掉爱心 ❤️；
+  //   节日（添加的纪念日/倒数日条目月日命中今天）= 掉庆祝 🎉。
+  // 掉落动画复用生日系统的 .bday-emoji-rain / .bday-emoji（birthday.css 已有），
+  // 头像框新增 .anniv-ring（爱心）/ .anniv-ring-fest（庆祝）。
+  const ANNIV_SPECIAL_DAYS = [99, 100, 199, 200, 520, 521, 666, 777, 888, 999, 1000, 1314, 5200];
+  const ANNIV_HEART_EMOJIS = ['❤️', '💖', '💕', '💗', '💘', '💝'];
+  const ANNIV_FEST_EMOJIS = ['🎉', '🎊', '🥳', '✨', '🎈', '💐'];
+  // 主纪念日已相伴天数（含开始日，与 updateLove 同口径）
+  function loveDayCount() {
+    const start = normDateStr(store.get('love-start'));
+    if (!start) return 0;
+    const d = new Date(start + 'T00:00:00');
+    if (isNaN(d.getTime())) return 0;
+    return Math.floor((new Date() - d) / 864e5) + 1;
+  }
+  // 某条纪念日的「已相伴天数」（含开始日）；未来日期返回 0（不参与特殊天数判断）
+  function extraDayCount(it) {
+    const t = new Date(it.date + 'T00:00:00');
+    if (isNaN(t.getTime())) return 0;
+    const diff = Math.round((t.getTime() - Date.now()) / 864e5);
+    return diff > 0 ? 0 : Math.abs(diff) + 1;
+  }
+  // 当天纪念日特效：返回 'heart'（特殊天数）/ 'fest'（节日）/ null（无）
+  function annivEffectToday() {
+    let special = ANNIV_SPECIAL_DAYS.indexOf(loveDayCount()) >= 0;
+    let fest = false;
+    const now = new Date();
+    const mm = now.getMonth() + 1, dd = now.getDate();
+    const extras = getExtras();
+    for (let i = 0; i < extras.length; i++) {
+      const it = extras[i];
+      const parts = String(it.date || '').split('-');
+      if (parts.length === 3 && +parts[1] === mm && +parts[2] === dd) fest = true;
+      if (ANNIV_SPECIAL_DAYS.indexOf(extraDayCount(it)) >= 0) special = true;
+    }
+    return special ? 'heart' : (fest ? 'fest' : null);
+  }
+  // 纪念日头像框（幂等：根据当天状态加/移除 class），返回命中类型
+  function applyAnnivRings() {
+    const kind = annivEffectToday();
+    const els = [document.getElementById('avatar-user'), document.getElementById('avatar-partner'), document.getElementById('chat-partner-av')];
+    els.forEach(el => {
+      if (!el) return;
+      el.classList.remove('anniv-ring', 'anniv-ring-fest');
+      if (kind) el.classList.add(kind === 'fest' ? 'anniv-ring-fest' : 'anniv-ring');
+    });
+    return kind;
+  }
+  // 纪念日掉落 emoji（复用生日掉落动画；kind: 'heart' / 'fest'）
+  function annivEmojiRain(kind) {
+    if (!document.body || !document.createElement) return;
+    try { const old = document.getElementById('anniv-emoji-rain'); if (old) old.remove(); } catch (e) {}
+    const emojis = kind === 'fest' ? ANNIV_FEST_EMOJIS : ANNIV_HEART_EMOJIS;
+    const layer = document.createElement('div');
+    layer.id = 'anniv-emoji-rain';
+    layer.className = 'bday-emoji-rain';
+    for (let i = 0; i < 24; i++) {
+      const s = document.createElement('span');
+      s.className = 'bday-emoji';
+      s.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      s.style.left = Math.round(Math.random() * 100) + '%';
+      s.style.fontSize = Math.round(16 + Math.random() * 14) + 'px';
+      s.style.animationDuration = (2.6 + Math.random() * 2.2).toFixed(2) + 's';
+      s.style.animationDelay = (Math.random() * 0.8).toFixed(2) + 's';
+      layer.appendChild(s);
+    }
+    document.body.appendChild(layer);
+    setTimeout(() => { try { if (layer.parentNode) layer.parentNode.removeChild(layer); } catch (e) {} }, 5200);
+  }
+  // 返回首页时：头像框 + 下雨（下雨只在这一入口触发，切联系人/初始化只刷头像框不重复下雨）
+  function annivOnHomeReturn() {
+    const kind = applyAnnivRings();
+    if (kind) annivEmojiRain(kind);
+  }
+  function watchAnnivHomeReturn() {
+    const phone = document.getElementById('page-phone');
+    if (!phone || typeof MutationObserver === 'undefined') return;
+    let visible = !phone.hidden;
+    const mo = new MutationObserver(() => {
+      const nv = !phone.hidden;
+      if (nv && !visible) annivOnHomeReturn();
+      visible = nv;
+    });
+    mo.observe(phone, { attributes: true, attributeFilter: ['hidden'] });
+  }
+  watchAnnivHomeReturn();
+  try { applyAnnivRings(); } catch (e) {} // 初始化只刷头像框（不下雨）
+  document.addEventListener('contact-switched', function () { try { applyAnnivRings(); } catch (e) {} });
+  document.addEventListener('mochi-restore-done', function () { try { applyAnnivRings(); } catch (e) {} });
   const memAdd = document.getElementById('mem-add');
   if (memAdd) {
     memAdd.addEventListener('click', openMemAddModal);

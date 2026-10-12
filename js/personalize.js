@@ -7489,7 +7489,7 @@ return;
 }
 const d = new Date(start + 'T00:00:00');
 if (isNaN(d.getTime())) return;
-const days = Math.max(1, Math.floor((new Date() - d) / 864e5));
+const days = Math.floor((new Date() - d) / 864e5) + 1;
 const fmt = start.split('-').join('.');
 const role = relRole();
 const who = role ? '和' + role : '我们';
@@ -7608,7 +7608,7 @@ const diff = Math.round((target.getTime() - Date.now()) / 864e5);
 const isCount = it.type === 'count' || diff > 0;
 const label = isCount
 ? (diff > 0 ? '还有 ' + diff + ' 天' : '就是今天')
-: '已 ' + Math.abs(diff) + ' 天';
+: '已 ' + (Math.abs(diff) + 1) + ' 天'; // v8.57：含开始日（开始日当天=第 1 天）
 const fmt = it.date.split('-').join('.');
 d.innerHTML =
 '<span class="me-name">' + it.name + '</span>' +
@@ -7624,6 +7624,85 @@ renderExtras();
 list.appendChild(d);
 });
 }
+const ANNIV_SPECIAL_DAYS = [99, 100, 199, 200, 520, 521, 666, 777, 888, 999, 1000, 1314, 5200];
+const ANNIV_HEART_EMOJIS = ['❤️', '💖', '💕', '💗', '💘', '💝'];
+const ANNIV_FEST_EMOJIS = ['🎉', '🎊', '🥳', '✨', '🎈', '💐'];
+function loveDayCount() {
+const start = normDateStr(store.get('love-start'));
+if (!start) return 0;
+const d = new Date(start + 'T00:00:00');
+if (isNaN(d.getTime())) return 0;
+return Math.floor((new Date() - d) / 864e5) + 1;
+}
+function extraDayCount(it) {
+const t = new Date(it.date + 'T00:00:00');
+if (isNaN(t.getTime())) return 0;
+const diff = Math.round((t.getTime() - Date.now()) / 864e5);
+return diff > 0 ? 0 : Math.abs(diff) + 1;
+}
+function annivEffectToday() {
+let special = ANNIV_SPECIAL_DAYS.indexOf(loveDayCount()) >= 0;
+let fest = false;
+const now = new Date();
+const mm = now.getMonth() + 1, dd = now.getDate();
+const extras = getExtras();
+for (let i = 0; i < extras.length; i++) {
+const it = extras[i];
+const parts = String(it.date || '').split('-');
+if (parts.length === 3 && +parts[1] === mm && +parts[2] === dd) fest = true;
+if (ANNIV_SPECIAL_DAYS.indexOf(extraDayCount(it)) >= 0) special = true;
+}
+return special ? 'heart' : (fest ? 'fest' : null);
+}
+function applyAnnivRings() {
+const kind = annivEffectToday();
+const els = [document.getElementById('avatar-user'), document.getElementById('avatar-partner'), document.getElementById('chat-partner-av')];
+els.forEach(el => {
+if (!el) return;
+el.classList.remove('anniv-ring', 'anniv-ring-fest');
+if (kind) el.classList.add(kind === 'fest' ? 'anniv-ring-fest' : 'anniv-ring');
+});
+return kind;
+}
+function annivEmojiRain(kind) {
+if (!document.body || !document.createElement) return;
+try { const old = document.getElementById('anniv-emoji-rain'); if (old) old.remove(); } catch (e) {}
+const emojis = kind === 'fest' ? ANNIV_FEST_EMOJIS : ANNIV_HEART_EMOJIS;
+const layer = document.createElement('div');
+layer.id = 'anniv-emoji-rain';
+layer.className = 'bday-emoji-rain';
+for (let i = 0; i < 24; i++) {
+const s = document.createElement('span');
+s.className = 'bday-emoji';
+s.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+s.style.left = Math.round(Math.random() * 100) + '%';
+s.style.fontSize = Math.round(16 + Math.random() * 14) + 'px';
+s.style.animationDuration = (2.6 + Math.random() * 2.2).toFixed(2) + 's';
+s.style.animationDelay = (Math.random() * 0.8).toFixed(2) + 's';
+layer.appendChild(s);
+}
+document.body.appendChild(layer);
+setTimeout(() => { try { if (layer.parentNode) layer.parentNode.removeChild(layer); } catch (e) {} }, 5200);
+}
+function annivOnHomeReturn() {
+const kind = applyAnnivRings();
+if (kind) annivEmojiRain(kind);
+}
+function watchAnnivHomeReturn() {
+const phone = document.getElementById('page-phone');
+if (!phone || typeof MutationObserver === 'undefined') return;
+let visible = !phone.hidden;
+const mo = new MutationObserver(() => {
+const nv = !phone.hidden;
+if (nv && !visible) annivOnHomeReturn();
+visible = nv;
+});
+mo.observe(phone, { attributes: true, attributeFilter: ['hidden'] });
+}
+watchAnnivHomeReturn();
+try { applyAnnivRings(); } catch (e) {} // 初始化只刷头像框（不下雨）
+document.addEventListener('contact-switched', function () { try { applyAnnivRings(); } catch (e) {} });
+document.addEventListener('mochi-restore-done', function () { try { applyAnnivRings(); } catch (e) {} });
 const memAdd = document.getElementById('mem-add');
 if (memAdd) {
 memAdd.addEventListener('click', openMemAddModal);
