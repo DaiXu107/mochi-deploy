@@ -9784,6 +9784,26 @@ border: 1px solid var(--input-border, #e0e0e0); background: var(--input-bg, #fff
 .msg-drink-wish { margin-top:4px; font-size:12px; line-height:1.5; color:var(--ink); }
 .mg-drink-wait { font-size:11.5px; color:var(--muted,#8a8a8a); }
 .msg-gift-reject { margin-left:8px; font-size:12px; font-weight:600; color:var(--muted,#8a8a8a); cursor:pointer; background:var(--card-soft,#f2f3f5); border:1px solid var(--card-border,rgba(0,0,0,.08)); padding:5px 12px; border-radius:999px; }
+.bar-slot { cursor: pointer; }
+.bs-plus { background: transparent; border: none; padding: 0; cursor: pointer; font-size: 22px; line-height: 1; color: var(--hint-ink, #ccc); }
+.bar-slot.base-slot { border-color: rgba(255,150,170,.6); }
+.bar-slot.base-slot .bs-plus { color: #ff9db4; }
+.bs-tag { position: absolute; left: 0; right: 0; bottom: 3px; text-align: center; font-size: 9px; letter-spacing: .5px; color: var(--muted, #9a9a9a); }
+.bar-pick-panel { max-height: 76vh; display: flex; flex-direction: column; }
+.bar-pick-list { flex: 1; min-height: 0; overflow-y: auto; padding-right: 2px; }
+.bar-pick-sec { margin-bottom: 12px; }
+.bar-pick-t { font-size: 12px; font-weight: 700; color: var(--muted); margin: 4px 0 8px; }
+.bar-pick-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.bar-pick-item {
+display: flex; flex-direction: column; align-items: center; gap: 3px;
+padding: 8px 2px; border-radius: 12px; cursor: pointer; font-size: 11px; color: var(--ink);
+background: var(--card-soft, #f7f7f8); border: 1px solid var(--card-border, rgba(0,0,0,.06));
+}
+.bar-pick-item.liked { border-color: rgba(255,120,150,.5); }
+.bpi-ico { font-size: 20px; line-height: 1; }
+.bpi-ico img { width: 22px; height: 22px; object-fit: cover; border-radius: 6px; display: block; }
+.bpi-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.bar-pick-note { font-size: 11.5px; line-height: 1.55; color: var(--muted); padding: 0 2px 10px; }
 @media (prefers-reduced-motion: reduce) {
 #page-bar *, .bar-cab-panel *, .bar-add-panel * { transition: none !important; }
 }
@@ -11264,7 +11284,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
            （名称+版号 / 部署时间+实时秒 / 版本检测行）收成一行；检测行随 ver-check.js 退役删除。
            data-build-ts / data-version 两属性保留：device.js 诊断、bg-keep 自检、pwa.js 旧包检测
            仍只读属性（诊断版本号走 data-version 兜底，device.js 两处缓存原生支持）。 -->
-      <div class="splash-ver" id="splash-ver" data-build-ts="1791878501395" data-version="v8.1">
+      <div class="splash-ver" id="splash-ver" data-build-ts="1791881063366" data-version="v8.1">
         <span class="sv-app">Mochi 字卡传讯 已完结停更</span>
       </div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
@@ -23201,4 +23221,4 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 </body>
 </html>
 
-<!-- __MOCHI_EOF__ mv6e70gj -->
+<!-- __MOCHI_EOF__ mv6fpxae -->

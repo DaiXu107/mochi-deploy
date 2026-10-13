@@ -277,23 +277,46 @@ function ensureStage() {
 if (stage || !canvasEl) return;
 try { stage = window.BarRender.createStage(canvasEl); } catch (e) { stage = null; }
 }
+function isBaseIng(ing) { return !!(ing && (ing.role === 'base' || ing.family)); }
+function layoutSlots() {
+var arr = [], i;
+for (i = 0; i < MAX_SLOT; i++) arr.push(null);
+var bases = [], others = [];
+slots.forEach(function (s) { if (!s || !s.ing) return; (isBaseIng(s.ing) ? bases : others).push(s); });
+var nBase = Math.min(bases.length, MAX_SLOT);
+for (i = 0; i < nBase; i++) arr[MAX_SLOT - nBase + i] = bases[i];
+for (i = 0; i < others.length && i < MAX_SLOT - nBase; i++) arr[i] = others[i];
+return arr;
+}
 function renderSlots() {
 var box = document.getElementById('bar-slots');
 if (!box) return;
 box.innerHTML = '';
+var view = layoutSlots();
 for (var i = 0; i < MAX_SLOT; i++) {
-var s = slots[i];
+var s = view[i];
+var isBase = (i === MAX_SLOT - 1);
 var d = document.createElement('div');
-d.className = 'bar-slot' + (s ? ' filled' : '');
+d.className = 'bar-slot' + (s ? ' filled' : '') + (isBase ? ' base-slot' : '');
 if (s && s.ing) {
 d.innerHTML = '<span class="bs-emoji">' + ingIconHtml(s.ing, 'bs') + '</span>' +
 (s.count > 1 ? '<span class="bs-count">×' + s.count + '</span>' : '') +
 '<button class="bs-del" title="移除">✕</button>';
-(function (idx) {
+(function (sl) {
 var del = d.querySelector('.bs-del');
-if (del) del.addEventListener('click', function (ev) { ev.stopPropagation(); removeSlot(idx); });
+if (del) del.addEventListener('click', function (ev) {
+ev.stopPropagation();
+var k = slots.indexOf(sl);
+if (k >= 0) removeSlot(k);
+});
+})(s);
+} else {
+d.innerHTML = '<button class="bs-plus" title="' + (isBase ? '选择基底' : '添加原料') + '">+</button>' +
+(isBase ? '<span class="bs-tag">基底</span>' : '');
+(function (idx) {
+d.addEventListener('click', function () { openSlotPicker(idx); });
 })(i);
-} else { d.innerHTML = '<span class="bs-plus">+</span>'; }
+}
 box.appendChild(d);
 }
 }
@@ -302,7 +325,10 @@ var el = document.getElementById('bar-ing-hint');
 if (!el) return;
 if (!recipeLog.length) { el.textContent = ''; el.hidden = true; return; }
 el.hidden = false;
-el.textContent = '原料：' + recipeLog.join(' · ');
+var baseNames = {};
+slots.forEach(function (s) { if (s.ing && isBaseIng(s.ing)) baseNames[s.ing.name] = 1; });
+var names = recipeLog.slice().sort(function (a, b) { return (baseNames[a] ? 1 : 0) - (baseNames[b] ? 1 : 0); });
+el.textContent = '原料：' + names.join(' · ');
 }
 function pushStage() {
 ensureStage();
@@ -345,7 +371,7 @@ el.hidden = !on;
 if (on) el.textContent = text || '';
 }
 function renderAll() {
-renderSlots(); renderHint(); pushStage(); renderName(); renderPicker(); syncLabels(); renderColdHint();
+renderSlots(); renderHint(); pushStage(); renderName(); syncLabels(); renderColdHint();
 }
 var busy = false;
 function addIngredient(ing) {
@@ -467,14 +493,15 @@ sendToChat(iceChoice, mode, wish, sweetChoice);
 });
 }
 function brewThenAsk() {
-if (!canSend()) { toast('先加至少一份原料'); return; }
+if (!slots.length) { toast('先加至少一份原料'); return; }
+if (!hasBase()) { toast('最后一格放一份基底（茶 / 奶 / 咖啡…）才能调制'); return; }
 if (busy) return;
 brew().then(function () { return shakeIfNeeded(); }).then(function () {
 renderAll();
 openIceModal({ mode: 'gift', allowSelf: true });
 });
 }
-function canSend() { return slots.length > 0 && !busy; }
+function canSend() { return slots.length > 0 && hasBase() && !busy; }
 function drinkPayload(ice) {
 var list = recipeLog.length ? recipeLog.slice() : slots.map(function (s) { return s.ing ? s.ing.name : ''; });
 var color = stage && stage.getLiquid ? stage.getLiquid() : { r: 232, g: 232, b: 232 };
@@ -550,8 +577,10 @@ var pool = ING.filter(function (i) { return i && i.unlocked !== false; });
 if (!pool.length) return;
 resetCup();
 var liked = likedIngSet();
-var n = 1 + Math.floor(Math.random() * 4);
+var basePool = pool.filter(function (i) { return i.role === 'base'; });
 var picked = [], guard = 0;
+if (basePool.length) { var b = weightedPick(basePool, liked); if (b) picked.push(b); }
+var n = picked.length + 1 + Math.floor(Math.random() * 3);
 while (picked.length < n && guard++ < 60) {
 var c = weightedPick(pool, liked);
 if (c && picked.indexOf(c) < 0) picked.push(c);
@@ -707,7 +736,7 @@ mask.innerHTML = '<div class="mg-panel bar-cab-panel">' +
 document.body.appendChild(mask);
 mask.querySelector('.mg-close').addEventListener('click', function () { mask.hidden = true; });
 mask.addEventListener('click', function (e) { if (e.target === mask) mask.hidden = true; });
-mask.querySelector('#bar-cab-add').addEventListener('click', openAddIngredientForm);
+mask.querySelector('#bar-cab-add').addEventListener('click', function () { openAddIngredientForm(); });
 return mask;
 }
 function renderCabinetList() {
@@ -731,13 +760,27 @@ items.forEach(function (it) {
 var b = document.createElement('button');
 var marks = (mySet[it.id] ? '<span class="bci-like me">♥</span>' : '') + (taSet[it.id] ? '<span class="bci-like ta">♥</span>' : '');
 b.className = 'bar-cab-item' + (it.removable ? ' custom' : '') + (mySet[it.id] || taSet[it.id] ? ' liked' : '');
+b.title = it.name + '（长按编辑）';
 b.innerHTML = '<span class="bci-emoji">' + ingIconHtml(it, 'bci') + '</span><span class="bci-name">' + it.name + '</span>' + marks +
 '<span class="bci-fav" title="我喜欢">♡</span>' +
 (it.removable ? '<span class="bci-del" title="删除">✕</span>' : '');
+var lpTimer = null, lpFired = false;
+var lpCancel = function () { if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } };
+b.addEventListener('pointerdown', function () {
+lpFired = false;
+lpCancel();
+lpTimer = setTimeout(function () { lpFired = true; openAddIngredientForm(it.id); }, 550);
+});
+b.addEventListener('pointerup', lpCancel);
+b.addEventListener('pointerleave', lpCancel);
+b.addEventListener('pointercancel', lpCancel);
+b.addEventListener('contextmenu', function (ev) { ev.preventDefault(); lpCancel(); openAddIngredientForm(it.id); });
 b.addEventListener('click', function (e) {
 var t = e.target;
+if (lpFired) { lpFired = false; lpCancel(); return; }
+lpCancel();
 if (t && t.classList && t.classList.contains('bci-del')) { delCustomIngredient(it.id); return; }
-if (t && t.classList && t.classList.contains('bci-fav')) { toggleLike('my', it.id); renderCabinetList(); renderPicker(); return; }
+if (t && t.classList && t.classList.contains('bci-fav')) { toggleLike('my', it.id); renderCabinetList(); return; }
 addIngredient(it);
 var m = document.getElementById('bar-cab-mask'); if (m) m.hidden = true;
 });
@@ -752,7 +795,7 @@ var it = findIng(id);
 if (!it || !it.removable) { toast('预设原料不可删除'); return; }
 ING = ING.filter(function (x) { return x.id !== id; });
 writeIngredients(ING);
-renderCabinetList(); renderPicker();
+renderCabinetList();
 toast('已删除');
 }
 var ingImg = '';
@@ -792,19 +835,29 @@ else inp.click();
 var clr = document.getElementById('ba-img-clear');
 if (clr) clr.addEventListener('click', function () { ingImg = ''; renderIngImgRow(); });
 }
-function openAddIngredientForm() {
+function openAddIngredientForm(editId) {
+var edit = editId ? findIng(editId) : null;
 var mask = document.createElement('div');
 mask.className = 'mg-mask'; mask.id = 'bar-add-mask';
+var roleOpts = ['main|主料', 'base|基底', 'modifier|修饰', 'addon|小料'].map(function (p) {
+var kv = p.split('|');
+var cur = edit ? edit.role : 'main';
+return '<option value="' + kv[0] + '"' + (cur === kv[0] ? ' selected' : '') + '>' + kv[1] + '</option>';
+}).join('');
+var famOpts = [['', '（仅基底需要）'], ['tea', '茶'], ['milk', '奶'], ['coffee', '咖啡'], ['juice', '果汁'], ['soda', '气泡'], ['alcohol', '酒']].map(function (kv) {
+var cur = edit && edit.family ? edit.family : '';
+return '<option value="' + kv[0] + '"' + (cur === kv[0] ? ' selected' : '') + '>' + kv[1] + '</option>';
+}).join('');
 mask.innerHTML = '<div class="mg-panel bar-add-panel">' +
-'<div class="mg-head"><span>添加自定义原料</span><button class="mg-close">✕</button></div>' +
+'<div class="mg-head"><span>' + (edit ? '编辑原料' : '添加自定义原料') + '</span><button class="mg-close">✕</button></div>' +
 '<div class="bar-add-form">' +
-'<label>名称<input id="ba-name" maxlength="12" placeholder="如：柠檬"></label>' +
-'<label>图标 emoji<input id="ba-emoji" maxlength="4" placeholder="如：🍋"></label>' +
+'<label>名称<input id="ba-name" maxlength="12" placeholder="如：柠檬" value="' + (edit ? escAttr(edit.name) : '') + '"></label>' +
+'<label>图标 emoji<input id="ba-emoji" maxlength="4" placeholder="如：🍋" value="' + (edit ? escAttr(edit.emoji || '') : '') + '"></label>' +
 '<div class="bar-img-row" id="ba-img-row"></div>' +
-'<label>颜色<input id="ba-color" type="color" value="#f7d54a"></label>' +
-'<label>角色<select id="ba-role"><option value="main">主料</option><option value="base">基底</option><option value="modifier">修饰</option><option value="addon">小料</option></select></label>' +
-'<label>基底类型<select id="ba-family"><option value="">（仅基底需要）</option><option value="tea">茶</option><option value="milk">奶</option><option value="coffee">咖啡</option><option value="juice">果汁</option><option value="soda">气泡</option><option value="alcohol">酒</option></select></label>' +
-'<label>命名后缀<input id="ba-suffix" maxlength="4" placeholder="仅基底需要，如：茶"></label>' +
+'<label>颜色<input id="ba-color" type="color" value="' + (edit && edit.color ? escAttr(edit.color) : '#f7d54a') + '"></label>' +
+'<label>角色<select id="ba-role">' + roleOpts + '</select></label>' +
+'<label>基底类型<select id="ba-family">' + famOpts + '</select></label>' +
+'<label>命名后缀<input id="ba-suffix" maxlength="4" placeholder="仅基底需要，如：茶" value="' + (edit && edit.suffix ? escAttr(edit.suffix) : '') + '"></label>' +
 '</div>' +
 '<div class="bar-add-foot"><button class="bar-add-cancel">取消</button><button class="bar-add-ok">保存</button></div></div>';
 document.body.appendChild(mask);
@@ -812,7 +865,7 @@ var close = function () { try { mask.remove(); } catch (e) {} };
 mask.querySelector('.mg-close').addEventListener('click', close);
 mask.querySelector('.bar-add-cancel').addEventListener('click', close);
 mask.addEventListener('click', function (e) { if (e.target === mask) close(); });
-ingImg = ''; renderIngImgRow();
+ingImg = edit ? (edit.img || '') : ''; renderIngImgRow();
 mask.querySelector('.bar-add-ok').addEventListener('click', function () {
 var name = (mask.querySelector('#ba-name').value || '').trim();
 var emoji = (mask.querySelector('#ba-emoji').value || '').trim() || '🍹';
@@ -822,56 +875,66 @@ var family = mask.querySelector('#ba-family').value || null;
 var suffix = (mask.querySelector('#ba-suffix').value || '').trim() || null;
 if (!name) { toast('请填写名称'); return; }
 if (role === 'base' && !family) { toast('基底需要选择类型'); return; }
+if (edit) {
+edit.name = name; edit.emoji = emoji; edit.color = color; edit.role = role;
+edit.family = (role === 'base') ? family : null;
+edit.suffix = (role === 'base') ? suffix : null;
+edit.img = ingImg || '';
+slots.forEach(function (s) { if (s.ing && s.ing.id === edit.id) { s.ing.name = name; s.ing.emoji = emoji; s.ing.color = color; s.ing.img = edit.img; } });
+} else {
 CUSTOM_SEQ++;
 ING.push({
 id: 'cus_' + Date.now().toString(36) + '_' + CUSTOM_SEQ, name: name, role: role,
 family: role === 'base' ? family : null, suffix: role === 'base' ? suffix : null,
 emoji: emoji, color: color, img: ingImg || '', unlocked: true, removable: true, temporary: false
 });
+}
 writeIngredients(ING);
 close();
-renderCabinetList(); renderPicker();
-toast('已添加原料「' + name + '」');
+renderCabinetList();
+renderAll();
+toast(edit ? ('已保存「' + name + '」') : ('已添加原料「' + name + '」'));
 });
 }
-function renderPicker() {
-var sel = document.getElementById('bar-picker');
-if (!sel) return;
-var keep = sel.value;
+function hasBase() { return Object.keys(familiesSeen).length > 0; }
+function openSlotPicker(idx) {
+if (busy) return;
+var onlyBase = (idx === MAX_SLOT - 1);
 var liked = likedIngSet();
-sel.innerHTML = '';
-var ph = document.createElement('option');
-ph.value = ''; ph.textContent = '＋ 添加原料…';
-sel.appendChild(ph);
-var groups = [['base', '基底'], ['main', '主料'], ['modifier', '修饰'], ['addon', '小料']];
+var mask = document.createElement('div');
+mask.className = 'mg-mask'; mask.id = 'bar-pick-mask';
+var groups = onlyBase ? [['base', '基底']] : [['base', '基底'], ['main', '主料'], ['modifier', '修饰'], ['addon', '小料']];
+var html = '';
 groups.forEach(function (g) {
 var items = ING.filter(function (i) { return i && i.role === g[0] && i.unlocked !== false; });
 if (!items.length) return;
 items.sort(function (a, b) { return (liked[b.id] ? 1 : 0) - (liked[a.id] ? 1 : 0); });
-var og = document.createElement('optgroup');
-og.label = g[1];
+html += '<div class="bar-pick-sec"><div class="bar-pick-t">' + g[1] + '（' + items.length + '）</div><div class="bar-pick-grid">';
 items.forEach(function (it) {
-var o = document.createElement('option');
-o.value = it.id;
-o.textContent = (liked[it.id] ? '♥ ' : '') + (it.emoji || '🍹') + ' ' + it.name;
-og.appendChild(o);
+html += '<button class="bar-pick-item' + (liked[it.id] ? ' liked' : '') + '" data-id="' + escAttr(it.id) + '">' +
+'<span class="bpi-ico">' + ingIconHtml(it, 'bpi') + '</span>' +
+'<span class="bpi-name">' + (liked[it.id] ? '♥' : '') + escAttr(it.name) + '</span></button>';
 });
-sel.appendChild(og);
+html += '</div></div>';
 });
-sel.value = keep || '';
-}
-function bindPicker() {
-var sel = document.getElementById('bar-picker');
-if (!sel || sel._barBound) return;
-sel._barBound = true;
-sel.addEventListener('change', function () {
-var id = sel.value;
-if (!id) return;
-var it = findIng(id);
-sel.value = '';
+mask.innerHTML = '<div class="mg-panel bar-pick-panel">' +
+'<div class="mg-head"><span>' + (onlyBase ? '选择基底' : '添加原料') + '</span><button class="mg-close">✕</button></div>' +
+(onlyBase ? '<div class="bar-pick-note">最后一格固定放基底（茶 / 奶 / 咖啡 / 果汁 / 气泡 / 酒），饮品必须有基底才能调制。</div>'
+: '<div class="bar-pick-note">想放什么放什么，同一种原料连点会叠成 ×N。</div>') +
+'<div class="bar-pick-list">' + html + '</div></div>';
+document.body.appendChild(mask);
+var close = function () { try { mask.remove(); } catch (e) {} };
+mask.querySelector('.mg-close').addEventListener('click', close);
+mask.addEventListener('click', function (e) { if (e.target === mask) close(); });
+Array.prototype.forEach.call(mask.querySelectorAll('.bar-pick-item'), function (b) {
+b.addEventListener('click', function () {
+var it = findIng(b.getAttribute('data-id'));
+close();
 if (it) addIngredient(it);
 });
+});
 }
+function bindPicker() { /* 旧下拉已废弃，保留空实现兜底 */ }
 function annivToday() { try { return window.mochiAnnivToday ? window.mochiAnnivToday() : null; } catch (e) { return null; } }
 function renderSpecial() {
 var box = document.getElementById('bar-special');
@@ -927,8 +990,6 @@ page.innerHTML =
 '<button class="bar-btn ghost" id="bar-random">❤️ 帮你调制</button>' +
 '<button class="bar-btn solid" id="bar-send">🍸 调制并发送</button>' +
 '</div>' +
-'<div class="bar-shelf-wrap"><div class="bar-shelf-title">选择原料</div>' +
-'<select class="bar-picker" id="bar-picker"></select></div>' +
 '</div>';
 var home = document.getElementById('page-garden');
 if (home && home.parentNode) home.parentNode.insertBefore(page, home.nextSibling);
@@ -1020,7 +1081,7 @@ random: randomCup, send: sendToChat, brew: brew, slots: function () { return slo
 refreshName: refreshName, cabinet: openCabinet, log: openLogModal, logData: readLog,
 ask: brewThenAsk, ice: function (v) { if (v) iceChoice = v; return iceChoice; },
 hint: function () { var e = document.getElementById('bar-ing-hint'); return e ? e.textContent : ''; },
-picker: function () { return document.getElementById('bar-picker'); },
+pick: openSlotPicker, hasBase: hasBase,
 coldProb: coldProb, coldWindow: coldWindow, pickIce: pickIce, season: function () { return SEASON_NAME[seasonIdx()]; },
 moodScore: moodScore, likes: readLikes, toggleLike: toggleLike, taLikes: ensureTaLikes,
 taGift: taSpontaneousGift, advice: maybeColdAdvice, simulate: simulateCup,
