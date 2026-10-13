@@ -9625,6 +9625,163 @@ color: #c67800;
 .garden-pot-mark { position: absolute; top: 2px; left: 3px; font-size: 9px; font-weight: 700; padding: 1px 4px; border-radius: 6px; background: linear-gradient(90deg, rgba(255,193,7,.3), rgba(255,111,0,.2)); color: #c67800; z-index: 4; }
 .garden-tool.upgrade { background: rgba(255,193,7,.1); border-color: rgba(255,193,7,.3); }
 .garden-tool.upgrade:active { background: #ffb300; }
+#page-bar .bar-cab-btn {
+margin-right: 8px;
+font-size: 12px; font-weight: 600; color: var(--ink);
+background: var(--card-soft, #f2f3f5); border: 1px solid var(--card-border, rgba(0,0,0,.08));
+padding: 5px 10px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+}
+#page-bar #bar-log-btn { margin-left: auto; }
+.bar-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 14px 22px; -webkit-overflow-scrolling: touch; }
+.bar-special {
+display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+padding: 10px 12px; border-radius: 14px;
+background: linear-gradient(135deg, rgba(255,138,165,.18), rgba(255,214,165,.16));
+box-shadow: inset 0 0 0 1px rgba(255,130,150,.22);
+}
+.bar-special[hidden] { display: none; }
+.bar-sp-ico { font-size: 18px; }
+.bar-sp-t { flex: 1; font-size: 12.5px; font-weight: 700; color: var(--ink); }
+.bar-sp-btn {
+font-size: 12px; font-weight: 700; color: #fff; border: none; cursor: pointer;
+background: linear-gradient(135deg, #ff8aa5, #ffb27a); padding: 6px 12px; border-radius: 999px;
+}
+.bar-stage {
+position: relative; width: 100%; height: 240px; margin-bottom: 6px;
+border-radius: 18px; overflow: hidden;
+background: radial-gradient(120% 100% at 50% 0%, var(--card-bg, #fff), var(--phone-bg-b, #f2f2f2));
+box-shadow: inset 0 0 0 1px var(--card-border, rgba(0,0,0,.08));
+}
+.bar-stage canvas { display: block; width: 100%; height: 100%; }
+.bar-name-row { text-align: center; margin: 10px 0 6px; }
+.bar-name { font-size: 19px; font-weight: 800; letter-spacing: .5px; color: var(--ink); min-height: 26px; }
+.bar-name-btns { display: flex; gap: 8px; justify-content: center; margin-top: 7px; }
+.bar-mini {
+font-size: 11.5px; font-weight: 600; color: var(--ink); cursor: pointer;
+background: var(--card-soft, #f2f3f5); border: 1px solid var(--card-border, rgba(0,0,0,.08));
+padding: 4px 11px; border-radius: 999px;
+}
+.bar-mini[hidden] { display: none; }
+.bar-style-row { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 9px; }
+.bar-style-pill {
+font-size: 11px; color: var(--muted); cursor: pointer; padding: 3px 10px; border-radius: 999px;
+background: transparent; border: 1px solid var(--line, #e6e6e6);
+}
+.bar-style-pill.sel { color: #fff; background: var(--ink, #111); border-color: var(--ink, #111); font-weight: 700; }
+.bar-slots { display: flex; gap: 10px; justify-content: center; margin: 14px 0 10px; }
+.bar-slot {
+position: relative; width: 52px; height: 60px; border-radius: 14px;
+display: flex; align-items: center; justify-content: center;
+background: var(--card-bg, #fff); border: 1.5px dashed var(--line, #e0e0e0);
+}
+.bar-slot.filled { border-style: solid; border-color: var(--card-border, rgba(0,0,0,.1)); box-shadow: 0 4px 10px rgba(0,0,0,.05); }
+.bs-emoji { font-size: 26px; line-height: 1; }
+.bs-plus { font-size: 22px; color: var(--hint-ink, #ccc); }
+.bs-count {
+position: absolute; right: 2px; top: 2px; font-size: 10px; font-weight: 800; color: #fff;
+background: var(--ink, #111); border-radius: 999px; padding: 0 5px; line-height: 15px;
+}
+.bs-del {
+position: absolute; right: -5px; top: -5px; width: 18px; height: 18px; border-radius: 50%;
+border: none; cursor: pointer; font-size: 10px; color: #fff; background: #d9534f; line-height: 1;
+}
+.bar-actions { display: flex; gap: 10px; justify-content: center; margin: 6px 0 16px; }
+.bar-btn {
+font-size: 13.5px; font-weight: 700; cursor: pointer; padding: 10px 18px; border-radius: 999px; border: none;
+}
+.bar-btn.solid { color: #fff; background: var(--ink, #111); }
+.bar-btn.ghost { color: var(--ink); background: var(--card-soft, #f2f3f5); border: 1px solid var(--card-border, rgba(0,0,0,.08)); }
+.bar-shelf-wrap { margin-top: 4px; }
+.bar-shelf-title { font-size: 12px; color: var(--muted); margin: 4px 2px 8px; }
+.bar-shelf { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; -webkit-overflow-scrolling: touch; }
+.bar-chip {
+flex: 0 0 auto; display: flex; align-items: center; gap: 4px; cursor: pointer;
+font-size: 12px; color: var(--ink); padding: 6px 11px; border-radius: 999px;
+background: var(--card-bg, #fff); border: 1px solid var(--card-border, rgba(0,0,0,.1)); white-space: nowrap;
+}
+.bar-chip span { font-size: 15px; }
+.bar-cab-panel, .bar-add-panel { max-height: 76vh; display: flex; flex-direction: column; }
+.bar-cab-list { flex: 1; min-height: 0; overflow-y: auto; padding-right: 2px; }
+.bar-cab-sec { margin-bottom: 12px; }
+.bar-cab-sec-t { font-size: 12px; font-weight: 700; color: var(--muted); margin: 4px 0 8px; }
+.bar-cab-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.bar-cab-item {
+position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px;
+padding: 8px 2px; border-radius: 12px; cursor: pointer; font-size: 11px; color: var(--ink);
+background: var(--card-soft, #f7f7f8); border: 1px solid var(--card-border, rgba(0,0,0,.06));
+}
+.bar-cab-item.custom { border-color: rgba(255,138,165,.5); }
+.bci-emoji { font-size: 20px; line-height: 1; }
+.bci-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.bci-del {
+position: absolute; right: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%;
+background: #d9534f; color: #fff; font-size: 9px; line-height: 16px; text-align: center;
+}
+.bar-cab-foot { padding-top: 10px; }
+.bar-cab-add {
+width: 100%; font-size: 13px; font-weight: 700; cursor: pointer; padding: 10px;
+border-radius: 12px; color: var(--ink); background: var(--card-soft, #f2f3f5); border: 1px dashed var(--line, #ddd);
+}
+.bar-add-form { display: flex; flex-direction: column; gap: 10px; padding: 4px 2px 8px; }
+.bar-add-form label { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12.5px; color: var(--ink); }
+.bar-add-form input, .bar-add-form select {
+flex: 1; min-width: 0; font-size: 13px; padding: 7px 9px; border-radius: 9px;
+border: 1px solid var(--input-border, #e0e0e0); background: var(--input-bg, #fff); color: var(--ink);
+}
+.bar-add-foot { display: flex; gap: 10px; padding-top: 6px; }
+.bar-add-foot button { flex: 1; font-size: 13px; font-weight: 700; cursor: pointer; padding: 10px; border-radius: 11px; border: none; }
+.bar-add-cancel { background: var(--btn-cancel-bg, #eee); color: var(--btn-cancel-ink, #555); }
+.bar-add-ok { background: var(--ink, #111); color: #fff; }
+.msg-drink-card { border:1px solid rgba(150,120,255,.25); }
+.msg-drink-dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-left:6px; vertical-align:middle; box-shadow:inset 0 0 0 1px rgba(0,0,0,.08); }
+.bar-picker { width:100%; font-size:13px; padding:9px 10px; border-radius:11px; border:1px solid var(--input-border,#e0e0e0); background:var(--input-bg,#fff); color:var(--ink); }
+.bar-ing-hint { margin:2px 0 10px; text-align:center; font-size:11.5px; line-height:1.6; color:var(--muted,#8a8a8a); }
+.bar-ing-hint[hidden] { display:none; }
+.bar-ice-hint { font-size:12px; color:var(--muted); padding:2px 2px 10px; }
+.bar-ice-row { display:flex; flex-wrap:wrap; gap:8px; padding:0 2px 12px; }
+.bar-ice-pill { font-size:12.5px; color:var(--ink); cursor:pointer; padding:7px 14px; border-radius:999px; background:var(--card-soft,#f2f3f5); border:1px solid var(--card-border,rgba(0,0,0,.08)); }
+.bar-ice-pill.sel { color:#fff; background:var(--ink,#111); border-color:var(--ink,#111); font-weight:700; }
+.bar-log-panel { max-height:76vh; display:flex; flex-direction:column; }
+.bar-log-list { flex:1; min-height:0; overflow-y:auto; }
+.bar-log-item { display:flex; align-items:center; gap:10px; padding:9px 2px; border-bottom:1px solid var(--line,#eee); }
+.bl-emoji { font-size:22px; flex:0 0 auto; }
+.bl-main { flex:1; min-width:0; }
+.bl-name { font-size:13px; font-weight:700; color:var(--ink); }
+.bl-ice { margin-left:6px; font-size:10px; font-weight:600; color:#fff; background:linear-gradient(135deg,#8fc7ff,#8fb8ff); padding:1px 7px; border-radius:999px; vertical-align:1px; }
+.bl-ing { font-size:11px; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.bl-time { font-size:10.5px; color:var(--hint-ink,#b5b5b5); flex:0 0 auto; }
+.bar-log-empty { padding:22px 4px; text-align:center; font-size:12.5px; color:var(--muted); }
+.msg-drink-ing { margin-top:5px; font-size:11px; line-height:1.5; color:var(--muted,#8a8a8a); }
+.bar-cold-hint { display:flex; align-items:center; gap:8px; margin-bottom:10px; padding:10px 12px; border-radius:14px; background:linear-gradient(135deg, rgba(255,170,190,.20), rgba(255,214,165,.16)); box-shadow:inset 0 0 0 1px rgba(255,130,150,.24); }
+.bar-cold-hint[hidden] { display:none; }
+.bch-ico { font-size:16px; }
+.bch-t { flex:1; font-size:12px; color:var(--ink); line-height:1.5; }
+.bch-btn { font-size:11.5px; font-weight:700; color:#fff; border:none; cursor:pointer; background:linear-gradient(135deg,#ff9db4,#ffc08a); padding:5px 10px; border-radius:999px; white-space:nowrap; }
+.bar-thinking { margin:6px 0 2px; text-align:center; font-size:12.5px; color:var(--muted,#8a8a8a); min-height:18px; }
+.bar-thinking[hidden] { display:none; }
+.bar-ice-note { font-size:11.5px; color:var(--muted); padding:0 2px 10px; }
+.bar-ice-mode { display:flex; gap:8px; padding:0 2px 12px; }
+.bar-ice-mode-btn { flex:1; font-size:12.5px; cursor:pointer; padding:8px; border-radius:11px; color:var(--ink); background:var(--card-soft,#f2f3f5); border:1px solid var(--card-border,rgba(0,0,0,.08)); }
+.bar-ice-mode-btn.sel { color:#fff; background:var(--ink,#111); border-color:var(--ink,#111); font-weight:700; }
+.bl-mode { margin-left:6px; font-size:10px; font-weight:600; color:#7a6bd0; background:rgba(150,120,255,.14); padding:1px 7px; border-radius:999px; vertical-align:1px; }
+.bar-cab-item.liked { border-color:rgba(255,120,150,.5); }
+.bci-like { position:absolute; left:3px; top:3px; font-size:9px; line-height:1; }
+.bci-like.me { color:#ff5f7e; }
+.bci-like.ta { left:auto; right:3px; bottom:3px; top:auto; color:#7a6bd0; }
+.bci-fav { position:absolute; left:3px; bottom:3px; font-size:11px; color:var(--hint-ink,#bbb); cursor:pointer; }
+#page-bar:not([hidden]) ~ .tabbar { display: none !important; }
+.bar-mini.locked { opacity:.45; cursor:not-allowed; }
+.bar-wish { width:100%; box-sizing:border-box; min-height:52px; font-size:13px; line-height:1.5; padding:9px 10px; margin:2px 0 12px; border-radius:11px; border:1px solid var(--input-border,#e0e0e0); background:var(--input-bg,#fff); color:var(--ink); resize:vertical; font-family:inherit; }
+.bar-img-row { display:flex; align-items:center; gap:10px; padding:2px 0 6px; }
+.bar-img-prev { width:52px; height:52px; border-radius:12px; background:var(--card-soft,#f7f7f8); border:1px dashed var(--line,#ddd); display:flex; align-items:center; justify-content:center; font-size:22px; overflow:hidden; flex:0 0 auto; }
+.bar-img-prev img { width:100%; height:100%; object-fit:cover; }
+.bar-img-btn { font-size:12px; font-weight:600; color:var(--ink); cursor:pointer; padding:6px 12px; border-radius:999px; background:var(--card-soft,#f2f3f5); border:1px solid var(--card-border,rgba(0,0,0,.08)); }
+.bs-emoji img { width:26px; height:26px; object-fit:cover; border-radius:6px; display:block; }
+.bci-emoji img { width:22px; height:22px; object-fit:cover; border-radius:6px; display:block; }
+.msg-drink-wish { margin-top:4px; font-size:12px; line-height:1.5; color:var(--ink); }
+@media (prefers-reduced-motion: reduce) {
+#page-bar *, .bar-cab-panel *, .bar-add-panel * { transition: none !important; }
+}
 .memo-body { flex:1; overflow-y:auto; box-sizing:border-box; padding:14px 14px 40px; display:flex; flex-direction:column; }
 .memo-input-row { display:flex; gap:10px; margin-bottom:12px; }
 .memo-inp { flex:1; min-width:0; height:44px; border:none; border-radius:12px; background:rgba(255,255,255,.75); box-shadow:inset 0 0 0 1px rgba(0,0,0,.07); padding:0 14px; font-size:15px; color:var(--ink,#222); box-sizing:border-box; }
@@ -11102,7 +11259,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
            （名称+版号 / 部署时间+实时秒 / 版本检测行）收成一行；检测行随 ver-check.js 退役删除。
            data-build-ts / data-version 两属性保留：device.js 诊断、bg-keep 自检、pwa.js 旧包检测
            仍只读属性（诊断版本号走 data-version 兜底，device.js 两处缓存原生支持）。 -->
-      <div class="splash-ver" id="splash-ver" data-build-ts="1791815242303" data-version="v8.1">
+      <div class="splash-ver" id="splash-ver" data-build-ts="1791868439443" data-version="v8.1">
         <span class="sv-app">Mochi 字卡传讯 已完结停更</span>
       </div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
@@ -11328,6 +11485,11 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
 <div class="app" data-app="garden" data-desk-widget="app-garden">
 <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 21h10l-1.5-5h-7z"/><path d="M12 16v-7"/><path d="M12 12c-2 0-3.5-1-3.5-3"/><path d="M12 10c2 0 3.5-1 3.5-3"/><circle cx="12" cy="6" r="2"/></svg></div>
 <div class="app-name">花园</div>
+</div>
+<!-- 二传增补：吧台（原料调制饮料）桌面入口，与花园同在第二页 -->
+<div class="app" data-app="bar" data-desk-widget="app-bar">
+<div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3h16l-8 9z"/><path d="M12 12v8"/><path d="M8 21h8"/><path d="M7 6.2h10"/></svg></div>
+<div class="app-name">吧台</div>
 </div>
 <!-- v3.13.x：此间（梦角世界时间与在场感知）桌面入口——聊天「更多功能」同款页面，从桌面进入返回桌面 -->
 <div class="app" data-app="cjian" data-desk-widget="app-cjian">
@@ -12185,6 +12347,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
         <button class="cc-tab" data-type="voice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>语音</button>
         <!-- v8.58：状态字卡——短状态文案池，聊天顶栏 TA 名字下方随机轮换显示，不参与聊天回复 -->
         <button class="cc-tab" data-type="status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>状态</button>
+        <button class="cc-tab" data-type="drinkname">饮品名</button>
         <!-- v3.32.x：其他互动功能字卡（自定义）——与系统预设【其他互动功能字卡】同分类，
              用户自建的功能字卡存本作用域 cc-groups 同名字段，各功能经 getLibPool 并入抽取；
              13 个功能 tab 仅「其他互动功能字卡」入口显示，公用/专属入口隐藏（openCcPage 按入口切换） -->
@@ -18105,7 +18268,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
   // v3.5.123：readonly 起手（防 Chrome 密码弹条破坏表单签名）——这里立即解除，
   // 早于所有功能模块，任何设备都不会出现输入框不可用的情况
   (function () { var _ci = document.getElementById('chat-input'); if (_ci) _ci.readOnly = false; })();
-window.__jsErrors = window.__jsErrors || []; window.__mochiLoaded = window.__mochiLoaded || []; window.__mochiErrLoaded = window.__mochiErrLoaded || []; window.__mochiBootAt = Date.now(); window.__mochiJsFiles = ["device.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","room.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","pwa.js","cjian.js","feature-hub.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"]; window.__mochiExtFiles = ["idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","room.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","cjian.js","feature-hub.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"];
+window.__jsErrors = window.__jsErrors || []; window.__mochiLoaded = window.__mochiLoaded || []; window.__mochiErrLoaded = window.__mochiErrLoaded || []; window.__mochiBootAt = Date.now(); window.__mochiJsFiles = ["device.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","pwa.js","cjian.js","feature-hub.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"]; window.__mochiExtFiles = ["idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","cjian.js","feature-hub.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"];
 (function () { try {
 (function () {
 try { window.__jsErrors = window.__jsErrors || []; } catch (e0) {}
@@ -22976,6 +23139,11 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 <script defer src="js/period.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('period.js')"></script>
 <script defer src="js/accounting.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('accounting.js')"></script>
 <script defer src="js/garden.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('garden.js')"></script>
+<script defer src="js/bar-presets.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('bar-presets.js')"></script>
+<script defer src="js/bar-fusions.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('bar-fusions.js')"></script>
+<script defer src="js/bar-names.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('bar-names.js')"></script>
+<script defer src="js/bar-render.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('bar-render.js')"></script>
+<script defer src="js/bar.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('bar.js')"></script>
 <script defer src="js/room.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('room.js')"></script>
 <script defer src="js/drift-bottle.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('drift-bottle.js')"></script>
 <script defer src="js/decision.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('decision.js')"></script>
@@ -23028,4 +23196,4 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 </body>
 </html>
 
-<!-- __MOCHI_EOF__ mv5cj5fj -->
+<!-- __MOCHI_EOF__ mv687clv -->

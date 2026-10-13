@@ -425,8 +425,41 @@
   }
 
   // ---- 暴露给外部模块（mood-reply-cards 经期情绪联动 / calendar 经期着色）----
-  window.periodStatus = status;
+  // 二传增补（吧台联动）：periodStatus 追加「上次经期结束日 / 距今几天」——纯新增字段，老调用方无感。
+  var _statusRaw = status;
+  window.periodStatus = function () {
+    var st = _statusRaw();
+    if (!st) return st;
+    try {
+      var recs2 = normalize(loadRecs());
+      var lastEndStr = null;
+      for (var i = recs2.length - 1; i >= 0; i--) {
+        var r = recs2[i];
+        var end = r.end || addDays(r.start, cfg.periodLen - 1);
+        if (end <= todayStr()) { lastEndStr = end; break; }
+      }
+      st.lastEnd = lastEndStr;
+      st.daysSinceEnd = lastEndStr ? diffDays(lastEndStr, todayStr()) : null;
+    } catch (e) { st.lastEnd = null; st.daysSinceEnd = null; }
+    return st;
+  };
+
   window.periodDayPhase = dayPhase;
+  // 吧台联动：现在是否处于「经期 / 经期前 1~3 天 / 经期后 1~2 天」窗口
+  window.periodColdWindow = function () {
+    try {
+      var st = window.periodStatus();
+      if (!st || st.phase === 'unknown') return { active: false, kind: null };
+      if (st.phase === 'period') return { active: true, kind: 'period', label: '经期第 ' + st.dayOfCycle + ' 天' };
+      if (st.daysSinceEnd !== null && st.daysSinceEnd <= 2) return { active: true, kind: 'post', label: '经期刚结束' };
+      if (st.nextStart) {
+        var dNext = Math.round((parseDay(st.nextStart) - parseDay(todayStr())) / 864e5);
+        if (dNext >= 1 && dNext <= 3) return { active: true, kind: 'pre', daysToNext: dNext, label: '经期前 ' + dNext + ' 天' };
+      }
+      return { active: false, kind: null };
+    } catch (e) { return { active: false, kind: null }; }
+  };
+
 
   // ---- 梦角经期聊天语态：经期中 TA 的文字回复更温柔 ----
   // v3.26.x：温柔前缀受字卡库【其他互动功能字卡→经期→温柔前缀】单卡开关联动——

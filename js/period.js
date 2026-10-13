@@ -344,8 +344,37 @@ if (ds >= ovStart && ds <= ovEnd) return 'fertile';
 }
 return 'none';
 }
-window.periodStatus = status;
+var _statusRaw = status;
+window.periodStatus = function () {
+var st = _statusRaw();
+if (!st) return st;
+try {
+var recs2 = normalize(loadRecs());
+var lastEndStr = null;
+for (var i = recs2.length - 1; i >= 0; i--) {
+var r = recs2[i];
+var end = r.end || addDays(r.start, cfg.periodLen - 1);
+if (end <= todayStr()) { lastEndStr = end; break; }
+}
+st.lastEnd = lastEndStr;
+st.daysSinceEnd = lastEndStr ? diffDays(lastEndStr, todayStr()) : null;
+} catch (e) { st.lastEnd = null; st.daysSinceEnd = null; }
+return st;
+};
 window.periodDayPhase = dayPhase;
+window.periodColdWindow = function () {
+try {
+var st = window.periodStatus();
+if (!st || st.phase === 'unknown') return { active: false, kind: null };
+if (st.phase === 'period') return { active: true, kind: 'period', label: '经期第 ' + st.dayOfCycle + ' 天' };
+if (st.daysSinceEnd !== null && st.daysSinceEnd <= 2) return { active: true, kind: 'post', label: '经期刚结束' };
+if (st.nextStart) {
+var dNext = Math.round((parseDay(st.nextStart) - parseDay(todayStr())) / 864e5);
+if (dNext >= 1 && dNext <= 3) return { active: true, kind: 'pre', daysToNext: dNext, label: '经期前 ' + dNext + ' 天' };
+}
+return { active: false, kind: null };
+} catch (e) { return { active: false, kind: null }; }
+};
 var PERIOD_WARM_PREFIX = (function () {
 try {
 var g = window.DEFAULT_CARD_DATA && window.DEFAULT_CARD_DATA.period;

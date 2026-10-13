@@ -136,7 +136,7 @@ return ownPoolCache;
 }
 const CC_TYPES = ['text', 'kaomoji', 'emoji', 'sticker', 'image', 'poke', 'voice', 'status'];
 const CC_FUNC_KEYS = ['fish', 'eat', 'period', 'water', 'garden', 'sync', 'reach', 'cjian', 'room', 'piggy', 'drift', 'interact', 'music',
-'mjfree']; // #317 梦角自由造句：程序生成的重造句卡（dream-free.js），管理页可查看/删除，不进聊天通用池
+'drinkname', 'mjfree']; // #317 梦角自由造句：程序生成的重造句卡（dream-free.js），管理页可查看/删除，不进聊天通用池
 const CC_ALL_TYPES = CC_TYPES.concat(CC_FUNC_KEYS);
 const CC_FUN_COUNT_KEYS = CC_FUNC_KEYS.filter(k => k !== 'mjfree');
 const CC_GIF_MAX_B64 = 512 * 1024;
@@ -1636,7 +1636,7 @@ window.openModal('重命名分组', gname, (v) => {
 const name = String(v == null ? '' : v).trim();
 if (!name) return;
 if (name === gname) return;
-if ((groups[cur] || []).some(g => g[0] === name)) { toast('分组「' + name + '」已存在'); return; }
+if (((groups || {})[cur] || []).some(g => g[0] === name)) { toast('分组「' + name + '」已存在'); return; }
 const g = groups[cur][gi];
 if (!g) return;
 const oldName = g[0];
@@ -1704,7 +1704,7 @@ if (mgCountEl) mgCountEl.textContent = '已选 ' + selected.size + ' 张';
 }
 function selectedKeys() {
 const keys = [];
-(groups[cur] || []).forEach(([gname, arr]) => {
+((groups || {})[cur] || []).forEach(([gname, arr]) => {
 if (curGroup && curGroup !== gname) return;
 arr.forEach((c, i) => {
 if (q) {
@@ -1720,7 +1720,7 @@ return keys;
 function delSelected() {
 let removed = 0;
 const touched = new Set(); // 受影响分组名
-(groups[cur] || []).forEach(([gname, arr]) => {
+((groups || {})[cur] || []).forEach(([gname, arr]) => {
 for (let i = arr.length - 1; i >= 0; i--) {
 if (selected.has(gname + '\u0001' + i)) {
 touched.add(gname);
@@ -1742,7 +1742,7 @@ toast('已删除 ' + removed + ' 张字卡');
 }
 function moveSelected(target) {
 const mvGroups = [];
-(groups[cur] || []).forEach(([gname, arr]) => {
+((groups || {})[cur] || []).forEach(([gname, arr]) => {
 const mv = [];
 for (let i = arr.length - 1; i >= 0; i--) {
 if (selected.has(gname + '\u0001' + i)) { mv.push(arr[i]); arr.splice(i, 1); }
@@ -1751,7 +1751,7 @@ if (mv.length) mvGroups.push(mv);
 });
 const total = mvGroups.reduce((s, a) => s + a.length, 0);
 if (!total) return;
-const tg = (groups[cur] || []).find(g => g[0] === target);
+const tg = ((groups || {})[cur] || []).find(g => g[0] === target);
 if (tg) mvGroups.forEach(a => { tg[1] = tg[1].concat(a); });
 selected.clear();
 saveGroups(groups);
@@ -1789,7 +1789,7 @@ manageBar.querySelector('#cc-m-del').addEventListener('click', () => {
 if (!selected.size) { toast('请先勾选字卡'); return; }
 if (window.openModal) {
 const list = [];
-(groups[cur] || []).forEach(([gname, arr]) => {
+((groups || {})[cur] || []).forEach(([gname, arr]) => {
 arr.forEach((c, i) => {
 if (!selected.has(gname + '\u0001' + i)) return;
 let t = c;
@@ -1806,7 +1806,7 @@ window.openModal('删除选中的 ' + selected.size + ' 张字卡？', '', () =>
 });
 manageBar.querySelector('#cc-m-move').addEventListener('click', () => {
 if (!selected.size) { toast('请先勾选字卡'); return; }
-const mList = (groups[cur] || []).map(g => g[0]);
+const mList = ((groups || {})[cur] || []).map(g => g[0]);
 if (!mList.length) { toast('当前没有分组'); return; }
 if (window.openModal) {
 window.openModal('移动到分组', '', (v) => moveSelected(v), {
@@ -2047,7 +2047,7 @@ const EXPORT_CATS = [
 ['sticker', '表情包'], ['image', '图片'], ['poke', '拍一拍'], ['voice', '语音'],
 ['fish', '摸鱼'], ['eat', '吃饭'], ['period', '经期'], ['water', '喝水'], ['garden', '花园'],
 ['sync', '同频'], ['reach', '伸手'], ['cjian', '此间'], ['room', '房间'], ['piggy', '存钱罐'],
-['drift', '漂流瓶'], ['interact', '互动回应'], ['music', '音乐'],
+['drift', '漂流瓶'], ['interact', '互动回应'], ['music', '音乐'], ['drinkname', '饮品名'],
 ['mjfree', '梦角自由造句']
 ];
 const ceMask = document.getElementById('cc-export-mask');
@@ -2162,7 +2162,7 @@ ccExportOffer(data,
 }
 const ccImportData = document.getElementById('cc-import-data');
 if (ccImportData) {
-const CAT_NAMES = { text: '主字卡', kaomoji: '颜文字', emoji: 'emoji', sticker: '表情包', image: '图片', poke: '拍一拍', voice: '语音', fish: '摸鱼', eat: '吃饭', period: '经期', water: '喝水', garden: '花园', sync: '同频', reach: '伸手', cjian: '此间', room: '房间', piggy: '存钱罐', drift: '漂流瓶', interact: '互动回应', music: '音乐', mjfree: '梦角自由造句' };
+const CAT_NAMES = { text: '主字卡', kaomoji: '颜文字', emoji: 'emoji', sticker: '表情包', image: '图片', poke: '拍一拍', voice: '语音', fish: '摸鱼', eat: '吃饭', period: '经期', water: '喝水', garden: '花园', sync: '同频', reach: '伸手', cjian: '此间', room: '房间', piggy: '存钱罐', drift: '漂流瓶', interact: '互动回应', music: '音乐', drinkname: '饮品名', mjfree: '梦角自由造句' };
 ccImportData.addEventListener('click', () => {
 if (window.openModal) {
 const curName = CAT_NAMES[cur] || '当前分类';
@@ -3126,7 +3126,7 @@ textarea: true,
 textareaRows: 14,
 textareaPlaceholder: '【日常】\n你今天真好看\n我想你了',
 txtImport: true,
-groups: (groups[cur] || []).map(g => g[0])
+groups: ((groups || {})[cur] || []).map(g => g[0])
 });
 }
 });
@@ -3246,7 +3246,7 @@ toast('导入出错，请重试');
 }, {
 textarea: true,
 textareaPlaceholder: 'https://example.com/sticker.png\n一行一个链接，可粘贴多个批量导入\n可用【分组名】前缀指定分组，如：【日常】https://…\n\n提示：优先尝试转存为本地图片；图床不允许跨域时按链接保存',
-groups: (groups[cur] || []).map(g => g[0])
+groups: ((groups || {})[cur] || []).map(g => g[0])
 });
 });
 }

@@ -1161,6 +1161,7 @@ else if (sp === 'ask-roast') extra = String(m.roastText || '') + '|' + String(m.
 else if (sp === 'invite') extra = String(m.inviteContent || m.text || '');
 else if (sp === 'gift') extra = String(m.giftId || '') + '|' + String(m.giftName || '') + '|' + String(m.giftEmoji || '') + '|' + String(m.giftWish || '') + '|' + String(m.giftPrice == null ? '' : m.giftPrice); // FIX 2026-09-12 #379 礼物签名误用鲜花字段（flName/flEmoji/flWish 礼物记录里全 undefined）→ 任意两件礼物签名恒等，60s 窗口内第二件被当重复删＝「连续送心愿单礼物第一件之外全闪一下就消失」；改用礼物自己的字段（dish 菜肴同理），不同礼物签名必然不同
 else if (sp === 'dish') extra = String(m.dishName || '') + '|' + String(m.dishEmoji || '') + '|' + String(m.dishWish || '') + '|' + String(m.dishPrice == null ? '' : m.dishPrice); // FIX #379 同上：菜肴消息字段与鲜花不同，此前也恒等签名
+else if (sp === 'drink') extra = String(m.drinkName || '') + '|' + String(m.drinkEmoji || '') + '|' + String(m.drinkIngredients || ''); // 吧台饮品卡：不同饮品签名必须不同，否则 60s 窗内第二杯被当重复并掉
 else if (sp === 'flower') extra = String(m.flName || '') + '|' + String(m.flEmoji || '') + '|' + String(m.flWish || '');
 } catch (e) {}
 const normT = (m.type === 'text' || !m.type) ? '' : String(m.type || '');
@@ -1275,6 +1276,7 @@ if (m.inviteContent) s += '|I' + m.inviteContent;
 if (m.askQuestion) s += '|Q' + m.askQuestion;
 if (m.askFen != null) s += '|K' + m.askFen;
 if (m.dishName) s += '|D' + m.dishName;
+if (m.drinkName) s += '|B' + m.drinkName; // 吧台饮品卡身份字段（不同饮品不得被去重短闩吞掉）
 } catch (e) {}
 return s;
 }
@@ -4646,6 +4648,29 @@ m.innerHTML = '<div class="msg-gift-card msg-dish-card">' +
 '<div class="msg-gift-wish">\u201C' + escTxt(rec.dishWish || '尝尝手艺') + '\u201D</div>' +
 '<div class="msg-gift-foot"><span class="mg-side">' + escTxt(sideTxt) + '</span>' +
 '<span class="msg-gift-price">\u00A5' + escTxt(Number(rec.dishPrice || 0).toFixed(2)) + '</span></div>' +
+favHeartHtml(rec) +
+'</div>';
+appendMsg(m);
+maybeScrollChatBottom(rec.side);
+return m;
+}
+if (rec.special === 'drink') {
+m.className = 'msg-gift msg-drink';
+m.dataset.idx = __msgAt; // #1326：分支重写读调用方给的这一格
+const drinkPn = chatPartnerName();
+const drinkMode = rec.drinkMode || (rec.side === 'out' ? 'gift' : 'ta_gift');
+const sideTxt = drinkMode === 'together' ? '我们一起调了一杯'
+: drinkMode === 'self' ? '我给自己调了一杯'
+: drinkMode === 'ta_gift' ? (drinkPn + '调了一杯送你')
+: (rec.side === 'out' ? ('我给' + drinkPn + '调了一杯') : (drinkPn + '调了一杯送你'));
+m.innerHTML = '<div class="msg-gift-card msg-drink-card">' +
+'<div class="msg-gift-emoji" style="background:#f6f1ff">' + escTxt(rec.drinkEmoji || '🍸') + '</div>' +
+'<div class="msg-gift-name">' + escTxt(rec.drinkName || '特调') + '<span class="msg-drink-dot" style="background:' + escTxt(rec.drinkColor || '#cbb8ff') + '"></span></div>' +
+'<div class="msg-gift-divider"></div>' +
+'<div class="msg-drink-ing">' + escTxt('原料：' + (rec.drinkIngredients || '吧台特调')) + '</div>' +
+(rec.drinkWish ? '<div class="msg-drink-wish">“' + escTxt(rec.drinkWish) + '”</div>' : '') +
+'<div class="msg-gift-foot"><span class="mg-side">' + escTxt(sideTxt) + '</span>' +
+'<span class="msg-gift-price">' + escTxt((rec.drinkIce ? rec.drinkIce + ' · ' : '') + (rec.drinkFused ? '固定搭配' : '自由调制')) + '</span></div>' +
 favHeartHtml(rec) +
 '</div>';
 appendMsg(m);

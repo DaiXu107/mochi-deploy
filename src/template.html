@@ -758,6 +758,11 @@
 <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 21h10l-1.5-5h-7z"/><path d="M12 16v-7"/><path d="M12 12c-2 0-3.5-1-3.5-3"/><path d="M12 10c2 0 3.5-1 3.5-3"/><circle cx="12" cy="6" r="2"/></svg></div>
 <div class="app-name">花园</div>
 </div>
+<!-- 二传增补：吧台（原料调制饮料）桌面入口，与花园同在第二页 -->
+<div class="app" data-app="bar" data-desk-widget="app-bar">
+<div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3h16l-8 9z"/><path d="M12 12v8"/><path d="M8 21h8"/><path d="M7 6.2h10"/></svg></div>
+<div class="app-name">吧台</div>
+</div>
 <!-- v3.13.x：此间（梦角世界时间与在场感知）桌面入口——聊天「更多功能」同款页面，从桌面进入返回桌面 -->
 <div class="app" data-app="cjian" data-desk-widget="app-cjian">
 <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V5a2 2 0 012-2h12a2 2 0 012 2v16"/><path d="M4 21h16"/><path d="M10 21v-6h4v6"/></svg></div>
@@ -1614,6 +1619,7 @@
         <button class="cc-tab" data-type="voice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>语音</button>
         <!-- v8.58：状态字卡——短状态文案池，聊天顶栏 TA 名字下方随机轮换显示，不参与聊天回复 -->
         <button class="cc-tab" data-type="status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>状态</button>
+        <button class="cc-tab" data-type="drinkname">饮品名</button>
         <!-- v3.32.x：其他互动功能字卡（自定义）——与系统预设【其他互动功能字卡】同分类，
              用户自建的功能字卡存本作用域 cc-groups 同名字段，各功能经 getLibPool 并入抽取；
              13 个功能 tab 仅「其他互动功能字卡」入口显示，公用/专属入口隐藏（openCcPage 按入口切换） -->

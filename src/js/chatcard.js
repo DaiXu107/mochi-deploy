@@ -214,7 +214,7 @@
   // getLibPool 并入对应功能池抽取；CC_FUNC_KEYS 不进聊天通用回复池（getCustomCards*
   // 遍历全部分类时排除，防止功能字卡被聊天自动回复误抽）。
   const CC_FUNC_KEYS = ['fish', 'eat', 'period', 'water', 'garden', 'sync', 'reach', 'cjian', 'room', 'piggy', 'drift', 'interact', 'music',
-    'mjfree']; // #317 梦角自由造句：程序生成的重造句卡（dream-free.js），管理页可查看/删除，不进聊天通用池
+    'drinkname', 'mjfree']; // #317 梦角自由造句：程序生成的重造句卡（dream-free.js），管理页可查看/删除，不进聊天通用池
   const CC_ALL_TYPES = CC_TYPES.concat(CC_FUNC_KEYS);
   const CC_FUN_COUNT_KEYS = CC_FUNC_KEYS.filter(k => k !== 'mjfree');
   // v3.26.x #139：GIF 动图上传大小上限（base64 长度）——GIF canvas 压缩会丢
@@ -2147,7 +2147,7 @@
                 const name = String(v == null ? '' : v).trim();
                 if (!name) return;
                 if (name === gname) return;
-                if ((groups[cur] || []).some(g => g[0] === name)) { toast('分组「' + name + '」已存在'); return; }
+                if (((groups || {})[cur] || []).some(g => g[0] === name)) { toast('分组「' + name + '」已存在'); return; }
                 const g = groups[cur][gi];
                 if (!g) return;
                 const oldName = g[0];
@@ -2221,7 +2221,7 @@
   }
   function selectedKeys() {
     const keys = [];
-    (groups[cur] || []).forEach(([gname, arr]) => {
+    ((groups || {})[cur] || []).forEach(([gname, arr]) => {
       if (curGroup && curGroup !== gname) return;
       arr.forEach((c, i) => {
         // v3.7.x：搜索态下「全选」只选当前过滤视图可见的卡（与 render 过滤条件一致），
@@ -2240,7 +2240,7 @@
     let removed = 0;
     // v3.6.x：先记录受影响的分组（局部 DOM 更新需要），再倒序 splice 防错位
     const touched = new Set(); // 受影响分组名
-    (groups[cur] || []).forEach(([gname, arr]) => {
+    ((groups || {})[cur] || []).forEach(([gname, arr]) => {
       for (let i = arr.length - 1; i >= 0; i--) {
         if (selected.has(gname + '\u0001' + i)) {
           touched.add(gname);
@@ -2269,7 +2269,7 @@
   }
   function moveSelected(target) {
     const mvGroups = [];
-    (groups[cur] || []).forEach(([gname, arr]) => {
+    ((groups || {})[cur] || []).forEach(([gname, arr]) => {
       const mv = [];
       for (let i = arr.length - 1; i >= 0; i--) {
         if (selected.has(gname + '\u0001' + i)) { mv.push(arr[i]); arr.splice(i, 1); }
@@ -2278,7 +2278,7 @@
     });
     const total = mvGroups.reduce((s, a) => s + a.length, 0);
     if (!total) return;
-    const tg = (groups[cur] || []).find(g => g[0] === target);
+    const tg = ((groups || {})[cur] || []).find(g => g[0] === target);
     if (tg) mvGroups.forEach(a => { tg[1] = tg[1].concat(a); });
     selected.clear();
     saveGroups(groups);
@@ -2321,7 +2321,7 @@
           // 弹窗里明确列出勾选删除的字卡（只含勾选的），未勾选的字卡不出现在确认弹窗里；
           // 文字字卡显示内容，语音显示文件名，图片/表情包显示占位
           const list = [];
-          (groups[cur] || []).forEach(([gname, arr]) => {
+          ((groups || {})[cur] || []).forEach(([gname, arr]) => {
             arr.forEach((c, i) => {
               if (!selected.has(gname + '\u0001' + i)) return;
               let t = c;
@@ -2339,7 +2339,7 @@
       });
       manageBar.querySelector('#cc-m-move').addEventListener('click', () => {
         if (!selected.size) { toast('请先勾选字卡'); return; }
-        const mList = (groups[cur] || []).map(g => g[0]);
+        const mList = ((groups || {})[cur] || []).map(g => g[0]);
         if (!mList.length) { toast('当前没有分组'); return; }
         if (window.openModal) {
           window.openModal('移动到分组', '', (v) => moveSelected(v), {
@@ -2630,7 +2630,7 @@
       ['sticker', '表情包'], ['image', '图片'], ['poke', '拍一拍'], ['voice', '语音'],
       ['fish', '摸鱼'], ['eat', '吃饭'], ['period', '经期'], ['water', '喝水'], ['garden', '花园'],
       ['sync', '同频'], ['reach', '伸手'], ['cjian', '此间'], ['room', '房间'], ['piggy', '存钱罐'],
-      ['drift', '漂流瓶'], ['interact', '互动回应'], ['music', '音乐'],
+      ['drift', '漂流瓶'], ['interact', '互动回应'], ['music', '音乐'], ['drinkname', '饮品名'],
       // FIX 2026-09-30 #1483：补「梦角自由造句」分类——#353 起 mjfree 卡就存公用/专属两库
       // （管理页有 tab、dream-free 自动入库），导出弹窗却没有这一栏＝造句卡永远导不出去
       ['mjfree', '梦角自由造句']
@@ -2758,7 +2758,7 @@
   // 文件先完整解析、确认含有效字卡后才写入：格式错误/空文件不会改动现有字卡库
   const ccImportData = document.getElementById('cc-import-data');
   if (ccImportData) {
-    const CAT_NAMES = { text: '主字卡', kaomoji: '颜文字', emoji: 'emoji', sticker: '表情包', image: '图片', poke: '拍一拍', voice: '语音', fish: '摸鱼', eat: '吃饭', period: '经期', water: '喝水', garden: '花园', sync: '同频', reach: '伸手', cjian: '此间', room: '房间', piggy: '存钱罐', drift: '漂流瓶', interact: '互动回应', music: '音乐', mjfree: '梦角自由造句' };
+    const CAT_NAMES = { text: '主字卡', kaomoji: '颜文字', emoji: 'emoji', sticker: '表情包', image: '图片', poke: '拍一拍', voice: '语音', fish: '摸鱼', eat: '吃饭', period: '经期', water: '喝水', garden: '花园', sync: '同频', reach: '伸手', cjian: '此间', room: '房间', piggy: '存钱罐', drift: '漂流瓶', interact: '互动回应', music: '音乐', drinkname: '饮品名', mjfree: '梦角自由造句' };
     ccImportData.addEventListener('click', () => {
       if (window.openModal) {
         const curName = CAT_NAMES[cur] || '当前分类';
@@ -3934,7 +3934,7 @@
           // v3.6.x：传入当前分类的现有分组——openModal 的「目标分组」下拉只在
           // opts.groups 非空时显示；此前漏传，弹窗里永远没有分组选择框，
           // 只能靠【组名】前缀识别（回调的 targetGroup 逻辑一直在但从未触发）
-          groups: (groups[cur] || []).map(g => g[0])
+          groups: ((groups || {})[cur] || []).map(g => g[0])
         });
       }
     });
@@ -4078,7 +4078,7 @@
       }, {
         textarea: true,
         textareaPlaceholder: 'https://example.com/sticker.png\n一行一个链接，可粘贴多个批量导入\n可用【分组名】前缀指定分组，如：【日常】https://…\n\n提示：优先尝试转存为本地图片；图床不允许跨域时按链接保存',
-        groups: (groups[cur] || []).map(g => g[0])
+        groups: ((groups || {})[cur] || []).map(g => g[0])
       });
     });
   }
