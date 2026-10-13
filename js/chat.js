@@ -3134,6 +3134,15 @@ const fItem = favBtn.closest('[data-idx]');
 if (fItem && fItem.dataset.idx !== undefined) window.favCardFromMsg(Number(fItem.dataset.idx));
 return;
 }
+const drinkActBtn = e.target.closest('.msg-gift-claim, .msg-gift-reject');
+if (drinkActBtn && drinkActBtn.closest('.msg-drink')) {
+e.stopPropagation();
+const dItem = drinkActBtn.closest('[data-idx]');
+const dIdx = dItem && dItem.dataset.idx !== undefined ? Number(dItem.dataset.idx) : -1;
+const dRec = dIdx >= 0 ? msgs[dIdx] : null;
+if (dRec && dRec.special === 'drink' && drinkIsIncoming(dRec)) drinkActNow(dIdx, drinkActBtn.classList.contains('msg-gift-reject'));
+return;
+}
 const giftClaimBtn = e.target.closest('.msg-gift-claim');
 if (giftClaimBtn) {
 e.stopPropagation();
@@ -4671,6 +4680,8 @@ m.innerHTML = '<div class="msg-gift-card msg-drink-card">' +
 (rec.drinkWish ? '<div class="msg-drink-wish">“' + escTxt(rec.drinkWish) + '”</div>' : '') +
 '<div class="msg-gift-foot"><span class="mg-side">' + escTxt(sideTxt) + '</span>' +
 '<span class="msg-gift-price">' + escTxt((rec.drinkIce ? rec.drinkIce + ' · ' : '') + (rec.drinkSweet ? rec.drinkSweet + ' · ' : '') + (rec.drinkFused ? '固定搭配' : '自由调制')) + '</span></div>' +
+drinkCardActsHtml(rec) +
+drinkCardReplHtml(rec) +
 favHeartHtml(rec) +
 '</div>';
 appendMsg(m);
@@ -5539,6 +5550,57 @@ const claim = meta.claimed === 0
 return claim + '<button class="msg-gift-reply" type="button">回复</button>';
 }
 function giftCardActsHtml(rec) { return giftIsIncoming(rec) ? '<div class="msg-gift-acts">' + giftCardActsInner(rec) + '</div>' : ''; }
+function drinkMetaOf(rec) { if (!rec || !rec.drinkBoxId || !window.drinkBoxMeta) return null; try { return window.drinkBoxMeta(rec.drinkBoxId); } catch (e) { return null; } }
+function drinkReplList(rec) {
+const m = drinkMetaOf(rec);
+if (!m || !Array.isArray(m.replies)) return [];
+return m.replies.filter(function (r) { return r && typeof r.text === 'string' && r.text; });
+}
+function drinkReplRows(rec) {
+return drinkReplList(rec).map(function (r) {
+return '<div class="mg-repl-row"><span class="mg-repl-who">' + escTxt(giftWhoLabel(r.who)) + '</span><span class="mg-repl-tx">' + escTxt(r.text) + '</span></div>';
+}).join('');
+}
+function drinkIsIncoming(rec) { return !!(rec && rec.side === 'in' && rec.drinkBoxId); }
+function drinkCardActsInner(rec) {
+const meta = drinkMetaOf(rec);
+if (!meta) return '';
+if (rec.side === 'in') {
+if (meta.claimed === 1) return '<span class="msg-gift-got">✓ 已接收</span>';
+if (meta.claimed === 2) return '<span class="msg-gift-got">已婉拒</span>';
+return '<button class="msg-gift-claim" type="button">接收</button><button class="msg-gift-reject" type="button">拒收</button>';
+}
+return meta.claimed === 1 ? '<span class="msg-gift-got">✓ 已被领取</span>' : '<span class="mg-drink-wait">待领取</span>';
+}
+function drinkCardActsHtml(rec) { return (rec && rec.drinkBoxId) ? '<div class="msg-gift-acts">' + drinkCardActsInner(rec) + '</div>' : ''; }
+function drinkCardReplHtml(rec) { return '<div class="msg-gift-repl"' + (drinkReplList(rec).length ? '' : ' hidden') + '>' + drinkReplRows(rec) + '</div>'; }
+function drinkPatchCard(idx) {
+const rec = msgs[idx];
+if (!rec || rec.special !== 'drink' || !body) return false;
+const el = body.querySelector('.msg-drink[data-idx="' + idx + '"]');
+if (!el) return false;
+const card = el.querySelector('.msg-gift-card');
+if (!card) return false;
+card.querySelectorAll('.msg-gift-acts, .msg-gift-repl').forEach(function (x) { x.remove(); });
+const html = drinkCardActsHtml(rec) + drinkCardReplHtml(rec);
+const fav = card.querySelector('.msg-fav-heart');
+if (fav) fav.insertAdjacentHTML('beforebegin', html); else card.insertAdjacentHTML('beforeend', html);
+return true;
+}
+function drinkActNow(idx, reject) {
+const rec = msgs[idx];
+if (!drinkIsIncoming(rec) || !window.drinkBoxMarkClaimed) return false;
+const meta = drinkMetaOf(rec) || {};
+if (meta.claimed === 1 || meta.claimed === 2) return true;
+try { window.drinkBoxMarkClaimed(rec.drinkBoxId, reject ? 2 : 1); } catch (e) { return false; }
+try { window.drinkBoxAttachReply(rec.drinkBoxId, 'ta', reject ? '那我先放着，想喝随时说。' : '那就好，慢慢喝。'); } catch (e2) {}
+drinkPatchCard(idx);
+try { addIn(reject ? ('你婉拒了 ' + (rec.drinkName || '饮品')) : ('你收下了 ' + (rec.drinkName || '饮品')), { special: 'poke' }); } catch (e3) {}
+return true;
+}
+document.addEventListener('drink-box-updated', function () {
+try { for (let i = 0; i < msgs.length; i++) if (msgs[i] && msgs[i].special === 'drink' && msgs[i].drinkBoxId) drinkPatchCard(i); } catch (e) {}
+});
 function giftCardReplHtml(rec) {
 return '<div class="msg-gift-repl"' + (giftReplList(rec).length ? '' : ' hidden') + '>' + giftReplRows(rec) + '</div>';
 }

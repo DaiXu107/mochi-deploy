@@ -20,7 +20,7 @@
   var ICE_OPTIONS = ['去冰', '少冰', '正常冰', '多冰', '冰沙', '温热', '常温'];
   var COLD_ICE = { '去冰': 1, '少冰': 1, '正常冰': 1, '多冰': 1, '冰沙': 1 };
   // 甜度分级（仿冰度）：全糖 / 少糖 / 半糖 / 微糖 / 无糖
-  var SWEET_OPTIONS = ['全糖', '少糖', '半糖', '微糖', '无糖'];
+  var SWEET_OPTIONS = ['全糖', '少糖', '半糖', '多糖', '无糖'];
   var recipeLog = []; // 本杯原始原料名（融合后仍保留，用于灰字说明与卡片「原料构成」）
 
   function toast(t) { try { if (window.toast) window.toast(t); } catch (e) {} }
@@ -36,6 +36,39 @@
     catch (e) { return []; }
   }
   function writeLog(list) { try { var s = activeS(); if (s) s.set(K_LOG, JSON.stringify(list)); } catch (e) {} }
+  // ================= 饮品账本（按联系人）=================
+  // 仿心意柜：卡片的【领取态 / 追加回复】只能存外部账本——聊天大包表达不出「改已有记录」的
+  // 增量（写回聊天记录会被基线合并盖回去），故卡片只带 drinkBoxId 指针。
+  var K_BOX = 'bar-drink-box';
+  function boxRead() {
+    try { var s = activeS(); if (!s) return []; var v = JSON.parse(s.get(K_BOX) || '[]'); return Array.isArray(v) ? v : []; }
+    catch (e) { return []; }
+  }
+  function boxWrite(list) { try { var s = activeS(); if (s) s.set(K_BOX, JSON.stringify((list || []).slice(0, 300))); } catch (e) {} }
+  function boxAdd(entry) { var l = boxRead(); l.unshift(entry); boxWrite(l); return entry.id; }
+  window.drinkBoxMeta = function (id) {
+    if (!id) return null;
+    var l = boxRead();
+    for (var i = 0; i < l.length; i++) if (l[i] && l[i].id === id) return l[i];
+    return null;
+  };
+  window.drinkBoxMarkClaimed = function (id, st) {
+    var l = boxRead();
+    for (var i = 0; i < l.length; i++) if (l[i] && l[i].id === id) { l[i].claimed = st; boxWrite(l); return true; }
+    return false;
+  };
+  window.drinkBoxAttachReply = function (id, who, text) {
+    if (!text) return false;
+    var l = boxRead();
+    for (var i = 0; i < l.length; i++) if (l[i] && l[i].id === id) {
+      if (!Array.isArray(l[i].replies)) l[i].replies = [];
+      l[i].replies.push({ who: who === 'me' ? 'me' : 'ta', text: String(text).slice(0, 60) });
+      boxWrite(l); return true;
+    }
+    return false;
+  };
+  // 通知聊天就地补卡（不整窗重建）
+  function notifyDrinkBox() { try { document.dispatchEvent(new CustomEvent('drink-box-updated')); } catch (e) {} }
 
   // ================= 冷饮概率：经期 > 季节 + 心情 =================
   function todayStr() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
@@ -78,7 +111,7 @@
     var r = Math.random();
     if (r < 0.34) return '半糖';
     if (r < 0.58) return '少糖';
-    if (r < 0.78) return '微糖';
+    if (r < 0.78) return '多糖';
     if (r < 0.92) return '全糖';
     return '无糖';
   }
@@ -536,14 +569,42 @@
     var d = drinkPayload(ice);
     try {
       var rec = buildRec(d, mode, 'out', wish, sweet);
+      var needBox = (mode === 'gift' || mode === 'together');
+      var boxId = '';
+      if (needBox) {
+        boxId = 'db_' + Date.now().toString(36) + '_' + Math.floor(Math.random() * 1e6).toString(36);
+        rec.drinkBoxId = boxId;
+      }
       if (window.chatAddGift) window.chatAddGift(rec);
       else if (window.chatAddIn) window.chatAddIn(rec.text, {});
       pushLog(d, mode, wish, sweet);
+      // 入账 + TA 稍后「领取 + 回话」（仿礼物：收礼后有概率领取并随机回一句）
+      if (needBox && boxId) {
+        boxAdd({ id: boxId, name: d.name, emoji: d.emoji, ingredients: d.ingredients, ice: d.ice, sweet: sweet, mode: mode, wish: wish, side: 'out', ts: Date.now(), claimed: 0, replies: [] });
+        taReactToDrink(boxId);
+      }
       var who = mode === 'self' ? '自己喝了' : (mode === 'together' ? '你俩一起调的' : '');
       toast('已把「' + d.name + '（' + d.ice + '）」' + (mode === 'self' ? '留给自己' : '送到聊天框'));
       window.__barFrom = 'bar';
       if (specialKind) { try { if (window.mochiAnnivFire) window.mochiAnnivFire(); } catch (e) {} }
     } catch (e) { toast('发送失败，请重试'); }
+  }
+
+  // TA 收到饮品后的反应：大概率领取 + 随机回一句（仿礼物 #848 的自动回话）
+  var TA_DRINK_REPLIES = [
+    '这杯好喝，谢谢你。', '刚好有点渴，收下了。', '你调的我都喜欢喝。', '温度刚刚好。',
+    '下次换我给你调一杯。', '喝到了，很甜。', '这杯我记住了。', '谢谢，暖到心里了。'
+  ];
+  function taReactToDrink(boxId) {
+    var wait = 1500 + Math.floor(Math.random() * 2500);
+    setTimeout(function () {
+      try {
+        if (Math.random() < 0.85) window.drinkBoxMarkClaimed(boxId, 1);
+        var pool = TA_DRINK_REPLIES;
+        window.drinkBoxAttachReply(boxId, 'ta', pool[Math.floor(Math.random() * pool.length)]);
+        notifyDrinkBox();
+      } catch (e) {}
+    }, wait);
   }
 
   // ================= TA 帮调（延迟择冰 + 喜欢的原料加权）=================
@@ -647,7 +708,11 @@
       }
       var d = simulateCup(picked);
       d.ice = pickIce();
-      var rec = buildRec(d, 'ta_gift', 'in', '');
+      var sw = pickSweet();
+      var rec = buildRec(d, 'ta_gift', 'in', '', sw);
+      var tbId = 'db_' + Date.now().toString(36) + '_' + Math.floor(Math.random() * 1e6).toString(36);
+      rec.drinkBoxId = tbId;
+      boxAdd({ id: tbId, name: d.name, emoji: d.emoji, ingredients: d.ingredients, ice: d.ice, sweet: sw, mode: 'ta_gift', wish: '', side: 'in', ts: Date.now(), claimed: 0, replies: [] });
       if (window.chatAddGift) window.chatAddGift(rec);
       try { G.set(K_TAGIFT, todayStr()); } catch (e) {}
     } catch (e) {}
@@ -1050,6 +1115,7 @@
     picker: function () { return document.getElementById('bar-picker'); },
     coldProb: coldProb, coldWindow: coldWindow, pickIce: pickIce, season: function () { return SEASON_NAME[seasonIdx()]; },
     moodScore: moodScore, likes: readLikes, toggleLike: toggleLike, taLikes: ensureTaLikes,
-    taGift: taSpontaneousGift, advice: maybeColdAdvice, simulate: simulateCup
+    taGift: taSpontaneousGift, advice: maybeColdAdvice, simulate: simulateCup,
+    box: function () { return boxRead(); }, boxMeta: window.drinkBoxMeta, boxClaim: window.drinkBoxMarkClaimed, boxReply: window.drinkBoxAttachReply
   };
 })();

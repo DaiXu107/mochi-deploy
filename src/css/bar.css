@@ -197,6 +197,10 @@
 /* 聊天卡：心意留言 */
 .msg-drink-wish { margin-top:4px; font-size:12px; line-height:1.5; color:var(--ink); }
 
+/* 饮品卡：待领取 / 拒收按钮 */
+.mg-drink-wait { font-size:11.5px; color:var(--muted,#8a8a8a); }
+.msg-gift-reject { margin-left:8px; font-size:12px; font-weight:600; color:var(--muted,#8a8a8a); cursor:pointer; background:var(--card-soft,#f2f3f5); border:1px solid var(--card-border,rgba(0,0,0,.08)); padding:5px 12px; border-radius:999px; }
+
 /* 减少动态效果：去掉一切过渡 */
 @media (prefers-reduced-motion: reduce) {
   #page-bar *, .bar-cab-panel *, .bar-add-panel * { transition: none !important; }

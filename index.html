@@ -9782,6 +9782,8 @@ border: 1px solid var(--input-border, #e0e0e0); background: var(--input-bg, #fff
 .bs-emoji img { width:26px; height:26px; object-fit:cover; border-radius:6px; display:block; }
 .bci-emoji img { width:22px; height:22px; object-fit:cover; border-radius:6px; display:block; }
 .msg-drink-wish { margin-top:4px; font-size:12px; line-height:1.5; color:var(--ink); }
+.mg-drink-wait { font-size:11.5px; color:var(--muted,#8a8a8a); }
+.msg-gift-reject { margin-left:8px; font-size:12px; font-weight:600; color:var(--muted,#8a8a8a); cursor:pointer; background:var(--card-soft,#f2f3f5); border:1px solid var(--card-border,rgba(0,0,0,.08)); padding:5px 12px; border-radius:999px; }
 @media (prefers-reduced-motion: reduce) {
 #page-bar *, .bar-cab-panel *, .bar-add-panel * { transition: none !important; }
 }
@@ -11262,7 +11264,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
            （名称+版号 / 部署时间+实时秒 / 版本检测行）收成一行；检测行随 ver-check.js 退役删除。
            data-build-ts / data-version 两属性保留：device.js 诊断、bg-keep 自检、pwa.js 旧包检测
            仍只读属性（诊断版本号走 data-version 兜底，device.js 两处缓存原生支持）。 -->
-      <div class="splash-ver" id="splash-ver" data-build-ts="1791878113480" data-version="v8.1">
+      <div class="splash-ver" id="splash-ver" data-build-ts="1791878501395" data-version="v8.1">
         <span class="sv-app">Mochi 字卡传讯 已完结停更</span>
       </div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
@@ -23199,4 +23201,4 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 </body>
 </html>
 
-<!-- __MOCHI_EOF__ mv6dyp54 -->
+<!-- __MOCHI_EOF__ mv6e70gj -->
