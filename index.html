@@ -9740,6 +9740,9 @@ border: 1px solid var(--input-border, #e0e0e0); background: var(--input-bg, #fff
 .bar-ice-hint { font-size:12px; color:var(--muted); padding:2px 2px 10px; }
 .bar-ice-row { display:flex; flex-wrap:wrap; gap:8px; padding:0 2px 12px; }
 .bar-ice-pill { font-size:12.5px; color:var(--ink); cursor:pointer; padding:7px 14px; border-radius:999px; background:var(--card-soft,#f2f3f5); border:1px solid var(--card-border,rgba(0,0,0,.08)); }
+.bar-ice-label { font-size:11.5px; color:var(--muted,#8a8a8a); padding:0 2px 6px; }
+.bar-sweet-pill { font-size:12.5px; color:var(--ink); cursor:pointer; padding:7px 14px; border-radius:999px; background:var(--card-soft,#f2f3f5); border:1px solid var(--card-border,rgba(0,0,0,.08)); }
+.bar-sweet-pill.sel { color:#fff; background:linear-gradient(135deg,#ff9db4,#ffc08a); border-color:transparent; font-weight:700; }
 .bar-ice-pill.sel { color:#fff; background:var(--ink,#111); border-color:var(--ink,#111); font-weight:700; }
 .bar-log-panel { max-height:76vh; display:flex; flex-direction:column; }
 .bar-log-list { flex:1; min-height:0; overflow-y:auto; }
@@ -11259,7 +11262,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
            （名称+版号 / 部署时间+实时秒 / 版本检测行）收成一行；检测行随 ver-check.js 退役删除。
            data-build-ts / data-version 两属性保留：device.js 诊断、bg-keep 自检、pwa.js 旧包检测
            仍只读属性（诊断版本号走 data-version 兜底，device.js 两处缓存原生支持）。 -->
-      <div class="splash-ver" id="splash-ver" data-build-ts="1791868439443" data-version="v8.1">
+      <div class="splash-ver" id="splash-ver" data-build-ts="1791878113480" data-version="v8.1">
         <span class="sv-app">Mochi 字卡传讯 已完结停更</span>
       </div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
@@ -23196,4 +23199,4 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 </body>
 </html>
 
-<!-- __MOCHI_EOF__ mv687clv -->
+<!-- __MOCHI_EOF__ mv6dyp54 -->

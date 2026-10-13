@@ -4670,7 +4670,7 @@ m.innerHTML = '<div class="msg-gift-card msg-drink-card">' +
 '<div class="msg-drink-ing">' + escTxt('原料：' + (rec.drinkIngredients || '吧台特调')) + '</div>' +
 (rec.drinkWish ? '<div class="msg-drink-wish">“' + escTxt(rec.drinkWish) + '”</div>' : '') +
 '<div class="msg-gift-foot"><span class="mg-side">' + escTxt(sideTxt) + '</span>' +
-'<span class="msg-gift-price">' + escTxt((rec.drinkIce ? rec.drinkIce + ' · ' : '') + (rec.drinkFused ? '固定搭配' : '自由调制')) + '</span></div>' +
+'<span class="msg-gift-price">' + escTxt((rec.drinkIce ? rec.drinkIce + ' · ' : '') + (rec.drinkSweet ? rec.drinkSweet + ' · ' : '') + (rec.drinkFused ? '固定搭配' : '自由调制')) + '</span></div>' +
 favHeartHtml(rec) +
 '</div>';
 appendMsg(m);

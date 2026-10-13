@@ -8,8 +8,9 @@ var K_RECENT = 'bar-named-recent', K_LOG = 'bar-log';
 var K_MY_LIKES = 'bar-my-likes', K_TA_LIKES = 'bar-ta-likes';
 var K_ADVICE = 'period-cold-advice-last', K_TAGIFT = 'bar-ta-gift-last';
 var MAX_SLOT = 4;
-var ICE_OPTIONS = ['去冰', '少冰', '多冰', '冰沙', '温热', '常温'];
-var COLD_ICE = { '去冰': 1, '少冰': 1, '多冰': 1, '冰沙': 1 };
+var ICE_OPTIONS = ['去冰', '少冰', '正常冰', '多冰', '冰沙', '温热', '常温'];
+var COLD_ICE = { '去冰': 1, '少冰': 1, '正常冰': 1, '多冰': 1, '冰沙': 1 };
+var SWEET_OPTIONS = ['全糖', '少糖', '半糖', '微糖', '无糖'];
 var recipeLog = []; // 本杯原始原料名（融合后仍保留，用于灰字说明与卡片「原料构成」）
 function toast(t) { try { if (window.toast) window.toast(t); } catch (e) {} }
 function activeS() { try { return window.activeStore(); } catch (e) { return null; } }
@@ -48,10 +49,19 @@ function coldProb() { var w = coldWindow(); return (w && w.active) ? 0.15 : norm
 function pickIce() {
 if (Math.random() >= coldProb()) return Math.random() < 0.5 ? '温热' : '常温';
 var r = Math.random();
-if (r < 0.42) return '去冰';
-if (r < 0.78) return '少冰';
-if (r < 0.95) return '多冰';
+if (r < 0.36) return '正常冰';
+if (r < 0.58) return '少冰';
+if (r < 0.74) return '去冰';
+if (r < 0.94) return '多冰';
 return '冰沙';
+}
+function pickSweet() {
+var r = Math.random();
+if (r < 0.34) return '半糖';
+if (r < 0.58) return '少糖';
+if (r < 0.78) return '微糖';
+if (r < 0.92) return '全糖';
+return '无糖';
 }
 function coldReasonText() {
 var w = coldWindow();
@@ -138,6 +148,7 @@ var manualName = '';
 var currentName = '';
 var specialKind = '';
 var iceChoice = '常温';
+var sweetChoice = '半糖';
 var drinkMode = 'gift';   // gift | together | self | ta_gift
 function distinctIds() {
 var arr = [];
@@ -368,19 +379,26 @@ opts = opts || {};
 var mode = opts.mode || 'gift';
 var allowSelf = !!opts.allowSelf && mode === 'gift';
 var taPick = opts.taPick || '';
+var taSweet = opts.taSweet || '';
 if (taPick) iceChoice = taPick;
+if (taSweet) sweetChoice = taSweet;
 var mask = document.createElement('div');
 mask.className = 'mg-mask'; mask.id = 'bar-ice-mask';
 var hint = taPick
-? partnerName() + '想了想，替你选了「' + taPick + '」'
+? partnerName() + '想了想，替你选了「' + taPick + ' · ' + sweetChoice + '」'
 : '给「' + (currentName || '特调') + '」选个冰度';
 mask.innerHTML =
 '<div class="mg-panel bar-ice-panel">' +
-'<div class="mg-head"><span>冰度 / 温度</span><button class="mg-close">✕</button></div>' +
+'<div class="mg-head"><span>冰度 / 甜度</span><button class="mg-close">✕</button></div>' +
 '<div class="bar-ice-hint">' + hint + '</div>' +
 (taPick ? '<div class="bar-ice-note">' + coldReasonText() + '</div>' : '') +
+'<div class="bar-ice-label">冰度 / 温度</div>' +
 '<div class="bar-ice-row">' + ICE_OPTIONS.map(function (o) {
 return '<button class="bar-ice-pill' + (o === iceChoice ? ' sel' : '') + '" data-ice="' + o + '">' + o + '</button>';
+}).join('') + '</div>' +
+'<div class="bar-ice-label">甜度</div>' +
+'<div class="bar-ice-row">' + SWEET_OPTIONS.map(function (o) {
+return '<button class="bar-sweet-pill' + (o === sweetChoice ? ' sel' : '') + '" data-sweet="' + o + '">' + o + '</button>';
 }).join('') + '</div>' +
 (allowSelf
 ? '<div class="bar-ice-mode"><button class="bar-ice-mode-btn sel" data-mode="gift">送给' + partnerName() + '</button><button class="bar-ice-mode-btn" data-mode="self">自己喝</button></div>'
@@ -400,6 +418,12 @@ iceChoice = b.getAttribute('data-ice');
 mask.querySelectorAll('.bar-ice-pill').forEach(function (x) { x.classList.toggle('sel', x === b); });
 });
 });
+mask.querySelectorAll('.bar-sweet-pill').forEach(function (b) {
+b.addEventListener('click', function () {
+sweetChoice = b.getAttribute('data-sweet');
+mask.querySelectorAll('.bar-sweet-pill').forEach(function (x) { x.classList.toggle('sel', x === b); });
+});
+});
 mask.querySelectorAll('.bar-ice-mode-btn').forEach(function (b) {
 b.addEventListener('click', function () {
 mode = b.getAttribute('data-mode');
@@ -410,7 +434,7 @@ mask.querySelector('#bar-ice-ok').addEventListener('click', function () {
 var wEl = mask.querySelector('#bar-ice-wish');
 var wish = (wEl && wEl.value || '').trim();
 close();
-sendToChat(iceChoice, mode, wish);
+sendToChat(iceChoice, mode, wish, sweetChoice);
 });
 }
 function brewThenAsk() {
@@ -434,31 +458,32 @@ ice: ice || iceChoice,
 fused: fusedLock, manual: !!manualName
 };
 }
-function buildRec(d, mode, side, wish) {
+function buildRec(d, mode, side, wish, sweet) {
 return {
 side: side || 'out', special: 'drink',
 text: '吧台特调：' + d.name,
 drinkName: d.name, drinkEmoji: d.emoji, drinkColor: d.color,
-drinkIngredients: d.ingredients, drinkIce: d.ice,
+drinkIngredients: d.ingredients, drinkIce: d.ice, drinkSweet: sweet || '',
 drinkMode: mode, drinkWish: wish || '', drinkFused: d.fused, drinkManual: d.manual,
 ts: Date.now()
 };
 }
-function pushLog(d, mode, wish) {
+function pushLog(d, mode, wish, sweet) {
 var log = readLog();
-log.push({ name: d.name, emoji: d.emoji, color: d.color, ingredients: d.ingredients, ice: d.ice, mode: mode, wish: wish || '', fused: d.fused, manual: d.manual, ts: Date.now() });
+log.push({ name: d.name, emoji: d.emoji, color: d.color, ingredients: d.ingredients, ice: d.ice, sweet: sweet || '', mode: mode, wish: wish || '', fused: d.fused, manual: d.manual, ts: Date.now() });
 writeLog(log);
 }
-function sendToChat(ice, mode, wish) {
+function sendToChat(ice, mode, wish, sweet) {
 if (!canSend()) { toast('先加至少一份原料'); return; }
 mode = mode || 'gift';
 wish = wish || '';
+sweet = sweet || sweetChoice;
 var d = drinkPayload(ice);
 try {
-var rec = buildRec(d, mode, 'out', wish);
+var rec = buildRec(d, mode, 'out', wish, sweet);
 if (window.chatAddGift) window.chatAddGift(rec);
 else if (window.chatAddIn) window.chatAddIn(rec.text, {});
-pushLog(d, mode, wish);
+pushLog(d, mode, wish, sweet);
 var who = mode === 'self' ? '自己喝了' : (mode === 'together' ? '你俩一起调的' : '');
 toast('已把「' + d.name + '（' + d.ice + '）」' + (mode === 'self' ? '留给自己' : '送到聊天框'));
 window.__barFrom = 'bar';
@@ -492,11 +517,11 @@ renderThinking(true, nick + ' 正在挑冰度…');
 var wait = 2000 + Math.floor(Math.random() * 2000);
 setTimeout(function () {
 renderThinking(false);
-var pick = pickIce();
-renderThinking(true, nick + '：「' + pick + '，就这个」');
+var pick = pickIce(); var sw = pickSweet();
+renderThinking(true, nick + '：「' + pick + ' · ' + sw + '，就这个」');
 setTimeout(function () {
 renderThinking(false);
-openIceModal({ mode: 'together', taPick: pick });
+openIceModal({ mode: 'together', taPick: pick, taSweet: sw });
 }, 700);
 }, wait);
 });
