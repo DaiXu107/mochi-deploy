@@ -6569,37 +6569,98 @@
         </span>
         <span class="ch-name">房间</span>
         <span class="ch-settings" id="room-info-btn" title="小屋信息">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
         </span>
       </div>
-      <div class="room-stage">
-        <div class="r-hud">
-          <span class="r-chip" id="room-chip-lv">🏡 Lv.1</span>
-          <span class="r-chip" id="room-chip-cf">舒适度 ★☆☆☆☆</span>
-          <span class="r-chip" id="room-chip-cap">家具 0/9</span>
-          <span class="r-chip" id="room-chip-pt">🏠 0</span>
-        </div>
-        <div class="r-scene" id="room-scene">
-          <div class="r-wall wall-cream" id="room-wall">
-            <div class="r-door"></div>
-            <div class="r-window wa" id="room-win-a"><span class="r-sky" id="room-sky-a">☀️</span></div>
-            <div class="r-window wb" id="room-win-b"><span class="r-sky" id="room-sky-b">☀️</span></div>
+      <div class="rio-root">
+        <button id="daynight" aria-label="切换昼夜" title="切换昼夜">☀️</button>
+        <div id="rio-view"><div id="fit"><div id="stage">
+          <div id="scene">
+            <svg id="static" width="640" height="500"></svg>
+            <div id="glows"></div>
+            <div id="rv-furn"></div>
+            <div id="ta"></div>
+            <div id="bubble" hidden></div>
+            <div id="nightmask" hidden></div>
+            <div id="winband" hidden></div>
           </div>
-          <div class="r-floor floor-wood" id="room-floor"></div>
-          <div id="room-ta"><i class="r-ta-glow"></i></div>
-          <div class="r-bubble" id="room-bubble" hidden></div>
-          <div class="r-banner" id="room-banner" hidden>
-            <span id="room-banner-txt"></span>
-            <button id="room-banner-cancel" type="button">取消</button>
+        </div></div>
+          <div id="hud"></div>
+        </div>
+        <div id="controls">
+          <button class="rv-act" id="bInv"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8l8-4 8 4v9l-8 4-8-4V8z"/><path d="M4 8l8 4 8-4M12 12v9"/></svg><span>仓库</span></button>
+          <button class="rv-act" id="bRoom"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h13v4H8v3"/><rect x="6" y="12" width="4" height="7" rx="1"/></svg><span>装修</span></button>
+          <button class="rv-act" id="bStudio"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19l-4 1z"/><path d="M14 7l3 3"/></svg><span>自绘</span></button>
+          <button class="rv-act" id="bMore"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7"/></svg><span>设置</span></button>
+        </div>
+        <div id="rv-panel"><div class="rv-panel" id="panelBox"></div></div>
+        <div id="modal2"><div class="rv-panel wide" id="modal2Box"></div></div>
+        <div id="studio"><div class="rv-st-box">
+          <h3 id="stTitle">✏️ 画室</h3><div class="rv-xclose" id="stX">✕</div>
+          <div class="rv-st-main">
+            <canvas id="stCanvas" width="320" height="320"></canvas>
+            <div class="rv-st-side">
+              <div id="stPreview"></div>
+              <div class="rv-prow" style="margin-top:2px"><span style="width:34px;font-size:12px">画布</span>
+                <div id="stSize" class="rv-seg" style="flex:1"><button data-s="8">8</button><button data-s="12" class="rv-on">12</button><button data-s="16">16</button><button data-s="24">24</button><button data-s="32">32</button></div>
+                <input type="number" id="stSizeN" min="4" max="48" value="12" title="自定义格数" style="width:54px;padding:5px 4px;border:1px solid #e0d8ec;border-radius:8px;font-size:12px;color:#443a52;text-align:center">
+              </div>
+              <div class="rv-prow"><span style="width:34px;font-size:12px">取色</span><input type="color" id="stColor" value="#e86a6a" style="flex:0 0 46px;height:30px;padding:0;border:1px solid #e0d8ec;border-radius:6px;background:#fff"><span id="stColorHex" style="font-size:11px;color:#9a90a8">#E86A6A</span></div>
+              <div id="stPal"></div>
+              <div class="rv-st-tools">
+                <button id="stPen" class="rv-on">🖌 画笔</button>
+                <button id="stEraser">⌫ 橡皮</button>
+                <button id="stUndo">↩ 撤销</button>
+                <button id="stClear">🗑 清空</button>
+              </div>
+              <div class="rv-dpadwrap"><span style="font-size:12px;color:#9a90a8;width:34px">移动</span>
+                <div class="rv-dpad">
+                  <span></span><button data-dx="0" data-dy="-1">▲</button><span></span>
+                  <button data-dx="-1" data-dy="0">◀</button><button data-dx="0" data-dy="1">▼</button><button data-dx="1" data-dy="0">▶</button>
+                </div>
+              </div>
+              <input id="stName" placeholder="给家具起个名字（保存后进仓库）" hidden/>
+            </div>
           </div>
+          <div class="rv-st-foot"><button id="stCancel">取消</button><button id="stSave">保存</button></div>
+        </div></div>
+        <div id="asm"><div class="rv-st-box" style="width:min(96vw,660px)">
+          <h3>🔧 组装家具</h3><div class="rv-xclose" id="asmX">✕</div>
+          <div class="rv-st-main">
+            <div>
+              <div id="asmPreview" style="width:300px;height:300px;background:#f6f2fb;border-radius:10px;touch-action:none;cursor:grab;position:relative"></div>
+              <div class="rv-desc" style="text-align:center;margin-top:4px;font-size:11px">拖动＝旋转视角 · 滚轮/双指＝缩放 · 点按＝选中部件</div>
+            </div>
+            <div class="rv-st-side" style="min-width:236px">
+              <div class="rv-prow" style="margin-top:0"><span style="width:34px;font-size:12px">模板</span><div id="asmTpl" class="rv-seg" style="flex-wrap:wrap">
+                <button data-tpl="table">小桌</button><button data-tpl="sofa">沙发</button><button data-tpl="bed">床</button><button data-tpl="shelf">书架</button><button data-tpl="lamp">台灯</button><button data-tpl="plant">盆栽</button>
+              </div></div>
+              <div class="rv-prow"><span style="width:34px;font-size:12px">添加</span>
+                <button class="rv-addb" data-shape="box">＋盒体</button><button class="rv-addb" data-shape="ball">＋球</button><button class="rv-addb" data-shape="cyl">＋圆柱</button>
+              </div>
+              <div id="asmSelInfo" class="rv-desc" style="min-height:16px;margin-bottom:2px">点按预览中的部件进行编辑</div>
+              <div class="rv-prow"><span style="width:34px;font-size:12px">移动</span>
+                <div class="rv-joypad" id="rv-joypad"><div class="rv-joyknob" id="rv-joyknob"></div></div>
+              </div>
+              <div class="rv-prow"><span style="width:34px;font-size:12px">宽</span><input type="range" id="asmW" min="15" max="260" value="60" style="flex:1"><b id="asmWv" style="width:36px;text-align:right;font-size:12px">0.60</b></div>
+              <div class="rv-prow"><span style="width:34px;font-size:12px">深</span><input type="range" id="asmD" min="15" max="260" value="60" style="flex:1"><b id="asmDv" style="width:36px;text-align:right;font-size:12px">0.60</b></div>
+              <div class="rv-prow"><span style="width:34px;font-size:12px">高</span><input type="range" id="asmH" min="4" max="110" value="30" style="flex:1"><b id="asmHv" style="width:36px;text-align:right;font-size:12px">30</b></div>
+              <div class="rv-prow"><span style="width:34px;font-size:12px">离地</span><input type="range" id="asmZ" min="0" max="100" value="0" style="flex:1"><b id="asmZv" style="width:36px;text-align:right;font-size:12px">0</b></div>
+              <div class="rv-prow"><span style="width:34px;font-size:12px">颜色</span><input type="color" id="asmC" value="#e9c79f" style="flex:0 0 46px;height:26px;padding:0;border:1px solid #e0d8ec;border-radius:6px;background:#fff">
+                <button id="asmDup" style="margin-left:auto;padding:5px 10px;border-radius:8px;border:1px solid #e0d8ec;background:#faf7ff;font-size:12px;cursor:pointer;color:#443a52">⧉ 复制</button>
+                <button id="asmDel" style="padding:5px 10px;border-radius:8px;border:1px solid #e0d8ec;background:#faf7ff;font-size:12px;cursor:pointer;color:#c0504d">🗑 删除</button>
+              </div>
+              <input id="asmName" placeholder="家具名字（保存后进仓库）"/>
+            </div>
+          </div>
+          <div class="rv-st-foot"><button id="asmCancel">取消</button><button id="asmSave">保存</button></div>
+        </div></div>
+        <div id="decoUI" hidden>
+          <div id="decoTag">🛠 装修模式<span>点墙面选择 · 底部操作台编辑</span><button id="decoExit" aria-label="退出装修">✕</button></div>
+          <div id="decoBar"></div>
         </div>
-        <div class="r-status" id="room-status">…</div>
-        <div class="r-sense-out" id="room-sense-out" hidden></div>
-        <div class="r-bar">
-          <button id="room-btn-inv" type="button">家具仓</button>
-          <button id="room-btn-sense" type="button">感应</button>
-          <button id="room-btn-deco" type="button">装扮</button>
-        </div>
+        <div id="toast"></div>
+        <div id="senseOut"></div>
       </div>
     </div>
 

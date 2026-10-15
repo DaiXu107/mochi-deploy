@@ -3,6 +3,7 @@
 const KEY = 'room-data';
 const page = document.getElementById('page-room');
 if (!page) return;
+if (window.__roomIso) return;
 const COLS = 6, ROWS = 4;
 function S() { try { return window.activeStore(); } catch (e) { return null; } }
 function pn() {

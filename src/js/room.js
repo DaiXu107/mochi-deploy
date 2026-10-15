@@ -15,6 +15,9 @@
   const KEY = 'room-data';
   const page = document.getElementById('page-room');
   if (!page) return;
+  // 等距 2.5D 新版小屋（room-iso.js，更早加载）已接管这个页面与 'room-data' 存档：
+  // 本文件整体早退，避免两套渲染层抢同一页面、同一份数据（数据由新版 fix() 无缝升级）。
+  if (window.__roomIso) return;
   const COLS = 6, ROWS = 4;
 
   // ---- 基础工具 ----
