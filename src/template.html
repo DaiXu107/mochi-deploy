@@ -3837,6 +3837,17 @@
             <div class="gs-row"><span>工作值累计</span><label class="toggle"><input type="checkbox" id="work-en"><span class="tk"></span></label></div>
           </div>
           <div class="gs-sub" style="padding:0 14px 14px">桌面摸鱼小组件两组数值的增长总开关（默认开）。关闭「摸鱼值累计」后：TA 的自动摸鱼、你点摸鱼按钮、番茄钟补偿摸鱼、抓包奖励都不再涨摸鱼值；关闭「工作值累计」后：自动打工、专注期间的工作值等不再涨。已有数值保留不清零，重新打开即恢复累计，各联系人独立保存</div>
+        <!-- 吧台：冷饮概率调节（季节档 / 经期档）。键走回复设置 data-k 体系（DEFAULTS + saveReplyCfg），
+             按联系人桌面独立保存；生效侧见 src/js/bar.js 的 seasonAdj()/periodCold()。 -->
+        <div class="gs-title" style="margin-top:10px">吧台 · 冷饮概率</div>
+        <div class="set-group glass">
+          <div class="gs-row"><span>春季冷饮概率</span><div class="stepper" data-k="bar-cold-spring" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="bar-cold-spring-val" readonly><button class="stp-max">+</button></div></div>
+          <div class="gs-row"><span>夏季冷饮概率</span><div class="stepper" data-k="bar-cold-summer" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="bar-cold-summer-val" readonly><button class="stp-max">+</button></div></div>
+          <div class="gs-row"><span>秋季冷饮概率</span><div class="stepper" data-k="bar-cold-autumn" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="bar-cold-autumn-val" readonly><button class="stp-max">+</button></div></div>
+          <div class="gs-row"><span>冬季冷饮概率</span><div class="stepper" data-k="bar-cold-winter" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="bar-cold-winter-val" readonly><button class="stp-max">+</button></div></div>
+          <div class="gs-row"><span>经期冷饮概率</span><div class="stepper" data-k="bar-cold-period" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="bar-cold-period-val" readonly><button class="stp-max">+</button></div></div>
+        </div>
+        <div class="gs-sub" style="padding:0 14px 14px">吧台里「随机冰度」的冷饮（去冰 / 少冰 / 正常冰 / 多冰 / 冰沙）出现概率。①<b>四季各一枚，值就是那一季的冷饮概率</b>——默认春 55 / 夏 75 / 秋 50 / 冬 30（%），按当前季节取用，想哪季多给冰就调哪季，调 0 = 那一季基本不出冷饮（心情特别好时仍会再加一点点）；当天上传过心情的话会在此之上加减（开心 +12%、平静 +4%、不舒服 −10%、难过 −18%），最终封顶 90%；②「经期冷饮概率」= 经期（及经期前后 3 天）窗口内冷饮概率的上限，<b>默认 15%</b>，调 0 = 经期一律温热/常温，调 100 = 经期不额外压制（按上面当季那份概率走）。只影响「随机冰度」和 TA 帮调制替你选冰度，你手动挑的冰度不受影响；按联系人桌面独立保存</div>
         </div>
         <!-- v3.6.x：保存设置按钮——点击把当前所有概率/开关写入本地并提示 -->
         <button class="ta-add-btn gs-save-btn" id="reply-save-btn" style="width:100%;margin:6px 0 10px">

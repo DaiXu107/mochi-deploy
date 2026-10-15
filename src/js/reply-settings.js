@@ -6,6 +6,12 @@
 
   // 全部概率/参数项（与星言 speedSettings 对应）
   const DEFAULTS = {
+    // 吧台冷饮概率（设置 → 聊天 → 回复设置 → 其他 →「吧台 · 冷饮概率」）：
+    //   bar-cold-spring/summer/autumn/winter＝四季各自的冷饮概率（直接填 %，默认 55/75/50/30，
+    //     按当前季节取用，心情在此之上再加/减）；
+    //   bar-cold-period＝经期窗口内的冷饮概率上限（默认 15）。消费侧见 src/js/bar.js。
+    'bar-cold-spring': 55, 'bar-cold-summer': 75, 'bar-cold-autumn': 50, 'bar-cold-winter': 30,
+    'bar-cold-period': 15,
     'rs-min': 1, 'rs-max': 40,
     'reply-min': 1, 'reply-max': 2,
     // #1180 TA 消息总量限流（用户直派「回复条数只管基础回复，撤回补发/逐卡连发/心情分享/红包捎话/

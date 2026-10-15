@@ -11,7 +11,6 @@ var MAX_SLOT = 4;
 var ICE_OPTIONS = ['去冰', '少冰', '正常冰', '多冰', '冰沙', '温热', '常温'];
 var COLD_ICE = { '去冰': 1, '少冰': 1, '正常冰': 1, '多冰': 1, '冰沙': 1 };
 var SWEET_OPTIONS = ['全糖', '少糖', '半糖', '多糖', '无糖'];
-var recipeLog = []; // 本杯原始原料名（融合后仍保留，用于灰字说明与卡片「原料构成」）
 function toast(t) { try { if (window.toast) window.toast(t); } catch (e) {} }
 function activeS() { try { return window.activeStore(); } catch (e) { return null; } }
 function partnerName() {
@@ -73,8 +72,29 @@ if (s === 2) return -0.10; // 不舒服/低落/疲惫
 return -0.18;              // 难过/烦躁
 }
 function coldWindow() { try { return window.periodColdWindow ? window.periodColdWindow() : null; } catch (e) { return null; } }
-function normalColdProb() { return Math.max(0.05, Math.min(0.90, SEASON_COLD[seasonIdx()] + moodColdAdj())); }
-function coldProb() { var w = coldWindow(); return (w && w.active) ? 0.15 : normalColdProb(); }
+function barKnob(key, dflt) {
+try {
+var c = window.replyCfg ? window.replyCfg() : null;
+var v = c && c[key];
+if (v === null || v === undefined || v === '') return dflt;
+v = Number(v);
+return isNaN(v) ? dflt : Math.max(0, Math.min(200, v));
+} catch (e) { return dflt; }
+}
+var K_SEASON = ['bar-cold-spring', 'bar-cold-summer', 'bar-cold-autumn', 'bar-cold-winter'];
+function seasonCold() {
+var i = seasonIdx();
+return barKnob(K_SEASON[i], Math.round(SEASON_COLD[i] * 100)) / 100;
+}
+function periodCold() { return barKnob('bar-cold-period', 15) / 100; }  // 经期窗口内的上限
+function normalColdProb() {
+return Math.max(0, Math.min(0.90, seasonCold() + moodColdAdj()));
+}
+function coldProb() {
+var w = coldWindow();
+if (w && w.active) return Math.min(periodCold(), normalColdProb());
+return normalColdProb();
+}
 function pickIce() {
 if (Math.random() >= coldProb()) return Math.random() < 0.5 ? '温热' : '常温';
 var r = Math.random();
@@ -320,15 +340,45 @@ d.addEventListener('click', function () { openSlotPicker(idx); });
 box.appendChild(d);
 }
 }
+function fusionById(id) {
+var list = window.BarFusions || [];
+for (var i = 0; i < list.length; i++) if (list[i] && list[i].result && list[i].result.id === id) return list[i];
+return null;
+}
+function expandNames(id, depth) {
+var it = findIng(id);
+if (it) return [it.name];
+if ((depth || 0) > 4) return [id];
+var f = fusionById(id);
+if (!f) return [id];
+var out = [];
+f.requires.forEach(function (r) { out = out.concat(expandNames(r, (depth || 0) + 1)); });
+return out;
+}
+function recipeList() {
+var view = layoutSlots(), out = [];
+view.forEach(function (s) {
+if (!s || !s.ing) return;
+var n = s.count || 1;
+expandNames(s.ing.id, 0).forEach(function (nm) { for (var k = 0; k < n; k++) out.push(nm); });
+});
+return out;
+}
+function recipeText() {
+var order = [], cnt = {};
+recipeList().forEach(function (nm) {
+if (cnt[nm] === undefined) { cnt[nm] = 0; order.push(nm); }
+cnt[nm]++;
+});
+return order.map(function (nm) { return cnt[nm] > 1 ? nm + ' ×' + cnt[nm] : nm; });
+}
 function renderHint() {
 var el = document.getElementById('bar-ing-hint');
 if (!el) return;
-if (!recipeLog.length) { el.textContent = ''; el.hidden = true; return; }
+var parts = recipeText();
+if (!parts.length) { el.textContent = ''; el.hidden = true; return; }
 el.hidden = false;
-var baseNames = {};
-slots.forEach(function (s) { if (s.ing && isBaseIng(s.ing)) baseNames[s.ing.name] = 1; });
-var names = recipeLog.slice().sort(function (a, b) { return (baseNames[a] ? 1 : 0) - (baseNames[b] ? 1 : 0); });
-el.textContent = '原料：' + names.join(' · ');
+el.textContent = '原料：' + parts.join(' · ');
 }
 function pushStage() {
 ensureStage();
@@ -385,7 +435,6 @@ else {
 if (slots.length >= MAX_SLOT) { toast('槽位满了（最多 ' + MAX_SLOT + ' 份），先移除一份再加'); return; }
 slots.push({ ing: clone(ing), count: 1 });
 }
-recipeLog.push(ing.name);
 slots.forEach(function (s) { if (s.ing) s.ing.count = s.count; });
 afterAdd();
 }
@@ -433,6 +482,9 @@ function openIceModal(opts) {
 opts = opts || {};
 var mode = opts.mode || 'gift';
 var allowSelf = !!opts.allowSelf && mode === 'gift';
+var choices = opts.choices || (allowSelf
+? [['gift', '送给' + partnerName()], ['self', '自己喝']]
+: null);
 var taPick = opts.taPick || '';
 var taSweet = opts.taSweet || '';
 if (taPick) iceChoice = taPick;
@@ -455,12 +507,14 @@ return '<button class="bar-ice-pill' + (o === iceChoice ? ' sel' : '') + '" data
 '<div class="bar-ice-row">' + SWEET_OPTIONS.map(function (o) {
 return '<button class="bar-sweet-pill' + (o === sweetChoice ? ' sel' : '') + '" data-sweet="' + o + '">' + o + '</button>';
 }).join('') + '</div>' +
-(allowSelf
-? '<div class="bar-ice-mode"><button class="bar-ice-mode-btn sel" data-mode="gift">送给' + partnerName() + '</button><button class="bar-ice-mode-btn" data-mode="self">自己喝</button></div>'
+(choices
+? '<div class="bar-ice-mode">' + choices.map(function (c) {
+return '<button class="bar-ice-mode-btn' + (c[0] === mode ? ' sel' : '') + '" data-mode="' + c[0] + '">' + c[1] + '</button>';
+}).join('') + '</div>'
 : '') +
 '<textarea class="bar-wish" id="bar-ice-wish" maxlength="60" placeholder="写一句心意（可留空）"></textarea>' +
 '<div class="bar-add-foot"><button class="bar-add-cancel">取消</button>' +
-'<button class="bar-add-ok" id="bar-ice-ok">' + (allowSelf ? '确认' : '就这杯') + '</button></div>' +
+'<button class="bar-add-ok" id="bar-ice-ok">' + (choices ? '确认' : '就这杯') + '</button></div>' +
 '</div>';
 document.body.appendChild(mask);
 var close = function () { try { mask.remove(); } catch (e) {} };
@@ -503,7 +557,7 @@ openIceModal({ mode: 'gift', allowSelf: true });
 }
 function canSend() { return slots.length > 0 && hasBase() && !busy; }
 function drinkPayload(ice) {
-var list = recipeLog.length ? recipeLog.slice() : slots.map(function (s) { return s.ing ? s.ing.name : ''; });
+var list = recipeList();
 var color = stage && stage.getLiquid ? stage.getLiquid() : { r: 232, g: 232, b: 232 };
 return {
 name: currentName,
@@ -550,10 +604,12 @@ if (needBox && boxId) {
 boxAdd({ id: boxId, name: d.name, emoji: d.emoji, ingredients: d.ingredients, ice: d.ice, sweet: sweet, mode: mode, wish: wish, side: 'out', ts: Date.now(), claimed: 0, replies: [] });
 taReactToDrink(boxId);
 }
-var who = mode === 'self' ? '自己喝了' : (mode === 'together' ? '你俩一起调的' : '');
 toast('已把「' + d.name + '（' + d.ice + '）」' + (mode === 'self' ? '留给自己' : '送到聊天框'));
 window.__barFrom = 'bar';
 if (specialKind) { try { if (window.mochiAnnivFire) window.mochiAnnivFire(); } catch (e) {} }
+resetCup();
+renderAll();
+try { window.__barLastSent = d.name; } catch (e) {}
 } catch (e) { toast('发送失败，请重试'); }
 }
 var TA_DRINK_REPLIES = [
@@ -588,7 +644,6 @@ if (c && picked.indexOf(c) < 0) picked.push(c);
 picked.forEach(function (p) {
 if (p.family) familiesSeen[p.family] = 1;
 slots.push({ ing: clone(p), count: 1 });
-recipeLog.push(p.name);
 });
 slots.forEach(function (s) { if (s.ing) s.ing.count = s.count; });
 refreshName(true);
@@ -604,7 +659,10 @@ var pick = pickIce(); var sw = pickSweet();
 renderThinking(true, nick + '：「' + pick + ' · ' + sw + '，就这个」');
 setTimeout(function () {
 renderThinking(false);
-openIceModal({ mode: 'together', taPick: pick, taSweet: sw });
+openIceModal({
+mode: 'together', taPick: pick, taSweet: sw,
+choices: [['together', '送给' + nick], ['self', '这杯我喝']]
+});
 }, 700);
 }, wait);
 });
@@ -622,7 +680,7 @@ currentName = pickAbstract('auto');
 renderName();
 }
 function resetCup() {
-slots = []; familiesSeen = {}; fusedLock = false; manualName = ''; currentName = ''; specialKind = ''; recipeLog = [];
+slots = []; familiesSeen = {}; fusedLock = false; manualName = ''; currentName = ''; specialKind = '';
 try { if (stage) stage.setLid(1); } catch (e) {}
 }
 function simulateCup(ingList) {
@@ -953,7 +1011,7 @@ resetCup();
 var recipe = kind === 'heart' ? ['rose', 'black_tea', 'lychee'] : ['osmanthus', 'black_tea', 'honey'];
 recipe.forEach(function (id) {
 var it = findIng(id);
-if (it) { if (it.family) familiesSeen[it.family] = 1; slots.push({ ing: clone(it), count: 1 }); recipeLog.push(it.name); }
+if (it) { if (it.family) familiesSeen[it.family] = 1; slots.push({ ing: clone(it), count: 1 }); }
 });
 slots.forEach(function (s) { if (s.ing) s.ing.count = s.count; });
 specialKind = kind;
@@ -1082,8 +1140,10 @@ refreshName: refreshName, cabinet: openCabinet, log: openLogModal, logData: read
 ask: brewThenAsk, ice: function (v) { if (v) iceChoice = v; return iceChoice; },
 hint: function () { var e = document.getElementById('bar-ing-hint'); return e ? e.textContent : ''; },
 pick: openSlotPicker, hasBase: hasBase,
+recipe: recipeText, recipeList: recipeList,
 coldProb: coldProb, coldWindow: coldWindow, pickIce: pickIce, season: function () { return SEASON_NAME[seasonIdx()]; },
 moodScore: moodScore, likes: readLikes, toggleLike: toggleLike, taLikes: ensureTaLikes,
+seasonCold: seasonCold, periodCold: periodCold,
 taGift: taSpontaneousGift, advice: maybeColdAdvice, simulate: simulateCup,
 box: function () { return boxRead(); }, boxMeta: window.drinkBoxMeta, boxClaim: window.drinkBoxMarkClaimed, boxReply: window.drinkBoxAttachReply
 };

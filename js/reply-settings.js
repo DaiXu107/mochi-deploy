@@ -3,6 +3,8 @@
 const uid = window.activePrefix();
 const ls = window.activeStore();
 const DEFAULTS = {
+'bar-cold-spring': 55, 'bar-cold-summer': 75, 'bar-cold-autumn': 50, 'bar-cold-winter': 30,
+'bar-cold-period': 15,
 'rs-min': 1, 'rs-max': 40,
 'reply-min': 1, 'reply-max': 2,
 'rl-en': 0, 'rl-win': 5, 'rl-max': 15,

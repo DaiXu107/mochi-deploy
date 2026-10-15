@@ -11284,7 +11284,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
            （名称+版号 / 部署时间+实时秒 / 版本检测行）收成一行；检测行随 ver-check.js 退役删除。
            data-build-ts / data-version 两属性保留：device.js 诊断、bg-keep 自检、pwa.js 旧包检测
            仍只读属性（诊断版本号走 data-version 兜底，device.js 两处缓存原生支持）。 -->
-      <div class="splash-ver" id="splash-ver" data-build-ts="1791881063366" data-version="v8.1">
+      <div class="splash-ver" id="splash-ver" data-build-ts="1792036964681" data-version="v8.2">
         <span class="sv-app">Mochi 字卡传讯 已完结停更</span>
       </div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
@@ -12866,7 +12866,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
         <div class="set-row" id="row-changelog">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 12c0-5.5 3.5-10 10-10 3.7 0 7 2 8.8 5M22 12c0 5.5-3.5 10-10 10-3.7 0-7-2-8.8-5"/></svg></div>
           <div class="txt">版本与更新<span class="sub">当前版本 · 一键更新到最新（更新摘要见开屏公告）</span></div>
-          <div class="val" id="about-ver-val">v8.1</div>
+          <div class="val" id="about-ver-val">v8.2</div>
           <div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
         </div>
         <!-- #606 开源与致谢：开源/私有部署说明 + 灵感来源与致谢（内容与功能介绍页同源，做成独立入口） -->
@@ -12957,7 +12957,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
         </div>
       </div>
       </div><!-- /them-sec about -->
-      <div class="ver">Mochi 字卡传讯 v8.1</div>
+      <div class="ver">Mochi 字卡传讯 v8.2</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
       <!-- v3.27.x：设置页底部防骗声明 -->
       <div class="set-alert">
@@ -13356,7 +13356,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
             <div class="lic-hero-top">
               <div class="lic-title">Mochi 字卡传讯</div>
               <span class="lic-badge">原版</span>
-              <span class="lic-ver">v8.1</span>
+              <span class="lic-ver">v8.2</span>
             </div>
             <div class="lic-p">原创极简风情侣字卡传讯，不是小手机：黑白灰简约设计，数据全部保存在本地、无需联网；所有内容均为代码触发、按概率运行，联系方可主动发送聊天消息。代码从零编写并完全开源——本作即原版。</div>
             <!-- v3.26.x #648：原版口径澄清——唯一原版使用网站＋其他版本均为开放二传二改产生的二传/二改版 -->
@@ -14590,6 +14590,17 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
             <div class="gs-row"><span>工作值累计</span><label class="toggle"><input type="checkbox" id="work-en"><span class="tk"></span></label></div>
           </div>
           <div class="gs-sub" style="padding:0 14px 14px">桌面摸鱼小组件两组数值的增长总开关（默认开）。关闭「摸鱼值累计」后：TA 的自动摸鱼、你点摸鱼按钮、番茄钟补偿摸鱼、抓包奖励都不再涨摸鱼值；关闭「工作值累计」后：自动打工、专注期间的工作值等不再涨。已有数值保留不清零，重新打开即恢复累计，各联系人独立保存</div>
+        <!-- 吧台：冷饮概率调节（季节档 / 经期档）。键走回复设置 data-k 体系（DEFAULTS + saveReplyCfg），
+             按联系人桌面独立保存；生效侧见 src/js/bar.js 的 seasonAdj()/periodCold()。 -->
+        <div class="gs-title" style="margin-top:10px">吧台 · 冷饮概率</div>
+        <div class="set-group glass">
+          <div class="gs-row"><span>春季冷饮概率</span><div class="stepper" data-k="bar-cold-spring" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="bar-cold-spring-val" readonly><button class="stp-max">+</button></div></div>
+          <div class="gs-row"><span>夏季冷饮概率</span><div class="stepper" data-k="bar-cold-summer" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="bar-cold-summer-val" readonly><button class="stp-max">+</button></div></div>
+          <div class="gs-row"><span>秋季冷饮概率</span><div class="stepper" data-k="bar-cold-autumn" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="bar-cold-autumn-val" readonly><button class="stp-max">+</button></div></div>
+          <div class="gs-row"><span>冬季冷饮概率</span><div class="stepper" data-k="bar-cold-winter" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="bar-cold-winter-val" readonly><button class="stp-max">+</button></div></div>
+          <div class="gs-row"><span>经期冷饮概率</span><div class="stepper" data-k="bar-cold-period" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="bar-cold-period-val" readonly><button class="stp-max">+</button></div></div>
+        </div>
+        <div class="gs-sub" style="padding:0 14px 14px">吧台里「随机冰度」的冷饮（去冰 / 少冰 / 正常冰 / 多冰 / 冰沙）出现概率。①<b>四季各一枚，值就是那一季的冷饮概率</b>——默认春 55 / 夏 75 / 秋 50 / 冬 30（%），按当前季节取用，想哪季多给冰就调哪季，调 0 = 那一季基本不出冷饮（心情特别好时仍会再加一点点）；当天上传过心情的话会在此之上加减（开心 +12%、平静 +4%、不舒服 −10%、难过 −18%），最终封顶 90%；②「经期冷饮概率」= 经期（及经期前后 3 天）窗口内冷饮概率的上限，<b>默认 15%</b>，调 0 = 经期一律温热/常温，调 100 = 经期不额外压制（按上面当季那份概率走）。只影响「随机冰度」和 TA 帮调制替你选冰度，你手动挑的冰度不受影响；按联系人桌面独立保存</div>
         </div>
         <!-- v3.6.x：保存设置按钮——点击把当前所有概率/开关写入本地并提示 -->
         <button class="ta-add-btn gs-save-btn" id="reply-save-btn" style="width:100%;margin:6px 0 10px">
@@ -23221,4 +23232,4 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 </body>
 </html>
 
-<!-- __MOCHI_EOF__ mv6fpxae -->
+<!-- __MOCHI_EOF__ mv90jfih -->
