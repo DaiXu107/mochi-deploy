@@ -13,13 +13,16 @@ blue:   { name:'雾蓝',   kraft:'#e8edf5', paper:'#fbfcff', ink:'#2d3a4f', sub:
 var ACCENTS = { red:'#b3392f', green:'#2f6b57', blue:'#2e4a8f', amber:'#a86a2b' };
 var SERIF = 'Georgia,"Songti SC","STSong","SimSun","宋体","Noto Serif CJK SC","Source Han Serif SC","Noto Serif SC","Noto Serif",serif';
 var SANS = '-apple-system,BlinkMacSystemFont,"PingFang SC","HarmonyOS Sans SC","MiSans","OPPO Sans","Microsoft YaHei","Noto Sans CJK SC","Noto Sans SC",sans-serif';
+var SERIF_URL = 'https://cdn.jsdelivr.net/npm/@fontsource/noto-serif-sc@5/index.css';
+var SERIF_BOLD_URL = 'https://cdn.jsdelivr.net/npm/@fontsource/noto-serif-sc@5/700.css';
+var SERIF_WEB = '"Noto Serif SC",' + SERIF;
 var SET_KEY = 'mail-postal-settings-v1';   // 外观设置为设备级，不分联系人
 var READ_BASE = 'mail-postal-read-v2';
 var TAPE_BASE = 'mail-postal-tape-v2';
 function pzScope() { try { return window.activePrefix ? String(window.activePrefix()) : ''; } catch (e) { return ''; } }
 function scopedKey(base) { var p = pzScope(); return p ? base + ':' + p : base; }
 var DEF = { theme:'kraft', accent:'auto', font:'serif', size:'m', wax:'', authorFont:'serif', authorSize:12.5,
-tapeColor:'#b3392f', tapeImg:'', tapeProb:50, readingBg:'desk' };
+tapeColor:'#b3392f', tapeImg:'', tapeProb:50, readingBg:'card' };
 var pendingTape = null;
 var TAPE_MEM = null, READ_MEM = null, SET_MEM = null;
 function tapeStore(){
@@ -130,8 +133,8 @@ var CSS = ''
 + ':root {'
 + ' --pz-kraft:' + PAL.kraft + '; --pz-paper:' + PAL.paper + '; --pz-ink:' + PAL.ink + '; --pz-sub:' + PAL.sub + ';'
 + ' --pz-line:' + PAL.line + '; --pz-red:' + PAL.red + '; --pz-cream:' + PAL.cream + ';'
-+ ' --pz-font: ' + SERIF + '; --pz-size: 15.5px; --pz-lh: 31px;'
-+ ' --pz-author-font: ' + SERIF + '; --pz-author-size: 12.5px; --pz-wax-img: none; }'
++ ' --pz-font: ' + SERIF_WEB + '; --pz-size: 15.5px; --pz-lh: 31px;'
++ ' --pz-author-font: ' + SERIF_WEB + '; --pz-author-size: 12.5px; --pz-wax-img: none; }'
 + '#page-mail, #page-mail-write, #page-mail-reply { background: var(--pz-kraft); color: var(--pz-ink); }'
 + '#page-mail .cal-topbar, #page-mail-write .cal-topbar, #page-mail-reply .cal-topbar, #page-mail .chat-head, #page-mail-write .chat-head, #page-mail-reply .chat-head, #page-mail .pz-topbar, #page-mail-write .pz-topbar, #page-mail-reply .pz-topbar { background: var(--pz-paper); border-bottom: 1px solid var(--pz-line); box-shadow: none; }'
 + '#page-mail .cal-topbar .cal-title, #page-mail-write .cal-topbar .cal-title, #page-mail-reply .cal-topbar .cal-title, #page-mail .chat-head .ch-name, #page-mail-write .chat-head .ch-name, #page-mail-reply .chat-head .ch-name, #page-mail .pz-topbar [class*="title"], #page-mail .pz-topbar .ch-name, #page-mail-write .pz-topbar .ch-name, #page-mail-reply .pz-topbar .ch-name { font-family: var(--pz-font); letter-spacing: 3px; color: var(--pz-ink); }'
@@ -193,7 +196,8 @@ var CSS = ''
 + '#page-mail .mail-fold-right .mail-fold-unread { display: none !important; }'
 + '.pz-swipe-wrap { position: relative; margin: 0 2px 10px; padding-top: 8px; overflow: hidden; border-radius: 3px; }'
 + '.pz-swipe-wrap .mail-item { margin: 0 0 2px; position: relative; transition: transform .25s ease; touch-action: pan-y; }'
-+ '.pz-swipe { position: absolute; top: 8px; bottom: 2px; width: 84px; border: none; display: flex; align-items: center; justify-content: center; font-size: 13px; letter-spacing: 3px; font-family: var(--pz-font); cursor: pointer; }'
++ '.pz-swipe { position: absolute; top: 8px; bottom: 2px; width: 84px; border: none; display: flex; align-items: center; justify-content: center; font-size: 13px; letter-spacing: 3px; font-family: var(--pz-font); cursor: pointer; opacity: 0; pointer-events: none; transition: opacity .14s ease; }'
++ '.pz-swipe-wrap.pz-reveal .pz-swipe { opacity: 1; pointer-events: auto; }'
 + '.pz-swipe-del { right: 0; background: var(--pz-red); color: var(--pz-cream); }'
 + '.pz-swipe-fav { left: 0; background: var(--pz-ink); color: var(--pz-cream); }'
 + '#page-mail .mail-item .pz-tape-hit { position: absolute; top: -9px; left: 14px; width: 60px; height: 22px; transform: rotate(-3deg); z-index: 4; cursor: pointer; -webkit-tap-highlight-color: transparent; }'
@@ -345,26 +349,29 @@ var customHex = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(s.accent || '') ? s.ac
 r.setProperty('--pz-red', ACCENTS[s.accent] || customHex || th.red);
 if (s.font === 'custom') {
 ensureFontImport((s.fontUrl || '').trim(), 'pz-font-link');
-r.setProperty('--pz-font', fontStack(s.fontName, SERIF));
+r.setProperty('--pz-font', fontStack(s.fontName, SERIF_WEB));
 } else {
 ensureFontImport('', 'pz-font-link');
-r.setProperty('--pz-font', s.font === 'sans' ? SANS : SERIF);
+r.setProperty('--pz-font', s.font === 'sans' ? SANS : SERIF_WEB);
 }
+var wantSerif = (s.font !== 'sans' && s.font !== 'custom') || (s.authorFont !== 'sans' && s.authorFont !== 'custom');
+ensureFontImport(wantSerif ? SERIF_URL : '', 'pz-serif-link');
+ensureFontImport(wantSerif ? SERIF_BOLD_URL : '', 'pz-serif-bold-link');
 var sz = { s: ['14px', '28px'], m: ['15.5px', '31px'], l: ['17px', '34px'] }[s.size] || ['15.5px', '31px'];
 r.setProperty('--pz-size', sz[0]);
 r.setProperty('--pz-lh', sz[1]);
 if (s.authorFont === 'custom') {
 ensureFontImport((s.authorFontUrl || '').trim(), 'pz-afont-link');
-r.setProperty('--pz-author-font', fontStack(s.authorFontName, SERIF));
+r.setProperty('--pz-author-font', fontStack(s.authorFontName, SERIF_WEB));
 } else {
 ensureFontImport('', 'pz-afont-link');
-r.setProperty('--pz-author-font', s.authorFont === 'sans' ? SANS : SERIF);
+r.setProperty('--pz-author-font', s.authorFont === 'sans' ? SANS : SERIF_WEB);
 }
 r.setProperty('--pz-author-size', (s.authorSize || 12.5) + 'px');
 r.setProperty('--pz-wax-img', 'url("' + ((s.waxImg || '').trim() || WAX_SEAL_IMG) + '")');
 r.setProperty('--pz-btn-img', 'url("' + ((s.btnImg || '').trim() || WAX_BTN_BG) + '")');
 document.documentElement.classList.toggle('pz-btn-custom', !!(s.btnImg || '').trim());
-var rbg = s.readingBg || 'desk';
+var rbg = s.readingBg || 'card';
 document.documentElement.classList.toggle('pz-bg-desk', rbg === 'desk');
 document.documentElement.classList.toggle('pz-bg-board', rbg === 'board');
 document.documentElement.classList.toggle('pz-wax-custom', !!(s.waxImg || '').trim());
@@ -601,26 +608,44 @@ openTapeSheet(item, true);
 });
 item.appendChild(hit);
 }
-var sx = null, sy = 0, dx = 0, dragging = false, suppress = false, opened = 0;
+var SWIPE_START = 28, SWIPE_REVEAL = 48, SWIPE_OPEN = 66;
+var sx = null, sy = 0, dx = 0, dy = 0, dragging = false, suppress = false, opened = 0;
 function setX(v) { item.style.transform = 'translateX(' + v + 'px)'; }
-function close() { opened = 0; setX(0); }
-item.addEventListener('pointerdown', function (e) { sx = e.clientX; sy = e.clientY; dx = 0; dragging = false; item.style.transition = 'none'; });
+function close() { opened = 0; setX(0); wrap.classList.remove('pz-reveal'); }
+item.addEventListener('pointerdown', function (e) {
+sx = e.clientX; sy = e.clientY; dx = 0; dy = 0; dragging = false;
+item.style.transition = 'none';
+wrap.classList.remove('pz-reveal');
+});
 window.addEventListener('pointermove', function (e) {
 if (sx === null) return;
 dx = e.clientX - sx;
-if (!dragging && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(e.clientY - sy)) { dragging = true; }
-if (dragging) { e.preventDefault(); setX(Math.max(-110, Math.min(fav ? 110 : 0, dx))); }
+dy = e.clientY - sy;
+if (!dragging) {
+if (Math.abs(dx) < SWIPE_START) return;
+if (Math.abs(dx) <= Math.abs(dy) * 1.6) return;   // 竖向为主＝滚动，不接管
+dragging = true;
+}
+e.preventDefault();
+setX(Math.max(-110, Math.min(fav ? 110 : 0, dx)));
+wrap.classList.toggle('pz-reveal', Math.abs(dx) >= SWIPE_REVEAL);
 }, { passive: false });
 window.addEventListener('pointerup', function () {
 if (sx === null) return;
 item.style.transition = '';
 if (dragging) {
 suppress = true;
-if (dx <= -60) { opened = -1; setX(-84); }
-else if (dx >= 60 && fav) { opened = 1; setX(84); }
+if (dx <= -SWIPE_OPEN) { opened = -1; setX(-84); wrap.classList.add('pz-reveal'); }
+else if (dx >= SWIPE_OPEN && fav) { opened = 1; setX(84); wrap.classList.add('pz-reveal'); }
 else close();
 }
 sx = null; dragging = false;
+});
+window.addEventListener('pointercancel', function () {
+if (sx === null) return;
+sx = null; dragging = false;
+item.style.transition = '';
+close();
 });
 item.addEventListener('click', function (e) {
 if (suppress) { e.stopPropagation(); e.preventDefault(); suppress = false; return; }
@@ -744,7 +769,7 @@ mask.innerHTML = ''
 + '<div class="pz-set-row pz-fimp pz-furl-row" data-g="afont" hidden><span class="pz-set-label">字体链接</span><input type="text" placeholder="https://fonts.googleapis.com/css2?family=..."></div>'
 + '<div class="pz-set-row pz-fimp pz-fname-row" data-g="afont" hidden><span class="pz-set-label">字体名称</span><input type="text" placeholder="如 LXGW WenKai"></div>'
 + '<div class="pz-set-row"><span class="pz-set-label">落款字号</span><input type="range" id="pz-asize" min="11" max="17" step="0.5"><span id="pz-asize-v" style="width:36px;text-align:right;color:var(--pz-sub)"></span></div>'
-+ '<div class="pz-tip">部分安卓机（如 OPPO / ColorOS）系统里没有中文宋体，衬线会退化成黑体；想要和电脑上的观感更接近，可把「信件字体」切成「黑体」，或用「导入」填一个宋体字体链接。</div>'
++ '<div class="pz-tip">衬线已默认使用「思源宋体」（Noto Serif SC），首次打开需联网加载，之后由浏览器缓存；离线且未缓存时会自动回退到系统字体。</div>'
 + '<div class="pz-sec">印章与邮戳</div>'
 + '<div class="pz-set-row"><span class="pz-set-label">火漆章</span>'
 +   '<input type="text" id="pz-wax-input" maxlength="2" placeholder="M"><span class="pz-chips">'
@@ -795,7 +820,7 @@ mask.querySelectorAll('[data-font]').forEach(function (b) { b.classList.toggle('
 mask.querySelectorAll('[data-size]').forEach(function (b) { b.classList.toggle('on', b.dataset.size === s.size); });
 mask.querySelectorAll('[data-wax]').forEach(function (b) { b.classList.toggle('on', b.dataset.wax === s.wax); });
 mask.querySelectorAll('[data-afont]').forEach(function (b) { b.classList.toggle('on', b.dataset.afont === s.authorFont); });
-mask.querySelectorAll('[data-rbg]').forEach(function (b) { b.classList.toggle('on', b.dataset.rbg === (s.readingBg || 'desk')); });
+mask.querySelectorAll('[data-rbg]').forEach(function (b) { b.classList.toggle('on', b.dataset.rbg === (s.readingBg || 'card')); });
 mask.querySelectorAll('[data-pztheme]').forEach(function (b) { b.classList.toggle('on', (b.dataset.pztheme || 'kraft') === (s.theme || 'kraft')); });
 var ac = mask.querySelector('#pz-accent-custom');
 var thForAc = THEMES[s.theme] || THEMES.kraft;
