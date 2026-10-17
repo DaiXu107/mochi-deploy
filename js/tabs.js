@@ -37,6 +37,7 @@ document.querySelectorAll('.page').forEach(p => { if (!p.hidden) p.hidden = true
 }
 tabs.forEach(tab => {
 tab.addEventListener('click', () => {
+if (!tab.dataset.page) return;
 sdLeaveSnap();
 const target = document.getElementById(tab.dataset.page || '');
 if (!target) {

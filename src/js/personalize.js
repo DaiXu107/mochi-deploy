@@ -2007,8 +2007,9 @@ try {
   // 整栏透明度双保险（防「栏透明到消失、找不回」的设计缺陷）：
   //   ① 图标层 12% 下限——背景可全透，图标永远留一丝影（Math.max(wholeOp, 12) 是唯一锚点）；
   //   ② 触摸显形——任一透明度 <50% 挂 tabbar-faint，按压瞬间描边+图标全可见（tabbar.css）。
-  const TABBAR_PAGES = ['page-phone', 'page-chatcard', 'page-setting'];
-  const TABBAR_PAGE_NAMES = { 'page-phone': '首页', 'page-chatcard': '字卡', 'page-setting': '设置' };
+  // 二传调整：第三个 tab 已改为「切换联系人」动作键（无 data-page），不再参与 tab 图标自定义
+  const TABBAR_PAGES = ['page-phone', 'page-chatcard'];
+  const TABBAR_PAGE_NAMES = { 'page-phone': '首页', 'page-chatcard': '字卡' };
   const tabbarNum = (key, def, min, max) => {
     const n = parseInt(store.get(key), 10);
     return isNaN(n) ? def : Math.max(min, Math.min(max, n));
@@ -6743,13 +6744,13 @@ try {
   // 组件 id 列表（对应 template.html 中 [data-desk-widget]）；组件节点唯一，
   // 「添加」= 把节点移动到目标页（节点移动不重建，内部事件绑定保留）
   const WIDGET_IDS = ['deco', 'quote-row', 'checkin', 'apps', 'music', 'p2apps', 'memo-row', 'week', 'weekend', 'desk-clock', 'desk-calendar', 'desk-timer', 'desk-anniv', 'desk-period',
-    'app-chat', 'app-group-chat', 'app-home', 'app-mail', 'app-feed', 'app-calendar', 'app-memory', 'app-divination', 'app-note', 'app-music', 'app-stats', 'app-interact', 'app-checkin', 'p3apps', 'app-period', 'app-accounting', 'app-garden', 'app-bar',     'app-tongpin', 'app-shenshou', 'app-water', 'app-eat', 'app-pomo', 'app-cjian', 'app-memo-arc', 'app-my-arc', 'app-room', 'app-piggy', 'app-memo'];
+    'app-chat', 'app-group-chat', 'app-home', 'app-mail', 'app-feed', 'app-calendar', 'app-memory', 'app-settings', 'app-divination', 'app-note', 'app-music', 'app-stats', 'app-interact', 'app-checkin', 'p3apps', 'app-period', 'app-accounting', 'app-garden', 'app-bar',     'app-tongpin', 'app-shenshou', 'app-water', 'app-eat', 'app-pomo', 'app-cjian', 'app-memo-arc', 'app-my-arc', 'app-room', 'app-piggy', 'app-memo'];
   const WIDGET_NAMES = {
     deco: '纪念日卡', 'quote-row': '今日情话 / 已摸鱼', checkin: '打卡横幅', apps: '功能图标(整组)',
     music: '音乐播放器', p2apps: '第二页功能图标(整组)', 'memo-row': '今日备忘 / 心情', week: '本周日常', weekend: '摸鱼倒计时（周末）',
     'desk-clock': '时钟', 'desk-calendar': '月历', 'desk-timer': '计时器', 'desk-anniv': '纪念日倒计时', 'desk-period': '经期倒计时',
     'app-chat': '聊天图标', 'app-group-chat': '群聊图标', 'app-home': '主页图标', 'app-mail': '信箱图标', 'app-feed': '朋友圈图标',
-    'app-calendar': '日历图标', 'app-memory': '纪念图标', 'app-divination': '占卜图标', 'app-note': '收藏图标',
+    'app-calendar': '日历图标', 'app-memory': '纪念图标', 'app-settings': '设置图标', 'app-divination': '占卜图标', 'app-note': '收藏图标',
     'app-music': '音乐图标', 'app-stats': '聊天统计图标', 'app-interact': '提问记录图标', 'app-checkin': '寻踪图标',
     'p3apps': '第三页功能图标(整组)', 'app-period': '经期记录图标', 'app-accounting': '记账图标', 'app-garden': '花园图标', 'app-bar': '吧台图标',     'app-tongpin': '同频图标', 'app-shenshou': '伸手图标', 'app-water': '喝水图标', 'app-eat': '吃什么图标', 'app-pomo': '番茄钟图标',
     'app-cjian': '此间图标', 'app-memo-arc': '梦角档案图标', 'app-my-arc': '我的档案图标', 'app-room': '房间图标', 'app-piggy': '存钱罐图标', 'app-memo': '备忘录图标',
@@ -6787,7 +6788,7 @@ try {
     'desk-anniv': '<span style="display:flex;flex-direction:column;align-items:center;gap:1px"><span style="font-size:7px;color:#bbb">距下一个纪念日</span><span style="font-size:15px;font-weight:700;color:#333">30 天</span><span style="font-size:6px;color:#999">生日 · 9 月 18 日</span></span>',
     'desk-period': '<span style="display:flex;flex-direction:column;align-items:center;gap:1px"><span style="font-size:7px;color:#e85a8f">距下次经期</span><span style="font-size:15px;font-weight:700;color:#e85a8f">5 天</span><span style="font-size:6px;color:#999">周期第 23 天</span></span>',
     'app-chat': _appIcoPrev('聊天'), 'app-group-chat': _appIcoPrev('群聊'), 'app-home': _appIcoPrev('主页'), 'app-mail': _appIcoPrev('信箱'), 'app-feed': _appIcoPrev('朋友圈'),
-    'app-calendar': _appIcoPrev('日历'), 'app-memory': _appIcoPrev('纪念'), 'app-divination': _appIcoPrev('占卜'), 'app-note': _appIcoPrev('收藏'),
+    'app-calendar': _appIcoPrev('日历'), 'app-memory': _appIcoPrev('纪念'), 'app-settings': _appIcoPrev('设置'), 'app-divination': _appIcoPrev('占卜'), 'app-note': _appIcoPrev('收藏'),
     'app-music': _appIcoPrev('音乐'), 'app-stats': _appIcoPrev('统计'), 'app-interact': _appIcoPrev('提问'), 'app-checkin': _appIcoPrev('寻踪'),
     'app-period': _appIcoPrev('经期'), 'app-accounting': _appIcoPrev('记账'), 'app-garden': _appIcoPrev('花园'), 'app-bar': _appIcoPrev('吧台'),     'app-tongpin': _appIcoPrev('同频'), 'app-shenshou': _appIcoPrev('伸手'), 'app-water': _appIcoPrev('喝水'), 'app-eat': _appIcoPrev('吃什么'), 'app-pomo': _appIcoPrev('番茄钟'), 'p3apps': _appIcoPrev('经期'),
     'app-cjian': _appIcoPrev('此间'), 'app-memo-arc': _appIcoPrev('梦角档案'), 'app-my-arc': _appIcoPrev('我的档案'), 'app-room': _appIcoPrev('房间'), 'app-piggy': _appIcoPrev('存钱罐'), 'app-memo': _appIcoPrev('备忘录'),
@@ -7198,13 +7199,15 @@ try {
         if (gcBtn && gcBtn.parentNode !== pool) {
           pool.appendChild(gcBtn);
         }
-        // 占卜按钮：若在隐藏池，移回第一页 app-grid 的 memory 后面（默认位）。
-        // FIX 2026-09-04 #156 语义：群聊开启期间占卜被强制收池（无论原位置），关闭后
-        // 统一回首页图标组默认位（v3.8 原语义）；desk-layout 里残留的占卜条目因图标
-        // 已回到网格内被「网格管理」规则忽略（inGrid 跳过），下次装修保存自动校正。
-        if (divBtn && divBtn.parentNode === pool && mainGrid) {
-          if (memBtn) mainGrid.insertBefore(divBtn, memBtn.nextSibling);
-          else mainGrid.appendChild(divBtn);
+        // 占卜按钮：若在隐藏池，移回第二页功能图标组（二传调整：占卜默认位已从第一页
+        // 移到第二页；settings 图标占用原第一页位置）。群聊开启期间占卜仍被强制收池
+        //（#156），关闭后回第二页尾部，与模板默认位置一致。
+        const p2Grid = document.querySelector('.app-grid[data-app="p2"]');
+        if (divBtn && divBtn.parentNode === pool && (p2Grid || mainGrid)) {
+          // 放回此间图标之后（模板默认位），没有此间时退回组尾
+          const cjBtn = document.querySelector('.app[data-app="cjian"]');
+          if (p2Grid && cjBtn && cjBtn.parentNode === p2Grid) p2Grid.insertBefore(divBtn, cjBtn.nextSibling);
+          else (p2Grid || mainGrid).appendChild(divBtn);
         }
       }
     } catch (e) {}

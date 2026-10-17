@@ -8213,6 +8213,117 @@ button.ca-jump { background:none; border:0; color:inherit; font:inherit; padding
 [data-theme="dark"] .ca-flow-ok { color:#4fd18f; }
 [data-theme="dark"] .ca-flow-no { color:#ef7b76; }
 [data-theme="dark"] .ca-badge { background:#ef7b76; color:#1a1a1a; }
+#page-settings-hub {
+--sh-soft: #f4f4f6; --sh-track: #ececf1; --sh-knob: #ffffff; --sh-seg-ink: #6f6f7a;
+overflow: hidden;
+}
+[data-theme="dark"] #page-settings-hub {
+--sh-soft: #2c2c33; --sh-track: #2a2a31; --sh-knob: #4d4d59; --sh-seg-ink: #a5a5b0;
+}
+#page-settings-hub .sh-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+#page-settings-hub .sh-search { flex: 0 0 auto; padding: 2px 14px 8px; }
+#page-settings-hub .sh-search input {
+width: 100%; box-sizing: border-box; font-size: 13.5px; padding: 9px 12px;
+border-radius: 12px; border: 1px solid var(--input-border, #e0e0e0);
+background: var(--input-bg, #fff); color: var(--ink); outline: none;
+}
+#page-settings-hub .sh-search input::placeholder { color: var(--muted, #9a9a9a); }
+#page-settings-hub .sh-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 14px 24px; -webkit-overflow-scrolling: touch; }
+#page-settings-hub .sh-sec {
+display: flex; align-items: baseline; gap: 8px;
+padding: 16px 4px 7px; font-size: 12.5px; font-weight: 700; color: var(--muted, #8a8a8a);
+letter-spacing: .5px;
+}
+#page-settings-hub .sh-sec:first-child { padding-top: 6px; }
+#page-settings-hub .sh-sec i { font-style: normal; font-weight: 400; font-size: 11px; opacity: .8; }
+#page-settings-hub .sh-group {
+background: var(--card-bg, #fff); border: 1px solid var(--card-border, rgba(0,0,0,.07));
+border-radius: 16px; overflow: hidden;
+}
+#page-settings-hub .sh-row {
+display: flex; align-items: center; gap: 10px; min-height: 48px;
+padding: 9px 14px; border-bottom: 1px solid var(--line, #f0f0f0);
+}
+#page-settings-hub .sh-row:last-child { border-bottom: 0; }
+#page-settings-hub .sh-row[data-nav] { cursor: pointer; }
+#page-settings-hub .sh-row[data-nav]:active { background: var(--sh-soft, #f6f6f8); }
+#page-settings-hub .sh-l { flex: 1; min-width: 0; }
+#page-settings-hub .sh-label { font-size: 13.5px; color: var(--ink); line-height: 1.35; }
+#page-settings-hub .sh-note { display: block; font-size: 11px; color: var(--muted, #9a9a9a); margin-top: 2px; line-height: 1.4; }
+#page-settings-hub .sh-badge {
+display: inline-block; margin-left: 6px; vertical-align: 1px;
+font-style: normal; font-size: 10px; line-height: 1.5; padding: 0 6px; border-radius: 999px;
+color: #7a6bd0; background: rgba(138,123,216,.13); white-space: nowrap;
+}
+#page-settings-hub .sh-badge.g { color: #5b8db8; background: rgba(91,141,184,.14); }
+#page-settings-hub .sh-sw {
+flex: 0 0 auto; width: 44px; height: 26px; border-radius: 999px; background: var(--sh-track, #d9d9e2);
+position: relative; transition: background .18s; cursor: pointer;
+}
+#page-settings-hub .sh-sw b {
+position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%;
+background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.22); transition: transform .18s;
+}
+#page-settings-hub .sh-sw.on { background: #8a7bd8; }
+#page-settings-hub .sh-sw.on b { transform: translateX(18px); }
+#page-settings-hub .sh-step { flex: 0 0 auto; display: flex; align-items: center; gap: 2px; }
+#page-settings-hub .sh-step button {
+width: 28px; height: 28px; border-radius: 9px; border: 1px solid var(--card-border, rgba(0,0,0,.1));
+background: var(--sh-soft, #f4f4f6); color: var(--ink); font-size: 15px; line-height: 1; cursor: pointer;
+}
+#page-settings-hub .sh-step button:active { background: rgba(138,123,216,.22); }
+#page-settings-hub .sh-val { min-width: 58px; text-align: center; font-size: 13px; color: var(--ink); font-variant-numeric: tabular-nums; }
+#page-settings-hub .sh-chev {
+flex: 0 0 auto; width: 8px; height: 8px; margin-right: 2px;
+border-right: 1.6px solid #c2c2cc; border-bottom: 1.6px solid #c2c2cc; transform: rotate(-45deg);
+}
+#page-settings-hub .sh-seg2 {
+position: relative; flex: 0 0 auto; display: flex; width: 170px; padding: 3px;
+border-radius: 10px; background: var(--sh-track, #ececf1); box-sizing: border-box;
+}
+#page-settings-hub .sh-seg2-thumb {
+position: absolute; top: 3px; left: 3px; height: calc(100% - 6px);
+border-radius: 8px; background: var(--sh-knob, #fff); box-shadow: 0 1px 3px rgba(0,0,0,.16);
+transition: transform .22s cubic-bezier(.2,.8,.3,1);
+}
+#page-settings-hub .sh-seg2 button {
+position: relative; z-index: 1; flex: 1; min-width: 0; padding: 5px 0;
+border: 0; background: transparent; font-size: 11.5px; color: var(--sh-seg-ink, #6f6f7a); cursor: pointer;
+transition: color .18s; white-space: nowrap;
+}
+#page-settings-hub .sh-seg2 button.sel { color: var(--ink, #1f1b2e); font-weight: 700; }
+#page-settings-hub .sh-freq-desc { font-size: 11.5px; color: var(--muted, #9a9a9a); padding: 2px 14px 12px; line-height: 1.6; }
+#page-settings-hub .sh-preset-slider { padding: 6px 16px 2px; }
+#page-settings-hub .sh-preset-slider input[type=range] {
+-webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 999px;
+background: linear-gradient(90deg, #bfe3c9 0%, #cfc7ef 50%, #f7b8ac 100%);
+outline: none; margin: 8px 0 6px;
+}
+#page-settings-hub .sh-preset-slider input[type=range]::-webkit-slider-thumb {
+-webkit-appearance: none; appearance: none; width: 26px; height: 26px; border-radius: 50%;
+background: #fff; border: 3px solid #8a7bd8; box-shadow: 0 2px 6px rgba(60,40,110,.28); cursor: grab;
+}
+#page-settings-hub .sh-preset-slider input[type=range]::-moz-range-thumb {
+width: 22px; height: 22px; border-radius: 50%; background: #fff;
+border: 3px solid #8a7bd8; box-shadow: 0 2px 6px rgba(60,40,110,.28); cursor: grab;
+}
+#page-settings-hub .sh-preset-labels { display: flex; justify-content: space-between; padding: 0 2px; }
+#page-settings-hub .sh-preset-labels span {
+font-size: 12px; color: var(--muted, #9a9a9a); cursor: pointer; transition: color .18s, font-weight .18s;
+padding: 2px 6px; border-radius: 8px;
+}
+#page-settings-hub .sh-preset-labels span.sel { color: #6c5fc0; font-weight: 800; background: rgba(138,123,216,.12); }
+#page-settings-hub .sh-freq-more {
+padding: 10px 14px; border-top: 1px solid var(--line, #f0f0f0); cursor: pointer;
+font-size: 12.5px; color: #7a6bd0; display: flex; align-items: center; justify-content: center; gap: 4px;
+}
+#page-settings-hub .sh-sub { background: var(--sh-soft, #f8f8fa); }
+#page-settings-hub .sh-sub .sh-row { padding-left: 22px; }
+#page-settings-hub .sh-sub .sh-label { font-size: 12.5px; color: var(--muted, #666); }
+#page-settings-hub .sh-sub .sh-badge { display: none; }
+#page-settings-hub .sh-empty { padding: 40px 10px; text-align: center; font-size: 12.5px; color: var(--muted, #9a9a9a); }
+.sh-hit { animation: shHit 1.4s ease-out; }
+@keyframes shHit { 0%, 35% { background: rgba(138,123,216,.20); } 100% { background: transparent; } }
 .tabbar {
 margin-top:10px; display:flex; justify-content:space-around;
 flex-shrink:0; background:var(--tabbar-bg-color, var(--tabbar-base-bg, #ffffff));
@@ -11399,7 +11510,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
            （名称+版号 / 部署时间+实时秒 / 版本检测行）收成一行；检测行随 ver-check.js 退役删除。
            data-build-ts / data-version 两属性保留：device.js 诊断、bg-keep 自检、pwa.js 旧包检测
            仍只读属性（诊断版本号走 data-version 兜底，device.js 两处缓存原生支持）。 -->
-      <div class="splash-ver" id="splash-ver" data-build-ts="1792061309430" data-version="v8.2">
+      <div class="splash-ver" id="splash-ver" data-build-ts="1792211457101" data-version="v8.2">
         <span class="sv-app">Mochi 字卡传讯 已完结停更</span>
       </div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
@@ -11527,9 +11638,11 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
           <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5S4.5 15.2 4.5 9.9A4.9 4.9 0 0112 7.1a4.9 4.9 0 017.5 2.8c0 5.3-7.5 10.6-7.5 10.6z"/></svg></div>
           <div class="app-name">纪念</div>
         </div>
-        <div class="app" data-app="divination" data-desk-widget="app-divination">
-          <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M12 8.5l1.15 2.4 2.4 1.15-2.4 1.15L12 15.6l-1.15-2.4-2.4-1.15 2.4-1.15z"/></svg></div>
-          <div class="app-name">占卜</div>
+        <!-- 二传调整：设置从底部 tab 提到桌面第一页（替换原占卜位），占卜移到第二页；
+             打开的是新的设置中心 #page-settings-hub（settings-hub.js 绑定点击） -->
+        <div class="app" data-app="settings" data-desk-widget="app-settings">
+          <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.1"/><path d="M19.4 15a1.7 1.7 0 00.34 1.87l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1.03 1.56V21a2 2 0 11-4 0v-.09a1.7 1.7 0 00-1.11-1.56 1.7 1.7 0 00-1.87.34l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.7 1.7 0 00.34-1.87 1.7 1.7 0 00-1.56-1.03H3a2 2 0 110-4h.09A1.7 1.7 0 004.65 8.7a1.7 1.7 0 00-.34-1.87l-.06-.06a2 2 0 112.83-2.83l.06.06a1.7 1.7 0 001.87.34H9a1.7 1.7 0 001-1.56V3a2 2 0 114 0v.09a1.7 1.7 0 001 1.56 1.7 1.7 0 001.87-.34l.06-.06a2 2 0 112.83 2.83l-.06.06a1.7 1.7 0 00-.34 1.87V10a1.7 1.7 0 001.56 1H21a2 2 0 110 4h-.09a1.7 1.7 0 00-1.51 1z"/></svg></div>
+          <div class="app-name">设置</div>
         </div>
         <div class="app" data-app="note" data-desk-widget="app-note">
           <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.5h11a1 1 0 011 1v16l-6.5-4-6.5 4v-16a1 1 0 011-1z"/></svg></div>
@@ -11635,6 +11748,11 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
 <div class="app" data-app="cjian" data-desk-widget="app-cjian">
 <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V5a2 2 0 012-2h12a2 2 0 012 2v16"/><path d="M4 21h16"/><path d="M10 21v-6h4v6"/></svg></div>
 <div class="app-name">此间</div>
+</div>
+<!-- 二传调整：占卜从第一页移到第二页（第一页原位置改放【设置】图标） -->
+<div class="app" data-app="divination" data-desk-widget="app-divination">
+<div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M12 8.5l1.15 2.4 2.4 1.15-2.4 1.15L12 15.6l-1.15-2.4-2.4-1.15 2.4-1.15z"/></svg></div>
+<div class="app-name">占卜</div>
 </div>
 </div>
       </div><!-- /page-slide 第二页 -->
@@ -12532,7 +12650,16 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
       </div>
     </div>
 
-<!-- 设置页 -->
+<!-- 设置中心：新的设置首页（IA 依据 docs/设置信息架构-逻辑表.md）——底部第三个 tab 进来的是这里，
+         原设置页成为「经典设置」，从本页最后一条进入 -->
+    <div class="page" id="page-settings-hub" hidden>
+      <div class="set-title">设置</div>
+      <div class="sh-wrap">
+        <div class="sh-search"><input id="sh-search" placeholder="搜索设置（如 字体 / 频率 / 备份 / 夜间）" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+        <div class="sh-scroll" id="sh-body"></div>
+      </div>
+    </div>
+<!-- 设置页（经典设置） -->
     <div class="page" id="page-setting" hidden>
       <div class="set-title">设置</div>
       <!-- #542：设置项上百行、找一项要滚很久——顶部搜索框实时过滤 .set-row（跨 5 个 tag 显示匹配项），
@@ -18441,8 +18568,9 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
     <div class="tab" data-page="page-chatcard">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M7.5 9h9M7.5 13h9M7.5 17h5"/></svg>
     </div>
-    <div class="tab" data-page="page-setting">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>
+    <!-- 二传调整：原「设置」tab → 一键切换联系人（设置已移到桌面第一页图标） -->
+    <div class="tab" id="tab-switch-contact" title="切换联系人" role="button" aria-label="切换联系人">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.5" r="3.2"/><path d="M2.8 19.5c0-3.4 2.8-5.6 6.2-5.6s6.2 2.2 6.2 5.6"/><path d="M16 4.2h4.6V8.8"/><path d="M20.6 4.2l-5.2 5.2"/></svg>
     </div>
   </div>
   </div>
@@ -18480,7 +18608,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
   // v3.5.123：readonly 起手（防 Chrome 密码弹条破坏表单签名）——这里立即解除，
   // 早于所有功能模块，任何设备都不会出现输入框不可用的情况
   (function () { var _ci = document.getElementById('chat-input'); if (_ci) _ci.readOnly = false; })();
-window.__jsErrors = window.__jsErrors || []; window.__mochiLoaded = window.__mochiLoaded || []; window.__mochiErrLoaded = window.__mochiErrLoaded || []; window.__mochiBootAt = Date.now(); window.__mochiJsFiles = ["device.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-iso.js","room.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","pwa.js","cjian.js","feature-hub.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"]; window.__mochiExtFiles = ["idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-iso.js","room.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","cjian.js","feature-hub.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"];
+window.__jsErrors = window.__jsErrors || []; window.__mochiLoaded = window.__mochiLoaded || []; window.__mochiErrLoaded = window.__mochiErrLoaded || []; window.__mochiBootAt = Date.now(); window.__mochiJsFiles = ["device.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-iso.js","room.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","pwa.js","cjian.js","feature-hub.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"]; window.__mochiExtFiles = ["idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-iso.js","room.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","cjian.js","feature-hub.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"];
 (function () { try {
 (function () {
 try { window.__jsErrors = window.__jsErrors || []; } catch (e0) {}
@@ -23107,8 +23235,9 @@ try { localStorage.setItem(MARK, String(Date.now())); } catch (e) {}
 if (!window.openModal) return;
 const go = () => {
 try {
-const tab = document.querySelector('.tab[data-page="page-setting"]');
-if (tab) tab.click();
+document.querySelectorAll('.page').forEach(function (p) { p.hidden = true; });
+const sp = document.getElementById('page-setting');
+if (sp) sp.hidden = false;
 } catch (e) {}
 setTimeout(() => {
 try {
@@ -23317,6 +23446,7 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 <script defer src="js/chatcard.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('chatcard.js')"></script>
 <script defer src="js/chat-settings.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('chat-settings.js')"></script>
 <script defer src="js/reply-settings.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('reply-settings.js')"></script>
+<script defer src="js/settings-hub.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('settings-hub.js')"></script>
 <script defer src="js/fav-settings.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('fav-settings.js')"></script>
 <script defer src="js/default-cards-data.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('default-cards-data.js')"></script>
 <script defer src="js/dict-ext-data.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('dict-ext-data.js')"></script>
@@ -23409,4 +23539,4 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 </body>
 </html>
 
-<!-- __MOCHI_EOF__ mv9f181i -->
+<!-- __MOCHI_EOF__ mvbwfeq5 -->

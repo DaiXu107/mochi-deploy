@@ -2030,9 +2030,11 @@
           try { ls.set('reply-guide-done', '1'); } catch (e) {}
           clearTimeout(bar._rgT);
           bar.classList.remove('show');
-          // 跳转：先点底部「设置」tab（tabs.js 接管页面显隐与高亮），再点「回复设置」入口行
-          const tab = document.querySelector('.tab[data-page="page-setting"]');
-          if (tab) tab.click();
+          // 跳转：先打开设置页（二传调整：底部「设置」tab 已改为切换联系人 → 直接开页），
+          // 再点「回复设置」入口行
+          document.querySelectorAll('.page').forEach(function (p) { p.hidden = true; });
+          const sp = document.getElementById('page-setting');
+          if (sp) sp.hidden = false;
           const genRow = document.getElementById('row-general');
           if (genRow) genRow.click();
         });

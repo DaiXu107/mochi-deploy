@@ -581,6 +581,14 @@ m.appendChild(box);
 document.getElementById('cm-fn-explain') && document.getElementById('cm-fn-explain').addEventListener('click', function (e) { e.stopPropagation(); if (window.openFuncExplain) window.openFuncExplain(); });
 showContactModal(m);
 };
+(function () {
+const tab = document.getElementById('tab-switch-contact');
+if (!tab) return;
+tab.addEventListener('click', function (e) {
+try { e.preventDefault(); } catch (e0) {}
+try { window.openContactManager(); } catch (e1) {}
+});
+})();
 window.openFuncExplain = function () {
 const m = ensureModal();
 m.innerHTML = '';

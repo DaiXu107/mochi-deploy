@@ -1526,8 +1526,9 @@ bar.addEventListener('click', () => {
 try { ls.set('reply-guide-done', '1'); } catch (e) {}
 clearTimeout(bar._rgT);
 bar.classList.remove('show');
-const tab = document.querySelector('.tab[data-page="page-setting"]');
-if (tab) tab.click();
+document.querySelectorAll('.page').forEach(function (p) { p.hidden = true; });
+const sp = document.getElementById('page-setting');
+if (sp) sp.hidden = false;
 const genRow = document.getElementById('row-general');
 if (genRow) genRow.click();
 });

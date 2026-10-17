@@ -827,9 +827,11 @@
       if (!window.openModal) return;
       const go = () => {
         // 切到设置页并触发「导入数据」文件选择（row-import 已由 data-backup.js 绑定）
+        // 二传调整：底部「设置」tab 已改为切换联系人 → 直接打开经典设置页
         try {
-          const tab = document.querySelector('.tab[data-page="page-setting"]');
-          if (tab) tab.click();
+          document.querySelectorAll('.page').forEach(function (p) { p.hidden = true; });
+          const sp = document.getElementById('page-setting');
+          if (sp) sp.hidden = false;
         } catch (e) {}
         setTimeout(() => {
           try {

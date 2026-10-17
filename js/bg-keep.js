@@ -637,8 +637,9 @@ return keep.length;
 const MEM_HOW_TO = '页面在后台被手机收回，是系统的省电与后台管控在做主，网站拦不住——但下面几条是真能少发生：\n\n① 别从「最近任务」把本站划掉（划掉＝你亲手关掉，回来一样要重载）。\n② 系统设置 → 应用 → 你用的浏览器 → 省电/电池 → 选「无限制 / 允许后台活动」；有「后台管理 / 自启动」的也一并设为允许。\n③ 最近任务里长按本站卡片选「锁定」（或小锁图标），一键清理后台时会跳过它。\n④ 不用时把 设置→系统 的「后台保活」关掉（它靠一直放近无声音频续命，本身也吃内存）。\n⑤ 设置→工具→「查看存储」清掉最占地方的一项（表情包大图/旧聊天记录，删前先导出备份）——页面越轻，越不容易被系统挑中收回。\n\n被收回不会丢数据：回到本页会自动重载接上，保活在你碰一下页面时自动恢复。';
 function gotoStorageView() {
 try {
-const t = document.querySelector('.tabbar .tab[data-page="page-setting"]');
-if (t) t.click();
+document.querySelectorAll('.page').forEach(function (p) { p.hidden = true; });
+const sp = document.getElementById('page-setting');
+if (sp) sp.hidden = false;
 setTimeout(function () {
 try {
 const tg = document.querySelector('#set-tabs .them-tab[data-sec="tools"]');

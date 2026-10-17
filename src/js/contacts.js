@@ -1013,6 +1013,16 @@
     document.getElementById('cm-fn-explain') && document.getElementById('cm-fn-explain').addEventListener('click', function (e) { e.stopPropagation(); if (window.openFuncExplain) window.openFuncExplain(); });
     showContactModal(m);
   };
+  // 二传调整：底部第三个 tab 不再是设置（设置已移到桌面第一页图标），改为「一键切换联系人」——
+  // 点按直接弹出联系人/桌面列表，选一条即切桌面（复用上面的管理弹窗，含新建/改名/删除）。
+  (function () {
+    const tab = document.getElementById('tab-switch-contact');
+    if (!tab) return;
+    tab.addEventListener('click', function (e) {
+      try { e.preventDefault(); } catch (e0) {}
+      try { window.openContactManager(); } catch (e1) {}
+    });
+  })();
   // 切换桌面「功能说明」：说明哪些数据在所有桌面共用 / 哪些按桌面独立
   window.openFuncExplain = function () {
     const m = ensureModal();

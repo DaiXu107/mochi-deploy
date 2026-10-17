@@ -962,8 +962,10 @@
   // 跳到 设置→工具→查看存储（原「点整条」的路径，现在挂在「怎么清」弹窗的确认键上）
   function gotoStorageView() {
     try {
-      const t = document.querySelector('.tabbar .tab[data-page="page-setting"]');
-      if (t) t.click();
+      // 二传调整：底部「设置」tab 已改为切换联系人 → 直接打开经典设置页
+      document.querySelectorAll('.page').forEach(function (p) { p.hidden = true; });
+      const sp = document.getElementById('page-setting');
+      if (sp) sp.hidden = false;
       setTimeout(function () {
         try {
           const tg = document.querySelector('#set-tabs .them-tab[data-sec="tools"]');

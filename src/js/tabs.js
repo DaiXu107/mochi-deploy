@@ -62,6 +62,9 @@
   }
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
+      // 二传调整：第三个 tab 是「一键切换联系人」动作键（无 data-page），点击由 contacts.js
+      // 处理；这里直接放行，既不切页，也不往 __jsErrors 里记一条「目标页缺失」误报
+      if (!tab.dataset.page) return;
       sdLeaveSnap();
       // FIX #815：先拿目标页再关其它页——旧写法关完才 getElementById，目标取不到就是
       // TypeError，而此时全部页已 hidden＝整屏空白卡死。取不到目标就一页都不关。

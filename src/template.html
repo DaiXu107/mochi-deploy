@@ -659,9 +659,11 @@
           <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5S4.5 15.2 4.5 9.9A4.9 4.9 0 0112 7.1a4.9 4.9 0 017.5 2.8c0 5.3-7.5 10.6-7.5 10.6z"/></svg></div>
           <div class="app-name">纪念</div>
         </div>
-        <div class="app" data-app="divination" data-desk-widget="app-divination">
-          <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M12 8.5l1.15 2.4 2.4 1.15-2.4 1.15L12 15.6l-1.15-2.4-2.4-1.15 2.4-1.15z"/></svg></div>
-          <div class="app-name">占卜</div>
+        <!-- 二传调整：设置从底部 tab 提到桌面第一页（替换原占卜位），占卜移到第二页；
+             打开的是新的设置中心 #page-settings-hub（settings-hub.js 绑定点击） -->
+        <div class="app" data-app="settings" data-desk-widget="app-settings">
+          <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.1"/><path d="M19.4 15a1.7 1.7 0 00.34 1.87l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1.03 1.56V21a2 2 0 11-4 0v-.09a1.7 1.7 0 00-1.11-1.56 1.7 1.7 0 00-1.87.34l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.7 1.7 0 00.34-1.87 1.7 1.7 0 00-1.56-1.03H3a2 2 0 110-4h.09A1.7 1.7 0 004.65 8.7a1.7 1.7 0 00-.34-1.87l-.06-.06a2 2 0 112.83-2.83l.06.06a1.7 1.7 0 001.87.34H9a1.7 1.7 0 001-1.56V3a2 2 0 114 0v.09a1.7 1.7 0 001 1.56 1.7 1.7 0 001.87-.34l.06-.06a2 2 0 112.83 2.83l-.06.06a1.7 1.7 0 00-.34 1.87V10a1.7 1.7 0 001.56 1H21a2 2 0 110 4h-.09a1.7 1.7 0 00-1.51 1z"/></svg></div>
+          <div class="app-name">设置</div>
         </div>
         <div class="app" data-app="note" data-desk-widget="app-note">
           <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.5h11a1 1 0 011 1v16l-6.5-4-6.5 4v-16a1 1 0 011-1z"/></svg></div>
@@ -767,6 +769,11 @@
 <div class="app" data-app="cjian" data-desk-widget="app-cjian">
 <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V5a2 2 0 012-2h12a2 2 0 012 2v16"/><path d="M4 21h16"/><path d="M10 21v-6h4v6"/></svg></div>
 <div class="app-name">此间</div>
+</div>
+<!-- 二传调整：占卜从第一页移到第二页（第一页原位置改放【设置】图标） -->
+<div class="app" data-app="divination" data-desk-widget="app-divination">
+<div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M12 8.5l1.15 2.4 2.4 1.15-2.4 1.15L12 15.6l-1.15-2.4-2.4-1.15 2.4-1.15z"/></svg></div>
+<div class="app-name">占卜</div>
 </div>
 </div>
       </div><!-- /page-slide 第二页 -->
@@ -1664,7 +1671,16 @@
       </div>
     </div>
 
-<!-- 设置页 -->
+<!-- 设置中心：新的设置首页（IA 依据 docs/设置信息架构-逻辑表.md）——底部第三个 tab 进来的是这里，
+         原设置页成为「经典设置」，从本页最后一条进入 -->
+    <div class="page" id="page-settings-hub" hidden>
+      <div class="set-title">设置</div>
+      <div class="sh-wrap">
+        <div class="sh-search"><input id="sh-search" placeholder="搜索设置（如 字体 / 频率 / 备份 / 夜间）" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+        <div class="sh-scroll" id="sh-body"></div>
+      </div>
+    </div>
+<!-- 设置页（经典设置） -->
     <div class="page" id="page-setting" hidden>
       <div class="set-title">设置</div>
       <!-- #542：设置项上百行、找一项要滚很久——顶部搜索框实时过滤 .set-row（跨 5 个 tag 显示匹配项），
@@ -7573,8 +7589,9 @@
     <div class="tab" data-page="page-chatcard">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M7.5 9h9M7.5 13h9M7.5 17h5"/></svg>
     </div>
-    <div class="tab" data-page="page-setting">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>
+    <!-- 二传调整：原「设置」tab → 一键切换联系人（设置已移到桌面第一页图标） -->
+    <div class="tab" id="tab-switch-contact" title="切换联系人" role="button" aria-label="切换联系人">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.5" r="3.2"/><path d="M2.8 19.5c0-3.4 2.8-5.6 6.2-5.6s6.2 2.2 6.2 5.6"/><path d="M16 4.2h4.6V8.8"/><path d="M20.6 4.2l-5.2 5.2"/></svg>
     </div>
   </div>
   </div>

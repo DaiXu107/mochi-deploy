@@ -1,0 +1,148 @@
+/* ===== 设置中心（新的设置首页）=====
+   设计依据：docs/设置信息架构-逻辑表.md
+   · 按「想干什么」分 6 类，不再按代码模块分
+   · 能力型条目直接在这里改，长尾条目标注作用域并给跳转
+   · 频率总控 = 三档滑动条，单项旋钮全部保留
+   · 选择控件一律「滑动式」：滑片/滑块指示当前值，不只靠色块
+*/
+
+/* 局部配色变量：浅色/深色各一套，控件不再写死浅色底 */
+#page-settings-hub {
+  --sh-soft: #f4f4f6; --sh-track: #ececf1; --sh-knob: #ffffff; --sh-seg-ink: #6f6f7a;
+  overflow: hidden;
+}
+[data-theme="dark"] #page-settings-hub {
+  --sh-soft: #2c2c33; --sh-track: #2a2a31; --sh-knob: #4d4d59; --sh-seg-ink: #a5a5b0;
+}
+#page-settings-hub .sh-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+/* 搜索 */
+#page-settings-hub .sh-search { flex: 0 0 auto; padding: 2px 14px 8px; }
+#page-settings-hub .sh-search input {
+  width: 100%; box-sizing: border-box; font-size: 13.5px; padding: 9px 12px;
+  border-radius: 12px; border: 1px solid var(--input-border, #e0e0e0);
+  background: var(--input-bg, #fff); color: var(--ink); outline: none;
+}
+#page-settings-hub .sh-search input::placeholder { color: var(--muted, #9a9a9a); }
+
+/* 滚动区 */
+#page-settings-hub .sh-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 14px 24px; -webkit-overflow-scrolling: touch; }
+
+/* 分类标题 */
+#page-settings-hub .sh-sec {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 16px 4px 7px; font-size: 12.5px; font-weight: 700; color: var(--muted, #8a8a8a);
+  letter-spacing: .5px;
+}
+#page-settings-hub .sh-sec:first-child { padding-top: 6px; }
+#page-settings-hub .sh-sec i { font-style: normal; font-weight: 400; font-size: 11px; opacity: .8; }
+
+/* 分类卡片 */
+#page-settings-hub .sh-group {
+  background: var(--card-bg, #fff); border: 1px solid var(--card-border, rgba(0,0,0,.07));
+  border-radius: 16px; overflow: hidden;
+}
+#page-settings-hub .sh-row {
+  display: flex; align-items: center; gap: 10px; min-height: 48px;
+  padding: 9px 14px; border-bottom: 1px solid var(--line, #f0f0f0);
+}
+#page-settings-hub .sh-row:last-child { border-bottom: 0; }
+#page-settings-hub .sh-row[data-nav] { cursor: pointer; }
+#page-settings-hub .sh-row[data-nav]:active { background: var(--sh-soft, #f6f6f8); }
+#page-settings-hub .sh-l { flex: 1; min-width: 0; }
+#page-settings-hub .sh-label { font-size: 13.5px; color: var(--ink); line-height: 1.35; }
+#page-settings-hub .sh-note { display: block; font-size: 11px; color: var(--muted, #9a9a9a); margin-top: 2px; line-height: 1.4; }
+
+/* 作用域徽章 */
+#page-settings-hub .sh-badge {
+  display: inline-block; margin-left: 6px; vertical-align: 1px;
+  font-style: normal; font-size: 10px; line-height: 1.5; padding: 0 6px; border-radius: 999px;
+  color: #7a6bd0; background: rgba(138,123,216,.13); white-space: nowrap;
+}
+#page-settings-hub .sh-badge.g { color: #5b8db8; background: rgba(91,141,184,.14); }
+
+/* iOS 开关 */
+#page-settings-hub .sh-sw {
+  flex: 0 0 auto; width: 44px; height: 26px; border-radius: 999px; background: var(--sh-track, #d9d9e2);
+  position: relative; transition: background .18s; cursor: pointer;
+}
+#page-settings-hub .sh-sw b {
+  position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.22); transition: transform .18s;
+}
+#page-settings-hub .sh-sw.on { background: #8a7bd8; }
+#page-settings-hub .sh-sw.on b { transform: translateX(18px); }
+
+/* 步进 */
+#page-settings-hub .sh-step { flex: 0 0 auto; display: flex; align-items: center; gap: 2px; }
+#page-settings-hub .sh-step button {
+  width: 28px; height: 28px; border-radius: 9px; border: 1px solid var(--card-border, rgba(0,0,0,.1));
+  background: var(--sh-soft, #f4f4f6); color: var(--ink); font-size: 15px; line-height: 1; cursor: pointer;
+}
+#page-settings-hub .sh-step button:active { background: rgba(138,123,216,.22); }
+#page-settings-hub .sh-val { min-width: 58px; text-align: center; font-size: 13px; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* 跳转箭头 */
+#page-settings-hub .sh-chev {
+  flex: 0 0 auto; width: 8px; height: 8px; margin-right: 2px;
+  border-right: 1.6px solid #c2c2cc; border-bottom: 1.6px solid #c2c2cc; transform: rotate(-45deg);
+}
+
+/* ===== 三段选择：轨道 + 会滑动的白片（不再只有色块） ===== */
+#page-settings-hub .sh-seg2 {
+  position: relative; flex: 0 0 auto; display: flex; width: 170px; padding: 3px;
+  border-radius: 10px; background: var(--sh-track, #ececf1); box-sizing: border-box;
+}
+#page-settings-hub .sh-seg2-thumb {
+  position: absolute; top: 3px; left: 3px; height: calc(100% - 6px);
+  border-radius: 8px; background: var(--sh-knob, #fff); box-shadow: 0 1px 3px rgba(0,0,0,.16);
+  transition: transform .22s cubic-bezier(.2,.8,.3,1);
+}
+#page-settings-hub .sh-seg2 button {
+  position: relative; z-index: 1; flex: 1; min-width: 0; padding: 5px 0;
+  border: 0; background: transparent; font-size: 11.5px; color: var(--sh-seg-ink, #6f6f7a); cursor: pointer;
+  transition: color .18s; white-space: nowrap;
+}
+#page-settings-hub .sh-seg2 button.sel { color: var(--ink, #1f1b2e); font-weight: 700; }
+
+/* ===== 频率总控：三档滑动条 ===== */
+#page-settings-hub .sh-freq-desc { font-size: 11.5px; color: var(--muted, #9a9a9a); padding: 2px 14px 12px; line-height: 1.6; }
+#page-settings-hub .sh-preset-slider { padding: 6px 16px 2px; }
+#page-settings-hub .sh-preset-slider input[type=range] {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 999px;
+  background: linear-gradient(90deg, #bfe3c9 0%, #cfc7ef 50%, #f7b8ac 100%);
+  outline: none; margin: 8px 0 6px;
+}
+/* 滑块：白色圆钮 + 外圈，拖动时一眼看出当前档 */
+#page-settings-hub .sh-preset-slider input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 26px; height: 26px; border-radius: 50%;
+  background: #fff; border: 3px solid #8a7bd8; box-shadow: 0 2px 6px rgba(60,40,110,.28); cursor: grab;
+}
+#page-settings-hub .sh-preset-slider input[type=range]::-moz-range-thumb {
+  width: 22px; height: 22px; border-radius: 50%; background: #fff;
+  border: 3px solid #8a7bd8; box-shadow: 0 2px 6px rgba(60,40,110,.28); cursor: grab;
+}
+#page-settings-hub .sh-preset-labels { display: flex; justify-content: space-between; padding: 0 2px; }
+#page-settings-hub .sh-preset-labels span {
+  font-size: 12px; color: var(--muted, #9a9a9a); cursor: pointer; transition: color .18s, font-weight .18s;
+  padding: 2px 6px; border-radius: 8px;
+}
+#page-settings-hub .sh-preset-labels span.sel { color: #6c5fc0; font-weight: 800; background: rgba(138,123,216,.12); }
+
+/* 展开单项 */
+#page-settings-hub .sh-freq-more {
+  padding: 10px 14px; border-top: 1px solid var(--line, #f0f0f0); cursor: pointer;
+  font-size: 12.5px; color: #7a6bd0; display: flex; align-items: center; justify-content: center; gap: 4px;
+}
+#page-settings-hub .sh-sub { background: var(--sh-soft, #f8f8fa); }
+#page-settings-hub .sh-sub .sh-row { padding-left: 22px; }
+#page-settings-hub .sh-sub .sh-label { font-size: 12.5px; color: var(--muted, #666); }
+/* 展开的单项全是本联系人作用域，徽章重复又占宽，隐藏 */
+#page-settings-hub .sh-sub .sh-badge { display: none; }
+
+/* 搜索无结果 */
+#page-settings-hub .sh-empty { padding: 40px 10px; text-align: center; font-size: 12.5px; color: var(--muted, #9a9a9a); }
+
+/* 「去到这里」时高亮目标行（跨页使用，类名唯一） */
+.sh-hit { animation: shHit 1.4s ease-out; }
+@keyframes shHit { 0%, 35% { background: rgba(138,123,216,.20); } 100% { background: transparent; } }
