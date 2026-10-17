@@ -50,7 +50,9 @@
 }
 html,body { overflow-x:hidden;
   min-height:100vh;
-  font-family:'PingFang SC','Microsoft YaHei',-apple-system,sans-serif;
+  /* 二传：跨平台字体栈——Windows 微软雅黑 / Apple 苹方 / 安卓厂商黑体或思源黑体，
+     减少手机与电脑的字宽、行高差异（原来安卓直接掉到默认 sans） */
+  font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','HarmonyOS Sans SC','MiSans','Microsoft YaHei','Source Han Sans SC','Noto Sans CJK SC','Noto Sans SC',sans-serif;
   background:radial-gradient(80% 60% at 50% 0%, var(--page-bg-grad) 0%, transparent 60%), var(--page-bg);
   display:flex; align-items:center; justify-content:center;
   color:var(--ink);

@@ -11,6 +11,8 @@ forest: { name:'墨绿',   kraft:'#e7ece7', paper:'#fbfdf9', ink:'#2c3b31', sub:
 blue:   { name:'雾蓝',   kraft:'#e8edf5', paper:'#fbfcff', ink:'#2d3a4f', sub:'#78849a', line:'#ccd6e4', red:'#3a5d8f', cream:'#f4f7fc' }
 };
 var ACCENTS = { red:'#b3392f', green:'#2f6b57', blue:'#2e4a8f', amber:'#a86a2b' };
+var SERIF = 'Georgia,"Songti SC","STSong","SimSun","宋体","Noto Serif CJK SC","Source Han Serif SC","Noto Serif SC","Noto Serif",serif';
+var SANS = '-apple-system,BlinkMacSystemFont,"PingFang SC","HarmonyOS Sans SC","MiSans","Microsoft YaHei","Noto Sans CJK SC","Noto Sans SC",sans-serif';
 var SET_KEY = 'mail-postal-settings-v1';   // 外观设置为设备级，不分联系人
 var READ_BASE = 'mail-postal-read-v2';
 var TAPE_BASE = 'mail-postal-tape-v2';
@@ -128,8 +130,8 @@ var CSS = ''
 + ':root {'
 + ' --pz-kraft:' + PAL.kraft + '; --pz-paper:' + PAL.paper + '; --pz-ink:' + PAL.ink + '; --pz-sub:' + PAL.sub + ';'
 + ' --pz-line:' + PAL.line + '; --pz-red:' + PAL.red + '; --pz-cream:' + PAL.cream + ';'
-+ ' --pz-font: Georgia, "Songti SC", serif; --pz-size: 15.5px; --pz-lh: 31px;'
-+ ' --pz-author-font: Georgia, "Songti SC", serif; --pz-author-size: 12.5px; --pz-wax-img: none; }'
++ ' --pz-font: ' + SERIF + '; --pz-size: 15.5px; --pz-lh: 31px;'
++ ' --pz-author-font: ' + SERIF + '; --pz-author-size: 12.5px; --pz-wax-img: none; }'
 + '#page-mail, #page-mail-write, #page-mail-reply { background: var(--pz-kraft); color: var(--pz-ink); }'
 + '#page-mail .cal-topbar, #page-mail-write .cal-topbar, #page-mail-reply .cal-topbar, #page-mail .chat-head, #page-mail-write .chat-head, #page-mail-reply .chat-head, #page-mail .pz-topbar, #page-mail-write .pz-topbar, #page-mail-reply .pz-topbar { background: var(--pz-paper); border-bottom: 1px solid var(--pz-line); box-shadow: none; }'
 + '#page-mail .cal-topbar .cal-title, #page-mail-write .cal-topbar .cal-title, #page-mail-reply .cal-topbar .cal-title, #page-mail .chat-head .ch-name, #page-mail-write .chat-head .ch-name, #page-mail-reply .chat-head .ch-name, #page-mail .pz-topbar [class*="title"], #page-mail .pz-topbar .ch-name, #page-mail-write .pz-topbar .ch-name, #page-mail-reply .pz-topbar .ch-name { font-family: var(--pz-font); letter-spacing: 3px; color: var(--pz-ink); }'
@@ -144,14 +146,14 @@ var CSS = ''
 + '#page-mail #postal-settings-btn:active { transform: translate(1px,1px); box-shadow: 1px 1px 0 var(--pz-line); }'
 + '.pz-set-mask { position: absolute; inset: 0; z-index: 70; background: rgba(60,45,30,.25); display: flex; align-items: flex-end; }'
 + '.pz-set-mask[hidden] { display: none; }'
-+ '.pz-set-sheet { width: 100%; background: rgba(255,253,247,.85); background: color-mix(in srgb, var(--pz-paper) 88%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-top: 1px solid rgba(255,255,255,.65); box-shadow: 0 -10px 32px rgba(60,45,30,.18); border-radius: 18px 18px 0 0; padding: 16px 16px 26px; max-height: 72%; overflow-y: auto; font-size: 13px; color: var(--pz-ink); touch-action: manipulation; }'
++ '.pz-set-sheet { width: 100%; background: rgba(255,253,247,.85); background: color-mix(in srgb, var(--pz-paper) 88%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-top: 1px solid rgba(255,255,255,.65); box-shadow: 0 -10px 32px rgba(60,45,30,.18); border-radius: 18px 18px 0 0; padding: clamp(13px, 4vw, 18px) clamp(13px, 4vw, 18px) calc(clamp(20px, 5vw, 28px) + env(safe-area-inset-bottom, 0px)); max-height: 74%; overflow-y: auto; font-size: 13px; line-height: 1.5; color: var(--pz-ink); touch-action: manipulation; }'
 + '.pz-set-sheet button, .pz-set-sheet label { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }'
 + '.pz-set-title { font-family: var(--pz-font); font-weight: 700; letter-spacing: 4px; text-align: center; margin-bottom: 10px; }'
 + '.pz-sec { margin: 14px 0 10px; padding-bottom: 5px; border-bottom: 1px dashed var(--pz-line); font-family: var(--pz-font); font-size: 11px; letter-spacing: 3px; color: var(--pz-sub); }'
 + '.pz-sec:first-of-type { margin-top: 2px; }'
 + '.pz-theme-chip i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; border: 1px solid rgba(0,0,0,.14); }'
-+ '.pz-set-row { display: flex; align-items: center; gap: 10px; margin-bottom: 13px; }'
-+ '.pz-set-label { width: 64px; color: var(--pz-sub); font-size: 12px; letter-spacing: 1px; flex: none; }'
++ '.pz-set-row { display: flex; align-items: center; gap: clamp(8px, 2.4vw, 11px); margin-bottom: clamp(11px, 3.3vw, 14px); line-height: 1.5; }'
++ '.pz-set-label { width: clamp(56px, 16vw, 70px); color: var(--pz-sub); font-size: 12px; letter-spacing: 1px; flex: none; line-height: 1.45; }'
 + '.pz-set-row input[type="text"] { flex: 1; border: 1px solid var(--pz-line); border-radius: 2px; padding: 7px 10px; font-size: 13px; background: #fff; color: var(--pz-ink); font-family: var(--pz-font); }'
 + '.pz-set-row input[type="range"] { flex: 1; accent-color: var(--pz-red); }'
 + '.pz-chips { display: flex; gap: 6px; flex-wrap: wrap; }'
@@ -209,13 +211,13 @@ var CSS = ''
 + '#page-mail .mail-item.postal-read .mail-tag.new { display: none; }'
 + '#page-mail .mail-item-av { background: var(--pz-kraft); border-radius: 3px; border: 1px solid var(--pz-line); }'
 + '#page-mail .mail-item-av svg { stroke: var(--pz-red) !important; }'
-+ '#page-mail .mail-item-title { font-family: var(--pz-font); color: var(--pz-ink); font-size: 14.5px; }'
++ '#page-mail .mail-item-title { font-family: var(--pz-font); color: var(--pz-ink); font-size: 14.5px; line-height: 1.3; }'
 + '#page-mail .mail-item-title { display: flex; align-items: baseline; gap: 4px; }'
 + '#page-mail .mail-item-title .pz-tt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }'
 + '#page-mail .mail-item-title .mail-tag { flex: none; margin-left: 0; }'
-+ '#page-mail .mail-item-desc { color: var(--pz-sub); font-size: 12.5px; }'
++ '#page-mail .mail-item-desc { color: var(--pz-sub); font-size: 12.5px; line-height: 1.45; }'
 + '#page-mail .mail-item-time { color: var(--pz-sub); font-size: 11px; letter-spacing: 1px; font-family: var(--pz-font); align-self: flex-start; margin-top: 1px; margin-right: 2px; line-height: 1.4; white-space: nowrap; }'
-+ '#page-mail .mail-item { align-items: flex-start; padding-right: 16px; }'
++ '#page-mail .mail-item { align-items: flex-start; padding: clamp(10px, 3.1vw, 13px); padding-right: clamp(13px, 4.1vw, 17px); gap: clamp(8px, 2.5vw, 11px); }'
 + '#page-mail .mail-item-av { margin-top: 1px; }'
 + '#page-mail .mail-tag { background: transparent; border: 1px solid var(--pz-sub); color: var(--pz-sub); border-radius: 2px; font-size: 10.5px; padding: 0 5px; margin-left: 6px; letter-spacing: 1px; }'
 + '#page-mail .mail-tag.new { background: transparent; border: 1.5px solid var(--pz-red); color: var(--pz-red); transform: rotate(-2deg); display: inline-block; font-weight: 700; }'
@@ -255,7 +257,7 @@ var CSS = ''
 + ' content: ""; position: absolute; top: 6px; left: 10px; width: 54px; height: 30px; opacity: .5; pointer-events: none;'
 + ' background: url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 54 30\'%3E%3Cg fill=\'none\' stroke=\'%23e8e4d8\' stroke-width=\'1.4\' stroke-linecap=\'round\' opacity=\'.85\'%3E%3Cpath d=\'M12 16 C12 11 6 9 4.5 12.5 C3 16 12 21 12 21 C12 21 21 16 19.5 12.5 C18 9 12 11 12 16 Z\'/%3E%3Cpath d=\'M28 8 q3 -4 6 0 q3 4 6 0\'/%3E%3Cpath d=\'M28 16 q3 -4 6 0 q3 4 6 0\'/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat; }'
 + '.pz-bg-board #tc-mask:has(.mail-paper) .mail-paper, .pz-bg-board #tc-mask.pz-has-paper .mail-paper { transform: rotate(-1.1deg); box-shadow: 0 10px 22px rgba(0,0,0,.45); }'
-+ '#tc-mask .mail-paper { position: relative; background-color: var(--pz-paper); border: 1px solid var(--pz-line); border-radius: 3px; padding: 16px 16px 14px; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(90,70,40,.12); }'
++ '#tc-mask .mail-paper { position: relative; background-color: var(--pz-paper); border: 1px solid var(--pz-line); border-radius: 3px; padding: clamp(13px, 4.1vw, 17px) clamp(13px, 4.1vw, 17px) clamp(11px, 3.6vw, 15px); margin-bottom: 12px; box-shadow: 0 2px 6px rgba(90,70,40,.12); }'
 + '#tc-mask .mail-paper::after { content: ""; position: absolute; inset: 4px; border: 1px dashed var(--pz-line); border-radius: 2px; pointer-events: none; }'
 + '#tc-mask .mail-paper-head { border-bottom: 1px dashed var(--pz-line); padding: 0 84px 8px 0; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: baseline; }'
 + '#tc-mask .mail-paper-author { color: var(--pz-red); font-family: var(--pz-author-font); font-size: var(--pz-author-size); letter-spacing: 2px; }'
@@ -326,7 +328,7 @@ if (link.getAttribute('href') !== url) link.setAttribute('href', url);
 }
 function fontStack(name, fallback) {
 name = (name || '').trim();
-return name ? '"' + name + '", Georgia, "Songti SC", serif' : fallback;
+return name ? '"' + name + '", ' + SERIF : fallback;
 }
 function applySettings() {
 var s = loadSet();
@@ -342,20 +344,20 @@ var customHex = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(s.accent || '') ? s.ac
 r.setProperty('--pz-red', ACCENTS[s.accent] || customHex || th.red);
 if (s.font === 'custom') {
 ensureFontImport((s.fontUrl || '').trim(), 'pz-font-link');
-r.setProperty('--pz-font', fontStack(s.fontName, 'Georgia,"Songti SC",serif'));
+r.setProperty('--pz-font', fontStack(s.fontName, SERIF));
 } else {
 ensureFontImport('', 'pz-font-link');
-r.setProperty('--pz-font', s.font === 'sans' ? '-apple-system,"PingFang SC","Helvetica Neue",sans-serif' : 'Georgia,"Songti SC",serif');
+r.setProperty('--pz-font', s.font === 'sans' ? SANS : SERIF);
 }
 var sz = { s: ['14px', '28px'], m: ['15.5px', '31px'], l: ['17px', '34px'] }[s.size] || ['15.5px', '31px'];
 r.setProperty('--pz-size', sz[0]);
 r.setProperty('--pz-lh', sz[1]);
 if (s.authorFont === 'custom') {
 ensureFontImport((s.authorFontUrl || '').trim(), 'pz-afont-link');
-r.setProperty('--pz-author-font', fontStack(s.authorFontName, 'Georgia,"Songti SC",serif'));
+r.setProperty('--pz-author-font', fontStack(s.authorFontName, SERIF));
 } else {
 ensureFontImport('', 'pz-afont-link');
-r.setProperty('--pz-author-font', s.authorFont === 'sans' ? '-apple-system,"PingFang SC",sans-serif' : 'Georgia,"Songti SC",serif');
+r.setProperty('--pz-author-font', s.authorFont === 'sans' ? SANS : SERIF);
 }
 r.setProperty('--pz-author-size', (s.authorSize || 12.5) + 'px');
 r.setProperty('--pz-wax-img', 'url("' + ((s.waxImg || '').trim() || WAX_SEAL_IMG) + '")');
