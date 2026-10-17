@@ -8324,6 +8324,100 @@ font-size: 12.5px; color: #7a6bd0; display: flex; align-items: center; justify-c
 #page-settings-hub .sh-empty { padding: 40px 10px; text-align: center; font-size: 12.5px; color: var(--muted, #9a9a9a); }
 .sh-hit { animation: shHit 1.4s ease-out; }
 @keyframes shHit { 0%, 35% { background: rgba(138,123,216,.20); } 100% { background: transparent; } }
+#page-phone .app { position: relative; }
+@keyframes deskAppJiggle {
+0%, 100% { transform: rotate(-1.1deg); }
+50%      { transform: rotate(1.1deg); }
+}
+#page-phone.desk-move-mode .app { animation: deskAppJiggle .32s ease-in-out infinite; }
+#page-phone.desk-move-mode .app:nth-child(2n) { animation-delay: -.16s; }
+#page-phone.desk-move-mode .app:nth-child(3n) { animation-delay: -.08s; }
+@media (prefers-reduced-motion: reduce) {
+#page-phone.desk-move-mode .app { animation: none; }
+}
+#page-phone .app-x {
+display: none;
+position: absolute; top: -5px; left: -5px; z-index: 6;
+width: 20px; height: 20px; border-radius: 50%;
+background: #1b1b1f; color: #fff;
+font-style: normal; font-size: 13px; line-height: 19px; text-align: center;
+box-shadow: 0 1px 4px rgba(0, 0, 0, .32);
+cursor: pointer; user-select: none; -webkit-user-select: none;
+}
+#page-phone.desk-move-mode .app .app-x { display: block; }
+.app-undo {
+position: fixed; left: 50%; bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+transform: translateX(-50%); z-index: 12050;
+display: flex; align-items: center; gap: 14px;
+max-width: min(86vw, 360px);
+padding: 10px 14px; border-radius: 12px;
+background: rgba(24, 24, 28, .94); color: #fff;
+font-size: 13px; line-height: 1.4;
+box-shadow: 0 6px 20px rgba(0, 0, 0, .28);
+}
+.app-undo span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-undo button {
+flex: 0 0 auto; border: 0; background: none; padding: 2px 0;
+color: #bda9ff; font-size: 13px; font-weight: 700; cursor: pointer;
+}
+#page-appmarket { overflow: hidden; }
+#page-appmarket .amk-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 14px 24px; }
+#page-appmarket .amk-search { padding: 10px 0 6px; }
+#page-appmarket .amk-search input {
+width: 100%; box-sizing: border-box; font-size: 13.5px; padding: 9px 12px;
+border-radius: 12px; border: 1px solid var(--input-border, #e0e0e0);
+background: var(--input-bg, #fff); color: var(--ink); outline: none;
+}
+#page-appmarket .amk-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 6px 0 10px; scrollbar-width: none; }
+#page-appmarket .amk-tabs::-webkit-scrollbar { display: none; }
+#page-appmarket .amk-tabs button {
+flex: 0 0 auto; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--card-border, rgba(0,0,0,.1));
+background: var(--card-bg, #fff); color: var(--muted, #777); font-size: 12.5px; cursor: pointer;
+}
+#page-appmarket .amk-tabs button.sel { background: var(--ink, #111); color: var(--bg-b, #fff); border-color: transparent; font-weight: 600; }
+#page-appmarket .amk-sum { font-size: 11.5px; color: var(--muted, #999); padding: 2px 2px 8px; }
+#page-appmarket .amk-row {
+display: flex; align-items: center; gap: 12px;
+padding: 11px 12px; margin-bottom: 8px;
+border-radius: 14px; border: 1px solid var(--card-border, rgba(0,0,0,.07));
+background: var(--card-bg, #fff);
+}
+#page-appmarket .amk-ico {
+flex: 0 0 auto; width: 42px; height: 42px; border-radius: 12px;
+display: flex; align-items: center; justify-content: center;
+background: var(--card-soft, #f4f4f6); overflow: hidden;
+}
+#page-appmarket .amk-ico svg { width: 26px; height: 26px; }
+#page-appmarket .amk-ico img { width: 100%; height: 100%; object-fit: cover; }
+#page-appmarket .amk-info { flex: 1; min-width: 0; }
+#page-appmarket .amk-name { font-size: 13.5px; color: var(--ink); display: flex; align-items: center; gap: 6px; }
+#page-appmarket .amk-name .amk-cat { font-size: 10px; color: var(--muted, #999); font-weight: 400; }
+#page-appmarket .amk-new {
+font-style: normal; font-size: 9.5px; line-height: 1.5; padding: 0 5px; border-radius: 999px;
+color: #d24a3d; background: rgba(210, 74, 61, .12); font-weight: 700;
+}
+#page-appmarket .amk-desc {
+font-size: 11px; color: var(--muted, #999); margin-top: 2px;
+overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+#page-appmarket .amk-btn {
+flex: 0 0 auto; min-width: 62px; text-align: center;
+padding: 6px 10px; border-radius: 999px; font-size: 12px;
+border: 1px solid transparent; cursor: pointer;
+}
+#page-appmarket .amk-btn.add { background: var(--ink, #111); color: var(--bg-b, #fff); font-weight: 600; }
+#page-appmarket .amk-btn.on { background: transparent; color: var(--muted, #777); border-color: var(--card-border, rgba(0,0,0,.12)); }
+#page-appmarket .amk-btn.core { background: rgba(138,123,216,.13); color: #7a6bd0; }
+#page-appmarket .amk-btn.auto { background: rgba(120,120,128,.12); color: var(--muted, #777); }
+#page-appmarket .amk-empty { padding: 44px 10px; text-align: center; font-size: 12.5px; color: var(--muted, #999); }
+#page-appmarket .amk-tip {
+margin-top: 14px; padding: 10px 12px; border-radius: 12px;
+background: var(--card-soft, #f6f6f8);
+font-size: 11px; line-height: 1.7; color: var(--muted, #999);
+}
+[data-theme="dark"] #page-appmarket .amk-ico { background: #2c2c33; }
+[data-theme="dark"] #page-appmarket .amk-tip { background: #242428; }
+[data-theme="dark"] #page-appmarket .amk-btn.on { border-color: rgba(255,255,255,.16); }
 .tabbar {
 margin-top:10px; display:flex; justify-content:space-around;
 flex-shrink:0; background:var(--tabbar-bg-color, var(--tabbar-base-bg, #ffffff));
@@ -11510,7 +11604,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
            （名称+版号 / 部署时间+实时秒 / 版本检测行）收成一行；检测行随 ver-check.js 退役删除。
            data-build-ts / data-version 两属性保留：device.js 诊断、bg-keep 自检、pwa.js 旧包检测
            仍只读属性（诊断版本号走 data-version 兜底，device.js 两处缓存原生支持）。 -->
-      <div class="splash-ver" id="splash-ver" data-build-ts="1792211457101" data-version="v8.2">
+      <div class="splash-ver" id="splash-ver" data-build-ts="1792232752244" data-version="v8.2">
         <span class="sv-app">Mochi 字卡传讯 已完结停更</span>
       </div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
@@ -11566,7 +11660,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
     <div class="page" id="page-phone">
       <div class="decor-bar" id="decor-bar" hidden>
         <span>装修模式 · 点图标换图 · 点卡片设背景</span>
-        <button class="decor-add" id="decor-edit-layout">编辑布局</button>
+        <!-- 二传：原「编辑布局」按钮已移除——长按任意图标即可进入拖动/抖动模式（手机式） -->
         <button class="decor-add" id="decor-add-widget">+ 添加卡片</button>
         <button class="decor-add" id="decor-restore-icon">恢复图标</button>
         <!-- #962：桌面页自己的「屏幕适配微调」入口——长按桌面空白进装修模式后即可就地开面板边看边调
@@ -11799,6 +11893,12 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
 <div class="app" data-app="room" data-desk-widget="app-room">
 <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 11L12 4l8.5 7"/><path d="M5.8 9.6V20h12.4V9.6"/><path d="M10 20v-5.4h4V20"/></svg></div>
 <div class="app-name">房间</div>
+</div>
+<!-- 二传新增：应用市场（桌面第 3 页）——列出所有应用，可把移除的图标加回桌面；
+     页面本体与逻辑由 app-market.js 创建（#page-appmarket），本图标不可移除 -->
+<div class="app" data-app="appstore" data-desk-widget="app-appstore">
+<div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><path d="M17 13.8v7M13.5 17.3h7"/></svg></div>
+<div class="app-name">应用市场</div>
 </div>
 <!-- 本页动态注入 喝水/吃什么/存钱罐/番茄钟（p2-features.js，喝水排在本页静态图标之后） -->
 </div>
@@ -18608,7 +18708,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
   // v3.5.123：readonly 起手（防 Chrome 密码弹条破坏表单签名）——这里立即解除，
   // 早于所有功能模块，任何设备都不会出现输入框不可用的情况
   (function () { var _ci = document.getElementById('chat-input'); if (_ci) _ci.readOnly = false; })();
-window.__jsErrors = window.__jsErrors || []; window.__mochiLoaded = window.__mochiLoaded || []; window.__mochiErrLoaded = window.__mochiErrLoaded || []; window.__mochiBootAt = Date.now(); window.__mochiJsFiles = ["device.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-iso.js","room.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","pwa.js","cjian.js","feature-hub.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"]; window.__mochiExtFiles = ["idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-iso.js","room.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","cjian.js","feature-hub.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"];
+window.__jsErrors = window.__jsErrors || []; window.__mochiLoaded = window.__mochiLoaded || []; window.__mochiErrLoaded = window.__mochiErrLoaded || []; window.__mochiBootAt = Date.now(); window.__mochiJsFiles = ["device.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","mail-postal.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-iso.js","room.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","pwa.js","cjian.js","feature-hub.js","app-market.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"]; window.__mochiExtFiles = ["idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","mail-postal.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-iso.js","room.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","cjian.js","feature-hub.js","app-market.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"];
 (function () { try {
 (function () {
 try { window.__jsErrors = window.__jsErrors || []; } catch (e0) {}
@@ -23471,6 +23571,7 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 <script defer src="js/records.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('records.js')"></script>
 <script defer src="js/call.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('call.js')"></script>
 <script defer src="js/mail.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('mail.js')"></script>
+<script defer src="js/mail-postal.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('mail-postal.js')"></script>
 <script defer src="js/feed.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('feed.js')"></script>
 <script defer src="js/loc-lib.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('loc-lib.js')"></script>
 <script defer src="js/p2-features.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('p2-features.js')"></script>
@@ -23511,6 +23612,7 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 <script defer src="js/feature-data.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('feature-data.js')"></script>
 <script defer src="js/cjian.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('cjian.js')"></script>
 <script defer src="js/feature-hub.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('feature-hub.js')"></script>
+<script defer src="js/app-market.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('app-market.js')"></script>
 <script defer src="js/settings-help.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('settings-help.js')"></script>
 <script defer src="js/onboarding.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('onboarding.js')"></script>
 <script defer src="js/page-coach.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('page-coach.js')"></script>
@@ -23539,4 +23641,4 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 </body>
 </html>
 
-<!-- __MOCHI_EOF__ mvbwfeq5 -->
+<!-- __MOCHI_EOF__ mvc93u5w -->

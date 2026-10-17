@@ -587,7 +587,7 @@
     <div class="page" id="page-phone">
       <div class="decor-bar" id="decor-bar" hidden>
         <span>装修模式 · 点图标换图 · 点卡片设背景</span>
-        <button class="decor-add" id="decor-edit-layout">编辑布局</button>
+        <!-- 二传：原「编辑布局」按钮已移除——长按任意图标即可进入拖动/抖动模式（手机式） -->
         <button class="decor-add" id="decor-add-widget">+ 添加卡片</button>
         <button class="decor-add" id="decor-restore-icon">恢复图标</button>
         <!-- #962：桌面页自己的「屏幕适配微调」入口——长按桌面空白进装修模式后即可就地开面板边看边调
@@ -820,6 +820,12 @@
 <div class="app" data-app="room" data-desk-widget="app-room">
 <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 11L12 4l8.5 7"/><path d="M5.8 9.6V20h12.4V9.6"/><path d="M10 20v-5.4h4V20"/></svg></div>
 <div class="app-name">房间</div>
+</div>
+<!-- 二传新增：应用市场（桌面第 3 页）——列出所有应用，可把移除的图标加回桌面；
+     页面本体与逻辑由 app-market.js 创建（#page-appmarket），本图标不可移除 -->
+<div class="app" data-app="appstore" data-desk-widget="app-appstore">
+<div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><path d="M17 13.8v7M13.5 17.3h7"/></svg></div>
+<div class="app-name">应用市场</div>
 </div>
 <!-- 本页动态注入 喝水/吃什么/存钱罐/番茄钟（p2-features.js，喝水排在本页静态图标之后） -->
 </div>

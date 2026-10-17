@@ -252,6 +252,7 @@ var F = [
 ['通话设置', 'page-call-settings'], ['音效设置', 'page-sfx-settings']
 ];
 F.forEach(function (f) { H.push(navRow(f[0], '', f[1], { q: '功能 ' + f[0] })); });
+H.push(navRow('应用市场', '把从桌面移除的图标加回来（只动图标，不删数据）', 'page-appmarket', { q: '应用 市场 图标 卸载 移除 添加 找回' }));
 H.push(navRow('全部功能总览', '按关键词搜功能在哪', 'page-featurehub', { q: '功能大全 总览' }));
 });
 });

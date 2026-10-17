@@ -2176,6 +2176,9 @@ try {
   const setHiddenIcons = (arr) => {
     store.set('hidden-icons', JSON.stringify(arr));
   };
+  // 二传（应用市场）：把隐藏名单读写暴露给 app-market.js / 桌面编辑模式的 × 移除
+  window.getHiddenIcons = getHiddenIcons;
+  window.setHiddenIcons = function (arr) { try { setHiddenIcons(Array.isArray(arr) ? arr : []); applyHiddenIcons(); } catch (e) {} };
   const applyHiddenIcons = () => {
     const hidden = getHiddenIcons();
     // #823：寻踪总开关关闭时桌面【寻踪】图标与手动隐藏图标同轴收起——本函数会把「名单外」
@@ -2537,6 +2540,13 @@ try {
   // 委托到 document 兜底：编辑态网格内的图标点击统一弹图标菜单。静态网格路径已在
   // 自身监听里 stopPropagation，不会走到这里重复弹。
   document.addEventListener('click', (e) => {
+    // 应用市场：编辑模式里的 × 移除按钮不弹图标菜单（app-market.js 自己处理）
+    if (e.target.closest && e.target.closest('.app-x')) return;
+    // 二传（桌面编辑模式）：长按刚进入抖动时手指抬起合成的那一次 click，
+    // 不应当作「点图标」去弹图标菜单
+    if (window.__deskLpAt && Date.now() - window.__deskLpAt < 600 && e.target.closest && e.target.closest('.app')) {
+      e.stopPropagation(); e.preventDefault(); return;
+    }
     const grid = e.target.closest ? e.target.closest('.app-grid') : null;
     if (!grid || !grid.classList.contains('editing')) return;
     const app = e.target.closest('.app');
@@ -6744,7 +6754,7 @@ try {
   // 组件 id 列表（对应 template.html 中 [data-desk-widget]）；组件节点唯一，
   // 「添加」= 把节点移动到目标页（节点移动不重建，内部事件绑定保留）
   const WIDGET_IDS = ['deco', 'quote-row', 'checkin', 'apps', 'music', 'p2apps', 'memo-row', 'week', 'weekend', 'desk-clock', 'desk-calendar', 'desk-timer', 'desk-anniv', 'desk-period',
-    'app-chat', 'app-group-chat', 'app-home', 'app-mail', 'app-feed', 'app-calendar', 'app-memory', 'app-settings', 'app-divination', 'app-note', 'app-music', 'app-stats', 'app-interact', 'app-checkin', 'p3apps', 'app-period', 'app-accounting', 'app-garden', 'app-bar',     'app-tongpin', 'app-shenshou', 'app-water', 'app-eat', 'app-pomo', 'app-cjian', 'app-memo-arc', 'app-my-arc', 'app-room', 'app-piggy', 'app-memo'];
+    'app-chat', 'app-group-chat', 'app-home', 'app-mail', 'app-feed', 'app-calendar', 'app-memory', 'app-settings', 'app-divination', 'app-note', 'app-appstore', 'app-music', 'app-stats', 'app-interact', 'app-checkin', 'p3apps', 'app-period', 'app-accounting', 'app-garden', 'app-bar',     'app-tongpin', 'app-shenshou', 'app-water', 'app-eat', 'app-pomo', 'app-cjian', 'app-memo-arc', 'app-my-arc', 'app-room', 'app-piggy', 'app-memo'];
   const WIDGET_NAMES = {
     deco: '纪念日卡', 'quote-row': '今日情话 / 已摸鱼', checkin: '打卡横幅', apps: '功能图标(整组)',
     music: '音乐播放器', p2apps: '第二页功能图标(整组)', 'memo-row': '今日备忘 / 心情', week: '本周日常', weekend: '摸鱼倒计时（周末）',
@@ -6753,7 +6763,7 @@ try {
     'app-calendar': '日历图标', 'app-memory': '纪念图标', 'app-settings': '设置图标', 'app-divination': '占卜图标', 'app-note': '收藏图标',
     'app-music': '音乐图标', 'app-stats': '聊天统计图标', 'app-interact': '提问记录图标', 'app-checkin': '寻踪图标',
     'p3apps': '第三页功能图标(整组)', 'app-period': '经期记录图标', 'app-accounting': '记账图标', 'app-garden': '花园图标', 'app-bar': '吧台图标',     'app-tongpin': '同频图标', 'app-shenshou': '伸手图标', 'app-water': '喝水图标', 'app-eat': '吃什么图标', 'app-pomo': '番茄钟图标',
-    'app-cjian': '此间图标', 'app-memo-arc': '梦角档案图标', 'app-my-arc': '我的档案图标', 'app-room': '房间图标', 'app-piggy': '存钱罐图标', 'app-memo': '备忘录图标',
+    'app-cjian': '此间图标', 'app-memo-arc': '梦角档案图标', 'app-my-arc': '我的档案图标', 'app-room': '房间图标', 'app-piggy': '存钱罐图标', 'app-memo': '备忘录图标', 'app-appstore': '应用市场图标',
   };
   // v3.7.x：装修模式组件库静态预览缩略图（glass 质感 + 真实 SVG 图标，不依赖真实数据/事件）
   const PREV_BOX = 'display:flex;align-items:center;justify-content:center;width:78px;height:58px;border-radius:10px;background:linear-gradient(135deg,#fff,#f6f6f6);border:1px solid rgba(0,0,0,.07);box-shadow:0 1px 3px rgba(0,0,0,.06);flex-shrink:0;overflow:hidden;padding:4px;box-sizing:border-box';
@@ -6791,7 +6801,7 @@ try {
     'app-calendar': _appIcoPrev('日历'), 'app-memory': _appIcoPrev('纪念'), 'app-settings': _appIcoPrev('设置'), 'app-divination': _appIcoPrev('占卜'), 'app-note': _appIcoPrev('收藏'),
     'app-music': _appIcoPrev('音乐'), 'app-stats': _appIcoPrev('统计'), 'app-interact': _appIcoPrev('提问'), 'app-checkin': _appIcoPrev('寻踪'),
     'app-period': _appIcoPrev('经期'), 'app-accounting': _appIcoPrev('记账'), 'app-garden': _appIcoPrev('花园'), 'app-bar': _appIcoPrev('吧台'),     'app-tongpin': _appIcoPrev('同频'), 'app-shenshou': _appIcoPrev('伸手'), 'app-water': _appIcoPrev('喝水'), 'app-eat': _appIcoPrev('吃什么'), 'app-pomo': _appIcoPrev('番茄钟'), 'p3apps': _appIcoPrev('经期'),
-    'app-cjian': _appIcoPrev('此间'), 'app-memo-arc': _appIcoPrev('梦角档案'), 'app-my-arc': _appIcoPrev('我的档案'), 'app-room': _appIcoPrev('房间'), 'app-piggy': _appIcoPrev('存钱罐'), 'app-memo': _appIcoPrev('备忘录'),
+    'app-cjian': _appIcoPrev('此间'), 'app-memo-arc': _appIcoPrev('梦角档案'), 'app-my-arc': _appIcoPrev('我的档案'), 'app-room': _appIcoPrev('房间'), 'app-piggy': _appIcoPrev('存钱罐'), 'app-memo': _appIcoPrev('备忘录'), 'app-appstore': _appIcoPrev('应用市场'),
   };
   // 隐藏池：被移除的组件暂存（display:none），可从组件库重新添加
   function ensureWidgetPool() {
@@ -8183,7 +8193,7 @@ try {
       enterDecor();
       if (phone) phone.classList.add('desk-move-mode');
       const span = document.querySelector('#decor-bar span');
-      if (span) span.textContent = '移动模式 · 短按图标拖动换位 · 完成退出';
+      if (span) span.textContent = '拖动图标换位 · 点 × 从桌面移除 · 完成退出';
       // v3.14.x：清掉长按按住阶段已形成的文字选区——Android 选中文字弹「复制」气泡后
       // 触摸序列被气泡抢占，进移动模式后拖不动；CSS 已禁桌面选择，这里兜底清残留
       try { const _sel = window.getSelection(); if (_sel && _sel.removeAllRanges) _sel.removeAllRanges(); } catch (e) {}
@@ -8192,6 +8202,33 @@ try {
     // 装修栏「编辑布局」按钮：点击进入移动模式（短按即拖，绕开长按 + 浏览器手势抢占）
     const editLayoutBtn = document.getElementById('decor-edit-layout');
     if (editLayoutBtn) editLayoutBtn.addEventListener('click', enterMoveMode);
+    // 二传（手机式桌面）：长按任意桌面图标 → 直接进入移动（抖动）模式。
+    // 长按只负责进入编辑态；要拖动仍需手指移动 >12px（沿用下面的拖拽引擎），
+    // 因此不会像旧版那样「长按即把图标拖乱」。位移 >10px 视为翻页/滚动，取消长按。
+    window.__deskEnterEdit = enterMoveMode;
+    window.__deskIsEditing = function () { return inMoveMode; };
+    let _lpT = null, _lpX = 0, _lpY = 0;
+    const _lpCancel = function () { if (_lpT) { clearTimeout(_lpT); _lpT = null; } };
+    pagesBox.addEventListener('pointerdown', function (e) {
+      if (inMoveMode) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      const tg = e.target;
+      if (!tg || !tg.closest) return;
+      if (tg.closest('.app-x, .decor-bar, .desk-lib, .desk-page-add')) return;
+      if (!tg.closest('.app')) return;
+      _lpX = e.clientX; _lpY = e.clientY;
+      _lpCancel();
+      _lpT = setTimeout(function () {
+        _lpT = null;
+        window.__deskLpAt = Date.now();
+        try { enterMoveMode(); } catch (er) {}
+      }, 500);
+    });
+    pagesBox.addEventListener('pointermove', function (e) {
+      if (!_lpT) return;
+      if (Math.abs(e.clientX - _lpX) > 10 || Math.abs(e.clientY - _lpY) > 10) _lpCancel();
+    });
+    ['pointerup', 'pointercancel'].forEach(function (ev) { pagesBox.addEventListener(ev, _lpCancel); });
     const resetMoveMode = () => {
       inMoveMode = false;
       dragging = false;

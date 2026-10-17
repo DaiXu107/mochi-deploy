@@ -1620,6 +1620,8 @@ try { return JSON.parse(store.get('hidden-icons') || '[]'); } catch (e) { return
 const setHiddenIcons = (arr) => {
 store.set('hidden-icons', JSON.stringify(arr));
 };
+window.getHiddenIcons = getHiddenIcons;
+window.setHiddenIcons = function (arr) { try { setHiddenIcons(Array.isArray(arr) ? arr : []); applyHiddenIcons(); } catch (e) {} };
 const applyHiddenIcons = () => {
 const hidden = getHiddenIcons();
 const ckOff = typeof window.checkinDeskOff === 'function' && window.checkinDeskOff();
@@ -1915,6 +1917,10 @@ window.openIconMenu(app);
 });
 });
 document.addEventListener('click', (e) => {
+if (e.target.closest && e.target.closest('.app-x')) return;
+if (window.__deskLpAt && Date.now() - window.__deskLpAt < 600 && e.target.closest && e.target.closest('.app')) {
+e.stopPropagation(); e.preventDefault(); return;
+}
 const grid = e.target.closest ? e.target.closest('.app-grid') : null;
 if (!grid || !grid.classList.contains('editing')) return;
 const app = e.target.closest('.app');
@@ -5414,7 +5420,7 @@ setupDeskCountdownClick();
 document.addEventListener('contact-switched', renderDeskTexts);
 document.addEventListener('contact-switched', renderDeskCountdowns);
 const WIDGET_IDS = ['deco', 'quote-row', 'checkin', 'apps', 'music', 'p2apps', 'memo-row', 'week', 'weekend', 'desk-clock', 'desk-calendar', 'desk-timer', 'desk-anniv', 'desk-period',
-'app-chat', 'app-group-chat', 'app-home', 'app-mail', 'app-feed', 'app-calendar', 'app-memory', 'app-settings', 'app-divination', 'app-note', 'app-music', 'app-stats', 'app-interact', 'app-checkin', 'p3apps', 'app-period', 'app-accounting', 'app-garden', 'app-bar',     'app-tongpin', 'app-shenshou', 'app-water', 'app-eat', 'app-pomo', 'app-cjian', 'app-memo-arc', 'app-my-arc', 'app-room', 'app-piggy', 'app-memo'];
+'app-chat', 'app-group-chat', 'app-home', 'app-mail', 'app-feed', 'app-calendar', 'app-memory', 'app-settings', 'app-divination', 'app-note', 'app-appstore', 'app-music', 'app-stats', 'app-interact', 'app-checkin', 'p3apps', 'app-period', 'app-accounting', 'app-garden', 'app-bar',     'app-tongpin', 'app-shenshou', 'app-water', 'app-eat', 'app-pomo', 'app-cjian', 'app-memo-arc', 'app-my-arc', 'app-room', 'app-piggy', 'app-memo'];
 const WIDGET_NAMES = {
 deco: '纪念日卡', 'quote-row': '今日情话 / 已摸鱼', checkin: '打卡横幅', apps: '功能图标(整组)',
 music: '音乐播放器', p2apps: '第二页功能图标(整组)', 'memo-row': '今日备忘 / 心情', week: '本周日常', weekend: '摸鱼倒计时（周末）',
@@ -5423,7 +5429,7 @@ music: '音乐播放器', p2apps: '第二页功能图标(整组)', 'memo-row': '
 'app-calendar': '日历图标', 'app-memory': '纪念图标', 'app-settings': '设置图标', 'app-divination': '占卜图标', 'app-note': '收藏图标',
 'app-music': '音乐图标', 'app-stats': '聊天统计图标', 'app-interact': '提问记录图标', 'app-checkin': '寻踪图标',
 'p3apps': '第三页功能图标(整组)', 'app-period': '经期记录图标', 'app-accounting': '记账图标', 'app-garden': '花园图标', 'app-bar': '吧台图标',     'app-tongpin': '同频图标', 'app-shenshou': '伸手图标', 'app-water': '喝水图标', 'app-eat': '吃什么图标', 'app-pomo': '番茄钟图标',
-'app-cjian': '此间图标', 'app-memo-arc': '梦角档案图标', 'app-my-arc': '我的档案图标', 'app-room': '房间图标', 'app-piggy': '存钱罐图标', 'app-memo': '备忘录图标',
+'app-cjian': '此间图标', 'app-memo-arc': '梦角档案图标', 'app-my-arc': '我的档案图标', 'app-room': '房间图标', 'app-piggy': '存钱罐图标', 'app-memo': '备忘录图标', 'app-appstore': '应用市场图标',
 };
 const PREV_BOX = 'display:flex;align-items:center;justify-content:center;width:78px;height:58px;border-radius:10px;background:linear-gradient(135deg,#fff,#f6f6f6);border:1px solid rgba(0,0,0,.07);box-shadow:0 1px 3px rgba(0,0,0,.06);flex-shrink:0;overflow:hidden;padding:4px;box-sizing:border-box';
 const _av = '<span style="width:15px;height:15px;border-radius:50%;background:#f2f2f2;display:flex;align-items:center;justify-content:center"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#bbb" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.5-6 8-6s8 2 8 6"/></svg></span>';
@@ -5460,7 +5466,7 @@ weekend: '<span style="display:flex;flex-direction:column;align-items:center;jus
 'app-calendar': _appIcoPrev('日历'), 'app-memory': _appIcoPrev('纪念'), 'app-settings': _appIcoPrev('设置'), 'app-divination': _appIcoPrev('占卜'), 'app-note': _appIcoPrev('收藏'),
 'app-music': _appIcoPrev('音乐'), 'app-stats': _appIcoPrev('统计'), 'app-interact': _appIcoPrev('提问'), 'app-checkin': _appIcoPrev('寻踪'),
 'app-period': _appIcoPrev('经期'), 'app-accounting': _appIcoPrev('记账'), 'app-garden': _appIcoPrev('花园'), 'app-bar': _appIcoPrev('吧台'),     'app-tongpin': _appIcoPrev('同频'), 'app-shenshou': _appIcoPrev('伸手'), 'app-water': _appIcoPrev('喝水'), 'app-eat': _appIcoPrev('吃什么'), 'app-pomo': _appIcoPrev('番茄钟'), 'p3apps': _appIcoPrev('经期'),
-'app-cjian': _appIcoPrev('此间'), 'app-memo-arc': _appIcoPrev('梦角档案'), 'app-my-arc': _appIcoPrev('我的档案'), 'app-room': _appIcoPrev('房间'), 'app-piggy': _appIcoPrev('存钱罐'), 'app-memo': _appIcoPrev('备忘录'),
+'app-cjian': _appIcoPrev('此间'), 'app-memo-arc': _appIcoPrev('梦角档案'), 'app-my-arc': _appIcoPrev('我的档案'), 'app-room': _appIcoPrev('房间'), 'app-piggy': _appIcoPrev('存钱罐'), 'app-memo': _appIcoPrev('备忘录'), 'app-appstore': _appIcoPrev('应用市场'),
 };
 function ensureWidgetPool() {
 let pool = document.getElementById('desk-widget-pool');
@@ -6578,12 +6584,36 @@ inMoveMode = true;
 enterDecor();
 if (phone) phone.classList.add('desk-move-mode');
 const span = document.querySelector('#decor-bar span');
-if (span) span.textContent = '移动模式 · 短按图标拖动换位 · 完成退出';
+if (span) span.textContent = '拖动图标换位 · 点 × 从桌面移除 · 完成退出';
 try { const _sel = window.getSelection(); if (_sel && _sel.removeAllRanges) _sel.removeAllRanges(); } catch (e) {}
 if (navigator.vibrate) try { navigator.vibrate(20); } catch (e) {}
 };
 const editLayoutBtn = document.getElementById('decor-edit-layout');
 if (editLayoutBtn) editLayoutBtn.addEventListener('click', enterMoveMode);
+window.__deskEnterEdit = enterMoveMode;
+window.__deskIsEditing = function () { return inMoveMode; };
+let _lpT = null, _lpX = 0, _lpY = 0;
+const _lpCancel = function () { if (_lpT) { clearTimeout(_lpT); _lpT = null; } };
+pagesBox.addEventListener('pointerdown', function (e) {
+if (inMoveMode) return;
+if (e.pointerType === 'mouse' && e.button !== 0) return;
+const tg = e.target;
+if (!tg || !tg.closest) return;
+if (tg.closest('.app-x, .decor-bar, .desk-lib, .desk-page-add')) return;
+if (!tg.closest('.app')) return;
+_lpX = e.clientX; _lpY = e.clientY;
+_lpCancel();
+_lpT = setTimeout(function () {
+_lpT = null;
+window.__deskLpAt = Date.now();
+try { enterMoveMode(); } catch (er) {}
+}, 500);
+});
+pagesBox.addEventListener('pointermove', function (e) {
+if (!_lpT) return;
+if (Math.abs(e.clientX - _lpX) > 10 || Math.abs(e.clientY - _lpY) > 10) _lpCancel();
+});
+['pointerup', 'pointercancel'].forEach(function (ev) { pagesBox.addEventListener(ev, _lpCancel); });
 const resetMoveMode = () => {
 inMoveMode = false;
 dragging = false;
