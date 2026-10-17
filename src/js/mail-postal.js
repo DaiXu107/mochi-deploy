@@ -51,7 +51,7 @@
   // 中文会掉到系统黑体，和电脑（Windows 宋体 / macOS 宋体）差别很大。
   // 这里把各平台自带的宋体类字体按可用顺序补齐。
   var SERIF = 'Georgia,"Songti SC","STSong","SimSun","宋体","Noto Serif CJK SC","Source Han Serif SC","Noto Serif SC","Noto Serif",serif';
-  var SANS = '-apple-system,BlinkMacSystemFont,"PingFang SC","HarmonyOS Sans SC","MiSans","Microsoft YaHei","Noto Sans CJK SC","Noto Sans SC",sans-serif';
+  var SANS = '-apple-system,BlinkMacSystemFont,"PingFang SC","HarmonyOS Sans SC","MiSans","OPPO Sans","Microsoft YaHei","Noto Sans CJK SC","Noto Sans SC",sans-serif';
   var SET_KEY = 'mail-postal-settings-v1';   // 外观设置为设备级，不分联系人
   // v26：已读/胶带改按联系人隔离（与 mail.js 的 activePrefix 机制对齐），
   // 键以 data-id 为主（真实列表标题全是「来自 TA」，标题键在真项目里必然撞车）
@@ -218,6 +218,7 @@
   + '.pz-theme-chip i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; border: 1px solid rgba(0,0,0,.14); }'
   // 二传：不同手机宽度（360/390/412）下用 clamp 让空隙按屏幕比例走，不忽大忽小
   + '.pz-set-row { display: flex; align-items: center; gap: clamp(8px, 2.4vw, 11px); margin-bottom: clamp(11px, 3.3vw, 14px); line-height: 1.5; }'
+  + '.pz-tip { font-size: 11px; line-height: 1.65; color: var(--pz-sub); margin: -5px 0 12px; padding-left: calc(clamp(56px, 16vw, 70px) + clamp(8px, 2.4vw, 11px)); }'
   + '.pz-set-label { width: clamp(56px, 16vw, 70px); color: var(--pz-sub); font-size: 12px; letter-spacing: 1px; flex: none; line-height: 1.45; }'
   + '.pz-set-row input[type="text"] { flex: 1; border: 1px solid var(--pz-line); border-radius: 2px; padding: 7px 10px; font-size: 13px; background: #fff; color: var(--pz-ink); font-family: var(--pz-font); }'
   + '.pz-set-row input[type="range"] { flex: 1; accent-color: var(--pz-red); }'
@@ -899,6 +900,7 @@
       + '<div class="pz-set-row pz-fimp pz-furl-row" data-g="afont" hidden><span class="pz-set-label">字体链接</span><input type="text" placeholder="https://fonts.googleapis.com/css2?family=..."></div>'
       + '<div class="pz-set-row pz-fimp pz-fname-row" data-g="afont" hidden><span class="pz-set-label">字体名称</span><input type="text" placeholder="如 LXGW WenKai"></div>'
       + '<div class="pz-set-row"><span class="pz-set-label">落款字号</span><input type="range" id="pz-asize" min="11" max="17" step="0.5"><span id="pz-asize-v" style="width:36px;text-align:right;color:var(--pz-sub)"></span></div>'
+      + '<div class="pz-tip">部分安卓机（如 OPPO / ColorOS）系统里没有中文宋体，衬线会退化成黑体；想要和电脑上的观感更接近，可把「信件字体」切成「黑体」，或用「导入」填一个宋体字体链接。</div>'
       + '<div class="pz-sec">印章与邮戳</div>'
       + '<div class="pz-set-row"><span class="pz-set-label">火漆章</span>'
       +   '<input type="text" id="pz-wax-input" maxlength="2" placeholder="M"><span class="pz-chips">'
