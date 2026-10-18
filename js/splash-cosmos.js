@@ -1,21 +1,27 @@
 (function () { try {
 /* ===== 开屏片头 · 星云跃迁（二改）=====
-· 旋臂星云 + 星轨 + 飞船系统自检 HUD + 跃迁进度
-· 进度满 → 地球从星核中旋转浮现并放大（裸 WebGL 真球体）
-· 约 2.6 秒自动淡出，轻点任意处跳过；每会话一次；reduced-motion 直接跳过
+· 星点旋涡星云 + 星轨 + 飞船系统自检 HUD + 跃迁进度
+· 加载驱动：98 个脚本占 80%，IndexedDB 数据回填占 20%；地球由远及近放大
+· 进度满后停留约 0.9 秒淡出；点击任意处＝登陆；每会话一次；reduced-motion 直接跳过
 · 贴图：src/assets/earth-day.jpg / earth-night.jpg / earth-clouds.png（构建复制到 assets/）
 · 纯装饰：不阻塞数据加载，不参与进入闸门；公告仍在设置里单独查看
-· 调试：地址后加 ?cosmos=long 强制播放 12 秒（前 2.6 秒完成全部动画后定格）
+· 调试：?cosmos=long 播完后定格 60 秒；?cosmos=slow 时间与进度放慢 4 倍，方便逐帧看构图
 */
 (function () {
 'use strict';
 var SEEN_KEY = 'mochi-cosmos-seen';
-var FORCE = false, LONG = false;
+var FORCE = false, LONG = false, SLOW = false, FREEZE = -1;
 try {
-FORCE = /(^|[?&])cosmos=(1|long)(&|$)/.test(location.search);
+FORCE = /(^|[?&])cosmos=(1|long|slow|freeze)(&|$)/.test(location.search);
 LONG = /(^|[?&])cosmos=long(&|$)/.test(location.search);
+SLOW = /(^|[?&])cosmos=slow(&|$)/.test(location.search);
+if (/[?&]cosmos=freeze(&|$)/.test(location.search)) {
+var fm = /[?&]p=(\d+)/.exec(location.search);
+FREEZE = fm ? Math.max(0, Math.min(100, +fm[1])) : 55;
+}
 } catch (e) {}
-var DURATION = LONG ? 60000 : 2600;
+var DURATION = (LONG || SLOW || FREEZE >= 0) ? 60000 : 90000;
+var TIME_SCALE = SLOW ? 4 : 1;
 var INTRO_MS = 2600;
 if (!FORCE) {
 try { if (sessionStorage.getItem(SEEN_KEY) === '1') return; } catch (e) {}
@@ -106,10 +112,10 @@ wrap.innerHTML =
 '<span class="ci-wpct" id="ciWpct">0%</span></div>' +
 '</div>' +
 '<div class="ci-planet" id="ciPlanet">' +
-'<div class="ci-line on gold"><span class="t">发现宜居行星 EARTH · SOL-3</span></div>' +
+'<div class="ci-line on gold"><span class="t">发现目标星球 EARTH · SOL-3</span></div>' +
 '<div class="ci-line on gold"><span class="t">轨道注入 ORBIT INSERT</span></div>' +
 '</div>' +
-'<div class="ci-tip">轻点跳过</div>' +
+'<div class="ci-tip">点击登陆</div>' +
 '<div class="ci-flash"></div>' +
 '</div>';
 host.appendChild(wrap);
@@ -146,112 +152,171 @@ if (style.parentNode) style.parentNode.removeChild(style);
 wrap.addEventListener('pointerdown', function (ev) { ev.preventDefault(); finish(); }, { passive: false });
 setTimeout(function () { if (!ended) finish(); }, DURATION);
 var nctx = nebulaCv.getContext('2d');
+var fgCv = document.createElement('canvas'); // 前景星云：一开始完全盖住地球
+var fctx = fgCv.getContext('2d');
 var W = 0, H = 0, cx = 0, cy = 0;
 function resize2D() {
 var dpr = Math.min(window.devicePixelRatio || 1, lowMem ? 1.25 : 1.75);
 W = Math.max(1, wrap.clientWidth); H = Math.max(1, wrap.clientHeight);
 nebulaCv.width = Math.round(W * dpr); nebulaCv.height = Math.round(H * dpr);
 nctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+fgCv.width = nebulaCv.width; fgCv.height = nebulaCv.height;
+fctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 cx = W / 2; cy = H * 0.515;
 }
 resize2D();
 var stars = [], neb = [], FLOW = [
-{ r: 0.34, a: 0.12, va: 0.00005, dash: [2, 7], c: '150,220,255' },
-{ r: 0.56, a: 0.09, va: -0.00004, dash: [1, 11], c: '255,170,220' }
+{ r: 0.36, a: 0.05, va: 0.000035, dash: [2, 9], c: '150,220,255' },
+{ r: 0.58, a: 0.04, va: -0.000028, dash: [1, 13], c: '255,170,220' }
 ];
-for (var i = 0; i < (lowMem ? 40 : 70); i++) {
-stars.push({ x: Math.random(), y: Math.random(), r: Math.random() * 0.9 + 0.3,
+for (var i = 0; i < (lowMem ? 70 : 120); i++) {
+stars.push({ x: Math.random(), y: Math.random(), r: Math.random() * 0.9 + 0.25,
 ph: Math.random() * 6.283, sp: 0.0004 + Math.random() * 0.0008 });
 }
-var ARMS = 5, GN = lowMem ? 130 : 200;
-var NCOL = ['255,225,170', '255,170,220', '170,120,255', '110,180,255', '150,220,255'];
+var ARMS = 5, GN = lowMem ? 480 : 820;
+function nebColor(tt) {
+var r, g, b;
+if (tt < 0.24) { r = 255; g = 236; b = 198; }
+else if (tt < 0.52) { r = 178; g = 212; b = 255; }
+else if (tt < 0.78) { r = 255; g = 172; b = 222; }
+else { r = 168; g = 140; b = 255; }
+var j = Math.round((Math.random() - 0.5) * 16);
+r = Math.max(0, Math.min(255, r + j));
+g = Math.max(0, Math.min(255, g + j));
+b = Math.max(0, Math.min(255, b + j));
+return r + ',' + g + ',' + b;
+}
 for (var a = 0; a < ARMS; a++) for (var j = 0; j < GN; j++) {
-var t = j / GN;
-neb.push({ t: t, th: a * (6.2832 / ARMS) + t * 3.2 + (Math.random() - 0.5) * 0.3,
-sz: (1 - t) * 2.8 + 1.0, c: NCOL[a % 5], al: 0.30 + Math.random() * 0.36,
-sp: 0.000028 + Math.random() * 0.00002 });
+var tt = Math.pow(Math.random(), 1.40);
+var field = Math.random() < 0.35;
+var jit = (Math.random() - 0.5) * (0.20 + tt * 0.52);
+if (field) jit += (Math.random() - 0.5) * 2.3;
+neb.push({ t: tt, th: a * (6.2832 / ARMS) + tt * 5.0 + jit,
+sz: 0.55 + Math.random() * (field ? 1.0 : 1.5),
+c: nebColor(tt), al: (0.38 + Math.random() * 0.55) * (1.12 - 0.24 * tt),
+sp: 0.000010 * (0.30 + 1.25 / (0.18 + tt)),
+ph: Math.random() * 6.283, big: Math.random() < 0.10 });
 }
-var blobs = [];
-for (var bb = 0; bb < (lowMem ? 10 : 16); bb++) {
-var ba = bb % ARMS, bt = 0.10 + Math.random() * 0.85;
-blobs.push({ th: ba * (6.2832 / ARMS) + bt * 3.2 + (Math.random() - 0.5) * 0.30,
-r: 0.30 + bt * 0.60, sz: 0.16 + Math.random() * 0.22,
-c: NCOL[(ba + 2) % 5], al: 0.26 + Math.random() * 0.18 });
-}
-function drawNebula(now) {
-var t = now - t0, reveal = earthReveal(t);
-var md = Math.min(W, H);
+function drawNebula(t, prog) {
+var md = Math.min(W, H), zoom = 1 + prog * 0.35;
 nctx.clearRect(0, 0, W, H);
 nctx.fillStyle = '#02030a';
 nctx.fillRect(0, 0, W, H);
-var hazeR = md * 0.98;
-var hg = nctx.createRadialGradient(cx, cy, md * 0.06, cx, cy, hazeR);
-hg.addColorStop(0, 'rgba(165,115,255,' + (0.30 * (1 - reveal * 0.35)) + ')');
-hg.addColorStop(0.4, 'rgba(70,150,255,' + (0.16 * (1 - reveal * 0.35)) + ')');
-hg.addColorStop(0.75, 'rgba(255,110,200,' + (0.08 * (1 - reveal * 0.35)) + ')');
-hg.addColorStop(1, 'rgba(30,50,120,0)');
+var hr = md * 0.92 * zoom;
+var hg = nctx.createRadialGradient(cx, cy, md * 0.02, cx, cy, hr);
+hg.addColorStop(0, 'rgba(150,170,255,0.10)');
+hg.addColorStop(0.42, 'rgba(120,100,215,0.055)');
+hg.addColorStop(0.78, 'rgba(220,120,200,0.025)');
+hg.addColorStop(1, 'rgba(30,40,90,0)');
 nctx.fillStyle = hg;
-nctx.beginPath(); nctx.ellipse(cx, cy, hazeR, hazeR * 0.62, 0, 0, 6.2832); nctx.fill();
+nctx.beginPath(); nctx.ellipse(cx, cy, hr, hr * 0.58, 0, 0, 6.2832); nctx.fill();
 for (var fi = 0; fi < FLOW.length; fi++) {
 var fr = FLOW[fi];
 nctx.save(); nctx.translate(cx, cy); nctx.rotate(t * fr.va);
-nctx.strokeStyle = 'rgba(' + fr.c + ',' + (fr.a * (1 - reveal * 0.45)) + ')';
+nctx.strokeStyle = 'rgba(' + fr.c + ',' + fr.a + ')';
 nctx.lineWidth = 1; nctx.setLineDash(fr.dash); nctx.lineDashOffset = -t * 0.012;
-nctx.beginPath(); nctx.arc(0, 0, md * fr.r, 0, 6.2832); nctx.stroke(); nctx.restore();
+nctx.beginPath(); nctx.arc(0, 0, md * fr.r * zoom, 0, 6.2832); nctx.stroke(); nctx.restore();
 }
 nctx.setLineDash([]);
-for (var bi = 0; bi < blobs.length; bi++) {
-var bl = blobs[bi];
-var bang = bl.th + t * 0.00008;
-var bx = cx + Math.cos(bang) * bl.r * md;
-var by = cy + Math.sin(bang) * bl.r * md * 0.62;
-var brad = bl.sz * md;
-var bg = nctx.createRadialGradient(bx, by, 0, bx, by, brad);
-var bal = bl.al * (1 - reveal * 0.2);
-bg.addColorStop(0, 'rgba(' + bl.c + ',' + bal + ')');
-bg.addColorStop(0.55, 'rgba(' + bl.c + ',' + (bal * 0.35) + ')');
-bg.addColorStop(1, 'rgba(' + bl.c + ',0)');
-nctx.fillStyle = bg;
-nctx.beginPath(); nctx.arc(bx, by, brad, 0, 6.2832); nctx.fill();
-bl._x = bx; bl._y = by; bl._rad = brad; bl._a = bal;
-}
 nctx.globalCompositeOperation = 'lighter';
 for (var k = 0; k < neb.length; k++) {
 var p = neb[k];
-var tt = ((p.t - t * p.sp * 0.06) % 1 + 1) % 1;
-var rr = 14 + tt * tt * md * 0.95;
-var rot = p.th + t * 0.00010 * (1.5 - tt * 0.9);
-var x = cx + Math.cos(rot) * rr, y = cy + Math.sin(rot) * rr * 0.62;
-nctx.globalAlpha = p.al * (0.7 + 0.3 * Math.sin(t * 0.003 + p.t * 9)) * (1 - reveal * 0.2);
-p._x = x; p._y = y; p._a = nctx.globalAlpha;
+var rot = p.th + t * p.sp;
+var rr = (0.05 + p.t * 1.42) * md * zoom;
+var x = cx + Math.cos(rot) * rr;
+var y = cy + Math.sin(rot) * rr * 0.78;
+var tw = 0.70 + 0.30 * Math.sin(t * 0.0016 + p.ph);
+nctx.globalAlpha = Math.min(0.92, p.al * tw);
 nctx.fillStyle = 'rgb(' + p.c + ')';
-nctx.beginPath(); nctx.arc(x, y, p.sz, 0, 6.2832); nctx.fill();
-if (k % 5 === 0) {
-nctx.globalAlpha *= 0.24;
-nctx.beginPath(); nctx.arc(x, y, p.sz * 4.0, 0, 6.2832); nctx.fill();
+var sz = p.sz;
+if (sz > 1.35) { nctx.beginPath(); nctx.arc(x, y, sz, 0, 6.2832); nctx.fill(); }
+else { nctx.fillRect(x - sz * 0.5, y - sz * 0.5, sz, sz); }
+if (p.big) {
+nctx.globalAlpha *= 0.18;
+nctx.beginPath(); nctx.arc(x, y, sz * 3.6, 0, 6.2832); nctx.fill();
 }
 }
 nctx.globalAlpha = 1;
-var coreR = md * 0.05 * (1 + 0.06 * Math.sin(t * 0.0018));
-var g = nctx.createRadialGradient(cx, cy, 0, cx, cy, coreR * 4.5);
-g.addColorStop(0, 'rgba(255,244,225,' + (0.55 * (1 - reveal * 0.6)) + ')');
-g.addColorStop(0.45, 'rgba(190,170,255,' + (0.18 * (1 - reveal * 0.6)) + ')');
+var coreR = md * 0.035;
+var g = nctx.createRadialGradient(cx, cy, 0, cx, cy, coreR * 5.0);
+g.addColorStop(0, 'rgba(255,248,232,0.50)');
+g.addColorStop(0.35, 'rgba(210,190,255,0.16)');
 g.addColorStop(1, 'rgba(120,140,255,0)');
-nctx.fillStyle = g; nctx.beginPath(); nctx.arc(cx, cy, coreR * 4.5, 0, 6.2832); nctx.fill();
+nctx.fillStyle = g; nctx.beginPath(); nctx.arc(cx, cy, coreR * 5.0, 0, 6.2832); nctx.fill();
 nctx.globalCompositeOperation = 'source-over';
 for (var s = 0; s < stars.length; s++) {
 var st = stars[s];
-nctx.globalAlpha = 0.15 + 0.3 * (0.5 + 0.5 * Math.sin(t * st.sp + st.ph));
+var sx = cx + (st.x * W - cx) * (1 + prog * 0.06);
+var sy = cy + (st.y * H - cy) * (1 + prog * 0.06);
+nctx.globalAlpha = 0.14 + 0.30 * (0.5 + 0.5 * Math.sin(t * st.sp + st.ph));
 nctx.fillStyle = '#dfeaff';
-nctx.beginPath(); nctx.arc(st.x * W, st.y * H, st.r, 0, 6.2832); nctx.fill();
+nctx.beginPath(); nctx.arc(sx, sy, st.r, 0, 6.2832); nctx.fill();
 }
 nctx.globalAlpha = 1;
 }
+function smooth01(x) { x = x < 0 ? 0 : x > 1 ? 1 : x; return x * x * (3 - 2 * x); }
+function drawVeil(t, prog) {
+var veilA = 1 - smooth01((prog - 0.42) / 0.48); // 0.42 前全遮，0.90 散尽
+if (veilA <= 0.02) return;
+var md = Math.min(W, H), diag = Math.sqrt(W * W + H * H);
+var zoom = 1.55 + prog * 1.35;
+fctx.setTransform(1, 0, 0, 1, 0, 0);
+var dpr = nebulaCv.width / Math.max(1, W);
+fctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+fctx.clearRect(0, 0, W, H);
+fctx.fillStyle = 'rgba(7,8,20,0.97)';
+fctx.fillRect(0, 0, W, H);
+var clouds = [
+{ x: cx - W * 0.22, y: cy - H * 0.10, r: md * 0.95, c: '116,70,168', a: 0.38 },
+{ x: cx + W * 0.26, y: cy + H * 0.08, r: md * 0.85, c: '42,92,170', a: 0.34 },
+{ x: cx + W * 0.05, y: cy - H * 0.16, r: md * 0.75, c: '190,80,160', a: 0.20 }
+];
+for (var ci = 0; ci < clouds.length; ci++) {
+var cl = clouds[ci];
+var cg = fctx.createRadialGradient(cl.x, cl.y, 0, cl.x, cl.y, cl.r);
+cg.addColorStop(0, 'rgba(' + cl.c + ',' + cl.a + ')');
+cg.addColorStop(1, 'rgba(' + cl.c + ',0)');
+fctx.fillStyle = cg;
+fctx.beginPath(); fctx.arc(cl.x, cl.y, cl.r, 0, 6.2832); fctx.fill();
+}
+fctx.globalCompositeOperation = 'lighter';
+for (var k = 0; k < neb.length; k += 2) {
+var p = neb[k];
+var rot = p.th + t * p.sp;
+var rr = (0.05 + p.t * 1.05) * md * zoom;
+var x = cx + Math.cos(rot) * rr;
+var y = cy + Math.sin(rot) * rr * 0.78;
+if (x < -60 || x > W + 60 || y < -60 || y > H + 60) continue;
+var tw = 0.75 + 0.25 * Math.sin(t * 0.0018 + p.ph);
+fctx.globalAlpha = Math.min(0.95, p.al * tw * 1.10);
+fctx.fillStyle = 'rgb(' + p.c + ')';
+var sz = p.sz * 1.5;
+if (sz > 1.4) { fctx.beginPath(); fctx.arc(x, y, sz, 0, 6.2832); fctx.fill(); }
+else { fctx.fillRect(x - sz * 0.5, y - sz * 0.5, sz, sz); }
+}
+fctx.globalCompositeOperation = 'source-over';
+fctx.globalAlpha = 1;
+var hx = Math.max(0, Math.min(1, (prog - 0.30) / 0.45));
+var holeR = smooth01(hx) * diag * 0.72;
+if (holeR > 2) {
+fctx.globalCompositeOperation = 'destination-out';
+var hg = fctx.createRadialGradient(cx, cy, 0, cx, cy, holeR);
+hg.addColorStop(0, 'rgba(0,0,0,1)');
+hg.addColorStop(0.62, 'rgba(0,0,0,1)');
+hg.addColorStop(1, 'rgba(0,0,0,0)');
+fctx.fillStyle = hg;
+fctx.beginPath(); fctx.arc(cx, cy, holeR, 0, 6.2832); fctx.fill();
+fctx.globalCompositeOperation = 'source-over';
+}
+nctx.save();
+nctx.globalAlpha = veilA;
+try { nctx.drawImage(fgCv, 0, 0, W, H); } catch (e) {}
+nctx.restore();
+}
 var gl = null, prog = null, texs = [], uni = {};
-function earthReveal(t) {
-var x = (t - 1050) / 1100;
-x = x < 0 ? 0 : x > 1 ? 1 : x;
-return x * x * (3 - 2 * x);
+function earthReveal(prog) {
+var x = Math.max(0, Math.min(1, (prog - 0.01) / 0.99));
+return 0.05 + 0.95 * (x * x * (3 - 2 * x));
 }
 function initGL() {
 var opts = { alpha: true, antialias: false, depth: false, stencil: false,
@@ -269,7 +334,7 @@ var fs = [
 '  vec2 p=(pix-0.5*uRes)/uRes.y*2.0;',
 '  vec2 c=vec2(0.0,0.03);',
 '  float rev=clamp(uReveal,0.0,1.0);',
-'  float R=mix(0.04,0.40,rev);',
+'  float R=mix(0.05,0.40,rev);',
 '  vec2 q=p-c; float d=length(q);',
 '  vec3 col=vec3(0.0); float alpha=0.0;',
 '  if(d<R){',
@@ -286,18 +351,18 @@ var fs = [
 '    float lit=smoothstep(-0.10,0.34,ndl);',
 '    vec3 base=mix(night*1.25+day*0.02, day*(0.90+0.30*max(ndl,0.0)), lit);',
 '    vec4 cl=texture2D(uClouds,vec2(fract(tuv.x+uTime*0.0045),tuv.y));',
-'    vec3 ccol=mix(vec3(0.06,0.09,0.16),vec3(1.0),lit);',
+'    vec3 ccol=mix(vec3(0.09,0.10,0.12),vec3(1.0),lit);',
 '    base=mix(base,ccol,cl.a*(0.20+0.55*lit));',
 '    float fres=pow(1.0-n.z,2.6);',
-'    base+=vec3(0.22,0.46,1.0)*fres*0.42;',
+'    base+=vec3(0.28,0.42,0.62)*fres*0.10;',
 '    col=base;',
-'    alpha=rev;',
+'    alpha=1.0;',
 '    float rim=smoothstep(R*0.90,R,d);',
-'    col+=vec3(0.5,0.7,1.0)*rim*rev*0.35;',
+'    col+=vec3(0.5,0.7,0.9)*rim*rev*0.05;',
 '  } else {',
 '    float g=smoothstep(R*1.12,R,d);',
-'    col+=vec3(0.16,0.36,0.85)*g*0.55*rev;',
-'    alpha=g*0.20*rev;',
+'    col+=vec3(0.22,0.40,0.62)*g*0.18*rev;',
+'    alpha=g*0.06*rev;',
 '  }',
 '  gl_FragColor=vec4(col*alpha,alpha);',
 '}'
@@ -360,44 +425,42 @@ gl.viewport(0, 0, w, h);
 }
 }
 function texOK() { return texs[0] && texs[1] && texs[2]; }
+function loadTarget() {
+var expected = 0, loaded = 0, errs = 0, fails = 0;
+try {
+expected = (window.__mochiJsFiles || []).length;
+loaded = (window.__mochiLoaded || []).length;
+errs = (window.__mochiErrLoaded || []).length;
+fails = (window.__mochiExtFail || []).length;
+} catch (e) {}
+var scripts = expected ? Math.min(1, (loaded + errs + fails) / expected) : 1;
+var data = window.__mochiDataReady ? 1 : 0;
+return Math.min(1, scripts * 0.80 + data * 0.20);
+}
+var shownPct = 0, lastFrameAt = 0, lastPct = -1, planetShown = false, planetAt = 0, slowHinted = false;
+var LOAD_RATE = SLOW ? 10 : 60; // 每秒最多推进的百分比：加载再快也留出飞行时间
 function frame(now) {
 if (ended) return;
 raf = requestAnimationFrame(frame);
 if (document.hidden) return;
-drawNebula(now);
-if (gl && prog && texOK()) {
+var st = (now - t0) / TIME_SCALE;
+var dt = lastFrameAt ? Math.min(150, now - lastFrameAt) : 16;
+lastFrameAt = now;
+var target = FREEZE >= 0 ? FREEZE : loadTarget() * 100;
+if (target > shownPct) shownPct = Math.min(target, shownPct + LOAD_RATE * dt / 1000);
+var prog = shownPct / 100;
+drawNebula(st, prog);
+if (gl && texOK()) {
 resizeGL();
 gl.clear(gl.COLOR_BUFFER_BIT);
 gl.uniform2f(uni.uRes, earthCv.width, earthCv.height);
-gl.uniform1f(uni.uTime, (now - t0) / 1000);
-gl.uniform1f(uni.uReveal, earthReveal(now - t0));
+gl.uniform1f(uni.uTime, st / 1000);
+gl.uniform1f(uni.uReveal, earthReveal(prog));
 gl.drawArrays(gl.TRIANGLES, 0, 3);
 try { nctx.drawImage(earthCv, 0, 0, W, H); } catch (e) {}
-try {
-nctx.save();
-nctx.globalCompositeOperation = 'lighter';
-for (var gb = 0; gb < blobs.length; gb += 4) {
-var fbl = blobs[gb];
-if (fbl._rad == null) continue;
-var fg = nctx.createRadialGradient(fbl._x, fbl._y, 0, fbl._x, fbl._y, fbl._rad);
-fg.addColorStop(0, 'rgba(' + fbl.c + ',' + (fbl._a * 0.30) + ')');
-fg.addColorStop(1, 'rgba(' + fbl.c + ',0)');
-nctx.globalAlpha = 1;
-nctx.fillStyle = fg;
-nctx.beginPath(); nctx.arc(fbl._x, fbl._y, fbl._rad, 0, 6.2832); nctx.fill();
 }
-for (var fk = 0; fk < neb.length; fk += 6) {
-var fp = neb[fk];
-if (fp._x == null) continue;
-nctx.globalAlpha = Math.min(0.16, fp._a * 0.32);
-nctx.fillStyle = 'rgb(' + fp.c + ')';
-nctx.beginPath(); nctx.arc(fp._x, fp._y, fp.sz * 1.5, 0, 6.2832); nctx.fill();
-}
-nctx.restore();
-nctx.globalAlpha = 1;
-} catch (e) {}
-}
-updateProgress(now - t0);
+drawVeil(st, prog);
+updateProgress(st, prog);
 }
 if (!initGL()) {
 gl = null;
@@ -422,6 +485,7 @@ img.src = src;
 })('assets/earth-clouds.png', 2);
 }
 var LINE_TXT = ['系统自检 SYSTEM BOOT', '星图校准 NAVIGATION FIX', '通讯矩阵 RELAY SYNC', '跃迁引擎 WARP DRIVE'];
+var LINE_AT = [0, 26, 52, 78]; // 四行自检跟着真实加载进度逐行打出
 var lineState = [0, 0, 0, 0], typer = { li: 0, ci: 0, timer: null };
 function typeTick() {
 typer.timer = null;
@@ -436,8 +500,13 @@ typer.timer = setTimeout(typeTick, 12 + Math.random() * 18);
 el.classList.remove('typing'); el.classList.add('on');
 lineState[typer.li] = 2;
 typer.li++; typer.ci = 0;
-if (typer.li < 4) typer.timer = setTimeout(typeTick, 160 + Math.random() * 140);
+if (typer.li < 4) typer.timer = setTimeout(function () { typer.timer = null; maybeType(); }, 160);
 }
+}
+function maybeType() {
+if (typer.timer || typer.li >= 4) return;
+if (lastPct < LINE_AT[typer.li]) return;
+typeTick();
 }
 typer.timer = setTimeout(typeTick, 180);
 function renderSegs(v) {
@@ -448,23 +517,27 @@ for (var i = 0; i < SEGN; i++) {
 segs[i].className = i < n ? 'on' : (i === n && n < SEGN ? 'now' : '');
 }
 }
-var lastPct = -1, planetShown = false;
-function updateProgress(t) {
-var x = t / 2050; x = x < 0 ? 0 : x > 1 ? 1 : x;
-var v = Math.round((x * x * (3 - 2 * x)) * 100);
+function updateProgress(st, prog) {
+var v = Math.round(prog * 100);
 if (v !== lastPct) {
 lastPct = v;
 renderSegs(v);
 wpct.textContent = v + '%';
+maybeType();
 }
-if (!planetShown && v >= 92) {
+if (!planetShown && v >= 100) {
 planetShown = true;
+planetAt = st;
 planetEl.classList.add('show');
 sysEl.style.opacity = '0.35';
-}
-if (v >= 100 && !flashEl.classList.contains('go') && t > 2150) {
 flashEl.classList.add('go');
 }
+if (!slowHinted && window.__mochiDataSlow) {
+slowHinted = true;
+var tp = wrap.querySelector('.ci-tip');
+if (tp) tp.textContent = '数据回填较慢 · 点击登陆';
+}
+if (planetShown && FREEZE < 0 && !LONG && !SLOW && st - planetAt > 900) finish();
 }
 if (verEl) verEl.textContent = verEl.textContent || '';
 window.addEventListener('resize', resize2D);
