@@ -958,7 +958,9 @@
   // 先渲染 → 可见且无弹窗时才真正跑（不可见等 visibilitychange；有弹窗隔 60s 重试最多 3 次）。
   (function acKick(tries) {
     if (typeof document === 'undefined') return;
-    if (!window.__mochiDataReady || document.getElementById('splash')) {
+    // 二改：开屏节点保留在 DOM（设置内可查看公告），按「已隐藏」视为已进入
+    var _sp = document.getElementById('splash');
+    if (!window.__mochiDataReady || (_sp && !_sp.classList.contains('hide'))) {
       if ((tries || 0) < 600) setTimeout(function () { acKick((tries || 0) + 1); }, 1000);
       return;
     }

@@ -221,8 +221,9 @@ const ctl2 = window.openModal('解锁成功 · 字卡使用提醒', '', function
 }, { noInput: true, big: true, warn: true, lock: true, staticText: '系统内置字卡已解锁，聊天与各功能可以正常取用。\n\n' + sizeTip });
 if (ctl2 && ctl2.okText) ctl2.okText('知道了');
 }
-}, { inputmode: 'numeric', placeholder: '输入二级验证密码', staticText: '密码一共 6 位数字：前两位是 99，后 4 位是 mochi 字卡生日的字面数字（把生日日期原样写成 4 位数），生日就在开屏第一页的章节目录里（点开顶部的「目录」逐章翻一下就能找到）——第一页的章节目录里和第二页最顶那张时间线卡都写着——日期一直是很简单的字面意思，不是隐藏答案；开屏最底下的部署时间不算（那只是用来判断有没有更新到新版本）。解开密码请勿二传（不要告诉别人），一旦有人二传，密码就会被重新设置。这个密码与开屏问答页的「暗号」是同一个（同一串 6 位数字）：在开屏问答页点「输暗号跳过问答」用的也是它。' });
+}, { inputmode: 'numeric', placeholder: '输入二级验证密码', staticText: '密码一共 6 位数字：前两位是 99，后 4 位是 mochi 字卡生日的字面数字（把生日日期原样写成 4 位数）。开屏已关闭，完整说明在「设置 → 查看公告与免责声明」里。这个密码也用于跳过应用锁的问答层（若开启）。解开密码请勿告诉别人，一旦公开，密码就会被重新设置。' });
 }
+window.promptCardUnlock = promptCardUnlock;
 document.addEventListener('mochi-cardlock-open', setupCardLockCard);
 document.addEventListener('mochi-cardlock-locked', setupCardLockCard);
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
@@ -254,6 +255,7 @@ if (dirty) run(); // 强刷回写
 (function () {
 const splash = document.getElementById('splash');
 if (!splash) return;
+window.__mochiKeepNotice = true;
 const skipStore = (function () { try { return window.xyStore ? window.xyStore('xy-home-v2') : null; } catch (e) { return null; } })();
 const SKIP_KEY = 'splash-skip-en';
 let skipSplash = false;
@@ -269,8 +271,40 @@ try { if (skipStore) skipStore.set(SKIP_KEY, skipSplash ? '1' : '0'); } catch (e
 const hide = () => {
 if (splash.classList.contains('hide')) return;
 splash.classList.add('hide');
+splash.style.display = 'none';
+if (window.__mochiKeepNotice) return;
 setTimeout(() => { if (splash.parentNode) splash.parentNode.removeChild(splash); }, 400);
 };
+window.openSplashNotice = function () {
+try {
+splash.classList.remove('hide');
+splash.classList.add('splash-readonly');
+splash.style.display = 'flex';
+var box = document.getElementById('splash-box');
+if (box) box.scrollTop = 0;
+var btn = document.getElementById('splash-viewer-close');
+if (!btn) {
+btn = document.createElement('div');
+btn.id = 'splash-viewer-close';
+btn.textContent = '关闭';
+btn.addEventListener('click', function (e) { e.stopPropagation(); window.closeSplashNotice(); });
+splash.appendChild(btn);
+}
+} catch (e) {}
+};
+window.closeSplashNotice = function () {
+try {
+splash.classList.add('hide');
+splash.classList.remove('splash-readonly');
+splash.style.display = 'none';
+} catch (e) {}
+};
+(function bindNoticeRow() {
+var row = document.getElementById('row-open-splash-notice');
+if (row) row.addEventListener('click', function () { window.openSplashNotice(); });
+})();
+splash.classList.add('hide');
+splash.style.display = 'none';
 const ready = () => !!(window.__mochiDataReady);
 const today = (function () {
 const d = new Date(), p = (n) => (n < 10 ? '0' + n : '' + n);

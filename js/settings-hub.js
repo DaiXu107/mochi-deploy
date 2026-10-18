@@ -139,6 +139,11 @@ return '<div class="sh-row" data-q="' + esc(label + ' ' + note) + '">'
 + '<i class="sh-seg2-thumb" style="width:calc((100% - 6px) / ' + opts.length + ');transform:translateX(' + (idx * 100) + '%)"></i>'
 + b + '</div></div>';
 }
+function actRow(label, note, act, q, scope) {
+return '<div class="sh-row" data-act="' + esc(act) + '" data-q="' + esc(label + ' ' + note + ' ' + (q || '')) + '">'
++ '<div class="sh-l"><div class="sh-label">' + esc(label) + badge(scope) + '</div>'
++ '<span class="sh-note">' + esc(note) + '</span></div><i class="sh-chev"></i></div>';
+}
 function navRow(label, note, pageId, opt) {
 opt = opt || {};
 return '<div class="sh-row" data-nav="' + esc(pageId) + '"'
@@ -272,7 +277,7 @@ block(function () {
 sec('安全与关于', '锁与说明');
 group(function () {
 H.push(navRow('应用锁', '打开 App 需要密码', 'page-setting', { tab: 'system', scope: 'g', q: '应用锁 密码' }));
-H.push(navRow('开屏公告', '进入前是否显示', 'page-setting', { tab: 'system', scope: 'g', q: '公告 开屏' }));
+H.push(actRow('查看公告与免责声明', '开屏已移除，点此查看原公告与免责声明', 'notice', '公告 开屏 免责 声明 说明', 'g'));
 H.push(navRow('关于 / 隐私 / 帮助', '作者、许可、常见问题', 'page-setting', { tab: 'about', q: '关于 隐私 帮助 问题' }));
 H.push(navRow('经典设置（原设置页）', '按原来的分类查看全部设置', 'page-setting', { q: '经典 原设置' }));
 });
@@ -359,6 +364,12 @@ var pl = e.target.closest('.sh-preset-labels span');
 if (pl) { applyPreset(ORDER[+pl.getAttribute('data-i')]); return; }
 var more = e.target.closest('[data-act="freqmore"]');
 if (more) { freqOpen = !freqOpen; render(); return; }
+var notice = e.target.closest('[data-act="notice"]');
+if (notice) {
+if (window.openSplashNotice) window.openSplashNotice();
+else toast('公告组件还没加载好，请稍后再试');
+return;
+}
 var nav = e.target.closest('[data-nav]');
 if (nav) { doNav(nav); return; }
 });

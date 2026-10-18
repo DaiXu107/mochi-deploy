@@ -710,7 +710,8 @@ return out;
 };
 (function acKick(tries) {
 if (typeof document === 'undefined') return;
-if (!window.__mochiDataReady || document.getElementById('splash')) {
+var _sp = document.getElementById('splash');
+if (!window.__mochiDataReady || (_sp && !_sp.classList.contains('hide'))) {
 if ((tries || 0) < 600) setTimeout(function () { acKick((tries || 0) + 1); }, 1000);
 return;
 }

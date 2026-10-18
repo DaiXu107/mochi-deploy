@@ -93,6 +93,19 @@ html { margin:0; padding:0; }
   transition:opacity .4s ease;
 }
 .splash.hide { opacity:0; pointer-events:none; display:none; }
+/* 二改：设置内「查看公告与免责声明」只读视图——隐藏进入/年龄确认/锁卡等操作件 */
+.splash-readonly #splash-enter,
+.splash-readonly #splash-age-row,
+.splash-readonly #splash-loading,
+.splash-readonly #splash-loading-sub,
+.splash-readonly #splash-force-enter,
+.splash-readonly #splash-cardlock { display:none !important; }
+#splash-viewer-close {
+  position:fixed; top:calc(10px + env(safe-area-inset-top, 0px)); right:12px; z-index:10001;
+  padding:7px 15px; border-radius:999px; cursor:pointer;
+  background:rgba(20,20,22,.78); color:#fff; font-size:13px; letter-spacing:1px;
+  box-shadow:0 2px 8px rgba(0,0,0,.25); -webkit-tap-highlight-color:transparent;
+}
 /* FIX 2026-09-15 #541 开屏期遮挡被完全盖住的桌面：WebKit 未按 z 序裁剪被不透明开屏盖住的层——
    开屏是 position:fixed / z-index:999 / background:var(--card-bg) 的整屏不透明层，视觉上
    完全盖住 .phone；但实测（WebKit 引擎 DPR3）滚动开屏公告时内核仍在合成其下的 .phone

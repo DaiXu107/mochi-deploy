@@ -5194,14 +5194,48 @@
     if (!el || !window.cardLockOpen) return;
     function render() {
       const open = window.cardLockOpen();
-      el.textContent = open
+      el.innerHTML = '';
+      const line = document.createElement('div');
+      line.style.cssText = 'font-size:11.5px;line-height:1.7;color:var(--muted,#8a8a8a)';
+      line.textContent = open
         ? '当前状态：系统预设字卡已解锁（二级验证已通过），联系人回复与各功能可正常取用。'
-        : '当前状态：系统预设字卡已全部锁定（防未成年人保护，不是 bug），联系人回复与各功能均取不到系统预设字卡。不输密码也能正常使用，密码只管两件事：解锁系统预设字卡、跳过开屏的 2 个问答。注意（#499 豁免说明）：聊天情绪字卡、TA 的心情、聊天回应字卡这三大互动链不受锁定影响，未解锁也照常使用；受影响的只有默认聊天字卡、词典（含词典拼字）等系统预设池。锁定时若自定义字卡（含 mj 字卡）一张都没添加，回复会更单薄（情绪/回应字卡仍在，但少了系统预设内容），建议先在自定义字卡里添加几张；如已成年，请回开屏公告区点「输入密码解锁」输入二级验证密码，解锁后刷新生效。';
+        : '系统预设字卡已锁定：查看或使用前需要输入二级验证密码。不输密码也能正常使用聊天与全部功能，只是取不到系统预设字卡（默认聊天字卡、词典等）；你自建的字卡、情绪 / 回应字卡不受影响。';
+      el.appendChild(line);
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.style.cssText = 'margin-top:6px;padding:6px 14px;border-radius:999px;border:1px solid var(--card-border,rgba(0,0,0,.12));background:var(--ink,#111);color:var(--bg-b,#fff);font-size:12px;letter-spacing:.5px;cursor:pointer';
+      if (open) {
+        b.textContent = '重新上锁';
+        b.addEventListener('click', function () {
+          try { window.cardLockRelock && window.cardLockRelock(); } catch (e) {}
+          line.textContent = '已重新上锁，页面即将刷新…';
+          setTimeout(function () { location.reload(); }, 700);
+        });
+      } else {
+        b.textContent = '输入密码解锁';
+        b.addEventListener('click', function () {
+          if (window.promptCardUnlock) window.promptCardUnlock(line);
+          else if (window.toast) window.toast('解锁组件还没加载好，请稍后再点一次');
+        });
+      }
+      el.appendChild(b);
     }
     render();
     document.addEventListener('mochi-cardlock-open', render);
     document.addEventListener('mochi-cardlock-locked', render);
   })();
+  // 二改：锁定时点「系统预设字卡」分区里的任何入口，都先要密码（开屏已移除）
+  document.addEventListener('click', function (e) {
+    try {
+      if (window.cardLockOpen && window.cardLockOpen()) return;
+      const item = e.target && e.target.closest ? e.target.closest('#cc-sect-preset .chat-item') : null;
+      if (!item) return;
+      e.preventDefault(); e.stopPropagation();
+      if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+      if (window.promptCardUnlock) window.promptCardUnlock();
+      else if (window.toast) window.toast('解锁组件还没加载好，请稍后再点一次');
+    } catch (err) {}
+  }, true);
 
   // v3.15.x：顶部两大分类 tab 显示字卡总数徽标——
   // 汇总各自分区里全部条目的 .t 计数。各模块（quote-cards/p2-features/ta-ask/

@@ -30,7 +30,8 @@
 </head>
 <body>
   <!-- 开屏加载动画 -->
-  <div class="splash" id="splash">
+  <!-- 二改：开屏公告不再作为进入闸门；节点保留，改为「设置 → 查看公告与免责声明」内查看 -->
+  <div class="splash hide" id="splash" style="display:none">
     <div class="splash-box" id="splash-box">
       <!-- v8.29 #973（用户 2026-09-21 直派「开屏顶部最显眼还需要标红提醒」，并把文案改写定稿为：「网站本质只是工具，
            使用取决于个人，各种原因都需要适应和调整。网站内置内容非常非常多，不适用建议不使用这个网站，或给一定时间
@@ -1830,12 +1831,12 @@
         <div class="gs-sub" id="applock-qa-sub">纯本地功能：<b>默认开启</b>——首次答对问答题后本机永久放行（不再重复询问），可单独使用；关掉即彻底不问。锁屏时也可输暗号直接永久跳过问答层。</div>
       </div>
       <div class="set-group glass">
-        <div class="set-row">
-          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14a1 1 0 011 1v5a1 1 0 01-1 1h-5v2h2a3 3 0 013 3v4h-2v-4a1 1 0 00-1-1H8a1 1 0 00-1 1v4H5v-4a3 3 0 013-3h2v-2H5a1 1 0 01-1-1V5a1 1 0 011-1z"/></svg></div>
-          <div class="txt">关闭开屏公告<span class="sub">开启后每次打开直接进入功能界面，不再显示长公告开屏</span></div>
-          <label class="toggle"><input type="checkbox" id="splash-skip-en"><span class="tk"></span></label>
+        <!-- 二改：开屏已移除，原「关闭开屏公告」开关改为查看入口 -->
+        <div class="set-row" id="row-open-splash-notice">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5a1 1 0 011-1z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></div>
+          <div class="txt">查看公告与免责声明<span class="sub">开屏公告已移到设置内，点此查看原文（不影响使用）</span></div>
         </div>
-        <div class="gs-sub" id="splash-skip-sub">开启后不再显示开屏公告，直接进入功能界面。<b>首次使用仍需先确认已年满 18 周岁并同意声明</b>；之后想重新查看公告时，关闭本开关并刷新页面即可。</div>
+        <div class="gs-sub" id="splash-skip-sub">公告与免责声明保留可查，但不再作为启动闸门；系统预设字卡单独由二级验证密码保护。</div>
       </div>
       <div class="set-group glass">
         <div class="gs-row"><span>后台保活</span><label class="toggle"><input type="checkbox" id="bg-keepalive"><span class="tk"></span></label></div>

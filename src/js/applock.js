@@ -97,7 +97,8 @@
     const v = gGet(K_QA_EN);
     if (v === '1') return true;
     if (v === '0') return false;
-    return !IS_AUTOMATION;   // 未设置：真机默认开，无头默认关
+    // 二改：开屏已移除，问答层不再默认弹出（仍可在设置里手动开启）
+    return false;
   }
   function qaSetEn(v) { gSet(K_QA_EN, v ? '1' : '0'); }
   function qaSkipped() { return gGet(K_QA_SKIP) === '1'; }  // 本机已输暗号 → 永久跳过问答层
@@ -792,7 +793,9 @@
     if (IS_AUTOMATION) { fireLock(); return; }
     let tries = 0;
     const waitSplash = function () {
-      if (!document.getElementById('splash')) { fireLock(); return; }
+      var sp = document.getElementById('splash');
+      // 二改：开屏节点保留在 DOM 但启动即隐藏，按「不可见」判断，不再等 30 秒
+      if (!sp || sp.classList.contains('hide') || sp.hidden) { fireLock(); return; }
       if (++tries > 60) { fireLock(); return; }   // 最多等 ~30s，开屏异常不隐藏时兜底
       setTimeout(waitSplash, 500);
     };

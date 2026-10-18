@@ -291,8 +291,10 @@
         }, { noInput: true, big: true, warn: true, lock: true, staticText: '系统内置字卡已解锁，聊天与各功能可以正常取用。\n\n' + sizeTip });
         if (ctl2 && ctl2.okText) ctl2.okText('知道了');
       }
-    }, { inputmode: 'numeric', placeholder: '输入二级验证密码', staticText: '密码一共 6 位数字：前两位是 99，后 4 位是 mochi 字卡生日的字面数字（把生日日期原样写成 4 位数），生日就在开屏第一页的章节目录里（点开顶部的「目录」逐章翻一下就能找到）——第一页的章节目录里和第二页最顶那张时间线卡都写着——日期一直是很简单的字面意思，不是隐藏答案；开屏最底下的部署时间不算（那只是用来判断有没有更新到新版本）。解开密码请勿二传（不要告诉别人），一旦有人二传，密码就会被重新设置。这个密码与开屏问答页的「暗号」是同一个（同一串 6 位数字）：在开屏问答页点「输暗号跳过问答」用的也是它。' });
+    }, { inputmode: 'numeric', placeholder: '输入二级验证密码', staticText: '密码一共 6 位数字：前两位是 99，后 4 位是 mochi 字卡生日的字面数字（把生日日期原样写成 4 位数）。开屏已关闭，完整说明在「设置 → 查看公告与免责声明」里。这个密码也用于跳过应用锁的问答层（若开启）。解开密码请勿告诉别人，一旦公开，密码就会被重新设置。' });
   }
+  // 二改：二级验证入口移到「系统预设字卡」分区（开屏已移除），供 chatcard.js 调用
+  window.promptCardUnlock = promptCardUnlock;
   // #1498（2026-09-30 作者口径「二级密码不要弹窗啊，就放在开屏爱点不点」）：进入应用的强制
   //   提醒弹窗（含其长文案与测试钩）整段摘除。
   //   二级密码唯一解锁入口＝开屏公告区那张锁卡（自愿点击）；锁定只影响系统预设字卡可用与否，
@@ -336,6 +338,8 @@
 (function () {
   const splash = document.getElementById('splash');
   if (!splash) return;
+  // 二改：开屏公告不再作为启动闸门（节点保留，改由「设置 → 查看公告与免责声明」打开）
+  window.__mochiKeepNotice = true;
   // 二传修饰：系统页「关闭开屏公告」开关——开启后本机跳过开屏直接进入功能界面。
   // 仍保留首次年龄确认闸门（ageOk），避免跳过合规声明；数据与页面就绪后才自动进入。
   const skipStore = (function () { try { return window.xyStore ? window.xyStore('xy-home-v2') : null; } catch (e) { return null; } })();
@@ -361,8 +365,42 @@
   const hide = () => {
     if (splash.classList.contains('hide')) return;
     splash.classList.add('hide');
+    splash.style.display = 'none';
+    if (window.__mochiKeepNotice) return;
     setTimeout(() => { if (splash.parentNode) splash.parentNode.removeChild(splash); }, 400);
   };
+  // 二改：设置内查看公告（只读）。开屏节点保留，去掉 hide 类即可当阅读器
+  window.openSplashNotice = function () {
+    try {
+      splash.classList.remove('hide');
+      splash.classList.add('splash-readonly');
+      splash.style.display = 'flex';
+      var box = document.getElementById('splash-box');
+      if (box) box.scrollTop = 0;
+      var btn = document.getElementById('splash-viewer-close');
+      if (!btn) {
+        btn = document.createElement('div');
+        btn.id = 'splash-viewer-close';
+        btn.textContent = '关闭';
+        btn.addEventListener('click', function (e) { e.stopPropagation(); window.closeSplashNotice(); });
+        splash.appendChild(btn);
+      }
+    } catch (e) {}
+  };
+  window.closeSplashNotice = function () {
+    try {
+      splash.classList.add('hide');
+      splash.classList.remove('splash-readonly');
+      splash.style.display = 'none';
+    } catch (e) {}
+  };
+  (function bindNoticeRow() {
+    var row = document.getElementById('row-open-splash-notice');
+    if (row) row.addEventListener('click', function () { window.openSplashNotice(); });
+  })();
+  // 启动即隐藏（模板已带 hide + display:none，这里兜底）
+  splash.classList.add('hide');
+  splash.style.display = 'none';
   const ready = () => !!(window.__mochiDataReady);
   // v3.8.y：每日首次打开强制展开全文阅读；当日再次打开则保持折叠（内容短→无需滚动即可进入）
   const today = (function () {
