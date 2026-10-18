@@ -67,3 +67,8 @@ REAL-DEVICE-CHECK.md
 
 # 飞行棋棋盘底图（游戏资源，需入库部署）
 !assets/fc-board.jpg
+# 开屏地球贴图（构建会复制到 assets/，需入库部署）
+!assets/earth-day.jpg
+!assets/earth-night.jpg
+!src/assets/earth-day.jpg
+!src/assets/earth-night.jpg
