@@ -67,6 +67,10 @@
     'cc-groups-public', 'cc-groups-public-off', 'cc-scope-migrated', 'cc-media-names-public',
     // v3.11.x：字卡库公用/专属变动一次性提醒的已读标记（chatcard.js 弹窗），同为全局根键
     'cc-scope-notice-done',
+    // 二改：信箱邮票手账主题的外观设置（整体配色 / 字体 / 胶带 / 火漆 / 邮戳 / 读信底板）
+    // 是设备级全局根键，绝不能随联系人隔离。漏排除会被 migrateLegacy 每次启动当成旧顶层
+    // 业务键迁进 default 并删根键——用户所见就是「配色和章每次刷新都恢复初始」。
+    'mail-postal-settings-v1',
     // v3.12.x：我的表情包改全局共享（chat.js）——键 xy-home-v2:my-emoji-groups 走根命名
     // 空间，所有联系人桌面共用一份；mye-global-migrated 为存量桌面数据合并迁移的幂等标记。
     // 都是全局根键，绝不能被 migrateLegacy 当旧顶层业务键迁进 default 桌面

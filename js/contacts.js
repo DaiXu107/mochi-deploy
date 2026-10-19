@@ -15,6 +15,7 @@ const EXCLUDE = ['contacts', 'active-contact', 'feed-posts', 'migrated-v1', 'js-
 'period-records', 'period-cfg', 'period-daily', 'period-notify', 'period-migrated',
 'cc-groups-public', 'cc-groups-public-off', 'cc-scope-migrated', 'cc-media-names-public',
 'cc-scope-notice-done',
+'mail-postal-settings-v1',
 'my-emoji-groups', 'mye-global-migrated',
 'emoji-recent',
 'emoji-recent-kaomoji', 'emoji-recent-emoji',

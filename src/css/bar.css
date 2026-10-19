@@ -120,6 +120,14 @@
   flex: 1; min-width: 0; font-size: 13px; padding: 7px 9px; border-radius: 9px;
   border: 1px solid var(--input-border, #e0e0e0); background: var(--input-bg, #fff); color: var(--ink);
 }
+/* 安卓 mobile-adapt 会把动态新增的输入框换成一个 .ce-box 代理框；
+   原料表单是运行时创建的，必须让代理框也撑满并继承输入框外观，否则它宽度塌成 0，点不到也输不进 */
+.bar-add-form .ce-box {
+  flex: 1; min-width: 0; font-size: 13px; padding: 7px 9px; border-radius: 9px;
+  border: 1px solid var(--input-border, #e0e0e0); background: var(--input-bg, #fff);
+  color: var(--ink); line-height: 1.4; min-height: 34px; box-sizing: border-box;
+}
+.bar-add-form .ce-box:empty::before { color: var(--hint-ink, #aaa); }
 .bar-add-foot { display: flex; gap: 10px; padding-top: 6px; }
 .bar-add-foot button { flex: 1; font-size: 13px; font-weight: 700; cursor: pointer; padding: 10px; border-radius: 11px; border: none; }
 .bar-add-cancel { background: var(--btn-cancel-bg, #eee); color: var(--btn-cancel-ink, #555); }

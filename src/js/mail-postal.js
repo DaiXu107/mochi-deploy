@@ -140,6 +140,14 @@
     var raw = null;
     try { var gs = window.xyStore ? window.xyStore('xy-home-v2') : null; if (gs) raw = gs.get(SET_KEY); } catch (e) {}
     if (!raw) { try { raw = localStorage.getItem(SET_KEY); } catch (e) {} }
+    if (!raw) {
+      // 二改修复：历史上 migrateLegacy 曾把全局根键迁进 default 桌面并删根键，
+      // 导致配色 / 章每次刷新回到初始。这里把 default 里最近一次副本捡回来并写回全局根键
+      //（contacts.js 的 EXCLUDE 已补上这个键，之后不会再被迁走）。
+      try { var ds = window.xyStore ? window.xyStore('xy-home-v2:default') : null; if (ds) raw = ds.get(SET_KEY); } catch (e) {}
+      if (!raw) { try { raw = localStorage.getItem('xy-home-v2:default:' + SET_KEY); } catch (e) {} }
+      if (raw) { try { var gs2 = window.xyStore ? window.xyStore('xy-home-v2') : null; if (gs2) gs2.set(SET_KEY, raw); } catch (e) {} }
+    }
     try { SET_MEM = JSON.parse(raw || '{}'); } catch (e) { SET_MEM = {}; }
     if (!SET_MEM || typeof SET_MEM !== 'object') SET_MEM = {};
     return Object.assign({}, DEF, SET_MEM);
@@ -301,7 +309,7 @@
   + '#page-mail .mail-item-title .pz-tt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }'
   + '#page-mail .mail-item-title .mail-tag { flex: none; margin-left: 0; }'
   // v28：主标题 = 信件标题（tt），下方保留正文摘要行
-  + '#page-mail .mail-item-desc { color: var(--pz-sub); font-size: 12.5px; line-height: 1.45; }'
+  + '#page-mail .mail-item-desc { color: var(--pz-sub); font-size: 12.5px; line-height: 1.45; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }'
   + '#page-mail .mail-item-time { color: var(--pz-sub); font-size: 11px; letter-spacing: 1px; font-family: var(--pz-font); align-self: flex-start; margin-top: 1px; margin-right: 2px; line-height: 1.4; white-space: nowrap; }'
   // 二传：时间从垂直居中挪到右上角，并离虚线内框留出余量
   + '#page-mail .mail-item { align-items: flex-start; padding: clamp(10px, 3.1vw, 13px); padding-right: clamp(13px, 4.1vw, 17px); gap: clamp(8px, 2.5vw, 11px); }'
@@ -377,6 +385,11 @@
   + '#mail-write-to, #mail-reply-to { color: var(--pz-red); font-family: var(--pz-font); letter-spacing: 1px; }'
   + '#mail-input, #mail-reply-input { background-color: var(--pz-paper); background-image: repeating-linear-gradient(to bottom, transparent 0 calc(var(--pz-lh) - 1px), rgba(138,122,94,.14) calc(var(--pz-lh) - 1px) var(--pz-lh)); border: 1px solid var(--pz-line); border-radius: 3px; color: var(--pz-ink); font-family: var(--pz-font); font-size: var(--pz-size); line-height: var(--pz-lh); caret-color: var(--pz-red); box-shadow: inset 0 1px 3px rgba(90,70,40,.08); }'
   + '#mail-input::placeholder, #mail-reply-input::placeholder { color: var(--pz-sub); }'
+  // 寄信标题行（二改）：信纸顶部一条虚线，标题与正文分开；安卓 ce-box 代理框继承同一外观
+  + '#page-mail-write .mail-title-input { width:100%; box-sizing:border-box; border:0; border-bottom:1px dashed var(--pz-line); background:transparent; color:var(--pz-ink); font-family:var(--pz-font); font-size:16.5px; letter-spacing:1px; line-height:1.5; padding:5px 2px 9px; margin:1px 0 10px; outline:none; }'
+  + '#page-mail-write .mail-title-input::placeholder { color:var(--pz-sub); }'
+  + '#page-mail-write .mail-title-input.ce-box { display:block; min-height:32px; }'
+  + '#page-mail-write .mail-title-input.ce-box:empty::before { color:var(--pz-sub); }'
   + '#mail-input:focus, #mail-reply-input:focus { outline: none; box-shadow: 0 0 0 3px rgba(255,253,247,.95), 0 0 16px rgba(255,246,232,.8), inset 0 1px 3px rgba(90,70,40,.08); }'
   + '#page-mail-write .ce-box:focus, #page-mail-reply .ce-box:focus { outline: none; box-shadow: 0 0 0 3px rgba(255,253,247,.95), 0 0 16px rgba(255,246,232,.8); }'
   + '#page-mail-write .ce-box, #page-mail-reply .ce-box { background: var(--pz-paper); border: 1px solid var(--pz-line); border-radius: 3px; color: var(--pz-ink); font-family: var(--pz-font); font-size: var(--pz-size); line-height: 1.9; }'
@@ -609,8 +622,9 @@
   // 兼容迁移过来的纯标题旧条目；新记录一律 data-id
   function isReadEntry(rs, it) { return rs.indexOf(itemKey(it)) >= 0 || rs.indexOf(itemTitle(it)) >= 0; }
   // v28：缩略图主标题 = 信件自己的标题 tt（作者要求：「来自 TA」部分换成如「想你了」，
-  // 下面一行仍是正文摘要）。tt 从本地存储的信件数组按 data-id 查（LS 剥图快照保留 tt）；
-  // 查不到（无 id / 快照未落 LS）退回正文首句。只替换标题开头文本节点，
+  // 下面一行仍是正文摘要）。tt 优先取 mail.js 直接渲染进 DOM 的 data-tt（不依赖 LS 快照），
+  // 再回退从本地存储的信件数组按 data-id 查；都查不到就保留「来自 / 寄给」，
+  // 不再拿正文冒充标题。只替换标题开头文本节点，
   // mail.js 拼进去的 新来信/已回信/对方已回信 小戳原样保留。
   var ltCache = { key: null, raw: null, map: {} };
   function letterTT(id) {
@@ -634,8 +648,9 @@
     var de = it.querySelector('.mail-item-desc');
     if (!te || !de) return;
     var id = it.dataset && it.dataset.id;
-    var want = (id && letterTT(id)) || (de.textContent || '').trim();
-    if (!want) return;
+    // 优先用 mail.js 直接带进 DOM 的 data-tt；旧 DOM/缓存再回退读本地存储
+    var want = (it.dataset && it.dataset.tt) || (id && letterTT(id)) || '';
+    if (!want) return; // 实在没有标题就保留「来自 / 寄给」，不拿正文冒充标题
     // 标题包进 .pz-tt 弹性缩略（长题省略号），小戳 flex:none 永远完整露出；
     // 只剥开头的「来自 xx / 寄给 xx」文本节点，mail.js 的小戳节点原地保留
     var tt = te.querySelector('.pz-tt');

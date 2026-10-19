@@ -9945,6 +9945,12 @@ border-radius: 12px; color: var(--ink); background: var(--card-soft, #f2f3f5); b
 flex: 1; min-width: 0; font-size: 13px; padding: 7px 9px; border-radius: 9px;
 border: 1px solid var(--input-border, #e0e0e0); background: var(--input-bg, #fff); color: var(--ink);
 }
+.bar-add-form .ce-box {
+flex: 1; min-width: 0; font-size: 13px; padding: 7px 9px; border-radius: 9px;
+border: 1px solid var(--input-border, #e0e0e0); background: var(--input-bg, #fff);
+color: var(--ink); line-height: 1.4; min-height: 34px; box-sizing: border-box;
+}
+.bar-add-form .ce-box:empty::before { color: var(--hint-ink, #aaa); }
 .bar-add-foot { display: flex; gap: 10px; padding-top: 6px; }
 .bar-add-foot button { flex: 1; font-size: 13px; font-weight: 700; cursor: pointer; padding: 10px; border-radius: 11px; border: none; }
 .bar-add-cancel { background: var(--btn-cancel-bg, #eee); color: var(--btn-cancel-ink, #555); }
@@ -11617,7 +11623,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
            （名称+版号 / 部署时间+实时秒 / 版本检测行）收成一行；检测行随 ver-check.js 退役删除。
            data-build-ts / data-version 两属性保留：device.js 诊断、bg-keep 自检、pwa.js 旧包检测
            仍只读属性（诊断版本号走 data-version 兜底，device.js 两处缓存原生支持）。 -->
-      <div class="splash-ver" id="splash-ver" data-build-ts="1792312669536" data-version="v8.3">
+      <div class="splash-ver" id="splash-ver" data-build-ts="1792415926235" data-version="v8.3">
         <span class="sv-app">Mochi 字卡传讯 已完结停更</span>
       </div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
@@ -16173,6 +16179,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
           <div style="font-size:11px;line-height:1.6;color:var(--muted);margin:6px 0 0" id="mail-write-img-hint">选不了多张或点了没反应，是浏览器 / 所在 App 的限制：换 Chrome / Edge 再试（详见 使用说明第 13 节）</div>
           <div class="mail-paper">
             <div class="mail-paper-head"><span class="mail-paper-author">我</span><span class="mail-paper-date">正在写…</span></div>
+            <input id="mail-title" class="mail-title-input" maxlength="40" placeholder="信件标题（可选，留空自动取一个）">
             <textarea id="mail-input" class="mail-compose-input" rows="12" placeholder="亲爱的，&#10;&#10;今天想跟你说..."></textarea>
           </div>
         </div>
@@ -23656,4 +23663,4 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 </body>
 </html>
 
-<!-- __MOCHI_EOF__ mvdkoqqo -->
+<!-- __MOCHI_EOF__ mvfa5w4b -->

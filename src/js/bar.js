@@ -704,12 +704,15 @@
     if (busy) return;
     var pool = ING.filter(function (i) { return i && i.unlocked !== false; });
     if (!pool.length) return;
+    // 二改：基底是硬条件——连一份可用基底都没有时宁可不调，也不生成无基底饮品
+    var basePool = pool.filter(function (i) { return i.role === 'base'; });
+    if (!basePool.length) { toast('没有可用的基底，先解锁一份基底原料'); return; }
     resetCup();
     var liked = likedIngSet();
     // 先定基底（必须有），再随机补 1~3 份别的
-    var basePool = pool.filter(function (i) { return i.role === 'base'; });
     var picked = [], guard = 0;
-    if (basePool.length) { var b = weightedPick(basePool, liked); if (b) picked.push(b); }
+    var b = weightedPick(basePool, liked);
+    if (b) picked.push(b);
     var n = picked.length + 1 + Math.floor(Math.random() * 3);
     while (picked.length < n && guard++ < 60) {
       var c = weightedPick(pool, liked);
@@ -794,15 +797,23 @@
       if (h >= 23 || h < 6) return;                       // 深夜不打扰
       if (G.get(K_TAGIFT) === todayStr()) return;         // 全局每天最多一次
       if (Math.random() >= 0.10) return;                  // 低概率
-      var ta = ensureTaLikes();
-      var pool = ta.ing.map(findIng).filter(Boolean);
+      // 二改：不再只从「TA 喜欢的原料」里选，改为全部未锁定原料可参与，
+      // 喜欢过的原料权重 ×3（weightedPick 同一口径）；基底仍然必须有。
+      var liked = likedIngSet();
+      var pool = ING.filter(function (i) { return i && i.unlocked !== false; });
       if (!pool.length) return;
-      var n = 1 + Math.floor(Math.random() * Math.min(3, pool.length));
-      var picked = [], guard = 0;
-      while (picked.length < n && guard++ < 40) {
-        var c = pool[Math.floor(Math.random() * pool.length)];
-        if (picked.indexOf(c) < 0) picked.push(c);
+      var basePool = pool.filter(function (i) { return i.role === 'base'; });
+      if (!basePool.length) return;
+      var picked = [];
+      var b = weightedPick(basePool, liked);
+      if (b) picked.push(b);
+      var extra = Math.floor(Math.random() * Math.min(3, pool.length)); // 基底 + 0~2 份别的
+      var guard = 0;
+      while (extra > 0 && guard++ < 60) {
+        var c = weightedPick(pool, liked);
+        if (c && picked.indexOf(c) < 0) { picked.push(c); extra--; }
       }
+      if (!picked.length) return;
       var d = simulateCup(picked);
       d.ice = pickIce();
       var sw = pickSweet();

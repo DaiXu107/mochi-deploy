@@ -620,7 +620,13 @@
     const cleaned = str
       .replace(MAIL_DESC_SLICE_RE, '')
       .replace(/\s+/g, ' ').trim();
-    let out = escHtml((cleaned || '（图片）').slice(0, 30));
+    // 二改：缩略图第二行只取「正文第一句」，不再固定截 30 字（避免半句被切断）
+    let first = cleaned;
+    const m = cleaned.match(/^[\s\S]*?[。！？!?…\n]/);
+    if (m) first = m[0];
+    first = first.replace(/\s+$/, '');
+    if (first.length > 40) first = first.slice(0, 40) + '…';
+    let out = escHtml(first || '（图片）');
     if (fit && window.taFit) out = window.taFit(out);
     return out;
   }
@@ -907,7 +913,9 @@ window.showDeskPopup({ name: '信箱', notifyKind: 'mail', text: mailPlainDesc('
       : (l.partnerReply ? ' <span class="mail-tag">对方已回信</span>' : '');
     // v3.27.x：data-id 过 escHtml——导入备份的信件 id 是外部输入，原实现裸拼进属性
     // 可逃逸引号注入 HTML；dataset 读回时属性实体自动还原，匹配逻辑不变
-    return '<div class="mail-item" data-id="' + escHtml(l.id) + '">' +
+    // data-tt：把信件标题一起带进 DOM，主题层缩略图直接取它——不依赖 localStorage 快照，
+    // 手机端信件只在 IndexedDB 里（LS 被占满/清空）时也能显示标题
+    return '<div class="mail-item" data-id="' + escHtml(l.id) + '" data-tt="' + escHtml(l.tt || '') + '">' +
       '<div class="mail-item-av"><svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></div>' +
       '<div class="mail-item-body"><div class="mail-item-title">' + (dir === 'in' ? '来自 ' : '寄给 ') + name + tag + '</div>' +
       '<div class="mail-item-desc">' + shortDesc(l.content, dir === 'in') + '</div></div>' +
@@ -1075,7 +1083,10 @@ window.showDeskPopup({ name: '信箱', notifyKind: 'mail', text: mailPlainDesc('
     const content = input ? mailCanonPayload(readMailVal(input)).trim() : '';
     if (!content) { toast('信件内容不能为空'); return; }
     const name = partnerName();
-    const title = TITLES[Math.floor(Math.random() * TITLES.length)];
+    // 二改：写信页新增标题输入；留空时仍自动取一个标题
+    const titleEl = document.getElementById('mail-title');
+    const customTitle = readMailVal(titleEl).trim().slice(0, 40);
+    const title = customTitle || TITLES[Math.floor(Math.random() * TITLES.length)];
     const letter = { id: 'l_' + Date.now(), type: 'sent', tt: title, content: content, tm: Date.now(), myReply: { content: content, tm: Date.now() } };
     const list = load();
     list.unshift(letter);
@@ -1095,6 +1106,10 @@ window.showDeskPopup({ name: '信箱', notifyKind: 'mail', text: mailPlainDesc('
     }
     if (input) input.value = '';
     if (input && input.__ceBox) input.__ceBox.textContent = '';
+    if (titleEl) {
+      titleEl.value = '';
+      if (titleEl.__ceBox) titleEl.__ceBox.textContent = '';
+    }
     // v3.10.x：信件通知可点击（chat.js 渲染 mail-notice 类，点击打开信箱）
     if (window.chatAddSystem) window.chatAddSystem('你给 ' + name + ' 写了一封信', { mailNotice: true });
     toast('信件已寄出');

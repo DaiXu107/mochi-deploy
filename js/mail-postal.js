@@ -90,6 +90,11 @@ if (SET_MEM) return Object.assign({}, DEF, SET_MEM);
 var raw = null;
 try { var gs = window.xyStore ? window.xyStore('xy-home-v2') : null; if (gs) raw = gs.get(SET_KEY); } catch (e) {}
 if (!raw) { try { raw = localStorage.getItem(SET_KEY); } catch (e) {} }
+if (!raw) {
+try { var ds = window.xyStore ? window.xyStore('xy-home-v2:default') : null; if (ds) raw = ds.get(SET_KEY); } catch (e) {}
+if (!raw) { try { raw = localStorage.getItem('xy-home-v2:default:' + SET_KEY); } catch (e) {} }
+if (raw) { try { var gs2 = window.xyStore ? window.xyStore('xy-home-v2') : null; if (gs2) gs2.set(SET_KEY, raw); } catch (e) {} }
+}
 try { SET_MEM = JSON.parse(raw || '{}'); } catch (e) { SET_MEM = {}; }
 if (!SET_MEM || typeof SET_MEM !== 'object') SET_MEM = {};
 return Object.assign({}, DEF, SET_MEM);
@@ -220,7 +225,7 @@ var CSS = ''
 + '#page-mail .mail-item-title { display: flex; align-items: baseline; gap: 4px; }'
 + '#page-mail .mail-item-title .pz-tt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }'
 + '#page-mail .mail-item-title .mail-tag { flex: none; margin-left: 0; }'
-+ '#page-mail .mail-item-desc { color: var(--pz-sub); font-size: 12.5px; line-height: 1.45; }'
++ '#page-mail .mail-item-desc { color: var(--pz-sub); font-size: 12.5px; line-height: 1.45; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }'
 + '#page-mail .mail-item-time { color: var(--pz-sub); font-size: 11px; letter-spacing: 1px; font-family: var(--pz-font); align-self: flex-start; margin-top: 1px; margin-right: 2px; line-height: 1.4; white-space: nowrap; }'
 + '#page-mail .mail-item { align-items: flex-start; padding: clamp(10px, 3.1vw, 13px); padding-right: clamp(13px, 4.1vw, 17px); gap: clamp(8px, 2.5vw, 11px); }'
 + '#page-mail .mail-item-av { margin-top: 1px; }'
@@ -278,6 +283,10 @@ var CSS = ''
 + '#mail-write-to, #mail-reply-to { color: var(--pz-red); font-family: var(--pz-font); letter-spacing: 1px; }'
 + '#mail-input, #mail-reply-input { background-color: var(--pz-paper); background-image: repeating-linear-gradient(to bottom, transparent 0 calc(var(--pz-lh) - 1px), rgba(138,122,94,.14) calc(var(--pz-lh) - 1px) var(--pz-lh)); border: 1px solid var(--pz-line); border-radius: 3px; color: var(--pz-ink); font-family: var(--pz-font); font-size: var(--pz-size); line-height: var(--pz-lh); caret-color: var(--pz-red); box-shadow: inset 0 1px 3px rgba(90,70,40,.08); }'
 + '#mail-input::placeholder, #mail-reply-input::placeholder { color: var(--pz-sub); }'
++ '#page-mail-write .mail-title-input { width:100%; box-sizing:border-box; border:0; border-bottom:1px dashed var(--pz-line); background:transparent; color:var(--pz-ink); font-family:var(--pz-font); font-size:16.5px; letter-spacing:1px; line-height:1.5; padding:5px 2px 9px; margin:1px 0 10px; outline:none; }'
++ '#page-mail-write .mail-title-input::placeholder { color:var(--pz-sub); }'
++ '#page-mail-write .mail-title-input.ce-box { display:block; min-height:32px; }'
++ '#page-mail-write .mail-title-input.ce-box:empty::before { color:var(--pz-sub); }'
 + '#mail-input:focus, #mail-reply-input:focus { outline: none; box-shadow: 0 0 0 3px rgba(255,253,247,.95), 0 0 16px rgba(255,246,232,.8), inset 0 1px 3px rgba(90,70,40,.08); }'
 + '#page-mail-write .ce-box:focus, #page-mail-reply .ce-box:focus { outline: none; box-shadow: 0 0 0 3px rgba(255,253,247,.95), 0 0 16px rgba(255,246,232,.8); }'
 + '#page-mail-write .ce-box, #page-mail-reply .ce-box { background: var(--pz-paper); border: 1px solid var(--pz-line); border-radius: 3px; color: var(--pz-ink); font-family: var(--pz-font); font-size: var(--pz-size); line-height: 1.9; }'
@@ -500,8 +509,8 @@ var te = it.querySelector('.mail-item-title');
 var de = it.querySelector('.mail-item-desc');
 if (!te || !de) return;
 var id = it.dataset && it.dataset.id;
-var want = (id && letterTT(id)) || (de.textContent || '').trim();
-if (!want) return;
+var want = (it.dataset && it.dataset.tt) || (id && letterTT(id)) || '';
+if (!want) return; // 实在没有标题就保留「来自 / 寄给」，不拿正文冒充标题
 var tt = te.querySelector('.pz-tt');
 if (!tt) {
 tt = document.createElement('span');

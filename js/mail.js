@@ -379,7 +379,12 @@ const str = mailCleanDisplay(String(s || ''));
 const cleaned = str
 .replace(MAIL_DESC_SLICE_RE, '')
 .replace(/\s+/g, ' ').trim();
-let out = escHtml((cleaned || '（图片）').slice(0, 30));
+let first = cleaned;
+const m = cleaned.match(/^[\s\S]*?[。！？!?…\n]/);
+if (m) first = m[0];
+first = first.replace(/\s+$/, '');
+if (first.length > 40) first = first.slice(0, 40) + '…';
+let out = escHtml(first || '（图片）');
 if (fit && window.taFit) out = window.taFit(out);
 return out;
 }
@@ -599,7 +604,7 @@ function mailItemHtml(l, dir, name) {
 const tag = dir === 'in'
 ? (l.myReply ? ' <span class="mail-tag">已回信</span>' : (l.read ? '' : ' <span class="mail-tag new">新来信</span>'))
 : (l.partnerReply ? ' <span class="mail-tag">对方已回信</span>' : '');
-return '<div class="mail-item" data-id="' + escHtml(l.id) + '">' +
+return '<div class="mail-item" data-id="' + escHtml(l.id) + '" data-tt="' + escHtml(l.tt || '') + '">' +
 '<div class="mail-item-av"><svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></div>' +
 '<div class="mail-item-body"><div class="mail-item-title">' + (dir === 'in' ? '来自 ' : '寄给 ') + name + tag + '</div>' +
 '<div class="mail-item-desc">' + shortDesc(l.content, dir === 'in') + '</div></div>' +
@@ -717,7 +722,9 @@ const input = document.getElementById('mail-input');
 const content = input ? mailCanonPayload(readMailVal(input)).trim() : '';
 if (!content) { toast('信件内容不能为空'); return; }
 const name = partnerName();
-const title = TITLES[Math.floor(Math.random() * TITLES.length)];
+const titleEl = document.getElementById('mail-title');
+const customTitle = readMailVal(titleEl).trim().slice(0, 40);
+const title = customTitle || TITLES[Math.floor(Math.random() * TITLES.length)];
 const letter = { id: 'l_' + Date.now(), type: 'sent', tt: title, content: content, tm: Date.now(), myReply: { content: content, tm: Date.now() } };
 const list = load();
 list.unshift(letter);
@@ -732,6 +739,10 @@ replyPendingSave(pending);
 }
 if (input) input.value = '';
 if (input && input.__ceBox) input.__ceBox.textContent = '';
+if (titleEl) {
+titleEl.value = '';
+if (titleEl.__ceBox) titleEl.__ceBox.textContent = '';
+}
 if (window.chatAddSystem) window.chatAddSystem('你给 ' + name + ' 写了一封信', { mailNotice: true });
 toast('信件已寄出');
 render();
