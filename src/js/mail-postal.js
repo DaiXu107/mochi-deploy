@@ -65,7 +65,7 @@
   function pzScope() { try { return window.activePrefix ? String(window.activePrefix()) : ''; } catch (e) { return ''; } }
   function scopedKey(base) { var p = pzScope(); return p ? base + ':' + p : base; }
   var DEF = { theme:'kraft', accent:'auto', font:'serif', size:'m', wax:'', authorFont:'serif', authorSize:12.5,
-              tapeColor:'#b3392f', tapeImg:'', tapeProb:50, readingBg:'card' };
+              tapeColor:'#b3392f', tapeImg:'', tapeProb:50, readingBg:'card', readingBgImg:'' };
   var pendingTape = null;
   // 二传修复（手机端点不动）：真机上 localStorage 可能被隐私模式/配额写死。所有主题设置
   // 都改成「内存先行」——先更新内存值让界面立刻生效，再尽力写 xyStore（内存+LS+IDB）/
@@ -158,6 +158,14 @@
     try { var gs = window.xyStore ? window.xyStore('xy-home-v2') : null; if (gs) { gs.set(SET_KEY, JSON.stringify(SET_MEM)); ok = true; } } catch (e) {}
     if (!ok) { try { localStorage.setItem(SET_KEY, JSON.stringify(SET_MEM)); } catch (e) {} }
   }
+  // 自定义底板图片可能较大（只进 IDB，LS 快路径没有）：数据回填完成后重读设置再应用一次
+  try {
+    document.addEventListener('mochi-restore-done', function () {
+      SET_MEM = null;
+      try { applySettings(); } catch (e) {}
+      try { var m = document.getElementById('pz-set-mask'); if (m && m.__refresh) m.__refresh(); } catch (e2) {}
+    });
+  } catch (e) {}
   function readSet(){
     if (READ_MEM) return READ_MEM;
     var raw = null;
@@ -365,6 +373,11 @@
   + ' content: ""; position: absolute; top: 6px; left: 10px; width: 54px; height: 30px; opacity: .5; pointer-events: none;'
   + ' background: url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 54 30\'%3E%3Cg fill=\'none\' stroke=\'%23e8e4d8\' stroke-width=\'1.4\' stroke-linecap=\'round\' opacity=\'.85\'%3E%3Cpath d=\'M12 16 C12 11 6 9 4.5 12.5 C3 16 12 21 12 21 C12 21 21 16 19.5 12.5 C18 9 12 11 12 16 Z\'/%3E%3Cpath d=\'M28 8 q3 -4 6 0 q3 4 6 0\'/%3E%3Cpath d=\'M28 16 q3 -4 6 0 q3 4 6 0\'/%3E%3C/g%3E%3C/svg%3E") center / contain no-repeat; }'
   + '.pz-bg-board #tc-mask:has(.mail-paper) .mail-paper, .pz-bg-board #tc-mask.pz-has-paper .mail-paper { transform: rotate(-1.1deg); box-shadow: 0 10px 22px rgba(0,0,0,.45); }'
+  // —— 自定义：相册导入的图片铺满读信遮罩，信纸浮在上面
+  + '.pz-bg-custom #tc-mask:has(.mail-paper), .pz-bg-custom #tc-mask.pz-has-paper { background-color: rgba(20,18,16,.45); background-image: var(--pz-read-bg); background-size: cover; background-position: center; background-repeat: no-repeat; }'
+  + '.pz-bg-custom #tc-mask:has(.mail-paper) .tc-panel, .pz-bg-custom #tc-mask.pz-has-paper .tc-panel { position: relative; background: transparent; border: none; box-shadow: none; padding: 16px 14px; }'
+  + '.pz-bg-custom #tc-mask:has(.mail-paper) .mail-paper, .pz-bg-custom #tc-mask.pz-has-paper .mail-paper { box-shadow: 0 16px 34px rgba(0,0,0,.35); }'
+  + '.pz-chips label.pz-chip { display: inline-block; line-height: 1.4; }'
   + '#tc-mask .mail-paper { position: relative; background-color: var(--pz-paper); border: 1px solid var(--pz-line); border-radius: 3px; padding: clamp(13px, 4.1vw, 17px) clamp(13px, 4.1vw, 17px) clamp(11px, 3.6vw, 15px); margin-bottom: 12px; box-shadow: 0 2px 6px rgba(90,70,40,.12); }'
   + '#tc-mask .mail-paper::after { content: ""; position: absolute; inset: 4px; border: 1px dashed var(--pz-line); border-radius: 2px; pointer-events: none; }'
   + '#tc-mask .mail-paper-head { border-bottom: 1px dashed var(--pz-line); padding: 0 84px 8px 0; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: baseline; }'
@@ -494,8 +507,13 @@
     document.documentElement.classList.toggle('pz-btn-custom', !!(s.btnImg || '').trim());
     // 二传：读信底板（白卡/木桌/黑板），默认白卡（老设置里没有该字段也落到白卡）
     var rbg = s.readingBg || 'card';
+    var rbgImg = (s.readingBgImg || '').trim();
+    var customBg = rbg === 'custom' && !!rbgImg;
     document.documentElement.classList.toggle('pz-bg-desk', rbg === 'desk');
     document.documentElement.classList.toggle('pz-bg-board', rbg === 'board');
+    document.documentElement.classList.toggle('pz-bg-custom', customBg);
+    if (customBg) r.setProperty('--pz-read-bg', 'url("' + rbgImg.replace(/"/g, '%22') + '")');
+    else r.removeProperty('--pz-read-bg');
     document.documentElement.classList.toggle('pz-wax-custom', !!(s.waxImg || '').trim());
   }
 
@@ -929,7 +947,8 @@
       + '<div class="pz-sec">读信</div>'
       + '<div class="pz-set-row"><span class="pz-set-label">读信底板</span><span class="pz-chips">'
       +   '<button class="pz-chip" data-rbg="card">白卡</button><button class="pz-chip" data-rbg="desk">木桌</button><button class="pz-chip" data-rbg="board">黑板</button>'
-      + '</span></div>'
+      +   '<label class="pz-chip" data-rbg="custom" for="pz-rbg-file">自定义</label>'
+      + '</span><input type="file" id="pz-rbg-file" accept="image/*" hidden></div>'
       + '<div class="pz-sec">文字</div>'
       + '<div class="pz-set-row"><span class="pz-set-label">信件字体</span><span class="pz-chips">'
       +   '<button class="pz-chip" data-font="serif">衬线</button><button class="pz-chip" data-font="sans">黑体</button><button class="pz-chip" data-font="custom">导入</button>'
@@ -999,7 +1018,9 @@
       mask.querySelectorAll('[data-size]').forEach(function (b) { b.classList.toggle('on', b.dataset.size === s.size); });
       mask.querySelectorAll('[data-wax]').forEach(function (b) { b.classList.toggle('on', b.dataset.wax === s.wax); });
       mask.querySelectorAll('[data-afont]').forEach(function (b) { b.classList.toggle('on', b.dataset.afont === s.authorFont); });
-      mask.querySelectorAll('[data-rbg]').forEach(function (b) { b.classList.toggle('on', b.dataset.rbg === (s.readingBg || 'card')); });
+      var rbgWant = s.readingBg || 'card';
+      if (rbgWant === 'custom' && !(s.readingBgImg || '').trim()) rbgWant = 'card';
+      mask.querySelectorAll('[data-rbg]').forEach(function (b) { b.classList.toggle('on', b.dataset.rbg === rbgWant); });
       mask.querySelectorAll('[data-pztheme]').forEach(function (b) { b.classList.toggle('on', (b.dataset.pztheme || 'kraft') === (s.theme || 'kraft')); });
       var ac = mask.querySelector('#pz-accent-custom');
       var thForAc = THEMES[s.theme] || THEMES.kraft;
@@ -1041,7 +1062,11 @@
       var thb = t.closest ? t.closest('[data-pztheme]') : null;
       if (thb) { s.theme = thb.dataset.pztheme; s.accent = 'auto'; }   // 换整体主题时点缀色先跟随主题，仍可再单独选
       if (t.dataset && t.dataset.accent) s.accent = t.dataset.accent;
-      if (t.dataset && t.dataset.rbg) s.readingBg = t.dataset.rbg;
+      if (t.dataset && t.dataset.rbg) {
+        // 「自定义」是 label[for=file]：点击由浏览器直接打开相册，这里不落空底板
+        if (t.dataset.rbg === 'custom') return;
+        s.readingBg = t.dataset.rbg;
+      }
       if (t.dataset && t.dataset.font) s.font = t.dataset.font;
       if (t.dataset && t.dataset.size) s.size = t.dataset.size;
       if (t.dataset && t.dataset.wax) s.wax = t.dataset.wax;
@@ -1052,6 +1077,34 @@
     mask.addEventListener('click', function (e) {
       if (Date.now() - _pzLastTouch < 800) return;
       onSettingsPick(e.target);
+    });
+    // 相册导入自定义读信底板：压到 1400px / JPEG；仍然过大时再压一档，尽量留在 LS 快路径
+    function commitReadBg(data) {
+      var s = loadSet();
+      s.readingBgImg = data;
+      s.readingBg = 'custom';
+      saveSet(s);
+      applySettings();
+      refresh();
+    }
+    var rbgFile = mask.querySelector('#pz-rbg-file');
+    if (rbgFile) rbgFile.addEventListener('change', function () {
+      var f = this.files && this.files[0];
+      this.value = '';
+      if (!f) return;
+      if (String(f.type || '').indexOf('image/') !== 0) return;
+      if (!window.mochiImgIngest) return;
+      window.mochiImgIngest(f, { maxSide: 1400, quality: 0.80, mime: 'image/jpeg', opaque: true, tag: 'mail-read-bg' }).then(function (r) {
+        if (!r || r.st !== 'ok' || !r.data) return;
+        var data = r.data;
+        if (data.length > 190000) {
+          return window.mochiImgIngest(f, { maxSide: 1000, quality: 0.66, mime: 'image/jpeg', opaque: true, tag: 'mail-read-bg' }).then(function (r2) {
+            if (r2 && r2.st === 'ok' && r2.data) data = r2.data;
+            commitReadBg(data);
+          });
+        }
+        commitReadBg(data);
+      });
     });
     mask.querySelector('#pz-waxfile').addEventListener('change', function () {
       var f = this.files && this.files[0];
