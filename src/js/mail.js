@@ -1524,7 +1524,8 @@ window.showDeskPopup({ name: '信箱', notifyKind: 'mail', text: mailPlainDesc('
 
   // ================= v3.13.x：每周摸鱼小结（周日 18 点后生成；周一~周三补上周的） =================
   // 数据源：该联系人桌面命名空间的 fish-day-add / work-day-add（每日新增记录，与日历同源）。
-  // 以 TA 口吻寄一封「本周摸鱼小结」进信箱；标记键 fish-week-report:<M-D>（周日日期）防重发。
+  // 以 TA 口吻寄一封「本周摸鱼小结」进信箱；标记键 fish-week-report:<YYYY-M-D>（周日日期）防重发，
+  // 并以「信件列表里是否已有同一周小结」作第二道防重（标记键可能因 LS 写失败 / 回填时序丢失）。
   function fishWeekReportFor(cid) {
     // 当前桌面权威加载（mailDbReady）完成前不写——同 maybeIncomingLetterFor 守卫，
     // 防止把剥图快照当全量列表写回覆盖 IDB 带图信件
@@ -1542,16 +1543,25 @@ window.showDeskPopup({ name: '信箱', notifyKind: 'mail', text: mailPlainDesc('
     if (day === 0 && now.getHours() >= 18) {
       sun = cur;
     } else {
-      const back = ((day + 6) % 7) + 1; // 距上一个周日 1~7 天（周一=2 … 周六=7）
-      if (back < 2 || back > 4) return; // 只补最近一周：周一~周三内补发
+      const back = ((day + 6) % 7) + 1; // 距上一个周日 1~7 天（周一=1 … 周六=6，周日=7）
+      if (back < 1 || back > 3) return; // 只补最近一周：周一~周三内补发（周四起不再补）
       sun = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() - back);
     }
-    const markKey = 'fish-week-report:' + (sun.getMonth() + 1) + '-' + sun.getDate();
-    if (cs.get(markKey)) return;
-    cs.set(markKey, '1');
     const start = new Date(sun.getFullYear(), sun.getMonth(), sun.getDate() - 6);
     const startTs = start.getTime();
     const endTs = new Date(sun.getFullYear(), sun.getMonth(), sun.getDate() + 1).getTime();
+    const weekLabel = '本周（' + (start.getMonth() + 1) + '月' + start.getDate() + '日 - ' + (sun.getMonth() + 1) + '月' + sun.getDate() + '日）小结';
+    // 防重发第一道：标记键（新版带年份，并兼容旧版 M-D 标记，避免升级当周重寄）
+    const markKey = 'fish-week-report:' + sun.getFullYear() + '-' + (sun.getMonth() + 1) + '-' + sun.getDate();
+    const legacyMark = 'fish-week-report:' + (sun.getMonth() + 1) + '-' + sun.getDate();
+    if (cs.get(markKey) || cs.get(legacyMark)) return;
+    // 防重发第二道：信件列表是更稳的事实来源——标记键可能因 LS 写失败 / 数据回填时序丢失，
+    // 只要信箱里已有同一周的小结，就不再寄第二封。
+    const list = load(cid);
+    const dup = (list || []).some(function (l) {
+      return l && l.tt === '本周摸鱼小结' && String(l.content || '').indexOf(weekLabel) === 0;
+    });
+    if (dup) { try { cs.set(markKey, '1'); } catch (e) {} return; }
     // fishDayKey 日期格式 YYYY-M-D 不补零（iOS 解析需先补零——calendar/personalize 同款口径）
     const parseDay = (s) => {
       const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(s || ''));
@@ -1582,7 +1592,7 @@ window.showDeskPopup({ name: '信箱', notifyKind: 'mail', text: mailPlainDesc('
     const wdNames = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
     const totalFish = fm + ft;
     const lines = [
-      '本周（' + (start.getMonth() + 1) + '月' + start.getDate() + '日 - ' + (sun.getMonth() + 1) + '月' + sun.getDate() + '日）小结',
+      weekLabel,
       '',
       '你和我一共摸鱼 ' + totalFish + ' 点（你 +' + fm + ' · 我 +' + ft + '）。',
       totalFish > 0 ? '最会摸的一天是' + wdNames[bestIdx] + '，加了 ' + wdSum[bestIdx] + ' 点。' : '这一周还没怎么摸鱼呀，都在认真打工吗？',
@@ -1591,9 +1601,10 @@ window.showDeskPopup({ name: '信箱', notifyKind: 'mail', text: mailPlainDesc('
       '下周也偷偷一起加油呀。'
     ];
     const letter = { id: 'l_' + Date.now() + '_' + cid + '_wk', type: 'received', tt: '本周摸鱼小结', content: lines.join('\n'), tm: Date.now() };
-    const list = load(cid);
     list.unshift(letter);
     save(list, cid);
+    // 标记放在落盘之后：万一 save 抛错，下一轮还能凭「列表里有没有这封信」重试
+    try { cs.set(markKey, '1'); } catch (e) {}
     notifyMailToChat(cid, '<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>' + name + ' 寄来一份本周摸鱼小结', { mailNotice: true });
     if (cid === (window.__activeCid || 'default')) {
       updateBadge();

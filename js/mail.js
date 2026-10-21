@@ -1042,16 +1042,22 @@ let sun; // 小结所属周的周日（周一~周日算一周）
 if (day === 0 && now.getHours() >= 18) {
 sun = cur;
 } else {
-const back = ((day + 6) % 7) + 1; // 距上一个周日 1~7 天（周一=2 … 周六=7）
-if (back < 2 || back > 4) return; // 只补最近一周：周一~周三内补发
+const back = ((day + 6) % 7) + 1; // 距上一个周日 1~7 天（周一=1 … 周六=6，周日=7）
+if (back < 1 || back > 3) return; // 只补最近一周：周一~周三内补发（周四起不再补）
 sun = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() - back);
 }
-const markKey = 'fish-week-report:' + (sun.getMonth() + 1) + '-' + sun.getDate();
-if (cs.get(markKey)) return;
-cs.set(markKey, '1');
 const start = new Date(sun.getFullYear(), sun.getMonth(), sun.getDate() - 6);
 const startTs = start.getTime();
 const endTs = new Date(sun.getFullYear(), sun.getMonth(), sun.getDate() + 1).getTime();
+const weekLabel = '本周（' + (start.getMonth() + 1) + '月' + start.getDate() + '日 - ' + (sun.getMonth() + 1) + '月' + sun.getDate() + '日）小结';
+const markKey = 'fish-week-report:' + sun.getFullYear() + '-' + (sun.getMonth() + 1) + '-' + sun.getDate();
+const legacyMark = 'fish-week-report:' + (sun.getMonth() + 1) + '-' + sun.getDate();
+if (cs.get(markKey) || cs.get(legacyMark)) return;
+const list = load(cid);
+const dup = (list || []).some(function (l) {
+return l && l.tt === '本周摸鱼小结' && String(l.content || '').indexOf(weekLabel) === 0;
+});
+if (dup) { try { cs.set(markKey, '1'); } catch (e) {} return; }
 const parseDay = (s) => {
 const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(s || ''));
 if (!m) return NaN;
@@ -1081,7 +1087,7 @@ for (let i = 1; i < 7; i++) if (wdSum[i] > wdSum[bestIdx]) bestIdx = i;
 const wdNames = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 const totalFish = fm + ft;
 const lines = [
-'本周（' + (start.getMonth() + 1) + '月' + start.getDate() + '日 - ' + (sun.getMonth() + 1) + '月' + sun.getDate() + '日）小结',
+weekLabel,
 '',
 '你和我一共摸鱼 ' + totalFish + ' 点（你 +' + fm + ' · 我 +' + ft + '）。',
 totalFish > 0 ? '最会摸的一天是' + wdNames[bestIdx] + '，加了 ' + wdSum[bestIdx] + ' 点。' : '这一周还没怎么摸鱼呀，都在认真打工吗？',
@@ -1090,9 +1096,9 @@ totalFish > 0 ? '最会摸的一天是' + wdNames[bestIdx] + '，加了 ' + wdSu
 '下周也偷偷一起加油呀。'
 ];
 const letter = { id: 'l_' + Date.now() + '_' + cid + '_wk', type: 'received', tt: '本周摸鱼小结', content: lines.join('\n'), tm: Date.now() };
-const list = load(cid);
 list.unshift(letter);
 save(list, cid);
+try { cs.set(markKey, '1'); } catch (e) {}
 notifyMailToChat(cid, '<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>' + name + ' 寄来一份本周摸鱼小结', { mailNotice: true });
 if (cid === (window.__activeCid || 'default')) {
 updateBadge();
