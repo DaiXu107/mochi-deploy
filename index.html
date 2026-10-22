@@ -2635,6 +2635,16 @@ border-radius:12px; -webkit-tap-highlight-color:transparent;
 .ma-btn svg { width:20px; height:20px; }
 .ma-btn[hidden] { display:none; }
 .ma-btn:active { background:rgba(0,0,0,.07); }
+.msg-rejected .msg-bubble { position:relative; }
+.msg-reject-icon {
+position:absolute; top:50%; transform:translateY(-50%);
+width:18px; height:18px; padding:0; border:none; border-radius:50%;
+background:#fa5151; color:#fff; font-size:13px; font-weight:800; line-height:18px;
+text-align:center; cursor:pointer; z-index:2; box-shadow:0 1px 3px rgba(0,0,0,.15);
+font-family:inherit;
+}
+.msg-out .msg-reject-icon { left:-25px; }
+.msg-in .msg-reject-icon { right:-25px; }
 .msg-center { align-self:center; width:100%; display:flex; justify-content:center; padding:4px 0; }
 .msg-center-card {
 max-width:80%; text-align:center;
@@ -7987,6 +7997,8 @@ font-size: 10px; line-height: 18px; padding: 0; cursor: pointer;
 [data-theme="dark"] .set-row .txt .tag { color:#aaa; border-color:rgba(255,255,255,.14); background:rgba(255,255,255,.06); }
 [data-theme="dark"] .set-row .txt .tag:hover, [data-theme="dark"] .set-row .txt .tag:focus-visible { background:rgba(255,255,255,.1); border-color:rgba(255,255,255,.2); }
 .set-row .val { font-size:12px; color:var(--muted); }
+.set-row .cs-reject-range { flex:0 0 86px; width:86px; accent-color:var(--ink); }
+#cs-ta-reject-row .val { width:38px; text-align:right; }
 .set-row .date-val {
 font-size:12px; color:var(--muted); background:transparent;
 border:none; outline:none; font-family:inherit; padding:0; min-width:110px;
@@ -11623,7 +11635,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
            （名称+版号 / 部署时间+实时秒 / 版本检测行）收成一行；检测行随 ver-check.js 退役删除。
            data-build-ts / data-version 两属性保留：device.js 诊断、bg-keep 自检、pwa.js 旧包检测
            仍只读属性（诊断版本号走 data-version 兜底，device.js 两处缓存原生支持）。 -->
-      <div class="splash-ver" id="splash-ver" data-build-ts="1792643367745" data-version="v8.3">
+      <div class="splash-ver" id="splash-ver" data-build-ts="1792678233342" data-version="v8.3">
         <span class="sv-app">Mochi 字卡传讯 已完结停更</span>
       </div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
@@ -17523,6 +17535,10 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.5h11a1 1 0 011 1v16l-6.5-4-6.5 4v-16a1 1 0 011-1z"/></svg>
           <span>收藏</span>
         </button>
+        <button class="ma-btn ma-reject" data-act="reject" title="拒收" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>
+          <span>拒收</span>
+        </button>
         <button class="ma-btn ma-mine" data-act="retract" title="撤回" hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2"/><path d="M6 6l1 14a2 2 0 002 2h6a2 2 0 002-2l1-14"/></svg>
           <span>撤回</span>
@@ -18533,6 +18549,12 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2"/><path d="M6 6l1 14a2 2 0 002 2h6a2 2 0 002-2l1-14"/></svg></div>
           <div class="txt">允许删除联系人消息<span class="sub">点击消息气泡可弹出删除按钮，消息是真的会删除无法回复</span></div>
           <label class="toggle"><input type="checkbox" id="cs-del-ta-msg"><span class="tk"></span></label>
+        </div>
+        <div class="set-row" id="cs-ta-reject-row">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg></div>
+          <div class="txt">TA 拒收概率<span class="sub">你发出的普通消息有概率被对方拒收；0% = 从不拒收</span></div>
+          <input type="range" id="cs-ta-reject" class="cs-reject-range" min="0" max="100" step="5" value="5">
+          <div class="val" id="cs-ta-reject-val">5%</div>
         </div>
       </div>
       <!-- v3.12.x：隐藏联系人的表情包开关（默认关闭，全局生效）。开启后聊天与朋友圈的
@@ -23663,4 +23685,4 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 </body>
 </html>
 
-<!-- __MOCHI_EOF__ mvj1kr41 -->
+<!-- __MOCHI_EOF__ mvjmc1ku -->

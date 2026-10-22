@@ -2818,6 +2818,22 @@
     document.addEventListener('contact-switched', syncDtm);
   }
 
+  // 二改：TA 拒收概率（每联系人独立，0-100%，默认 0；chat.js 发送后按此概率判定）
+  const csRej = document.getElementById('cs-ta-reject');
+  if (csRej) {
+    const rejGet = () => { try { const v = parseInt(store.get('cs-ta-reject-prob') || '5', 10); return isNaN(v) ? 5 : Math.max(0, Math.min(100, v)); } catch (e) { return 5; } };
+    const syncRej = () => { const v = rejGet(); csRej.value = v; const el = document.getElementById('cs-ta-reject-val'); if (el) el.textContent = v + '%'; };
+    syncRej();
+    csRej.addEventListener('input', () => { const el = document.getElementById('cs-ta-reject-val'); if (el) el.textContent = csRej.value + '%'; });
+    csRej.addEventListener('change', () => {
+      const v = Math.max(0, Math.min(100, parseInt(csRej.value, 10) || 0));
+      try { store.set('cs-ta-reject-prob', String(v)); } catch (e) {}
+      syncRej();
+      toast('已设置：TA 拒收概率 ' + v + '%');
+    });
+    document.addEventListener('contact-switched', syncRej);
+  }
+
   // v3.11.x：「批量发送消息」开关——默认关闭，每联系人独立。开启后聊天输入栏右侧显示
   // 「批量发送」按钮：可插入表情包/图片/文字，每个项目一条消息，多条按顺序批量发送。
   // 存 cs-batch-send，chat.js 读同一键控制按钮显隐。

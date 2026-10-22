@@ -2207,6 +2207,20 @@ toast(csDtm.checked ? '已开启：点击联系人消息可在操作菜单里删
 });
 document.addEventListener('contact-switched', syncDtm);
 }
+const csRej = document.getElementById('cs-ta-reject');
+if (csRej) {
+const rejGet = () => { try { const v = parseInt(store.get('cs-ta-reject-prob') || '5', 10); return isNaN(v) ? 5 : Math.max(0, Math.min(100, v)); } catch (e) { return 5; } };
+const syncRej = () => { const v = rejGet(); csRej.value = v; const el = document.getElementById('cs-ta-reject-val'); if (el) el.textContent = v + '%'; };
+syncRej();
+csRej.addEventListener('input', () => { const el = document.getElementById('cs-ta-reject-val'); if (el) el.textContent = csRej.value + '%'; });
+csRej.addEventListener('change', () => {
+const v = Math.max(0, Math.min(100, parseInt(csRej.value, 10) || 0));
+try { store.set('cs-ta-reject-prob', String(v)); } catch (e) {}
+syncRej();
+toast('已设置：TA 拒收概率 ' + v + '%');
+});
+document.addEventListener('contact-switched', syncRej);
+}
 const csBs = document.getElementById('cs-batch-send');
 if (csBs) {
 const bsGet = () => { try { return store.get('cs-batch-send') === '1'; } catch (e) { return false; } };

@@ -6432,6 +6432,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.5h11a1 1 0 011 1v16l-6.5-4-6.5 4v-16a1 1 0 011-1z"/></svg>
           <span>收藏</span>
         </button>
+        <button class="ma-btn ma-reject" data-act="reject" title="拒收" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>
+          <span>拒收</span>
+        </button>
         <button class="ma-btn ma-mine" data-act="retract" title="撤回" hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2"/><path d="M6 6l1 14a2 2 0 002 2h6a2 2 0 002-2l1-14"/></svg>
           <span>撤回</span>
@@ -7442,6 +7446,12 @@
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2"/><path d="M6 6l1 14a2 2 0 002 2h6a2 2 0 002-2l1-14"/></svg></div>
           <div class="txt">允许删除联系人消息<span class="sub">点击消息气泡可弹出删除按钮，消息是真的会删除无法回复</span></div>
           <label class="toggle"><input type="checkbox" id="cs-del-ta-msg"><span class="tk"></span></label>
+        </div>
+        <div class="set-row" id="cs-ta-reject-row">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg></div>
+          <div class="txt">TA 拒收概率<span class="sub">你发出的普通消息有概率被对方拒收；0% = 从不拒收</span></div>
+          <input type="range" id="cs-ta-reject" class="cs-reject-range" min="0" max="100" step="5" value="5">
+          <div class="val" id="cs-ta-reject-val">5%</div>
         </div>
       </div>
       <!-- v3.12.x：隐藏联系人的表情包开关（默认关闭，全局生效）。开启后聊天与朋友圈的

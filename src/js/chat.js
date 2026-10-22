@@ -4510,7 +4510,37 @@ m.classList.remove('msg-enter'); // #1151a 摘类＝重播向量归零
 m.removeEventListener('animationend', onEnterEnd);
 });
 }
+// 二改：被拒收消息的通用标记（内容保留，气泡底部加虚线小戳）
+function decorateRejectedMsg(m, rec) {
+if (!m || !rec || !rec.rejected) return;
+m.classList.add('msg-rejected');
+var b = m.querySelector('.msg-bubble');
+if (!b || b.querySelector('.msg-reject-icon')) return;
+// 兼容旧版文字戳 / 淡化包裹：拆掉，只留微信式红色感叹号
+var oldTag = b.querySelector('.msg-reject-tag'); if (oldTag) oldTag.remove();
+var oldDim = b.querySelector('.msg-reject-dim');
+if (oldDim) {
+while (oldDim.firstChild) b.insertBefore(oldDim.firstChild, oldDim);
+oldDim.remove();
+}
+var btn = document.createElement('button');
+btn.type = 'button';
+btn.className = 'msg-reject-icon';
+btn.textContent = '!';
+btn.title = rec.rejected === 'ta' ? '对方拒收了这条消息' : '你已拒收了这条消息';
+btn.addEventListener('click', function (e) {
+e.preventDefault();
+e.stopPropagation();
+try { toast(btn.title); } catch (e2) {}
+});
+b.appendChild(btn);
+}
 function appendMsg(m) {
+try {
+const ri = Number(m.dataset.idx);
+const rr = (ri >= 0 && msgs[ri]) ? msgs[ri] : null;
+if (rr && rr.rejected) decorateRejectedMsg(m, rr);
+} catch (e) {}
 if (!batchRendering && chatVisible() && !document.hidden) enterMsgOnce(m); // #1151b · #1181a：闸口从「页面没被切走」补成「用户真的看得见」——浏览器后台期 chatVisible() 仍为真，而 #913 的暂停类会把这些气泡的入场动画冻在第 0 帧（fill:both＝opacity:0、动画永不结束、类永不摘除），攒一整段后台后在回前台那一瞬集体补播＝用户实报「切回来记录弹跳闪一下才恢复正常」
 if (batchDefer) {
 const ix = Number(m.dataset.idx);
@@ -8417,6 +8447,26 @@ window.__replyTurnKeys = function () { try { return Object.keys(replyTurns); } c
 // 关＝mochi 原机制一字不变（每发一条各排一批，且受「总量限流」计数与拦）；
 // 开＝nova 式并轮（每个联系人各排一轮、骰子掷在轮上，且**不走总量限流**，见 rateLimitFull 的 turn-en 早退）。
 function scheduleReply() {
+// 二改：TA 拒收概率——只作用于普通消息（最后一条我方消息，不含互动卡片/系统记录）。
+// 命中后把该条标记为「对方拒收」，本次不再进入回复链。
+syncLastMineText();
+try {
+const lm = (lastMineIdx >= 0) ? msgs[lastMineIdx] : null;
+if (lm && lm.side === 'out' && !lm.special && !lm.rejected) {
+const p = parseInt(store.get('cs-ta-reject-prob') || '5', 10) || 0;
+if (p > 0 && Math.random() * 100 < p) {
+lm.rejected = 'ta';
+lm.rejectedAt = Date.now();
+saveMsgs();
+try {
+const node = body.querySelector('.msg[data-idx="' + lastMineIdx + '"]');
+if (node) decorateRejectedMsg(node, lm); else renderWindow(true);
+} catch (e) {}
+try { toast('对方拒收了这条消息'); } catch (e) {}
+return;
+}
+}
+} catch (e) {}
 if (Number(cfg()['turn-en']) === 1) return scheduleReplyTurn();
 return scheduleReplyMochi();
 }
@@ -13722,6 +13772,8 @@ let delEn = false;
 try { delEn = store.get('cs-del-ta-msg') === '1'; } catch (e) {}
 delBtn.hidden = !(delEn && activeSide === 'in');
 }
+const rejBtn = msgActions.querySelector('.ma-reject');
+if (rejBtn) rejBtn.hidden = !(activeSide === 'in' && _qr && !_qr.special && !_qr.rejected);
 msgActions.hidden = false;
 // FIX 2026-09-16 #642 打开即挂「跟随锚点」并立即定位一次：定位算法与旧块一致（上方居中、
 // 放不下换下方、clamp 视口内），此后键盘开合动画/vv 平移/贴底滚动/图片撑高都会实时跟随气泡
@@ -13941,6 +13993,16 @@ syncLastMineText(); // v3.6.x：编辑后 TA 引用/收藏不再拿旧文本
 const b = editEl && editEl.querySelector('.msg-bubble');
 if (b) b.innerHTML = '<span style="opacity:.85">' + escTxt(val) + '</span>';
 });
+}
+closeMsgActions();
+} else if (act === 'reject') {
+// 二改：我拒收这条联系人消息（只对普通消息开放；内容保留但变淡并加戳）
+if (rec && rec.side === 'in' && !rec.special && !rec.rejected) {
+rec.rejected = 'me';
+rec.rejectedAt = Date.now();
+saveMsgs();
+try { if (activeMsgEl) decorateRejectedMsg(activeMsgEl, rec); } catch (e) {}
+toast('已拒收这条消息');
 }
 closeMsgActions();
 } else if (act === 'del') {
