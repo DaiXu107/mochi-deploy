@@ -564,6 +564,14 @@
     const avShape = store.get('cs-av-shape') || 'circle';
     setVar(root, '--msg-av-radius', avShape === 'square' ? '10px' : '50%');
     set('cs-av-shape-val', avShape === 'square' ? '方形' : '圆形');
+    // 二改：礼物卡片样式（classic 经典白卡 / cracker 苏打饼干）
+    // body 类驱动，纯 CSS 换皮——已渲染的礼物卡即时变化，不用重画聊天
+    const giftCardStyle = store.get('cs-gift-card-style') === 'cracker' ? 'cracker' : 'classic';
+    const wantGiftCls = giftCardStyle === 'cracker';
+    if (document.body.classList.contains('cs-gift-cracker') !== wantGiftCls) {
+      document.body.classList.toggle('cs-gift-cracker', wantGiftCls);
+    }
+    set('cs-gift-card-val', wantGiftCls ? '苏打饼干' : '经典白卡');
     // 时间轴样式：body 上挂 cs-time-* 类（CSS 控制布局，消息结构不变），
     // 移除旧类后挂新类——覆盖收藏页（#page-fav 是 body 后代），收藏项无需改动
     const ts = store.get('cs-time-style') || 'under-av';
@@ -1146,6 +1154,26 @@
           { label: '方形', value: 'square' }
         ],
         pill: store.get('cs-av-shape') || 'circle',
+        noInput: true
+      });
+    });
+  }
+  // 二改：礼物卡片样式（经典白卡 / 苏打饼干），胶囊选择即时生效
+  const csGiftCard = row('cs-gift-card');
+  if (csGiftCard) {
+    csGiftCard.addEventListener('click', () => {
+      if (!window.openModal) return;
+      const cur = store.get('cs-gift-card-style') === 'cracker' ? 'cracker' : 'classic';
+      window.openModal('礼物卡片样式', '', (v) => {
+        store.set('cs-gift-card-style', v === 'cracker' ? 'cracker' : 'classic');
+        applySettings();
+        toast(v === 'cracker' ? '已换成苏打饼干礼物卡' : '已换回经典白卡');
+      }, {
+        pills: [
+          { label: '经典白卡', value: 'classic' },
+          { label: '苏打饼干', value: 'cracker' }
+        ],
+        pill: cur,
         noInput: true
       });
     });
@@ -2818,20 +2846,17 @@
     document.addEventListener('contact-switched', syncDtm);
   }
 
-  // 二改：TA 拒收概率（每联系人独立，0-100%，默认 0；chat.js 发送后按此概率判定）
-  const csRej = document.getElementById('cs-ta-reject');
-  if (csRej) {
-    const rejGet = () => { try { const v = parseInt(store.get('cs-ta-reject-prob') || '5', 10); return isNaN(v) ? 5 : Math.max(0, Math.min(100, v)); } catch (e) { return 5; } };
-    const syncRej = () => { const v = rejGet(); csRej.value = v; const el = document.getElementById('cs-ta-reject-val'); if (el) el.textContent = v + '%'; };
-    syncRej();
-    csRej.addEventListener('input', () => { const el = document.getElementById('cs-ta-reject-val'); if (el) el.textContent = csRej.value + '%'; });
-    csRej.addEventListener('change', () => {
-      const v = Math.max(0, Math.min(100, parseInt(csRej.value, 10) || 0));
-      try { store.set('cs-ta-reject-prob', String(v)); } catch (e) {}
-      syncRej();
-      toast('已设置：TA 拒收概率 ' + v + '%');
+  // 二改：拒收功能总开关（每联系人独立，默认开启；各项概率在回复设置·聊天里调）
+  const csRejEn = document.getElementById('cs-reject-en');
+  if (csRejEn) {
+    const rejEnGet = () => { try { return store.get('cs-reject-en') !== '0'; } catch (e) { return true; } };
+    const syncRejEn = () => { csRejEn.checked = rejEnGet(); };
+    syncRejEn();
+    csRejEn.addEventListener('change', () => {
+      try { store.set('cs-reject-en', csRejEn.checked ? '1' : '0'); } catch (e) {}
+      toast(csRejEn.checked ? '已开启拒收功能' : '已关闭拒收功能');
     });
-    document.addEventListener('contact-switched', syncRej);
+    document.addEventListener('contact-switched', syncRejEn);
   }
 
   // v3.11.x：「批量发送消息」开关——默认关闭，每联系人独立。开启后聊天输入栏右侧显示

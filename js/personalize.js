@@ -9265,6 +9265,8 @@ else { document.addEventListener('mochi-restore-done', function h() { document.r
 const callSettingsRow = document.getElementById('row-call-settings');
 if (callSettingsRow) {
 callSettingsRow.addEventListener('click', () => {
+const hub = document.getElementById('page-settings-hub');
+window.__settingsOrigin = (hub && !hub.hidden) ? 'page-settings-hub' : 'page-setting';
 document.querySelectorAll('.page').forEach(p => p.hidden = true);
 const csPage = document.getElementById('page-call-settings');
 if (csPage) csPage.hidden = false;

@@ -1,5 +1,26 @@
 /* ===== 设置页 ===== */
 .set-title { font-size:22px; font-weight:700; padding:4px 2px 16px; letter-spacing:1px; }
+/* 二改：设置中心 / 经典设置 标题行——左侧退出键、右侧「经典设置 / 设置中心」切换入口。
+   两页是平级的两个入口，不再是「新页 + 藏起来的旧页」。 */
+.set-title.sh-title-row { display:flex; align-items:center; gap:6px; }
+.set-title.sh-title-row > span { flex:1 1 auto; min-width:0; }
+.set-back {
+  flex:0 0 auto; width:30px; height:30px; padding:0; border:none; border-radius:50%;
+  background:transparent; color:var(--ink,#111); display:flex; align-items:center; justify-content:center;
+  cursor:pointer; margin-left:-6px;
+}
+.set-back svg { width:20px; height:20px; }
+.set-back:active { background:rgba(0,0,0,.06); }
+.set-switch {
+  flex:0 0 auto; padding:5px 11px; border-radius:999px; font-size:11.5px; letter-spacing:0;
+  border:1px solid rgba(0,0,0,.12); background:transparent; color:var(--muted,#7a7a7a);
+  font-family:inherit; font-weight:600; cursor:pointer; line-height:1.25;
+}
+.set-switch:active { background:rgba(0,0,0,.06); }
+[data-theme="dark"] .set-back { color:var(--ink,#e8e8ee); }
+[data-theme="dark"] .set-back:active { background:rgba(255,255,255,.08); }
+[data-theme="dark"] .set-switch { border-color:rgba(255,255,255,.18); color:var(--muted,#a5a5b0); }
+[data-theme="dark"] .set-switch:active { background:rgba(255,255,255,.08); }
 .set-group { border-radius:20px; overflow:hidden; margin-bottom:12px; }
 /* 手机桌面美化页分组小标题（小横栏竖条说明） */
 .cg-title { display:flex; align-items:center; gap:7px; margin:16px 6px 7px; font-size:11.5px; font-weight:600; color:var(--muted,#999); letter-spacing:.6px; }
@@ -56,8 +77,6 @@
 [data-theme="dark"] .set-row .txt .tag { color:#aaa; border-color:rgba(255,255,255,.14); background:rgba(255,255,255,.06); }
 [data-theme="dark"] .set-row .txt .tag:hover, [data-theme="dark"] .set-row .txt .tag:focus-visible { background:rgba(255,255,255,.1); border-color:rgba(255,255,255,.2); }
 .set-row .val { font-size:12px; color:var(--muted); }
-.set-row .cs-reject-range { flex:0 0 86px; width:86px; accent-color:var(--ink); }
-#cs-ta-reject-row .val { width:38px; text-align:right; }
 .set-row .date-val {
   font-size:12px; color:var(--muted); background:transparent;
   border:none; outline:none; font-family:inherit; padding:0; min-width:110px;

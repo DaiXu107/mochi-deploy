@@ -16,6 +16,96 @@
 .msg-gift-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; }
 .mg-side { font-size: 11px; color: #b5b5b5; letter-spacing: 0.5px; }
 .msg-gift-price { font-size: 11px; color: #c8c8c8; letter-spacing: 0.3px; }
+/* ===== 二改：苏打饼干礼物卡（可选皮肤，聊天设置 → 美化 → 礼物卡片）=====
+   苏打饼干（saltine）的辨识点：烤色渐变、波浪褶边、规则气孔、盐粒。
+   形状由 template.html 里的 #giftCrackerClip（objectBoundingBox）裁切，随卡片宽高缩放；
+   颜色 / 气孔 / 盐粒全部用 CSS 渐变，无额外图片请求。body 挂 .cs-gift-cracker 时生效，
+   按联系人保存（cs-gift-card-style），切桌面即时换回。 */
+.cs-gift-cracker .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) {
+  position: relative;
+  padding: 24px 20px 16px;
+  border: 0;
+  border-radius: 0;
+  background-color: #f6e5a8;
+  background-image:
+    /* 受光面 + 很淡的烤边 */
+    radial-gradient(ellipse at 32% 16%, rgba(255,253,235,.65), transparent 52%),
+    radial-gradient(ellipse at 78% 88%, rgba(205,158,62,.16), transparent 60%),
+    linear-gradient(158deg, #fff8d2 0%, #f8e6a4 48%, #efd07e 100%);
+  background-size: 100% 100%, 100% 100%, 100% 100%;
+  background-position: 0 0, 0 0, 0 0;
+  box-shadow:
+    inset 0 0 0 2px rgba(190,146,55,.16),
+    inset 0 0 28px rgba(190,146,55,.12);
+  clip-path: url(#giftCrackerClip);
+  filter: drop-shadow(0 7px 12px rgba(120,80,30,.24));
+  color: #60411f;
+}
+/* 气孔单独放在内层（inset 让它们离波浪边远一点），比铺满整张卡更像真的苏打饼干 */
+.cs-gift-cracker .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card)::before {
+  content: "";
+  position: absolute;
+  inset: 20px 22px;
+  z-index: -1; /* 气孔只在卡面之上、所有内容之下，不再压到 emoji 圈和文字 */
+  pointer-events: none;
+  border-radius: 18px;
+  background-image: radial-gradient(circle, rgba(170,122,40,.30) 0 1.9px, transparent 2.5px);
+  background-size: 34px 31px;
+  background-position: 9px 7px;
+}
+.cs-gift-cracker .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .msg-gift-emoji {
+  position: relative;
+  z-index: 1; /* 圆圈的层级高于气孔层，气孔不会压到圆上 */
+  background: #fdf4d8 !important;
+  border: 2px solid #d8b171;
+  box-shadow: inset 0 2px 6px rgba(255,255,255,.45), 0 3px 7px rgba(150,105,40,.16);
+  color: #5a3b19;
+}
+.cs-gift-cracker .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .msg-gift-name {
+  color: #553816;
+  letter-spacing: 2px;
+  text-shadow: 0 1px 0 rgba(255,255,255,.45);
+}
+.cs-gift-cracker .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .msg-gift-divider {
+  width: 56px;
+  height: 1px;
+  background: rgba(150,108,40,.40);
+}
+.cs-gift-cracker .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .msg-gift-wish { color: #7a5528; }
+.cs-gift-cracker .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .mg-side { color: #96703f; }
+.cs-gift-cracker .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .msg-gift-price { color: #a37a40; }
+.cs-gift-cracker .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .msg-gift-claim {
+  background: #6a4520;
+  color: #fff4dd;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 2px 0 rgba(92,58,20,.22);
+}
+.cs-gift-cracker .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .msg-gift-reply {
+  border-color: rgba(122,82,36,.42);
+  color: #6a4520;
+  background: rgba(255,250,235,.22);
+}
+.cs-gift-cracker .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .msg-gift-got { color: #9a7442; }
+.cs-gift-cracker .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .msg-gift-repl { border-top-color: rgba(138,90,38,.24); }
+.cs-gift-cracker .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .mg-repl-who { color: #9a7442; }
+.cs-gift-cracker .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .mg-repl-tx { color: #60411f; }
+.cs-gift-cracker .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .msg-fav-heart {
+  background: rgba(255,250,235,.28);
+  color: #8a6234;
+}
+/* TA 的心愿卡也穿同一件饼干外衣（它同为礼物卡；吧台菜肴卡 .msg-dish-card 不受影响） */
+.cs-gift-cracker .msg-wish-card { padding-top: 16px; }
+.cs-gift-cracker .msg-wish-card .msg-wish-tag {
+  background: rgba(255,250,235,.34);
+  color: #6a4520;
+  border: 1px solid rgba(176,132,48,.35);
+}
+.cs-gift-cracker .msg-wish-card .msg-wish-buy {
+  background: #6a4520;
+  color: #fff4dd;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 2px 0 rgba(92,58,20,.22);
+}
+.cs-gift-cracker .msg-wish-card .msg-wish-done { color: #9a7442; }
+
 /* ===== #985 礼物卡的【领取】/【回复】与卡片上的回复行（用户 2026-09-21 直派）=====
    动作区沿用 #660 心愿卡的主按钮尺度（同圆角/同高度）：领取是实心主按钮、回复是描边次按钮；
    回复行是卡片内的小字（左对齐，因为它是「对话」而不是卡片信息）。 */

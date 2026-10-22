@@ -378,6 +378,12 @@ set('cs-in-ink-val', inInk === DEF.inInk ? '默认 ' + DEF.inInk : inInk);
 const avShape = store.get('cs-av-shape') || 'circle';
 setVar(root, '--msg-av-radius', avShape === 'square' ? '10px' : '50%');
 set('cs-av-shape-val', avShape === 'square' ? '方形' : '圆形');
+const giftCardStyle = store.get('cs-gift-card-style') === 'cracker' ? 'cracker' : 'classic';
+const wantGiftCls = giftCardStyle === 'cracker';
+if (document.body.classList.contains('cs-gift-cracker') !== wantGiftCls) {
+document.body.classList.toggle('cs-gift-cracker', wantGiftCls);
+}
+set('cs-gift-card-val', wantGiftCls ? '苏打饼干' : '经典白卡');
 const ts = store.get('cs-time-style') || 'under-av';
 const tsLabel = (TIME_STYLES.find(s => s.value === ts) || {}).label || '头像下方';
 const wantTimeCls = ts === 'under-av' ? '' : 'cs-time-' + ts;
@@ -840,6 +846,25 @@ pills: [
 { label: '方形', value: 'square' }
 ],
 pill: store.get('cs-av-shape') || 'circle',
+noInput: true
+});
+});
+}
+const csGiftCard = row('cs-gift-card');
+if (csGiftCard) {
+csGiftCard.addEventListener('click', () => {
+if (!window.openModal) return;
+const cur = store.get('cs-gift-card-style') === 'cracker' ? 'cracker' : 'classic';
+window.openModal('礼物卡片样式', '', (v) => {
+store.set('cs-gift-card-style', v === 'cracker' ? 'cracker' : 'classic');
+applySettings();
+toast(v === 'cracker' ? '已换成苏打饼干礼物卡' : '已换回经典白卡');
+}, {
+pills: [
+{ label: '经典白卡', value: 'classic' },
+{ label: '苏打饼干', value: 'cracker' }
+],
+pill: cur,
 noInput: true
 });
 });
@@ -2207,19 +2232,16 @@ toast(csDtm.checked ? '已开启：点击联系人消息可在操作菜单里删
 });
 document.addEventListener('contact-switched', syncDtm);
 }
-const csRej = document.getElementById('cs-ta-reject');
-if (csRej) {
-const rejGet = () => { try { const v = parseInt(store.get('cs-ta-reject-prob') || '5', 10); return isNaN(v) ? 5 : Math.max(0, Math.min(100, v)); } catch (e) { return 5; } };
-const syncRej = () => { const v = rejGet(); csRej.value = v; const el = document.getElementById('cs-ta-reject-val'); if (el) el.textContent = v + '%'; };
-syncRej();
-csRej.addEventListener('input', () => { const el = document.getElementById('cs-ta-reject-val'); if (el) el.textContent = csRej.value + '%'; });
-csRej.addEventListener('change', () => {
-const v = Math.max(0, Math.min(100, parseInt(csRej.value, 10) || 0));
-try { store.set('cs-ta-reject-prob', String(v)); } catch (e) {}
-syncRej();
-toast('已设置：TA 拒收概率 ' + v + '%');
+const csRejEn = document.getElementById('cs-reject-en');
+if (csRejEn) {
+const rejEnGet = () => { try { return store.get('cs-reject-en') !== '0'; } catch (e) { return true; } };
+const syncRejEn = () => { csRejEn.checked = rejEnGet(); };
+syncRejEn();
+csRejEn.addEventListener('change', () => {
+try { store.set('cs-reject-en', csRejEn.checked ? '1' : '0'); } catch (e) {}
+toast(csRejEn.checked ? '已开启拒收功能' : '已关闭拒收功能');
 });
-document.addEventListener('contact-switched', syncRej);
+document.addEventListener('contact-switched', syncRejEn);
 }
 const csBs = document.getElementById('cs-batch-send');
 if (csBs) {

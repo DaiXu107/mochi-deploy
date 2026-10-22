@@ -332,6 +332,8 @@
   function doNav(el) {
     var pageId = el.getAttribute('data-nav');
     if (!pageId) return;
+    // 二改：记住是「设置中心」跳出去的，子页返回时别再一律落到经典设置页
+    window.__settingsOrigin = 'page-settings-hub';
     if (!go(pageId)) { toast('这个入口暂时打不开'); return; }
     var tab = el.getAttribute('data-tab');
     if (tab) { var t = document.querySelector('#set-tabs .them-tab[data-tab="' + tab + '"]'); if (t) t.click(); }
@@ -441,6 +443,20 @@
       setTimeout(render, 0);
     });
   }
+
+  // 二改：设置中心 ⇄ 经典设置 的双向切换入口 + 经典设置页的退出键
+  var switchClassic = document.getElementById('set-switch-classic');
+  if (switchClassic) {
+    switchClassic.addEventListener('click', function () {
+      window.__settingsOrigin = 'page-settings-hub';
+      go('page-setting');
+    });
+  }
+  var backToHub = function () { go('page-settings-hub'); };
+  var setBack = document.getElementById('set-back');
+  if (setBack) setBack.addEventListener('click', backToHub);
+  var switchHub = document.getElementById('set-switch-hub');
+  if (switchHub) switchHub.addEventListener('click', backToHub);
 
   render();
 })();

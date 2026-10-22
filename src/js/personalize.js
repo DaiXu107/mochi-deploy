@@ -11377,6 +11377,9 @@ bindAdjDrag(headTop, false); // #1534：拖标题行移动面板（与桌面美�
   const callSettingsRow = document.getElementById('row-call-settings');
   if (callSettingsRow) {
     callSettingsRow.addEventListener('click', () => {
+      // 二改：返回时回到进来之前的那一页（设置中心 / 经典设置）
+      const hub = document.getElementById('page-settings-hub');
+      window.__settingsOrigin = (hub && !hub.hidden) ? 'page-settings-hub' : 'page-setting';
       document.querySelectorAll('.page').forEach(p => p.hidden = true);
       const csPage = document.getElementById('page-call-settings');
       if (csPage) csPage.hidden = false;

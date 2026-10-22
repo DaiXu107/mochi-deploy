@@ -14,6 +14,8 @@
     'bar-cold-period': 15,
     'rs-min': 1, 'rs-max': 40,
     'reply-min': 1, 'reply-max': 2,
+    // 二改：聊天互相拒收（概率从聊天设置迁到回复设置·聊天 tab）
+    'ta-reject-prob': 5, 'ta-reject-undo-prob': 50,
     // #1180 TA 消息总量限流（用户直派「回复条数只管基础回复，撤回补发/逐卡连发/心情分享/红包捎话/
     // 主动发送全都绕过上限，导致聊天里联系人发送的消息非常多」）——rl-en 总开关（**默认关闭**＝行为
     // 与改造前一字不变）、rl-win 窗口分钟数、rl-max 窗口内最多条数。生效见 chat.js rateLimitFull
@@ -447,6 +449,16 @@
       try { if (window.rescheduleAutoSend) window.rescheduleAutoSend(); } catch (e) {}
     }
   };
+
+  // 二改：旧版拒收概率存在聊天设置的 per-contact 键 cs-ta-reject-prob；
+  // 首次加载回复设置时迁到 reply-ta-reject-prob（新键缺失才迁，不覆盖用户已改的新值）
+  try {
+    // 注意：getCfg() 会用 DEFAULTS 填满所有键，永远读不到「未设置」——必须查原始存储
+    const _raw = ls.get('reply-ta-reject-prob');
+    if ((_raw === null || _raw === undefined || _raw === '') && ls.get('cs-ta-reject-prob')) {
+      window.saveReplyCfg('ta-reject-prob', ls.get('cs-ta-reject-prob'));
+    }
+  } catch (e) {}
 
   // ---- 设置页 UI ----
   function showPage(id) {
@@ -1800,6 +1812,9 @@
   if (genRow) {
     genRow.addEventListener('click', () => {
       syncUI();
+      // 二改：从设置中心还是经典设置进来，返回就回哪一页
+      const hub = document.getElementById('page-settings-hub');
+      window.__settingsOrigin = (hub && !hub.hidden) ? 'page-settings-hub' : 'page-setting';
       showPage('page-reply-settings');
     });
   }
@@ -1821,18 +1836,19 @@
   document.querySelectorAll('#page-reply-settings .rps-tab').forEach(tab => {
     tab.addEventListener('click', () => rpsTab(tab.dataset.rps));
   });
-  // 返回：设置页
+  // 返回：回到进来之前的那一页（设置中心 / 经典设置），不再一律落到经典设置
+  const settingsOrigin = () => window.__settingsOrigin === 'page-settings-hub' ? 'page-settings-hub' : 'page-setting';
   const replyBack = document.getElementById('reply-back');
   if (replyBack) {
     replyBack.addEventListener('click', () => {
-      showPage('page-setting');
+      showPage(settingsOrigin());
     });
   }
   // 通话设置返回
   const calsBack = document.getElementById('cals-back');
   if (calsBack) {
     calsBack.addEventListener('click', () => {
-      showPage('page-setting');
+      showPage(settingsOrigin());
     });
   }
   // v3.20.x：跨桌面查岗默认概率 8% → 2% 的旧值迁移——把已写盘的旧默认 8 强改成 2。

@@ -4511,6 +4511,47 @@ m.removeEventListener('animationend', onEnterEnd);
 });
 }
 // 二改：被拒收消息的通用标记（内容保留，气泡底部加虚线小戳）
+// 二改：撤销拒收——清掉标记、移除感叹号；若刚撤销的是最后一条我方消息，重新进入回复链
+//（skipReject=true 防止刚撤销又被同一概率拒一次）
+function undoRejectedMsg(m, rec, doneMsg) {
+if (!rec || !rec.rejected) return;
+var wasLastMine = rec.side === 'out' && lastMineIdx >= 0 && msgs[lastMineIdx] === rec;
+try { delete rec.rejected; delete rec.rejectedAt; } catch (e) {}
+saveMsgs();
+// 600ms 等待期间可能重渲过，节点断了就按 data-idx 找回屏上那一格
+try {
+if (m && !m.isConnected) {
+const idx0 = Number(m.dataset && m.dataset.idx);
+const live = (idx0 >= 0) ? body.querySelector('.msg[data-idx="' + idx0 + '"]') : null;
+if (live) m = live;
+}
+} catch (e) {}
+if (m) {
+m.classList.remove('msg-rejected');
+var ic = m.querySelector('.msg-reject-icon'); if (ic) ic.remove();
+}
+toast(doneMsg || '已撤销拒收');
+if (wasLastMine) { try { scheduleReply(true); } catch (e) {} }
+}
+// 我方消息被对方拒收后，点感叹号＝向 TA 申请撤回；TA 按「同意撤销拒收概率」决定
+function requestUndoRejectedMsg(m, rec) {
+if (!rec || rec.rejected !== 'ta') return;
+var p = 50;
+try {
+const v = cfg()['ta-reject-undo-prob'];
+const n = parseInt(v, 10);
+if (!isNaN(n)) p = Math.max(0, Math.min(100, n));
+} catch (e) {}
+try { toast('已向 TA 发送撤销申请…'); } catch (e) {}
+setTimeout(function () {
+if (!rec.rejected) return;
+if (Math.random() * 100 < p) {
+undoRejectedMsg(m, rec, 'TA 同意了撤销');
+} else {
+try { toast('TA 没有同意撤销，拒收保留'); } catch (e) {}
+}
+}, 600);
+}
 function decorateRejectedMsg(m, rec) {
 if (!m || !rec || !rec.rejected) return;
 m.classList.add('msg-rejected');
@@ -4527,11 +4568,27 @@ var btn = document.createElement('button');
 btn.type = 'button';
 btn.className = 'msg-reject-icon';
 btn.textContent = '!';
-btn.title = rec.rejected === 'ta' ? '对方拒收了这条消息' : '你已拒收了这条消息';
+btn.title = rec.rejected === 'ta' ? '对方拒收了这条消息（点击申请撤销）' : '你已拒收了这条消息（点击撤销）';
 btn.addEventListener('click', function (e) {
 e.preventDefault();
 e.stopPropagation();
-try { toast(btn.title); } catch (e2) {}
+if (!window.openModal) {
+if (rec.rejected === 'ta') requestUndoRejectedMsg(m, rec); else undoRejectedMsg(m, rec);
+return;
+}
+if (rec.rejected === 'ta') {
+var ctl = window.openModal('向 TA 申请撤销这次拒收？', '', function () { requestUndoRejectedMsg(m, rec); }, {
+noInput: true,
+staticText: '对方拒收了这条消息。向 TA 申请撤回后，TA 有一定概率同意；不同意则拒收保留。'
+});
+if (ctl && ctl.okText) ctl.okText('发送申请');
+} else {
+var ctl2 = window.openModal('撤销这次拒收？', '', function () { undoRejectedMsg(m, rec); }, {
+noInput: true,
+staticText: '你拒收了这条消息。撤销后消息恢复正常显示。'
+});
+if (ctl2 && ctl2.okText) ctl2.okText('撤销拒收');
+}
 });
 b.appendChild(btn);
 }
@@ -8446,14 +8503,23 @@ window.__replyTurnKeys = function () { try { return Object.keys(replyTurns); } c
 // 回复机制两条并存，由设置里「连发的算一轮」（turn-en，**默认关闭**）选一条：
 // 关＝mochi 原机制一字不变（每发一条各排一批，且受「总量限流」计数与拦）；
 // 开＝nova 式并轮（每个联系人各排一轮、骰子掷在轮上，且**不走总量限流**，见 rateLimitFull 的 turn-en 早退）。
-function scheduleReply() {
+function scheduleReply(skipReject) {
 // 二改：TA 拒收概率——只作用于普通消息（最后一条我方消息，不含互动卡片/系统记录）。
-// 命中后把该条标记为「对方拒收」，本次不再进入回复链。
+// 命中后把该条标记为「对方拒收」，本次不再进入回复链；skipReject 供撤销拒收后重排回复时跳过掷骰。
 syncLastMineText();
+if (!skipReject) {
+let rejectEnabled = true;
+try { rejectEnabled = store.get('cs-reject-en') !== '0'; } catch (e) {}
+if (rejectEnabled) {
 try {
 const lm = (lastMineIdx >= 0) ? msgs[lastMineIdx] : null;
 if (lm && lm.side === 'out' && !lm.special && !lm.rejected) {
-const p = parseInt(store.get('cs-ta-reject-prob') || '5', 10) || 0;
+// 概率从回复设置·聊天 tab 读（旧版 per-contact 键 cs-ta-reject-prob 作为兼容回退）
+let pv = cfg()['ta-reject-prob'];
+if (pv === undefined || pv === null || pv === '') {
+try { pv = store.get('cs-ta-reject-prob'); } catch (e) {}
+}
+const p = (pv === undefined || pv === null || pv === '') ? 5 : Math.max(0, Math.min(100, parseInt(pv, 10) || 0));
 if (p > 0 && Math.random() * 100 < p) {
 lm.rejected = 'ta';
 lm.rejectedAt = Date.now();
@@ -8467,6 +8533,8 @@ return;
 }
 }
 } catch (e) {}
+}
+}
 if (Number(cfg()['turn-en']) === 1) return scheduleReplyTurn();
 return scheduleReplyMochi();
 }
@@ -13773,7 +13841,9 @@ try { delEn = store.get('cs-del-ta-msg') === '1'; } catch (e) {}
 delBtn.hidden = !(delEn && activeSide === 'in');
 }
 const rejBtn = msgActions.querySelector('.ma-reject');
-if (rejBtn) rejBtn.hidden = !(activeSide === 'in' && _qr && !_qr.special && !_qr.rejected);
+let rejectEnabled = true;
+try { rejectEnabled = store.get('cs-reject-en') !== '0'; } catch (e) {}
+if (rejBtn) rejBtn.hidden = !(rejectEnabled && activeSide === 'in' && _qr && !_qr.special && !_qr.rejected);
 msgActions.hidden = false;
 // FIX 2026-09-16 #642 打开即挂「跟随锚点」并立即定位一次：定位算法与旧块一致（上方居中、
 // 放不下换下方、clamp 视口内），此后键盘开合动画/vv 平移/贴底滚动/图片撑高都会实时跟随气泡

@@ -315,6 +315,7 @@ body.scrollTop = keep;
 function doNav(el) {
 var pageId = el.getAttribute('data-nav');
 if (!pageId) return;
+window.__settingsOrigin = 'page-settings-hub';
 if (!go(pageId)) { toast('这个入口暂时打不开'); return; }
 var tab = el.getAttribute('data-tab');
 if (tab) { var t = document.querySelector('#set-tabs .them-tab[data-tab="' + tab + '"]'); if (t) t.click(); }
@@ -415,6 +416,18 @@ document.querySelectorAll('.tabbar .tab').forEach(function (t) { t.classList.rem
 setTimeout(render, 0);
 });
 }
+var switchClassic = document.getElementById('set-switch-classic');
+if (switchClassic) {
+switchClassic.addEventListener('click', function () {
+window.__settingsOrigin = 'page-settings-hub';
+go('page-setting');
+});
+}
+var backToHub = function () { go('page-settings-hub'); };
+var setBack = document.getElementById('set-back');
+if (setBack) setBack.addEventListener('click', backToHub);
+var switchHub = document.getElementById('set-switch-hub');
+if (switchHub) switchHub.addEventListener('click', backToHub);
 render();
 })();
 if (window.__mochiLoaded) window.__mochiLoaded.push("settings-hub.js");

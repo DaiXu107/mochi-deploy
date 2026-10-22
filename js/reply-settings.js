@@ -7,6 +7,7 @@ const DEFAULTS = {
 'bar-cold-period': 15,
 'rs-min': 1, 'rs-max': 40,
 'reply-min': 1, 'reply-max': 2,
+'ta-reject-prob': 5, 'ta-reject-undo-prob': 50,
 'rl-en': 0, 'rl-win': 5, 'rl-max': 15,
 'turn-en': 0,
 'rn-prob': 20, 'touch-prob': 5,
@@ -218,6 +219,12 @@ k === 'as-count-min' || k === 'as-count-max' || k === 'dnd-en') {
 try { if (window.rescheduleAutoSend) window.rescheduleAutoSend(); } catch (e) {}
 }
 };
+try {
+const _raw = ls.get('reply-ta-reject-prob');
+if ((_raw === null || _raw === undefined || _raw === '') && ls.get('cs-ta-reject-prob')) {
+window.saveReplyCfg('ta-reject-prob', ls.get('cs-ta-reject-prob'));
+}
+} catch (e) {}
 function showPage(id) {
 document.querySelectorAll('.page').forEach(p => p.hidden = true);
 const el = document.getElementById(id);
@@ -1342,6 +1349,8 @@ const genRow = document.getElementById('row-general');
 if (genRow) {
 genRow.addEventListener('click', () => {
 syncUI();
+const hub = document.getElementById('page-settings-hub');
+window.__settingsOrigin = (hub && !hub.hidden) ? 'page-settings-hub' : 'page-setting';
 showPage('page-reply-settings');
 });
 }
@@ -1361,16 +1370,17 @@ if (sc) sc.scrollTop = 0;
 document.querySelectorAll('#page-reply-settings .rps-tab').forEach(tab => {
 tab.addEventListener('click', () => rpsTab(tab.dataset.rps));
 });
+const settingsOrigin = () => window.__settingsOrigin === 'page-settings-hub' ? 'page-settings-hub' : 'page-setting';
 const replyBack = document.getElementById('reply-back');
 if (replyBack) {
 replyBack.addEventListener('click', () => {
-showPage('page-setting');
+showPage(settingsOrigin());
 });
 }
 const calsBack = document.getElementById('cals-back');
 if (calsBack) {
 calsBack.addEventListener('click', () => {
-showPage('page-setting');
+showPage(settingsOrigin());
 });
 }
 function migrateCkqProbOld() {
