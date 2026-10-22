@@ -584,25 +584,30 @@ function openItemLetter(item, cb) {
 item.click();
 setTimeout(cb, 90);
 }
+function waitMailBtn(id, cb, tries) {
+var b = document.getElementById(id);
+if (b) { cb(b); return; }
+tries = tries || 0;
+if (tries >= 12) {
+if (window.console && console.warn) console.warn('[mail-postal] 弹层中未找到 #' + id + '，操作未触发。');
+return;
+}
+setTimeout(function () { waitMailBtn(id, cb, tries + 1); }, 80);
+}
 function swipeDelete(item) {
 openItemLetter(item, function () {
-var b = document.getElementById('mail-del-btn');
-if (b) { b.click(); return; }
-if (window.console && console.warn) console.warn('[mail-postal] 弹层中未找到 #mail-del-btn，删除未触发。');
+waitMailBtn('mail-del-btn', function (b) { b.click(); });
 });
 }
 function swipeFav(item) {
 openItemLetter(item, function () {
-var b = document.getElementById('mail-fav-btn');
-if (!b) {
-if (window.console && console.warn) console.warn('[mail-postal] 弹层中未找到 #mail-fav-btn，收藏未触发。');
-return;
-}
+waitMailBtn('mail-fav-btn', function (b) {
 b.click();
 setTimeout(function () {
 var c = document.getElementById('mail-close2');
 if (c) c.click();
 }, 320);
+});
 });
 }
 function attachSwipe(item) {

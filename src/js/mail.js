@@ -1600,7 +1600,7 @@ window.showDeskPopup({ name: '信箱', notifyKind: 'mail', text: mailPlainDesc('
       '',
       '下周也偷偷一起加油呀。'
     ];
-    const letter = { id: 'l_' + Date.now() + '_' + cid + '_wk', type: 'received', tt: '本周摸鱼小结', content: lines.join('\n'), tm: Date.now() };
+    const letter = { id: 'l_' + Date.now() + '_' + cid + '_wk', type: 'received', tt: '本周摸鱼小结', content: lines.join('\n'), tm: Date.now(), wk: sun.getFullYear() + '-' + (sun.getMonth() + 1) + '-' + sun.getDate() };
     list.unshift(letter);
     save(list, cid);
     // 标记放在落盘之后：万一 save 抛错，下一轮还能凭「列表里有没有这封信」重试
@@ -1926,6 +1926,22 @@ window.showDeskPopup({ name: '信箱', notifyKind: 'mail', text: mailPlainDesc('
       window.openModal('删除这封信？', '', () => {
         const list = load();
         save(list.filter(x => x.id !== l.id));
+        // 删除的是「本周摸鱼小结」时，把该周的防重标记重新钉死——否则 60 秒后的 fishWeekTick
+        // 可能因为标记丢失把同一周的小结又补一封回来，用户所见就是「删了不会消失」。
+        if (l.tt === '本周摸鱼小结') {
+          try {
+            const cs = csFor();
+            let wk = l.wk;
+            if (!wk) {
+              const mm = /^本周（(\d+)月(\d+)日 - (\d+)月(\d+)日）小结/.exec(String(l.content || ''));
+              if (mm) wk = (new Date(l.tm || Date.now()).getFullYear()) + '-' + (+mm[3]) + '-' + (+mm[4]);
+            }
+            if (wk) {
+              cs.set('fish-week-report:' + wk, '1');
+              cs.set('fish-week-report:' + wk.split('-').slice(1).join('-'), '1');
+            }
+          } catch (e) {}
+        }
         const pending = replyPendingLoad().filter(p => !p || p.id !== l.id);
         replyPendingSave(pending);
         viewLetter = null;

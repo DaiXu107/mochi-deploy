@@ -1095,7 +1095,7 @@ totalFish > 0 ? '最会摸的一天是' + wdNames[bestIdx] + '，加了 ' + wdSu
 '',
 '下周也偷偷一起加油呀。'
 ];
-const letter = { id: 'l_' + Date.now() + '_' + cid + '_wk', type: 'received', tt: '本周摸鱼小结', content: lines.join('\n'), tm: Date.now() };
+const letter = { id: 'l_' + Date.now() + '_' + cid + '_wk', type: 'received', tt: '本周摸鱼小结', content: lines.join('\n'), tm: Date.now(), wk: sun.getFullYear() + '-' + (sun.getMonth() + 1) + '-' + sun.getDate() };
 list.unshift(letter);
 save(list, cid);
 try { cs.set(markKey, '1'); } catch (e) {}
@@ -1349,6 +1349,20 @@ if (window.openModal) {
 window.openModal('删除这封信？', '', () => {
 const list = load();
 save(list.filter(x => x.id !== l.id));
+if (l.tt === '本周摸鱼小结') {
+try {
+const cs = csFor();
+let wk = l.wk;
+if (!wk) {
+const mm = /^本周（(\d+)月(\d+)日 - (\d+)月(\d+)日）小结/.exec(String(l.content || ''));
+if (mm) wk = (new Date(l.tm || Date.now()).getFullYear()) + '-' + (+mm[3]) + '-' + (+mm[4]);
+}
+if (wk) {
+cs.set('fish-week-report:' + wk, '1');
+cs.set('fish-week-report:' + wk.split('-').slice(1).join('-'), '1');
+}
+} catch (e) {}
+}
 const pending = replyPendingLoad().filter(p => !p || p.id !== l.id);
 replyPendingSave(pending);
 viewLetter = null;
