@@ -330,7 +330,7 @@ pillSubmit = !!(opts.pillSubmit);
 noInput = !!(opts.noInput);
 pillClicked = false;
 lock = !!(opts.lock);
-if (cancelBtn) cancelBtn.hidden = lock;
+if (cancelBtn) { cancelBtn.hidden = lock; cancelBtn.textContent = '取消'; }
 title.textContent = t;
 if (staticEl) {
 staticEl.hidden = !opts.staticText;
@@ -508,6 +508,7 @@ try { input.value = s || ''; } catch (e) {}
 maxLen: function (n) { try { if (n) input.maxLength = n; else input.removeAttribute('maxlength'); } catch (e) {} },
 ph: function (s) { try { input.placeholder = s || ''; } catch (e) {} },
 okText: function (s) { if (okBtn) okBtn.textContent = s || '确定'; },
+cancelText: function (s) { if (cancelBtn) cancelBtn.textContent = s || '取消'; },
 focus: function () {
 setTimeout(function () {
 if (noInput) return;

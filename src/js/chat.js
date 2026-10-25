@@ -4552,8 +4552,19 @@ try { toast('TA 没有同意撤销，拒收保留'); } catch (e) {}
 }
 }, 600);
 }
-// 二改：我拒收 TA 的普通消息后，TA 按「主动申请撤销拒收概率」主动发一条申请。
-// 用户点被拒收消息旁的红色感叹号即可同意；不点则保持拒收。
+// 二改：我拒收 TA 的普通消息后，TA 按「主动申请撤销拒收概率」主动发一条申请，
+// 并在聊天可见时弹出与「用户申请撤销拒收」同款的确认弹窗。
+var TA_REJECT_ASK_LINES = [
+'刚刚那条……可以不要拒收吗？点一下那条消息旁的红色感叹号就行。',
+'那条消息还在吗？如果可以，撤回拒收吧。',
+'我知道你可能不想看，但还是想问一句：能撤销吗？',
+'被拒收的感觉有点难受……可以再给我一次机会吗？',
+'如果愿意的话，把那条消息放回来吧。',
+'我重新说一遍也可以，先把拒收解开好不好？',
+'那条其实不是什么重要的话，只是……想让你看到。',
+'先别急着拒收我，好吗？'
+];
+var taUndoAskOpen = false;
 function maybeTaRequestUndo(rec) {
 if (!rec || rec.rejected !== 'me') return;
 var p = 35;
@@ -4565,11 +4576,12 @@ if (!isNaN(n)) p = Math.max(0, Math.min(100, n));
 if (Math.random() * 100 >= p) return;
 var cid = window.__activeCid || 'default';
 var wait = 1400 + Math.floor(Math.random() * 2600);
+var line = TA_REJECT_ASK_LINES[Math.floor(Math.random() * TA_REJECT_ASK_LINES.length)];
 setTimeout(function () {
 try {
 if ((window.__activeCid || 'default') !== cid) return;
 if (!rec || rec.rejected !== 'me' || rec.taAskUndo) return;
-var msg = addIn('刚刚那条……可以不要拒收吗？点一下那条消息旁的红色感叹号就行。', {
+var msg = addIn(line, {
 special: 'poke', initiative: 'ta', nightAllow: true, rateAllow: true,
 dedupExempt: true, tag: 'TA 申请撤销拒收', tagNoDup: true
 });
@@ -4577,10 +4589,26 @@ if (!msg) return;
 rec.taAskUndo = Date.now();
 saveMsgs();
 var idx = msgs.indexOf(rec);
-if (idx >= 0) {
-var el = body.querySelector('.msg[data-idx="' + idx + '"]');
+var el = idx >= 0 ? body.querySelector('.msg[data-idx="' + idx + '"]') : null;
 if (el) decorateRejectedMsg(el, rec);
+// 聊天气泡已留一句申请；聊天可见且没有别的弹窗时，再出同款确认弹窗。
+var mm = document.getElementById('modal-mask');
+var visible = typeof chatVisible === 'function' ? chatVisible() : true;
+if (document.hidden || !visible || (mm && !mm.hidden) || taUndoAskOpen) return;
+if (!window.openModal) return;
+taUndoAskOpen = true;
+var ctl = window.openModal('TA 申请撤销这次拒收', '', function (v2) {
+taUndoAskOpen = false;
+if (v2 === 'ok' && rec.rejected === 'me') undoRejectedMsg(el, rec, '你同意了 TA 的撤销申请');
+}, {
+noInput: true,
+staticText: line + '\n\n同意撤销后，这条消息会恢复正常显示；选择「保留拒收」则维持原样。'
+});
+if (ctl) {
+ctl.okText('同意撤销');
+if (ctl.cancelText) ctl.cancelText('保留拒收');
 }
+setTimeout(function () { taUndoAskOpen = false; }, 15000);
 } catch (e) {}
 }, wait);
 }

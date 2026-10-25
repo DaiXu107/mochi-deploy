@@ -497,7 +497,7 @@ try {
       // v3.6.x：opts.lock——锁定弹窗（换头像邀请等必须做出选择）：
       // 点遮罩不关闭、隐藏取消按钮，只能走确定（含 pills/输入）路径
       lock = !!(opts.lock);
-      if (cancelBtn) cancelBtn.hidden = lock;
+      if (cancelBtn) { cancelBtn.hidden = lock; cancelBtn.textContent = '取消'; }
       title.textContent = t;
       if (staticEl) {
         staticEl.hidden = !opts.staticText;
@@ -723,6 +723,7 @@ try {
         maxLen: function (n) { try { if (n) input.maxLength = n; else input.removeAttribute('maxlength'); } catch (e) {} },
         ph: function (s) { try { input.placeholder = s || ''; } catch (e) {} },
         okText: function (s) { if (okBtn) okBtn.textContent = s || '确定'; },
+        cancelText: function (s) { if (cancelBtn) cancelBtn.textContent = s || '取消'; },
         focus: function () {
           setTimeout(function () {
             if (noInput) return;
