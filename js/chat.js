@@ -11193,10 +11193,43 @@ let favBatch = false;   // v3.31.x 批量管理模式（多选删除）
 let favBatchSel = [];   // #314 批量模式选中的 favItemKey 指纹（跨重渲染稳定，不再存对象引用）
 let favBatchArr = null; // 当次渲染使用的收藏数组引用（批量删除直接改它，避免重复 getFav 解析导致引用失效）
 let favBatchVis = [];   // 当前 tab+分类筛选下可见条目（全选用）
+function favBarDrinkRaw(which) {
+try {
+if (window.__bar && typeof window.__bar.drinkFavs === 'function') return window.__bar.drinkFavs(which) || [];
+const s = window.activeStore ? window.activeStore() : store;
+if (!s) return [];
+if (which === 'ta') {
+const v = JSON.parse(s.get('bar-ta-likes') || '{}');
+return Array.isArray(v.drinks) ? v.drinks : [];
+}
+const v = JSON.parse(s.get('bar-my-drink-favs') || '[]');
+return Array.isArray(v) ? v : [];
+} catch (e) { return []; }
+}
+function favDrinkItem(e, which) {
+const by = which === 'ta' ? 'ta' : 'me';
+if (typeof e === 'string') {
+return { kind: 'drink', by, side: by === 'ta' ? 'out' : 'in', name: e, emoji: '🍸', ingredients: '', ice: '', sweet: '', mode: '', ts: 0 };
+}
+e = e || {};
+return {
+kind: 'drink', by, side: by === 'ta' ? 'out' : 'in',
+name: String(e.name || e.drinkName || '未命名'), emoji: e.emoji || '🍸',
+ingredients: String(e.ingredients || ''), ice: e.ice || e.drinkIce || '', sweet: e.sweet || e.drinkSweet || '',
+mode: e.mode || '', ts: Number(e.ts) || 0
+};
+}
+function favDrinkItems(which) {
+return favBarDrinkRaw(which)
+.filter(e => which === 'ta' ? (e && typeof e === 'object') : !!e)
+.map(e => favDrinkItem(e, which))
+.filter(e => e.name);
+}
 const FAV_KINDS = [
 { k: 'all', label: '全部', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>' },
 { k: 'msg', label: '聊天', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>' },
 { k: 'card', label: '互动', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/><path d="M7 14h4"/></svg>' },
+{ k: 'drink', label: '调制', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14l-7 8v6"/><path d="M8 20h8"/><path d="M7 8h10"/></svg>' },
 { k: 'mail', label: '信件', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>' },
 { k: 'feed', label: '朋友圈', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5"/><circle cx="17" cy="9.5" r="2.2"/><path d="M14.5 19c0-2 2-3.5 4-3.5s2.5 1.5 2.5 3.5"/></svg>' }
 ];
@@ -11221,9 +11254,10 @@ if (tabsEl) {
 tabsEl.querySelectorAll('.fav-tab').forEach(t => t.classList.toggle('sel', t.dataset.tab === favTab));
 }
 const list = favTab === 'ta' ? taFav : myFav;
+const drinks = favDrinkItems(favTab);
 const kindTabsEl = document.getElementById('fav-kind-tabs');
 if (kindTabsEl) {
-const counts = { all: list.length, msg: 0, card: 0, mail: 0, feed: 0 };
+const counts = { all: list.length + drinks.length, msg: 0, card: 0, drink: drinks.length, mail: 0, feed: 0 };
 list.forEach(f => { const k = f.kind || 'msg'; if (k in counts) counts[k]++; });
 kindTabsEl.querySelectorAll('.fav-tab').forEach(t => {
 const k = t.dataset.kind;
@@ -11233,7 +11267,9 @@ const cnt = t.querySelector('.fav-tab-cnt');
 if (cnt) cnt.textContent = n > 0 ? String(n) : '';
 });
 }
-const list2 = favKind === 'all' ? list : list.filter(f => (f.kind || 'msg') === favKind);
+const list2 = favKind === 'all' ? list.concat(drinks)
+: favKind === 'drink' ? drinks.slice()
+: list.filter(f => (f.kind || 'msg') === favKind);
 list2.sort((a, b) => (b.ts || 0) - (a.ts || 0));
 favBatchArr = fav;
 favBatchVis = list2;
@@ -11248,7 +11284,7 @@ if (barEl) { barEl.hidden = !favBatch; syncBatchBar(); }
 const title = favTab === 'ta' ? partnerName + ' 的收藏' : myName + ' 的收藏';
 let empty = favTab === 'ta' ? 'TA 还没有收藏' : '暂无收藏';
 if (favKind !== 'all') {
-const K_EMPTY = { msg: '聊天消息', card: '互动卡片', mail: '信件', feed: '朋友圈' };
+const K_EMPTY = { msg: '聊天消息', card: '互动卡片', drink: '调制', mail: '信件', feed: '朋友圈' };
 empty = (favTab === 'ta' ? 'TA 还没有收藏' : '暂无') + K_EMPTY[favKind];
 }
 const h = document.createElement('div');
@@ -11284,7 +11320,21 @@ const m = document.createElement('div');
 m.className = 'msg ' + (f.side === 'out' ? 'msg-out' : 'msg-in');
 const timeHtml = f.ts ? '<span class="msg-time">' + fmtTime(f.ts) + '</span>' : '';
 const side = '<div class="msg-side"><div class="msg-av"></div>' + timeHtml + '</div>';
-if (kind === 'card') {
+if (kind === 'drink') {
+const modeLabel = { gift: '送出', together: '一起调', ta_gift: 'TA 调制', self: '自饮' }[f.mode] || '';
+let html = '<div class="fav-item-card fav-drink-card">' +
+'<span class="fav-item-tag">调制 · ' + (f.by === 'ta' ? partnerName + ' 收藏' : '我收藏的') + '</span>' +
+'<div class="fav-drink-head"><span class="fav-drink-emoji">' + escTxt(f.emoji || '🍸') + '</span><span class="fav-drink-name">' + escTxt(f.name || '未命名') + '</span></div>' +
+'<div class="fav-drink-meta">' +
+(f.ice ? '<span class="fav-drink-chip">冰度 · ' + escTxt(f.ice) + '</span>' : '') +
+(f.sweet ? '<span class="fav-drink-chip">甜度 · ' + escTxt(f.sweet) + '</span>' : '') +
+(modeLabel ? '<span class="fav-drink-chip">' + modeLabel + '</span>' : '') +
+'</div>' +
+'<div class="fav-item-body">' + (f.ingredients ? escTxt(f.ingredients) : '早期收藏 · 未记录配方') + '</div>' +
+'</div>';
+m.innerHTML = html + side;
+fillAvatar(m.querySelector('.msg-av'), f.side === 'out' ? 'cs-avatar-user' : 'cs-avatar-partner');
+} else if (kind === 'card') {
 const label = FAV_KIND_LABEL[f.special] || '互动卡片';
 let html = '<div class="fav-item-card">' +
 '<span class="fav-item-tag">互动卡片 · ' + label + '</span>' +
@@ -11377,9 +11427,27 @@ e.stopPropagation();
 if (window.viewChatImage) window.viewChatImage(im.src);
 }));
 }
-function matchFav(x) {
-return (x.kind || 'msg') === kind &&
-(x.q || '') === (f.q || '') && (x.text || '') === (f.text || '') && x.ts === f.ts;
+function removeThisFav() {
+if (f.kind === 'drink') {
+if (!window.openModal) return;
+window.openModal('删除这条收藏？', '', () => {
+try {
+if (window.__bar && window.__bar.toggleDrinkFav) window.__bar.toggleDrinkFav(f.by === 'ta' ? 'ta' : 'my', f);
+} catch (e) {}
+renderFav();
+}, { noInput: true });
+return;
+}
+const fav2 = getFav();
+const key = favItemKey(f);
+const idx2 = fav2.findIndex(x => favItemKey(x) === key);
+if (idx2 >= 0 && window.openModal) {
+window.openModal('删除这条收藏？', '', () => {
+fav2.splice(idx2, 1);
+saveFav(fav2);
+renderFav();
+}, { noInput: true });
+}
 }
 if (favBatch) {
 const fk = favItemKey(f); // #314 勾选身份=指纹 key（对象引用跨重渲染必失配）
@@ -11399,33 +11467,13 @@ return;
 }
 let pressTimer = null;
 m.addEventListener('touchstart', (e) => {
-pressTimer = setTimeout(() => {
-const fav2 = getFav();
-const idx2 = fav2.findIndex(matchFav);
-if (idx2 >= 0) {
-if (window.openModal) {
-window.openModal('删除这条收藏？', '', () => {
-fav2.splice(idx2, 1);
-saveFav(fav2);
-renderFav();
-}, { noInput: true });
-}
-}
-}, 600);
+pressTimer = setTimeout(removeThisFav, 600);
 }, { passive: true });
 m.addEventListener('touchend', () => clearTimeout(pressTimer));
 m.addEventListener('touchmove', () => clearTimeout(pressTimer), { passive: true }); // #721 处理体只清定时器，被动化免低端机列表滚动被主线程阻塞
 m.addEventListener('contextmenu', (e) => {
 e.preventDefault();
-const fav2 = getFav();
-const idx2 = fav2.findIndex(matchFav);
-if (idx2 >= 0 && window.openModal) {
-window.openModal('删除这条收藏？', '', () => {
-fav2.splice(idx2, 1);
-saveFav(fav2);
-renderFav();
-}, { noInput: true });
-}
+removeThisFav();
 });
 favList.appendChild(m);
 }
@@ -11484,12 +11532,19 @@ const n = favBatchSel.length;
 if (!window.openModal) return;
 window.openModal('删除选中的 ' + n + ' 条收藏？', '', () => {
 const selKeys = new Set(favBatchSel);
-if (favBatchArr) {
+const selected = favBatchVis.filter(x => selKeys.has(favItemKey(x)));
+const msgKeys = new Set(selected.filter(x => x.kind !== 'drink').map(favItemKey));
+if (favBatchArr && msgKeys.size) {
 for (let i = favBatchArr.length - 1; i >= 0; i--) {
-if (selKeys.has(favItemKey(favBatchArr[i]))) favBatchArr.splice(i, 1);
+if (msgKeys.has(favItemKey(favBatchArr[i]))) favBatchArr.splice(i, 1);
 }
+saveFav(favBatchArr);
 }
-if (favBatchArr) saveFav(favBatchArr);
+selected.filter(x => x.kind === 'drink').forEach(x => {
+try {
+if (window.__bar && window.__bar.toggleDrinkFav) window.__bar.toggleDrinkFav(x.by === 'ta' ? 'ta' : 'my', x);
+} catch (e) {}
+});
 favBatchSel = [];
 renderFav();
 toast('已删除 ' + n + ' 条收藏');
@@ -11497,6 +11552,17 @@ toast('已删除 ' + n + ' 条收藏');
 });
 }
 window.renderFav = renderFav;
+window.openFavDrinks = function (which) {
+favTab = which === 'ta' ? 'ta' : 'mine';
+favKind = 'drink';
+favBatch = false;
+favBatchSel = [];
+document.querySelectorAll('.page').forEach(p => { if (!p.hidden) p.hidden = true; });
+if (!favPage) return;
+favPage.hidden = false;
+renderFav();
+if (favList) favList.scrollTop = 0;
+};
 const favApp = document.querySelector('.app[data-app="note"]');
 if (favApp && favPage) {
 favApp.addEventListener('click', () => {

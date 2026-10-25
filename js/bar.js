@@ -1184,7 +1184,11 @@ function bindPage() {
 var back = page.querySelector('#bar-back'); if (back) back.addEventListener('click', closeBar);
 var cab = page.querySelector('#bar-cab-btn'); if (cab) cab.addEventListener('click', openCabinet);
 var logBtn = page.querySelector('#bar-log-btn'); if (logBtn) logBtn.addEventListener('click', openLogModal);
-var favBtn = page.querySelector('#bar-fav-btn'); if (favBtn) favBtn.addEventListener('click', openDrinkFavModal);
+var favBtn = page.querySelector('#bar-fav-btn');
+if (favBtn) favBtn.addEventListener('click', function () {
+if (typeof window.openFavDrinks === 'function') window.openFavDrinks('my');
+else openDrinkFavModal();
+});
 var reroll = page.querySelector('#bar-reroll');
 if (reroll) reroll.addEventListener('click', function () { randomName(); });
 var edit = page.querySelector('#bar-edit'); if (edit) edit.addEventListener('click', renameDrink);

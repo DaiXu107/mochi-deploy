@@ -461,6 +461,8 @@
 [data-theme="dark"] .cc-m-btn:active { background:var(--dark-hover); }
 [data-theme="dark"] .card-list.cc-managing .cc-item::before { background:var(--dark-card); border-color:#555; }
 [data-theme="dark"] .fav-item-card { background:var(--dark-card-92); border-color:var(--dark-border); }
+[data-theme="dark"] .fav-drink-card .fav-item-body { color:var(--dark-soft); }
+[data-theme="dark"] .fav-drink-chip { background:rgba(255,255,255,.08); color:var(--dark-soft); }
 [data-theme="dark"] .fav-item-tag { background:var(--dark-hover); color:var(--dark-soft); }
 [data-theme="dark"] .div-switch-knob::after { background:#f0f0f0; }
 [data-theme="dark"] .div-drawn-card .ddc-face { background:var(--dark-card); border-color:var(--dark-border); }

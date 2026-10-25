@@ -3517,6 +3517,15 @@ margin-bottom:8px;
 .fav-item-r { font-size:12px; color:var(--ink); opacity:.75; margin-top:4px; line-height:1.5; word-break:break-word; }
 .fav-item-tip { font-size:11px; color:var(--muted); margin-top:6px; }
 .fav-item-body { font-size:13px; color:var(--ink); line-height:1.6; word-break:break-word; }
+.fav-drink-card .fav-item-body { font-size:12px; color:var(--muted); margin-top:7px; line-height:1.55; }
+.fav-drink-head { display:flex; align-items:center; gap:8px; min-width:0; }
+.fav-drink-emoji { font-size:24px; line-height:1; flex-shrink:0; }
+.fav-drink-name { font-size:15px; font-weight:700; color:var(--ink); line-height:1.45; word-break:break-word; }
+.fav-drink-meta { display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
+.fav-drink-chip {
+display:inline-block; padding:2px 7px; border-radius:999px;
+background:rgba(0,0,0,.05); color:#777; font-size:10px; line-height:1.5;
+}
 .fav-item-body .fav-item-img {
 display:inline-block; width:52px; height:52px; object-fit:cover;
 border-radius:8px; margin:2px 4px 0 0; vertical-align:middle;
@@ -8982,6 +8991,8 @@ color: var(--muted);
 [data-theme="dark"] .cc-m-btn:active { background:var(--dark-hover); }
 [data-theme="dark"] .card-list.cc-managing .cc-item::before { background:var(--dark-card); border-color:#555; }
 [data-theme="dark"] .fav-item-card { background:var(--dark-card-92); border-color:var(--dark-border); }
+[data-theme="dark"] .fav-drink-card .fav-item-body { color:var(--dark-soft); }
+[data-theme="dark"] .fav-drink-chip { background:rgba(255,255,255,.08); color:var(--dark-soft); }
 [data-theme="dark"] .fav-item-tag { background:var(--dark-hover); color:var(--dark-soft); }
 [data-theme="dark"] .div-switch-knob::after { background:#f0f0f0; }
 [data-theme="dark"] .div-drawn-card .ddc-face { background:var(--dark-card); border-color:var(--dark-border); }
@@ -11990,7 +12001,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
            （名称+版号 / 部署时间+实时秒 / 版本检测行）收成一行；检测行随 ver-check.js 退役删除。
            data-build-ts / data-version 两属性保留：device.js 诊断、bg-keep 自检、pwa.js 旧包检测
            仍只读属性（诊断版本号走 data-version 兜底，device.js 两处缓存原生支持）。 -->
-      <div class="splash-ver" id="splash-ver" data-build-ts="1792939986868" data-version="v8.0">
+      <div class="splash-ver" id="splash-ver" data-build-ts="1792940365279" data-version="v8.0">
         <span class="sv-app">Mochi 字卡传讯 已完结停更</span>
       </div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
@@ -14167,7 +14178,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
           <div class="lic-li">TA 的查岗：温柔关心式查岗问题卡（单选 / 文字作答 / 互动动作），作答后 TA 会回应</div>
           <div class="lic-li">批量发送消息：聊天输入栏「批量发送」按钮，可插入表情包 / 图片 / 文字，每条单独一条，多条按顺序一次性发送</div>
           <div class="lic-li">语音消息：聊天输入栏「麦克风」按钮录音，最长 60 秒可试听后发送为语音消息</div>
-          <div class="lic-li">桌面【收藏】：我的收藏 / 联系人的收藏 分页浏览，收藏设置里可调联系人自动收藏概率（聊天消息 / 互动卡片 / 我的回信 / 朋友圈动态）；顶栏勾选图标进入批量管理，可多选 / 全选批量删除收藏（v3.31.x）</div>
+          <div class="lic-li">桌面【收藏】：我的收藏 / 联系人的收藏 分页浏览，分类含聊天 / 互动 / 调制 / 信件 / 朋友圈；吧台里 ♥ 收藏的饮品会进「调制」；收藏设置里可调联系人自动收藏概率（聊天消息 / 互动卡片 / 我的回信 / 朋友圈动态）；顶栏勾选图标进入批量管理，可多选 / 全选批量删除收藏（v3.31.x）</div>
           <div class="lic-li">隐藏联系人的表情包：开启后聊天与朋友圈的表情包面板只显示「我的表情包」</div>
           <div class="lic-li">允许删除联系人消息：默认关闭，开启后长按 TA 的消息可永久删除</div>
             </div>
@@ -24079,4 +24090,4 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 </body>
 </html>
 
-<!-- __MOCHI_EOF__ mvny6bw4 -->
+<!-- __MOCHI_EOF__ mvnyefvj -->
