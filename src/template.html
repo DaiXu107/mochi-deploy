@@ -6655,16 +6655,19 @@
                 <button id="stUndo">↩ 撤销</button>
                 <button id="stClear">🗑 清空</button>
               </div>
-              <div class="rv-dpadwrap"><span style="font-size:12px;color:#9a90a8;width:34px">移动</span>
-                <div class="rv-dpad">
-                  <span></span><button data-dx="0" data-dy="-1">▲</button><span></span>
-                  <button data-dx="-1" data-dy="0">◀</button><button data-dx="0" data-dy="1">▼</button><button data-dx="1" data-dy="0">▶</button>
-                </div>
-              </div>
               <input id="stName" placeholder="给家具起个名字（保存后进仓库）" hidden/>
             </div>
           </div>
-          <div class="rv-st-foot"><button id="stCancel">取消</button><button id="stSave">保存</button></div>
+          <!-- 二改：底部操作条（移动键 + 取消/保存）——sticky 钉在可视区底部，不用滚到底、手机小屏也永远看得见 -->
+          <div class="rv-st-bar">
+            <div class="rv-dpadwrap"><span style="font-size:12px;color:#9a90a8;width:34px">移动</span>
+              <div class="rv-dpad">
+                <span></span><button data-dx="0" data-dy="-1">▲</button><span></span>
+                <button data-dx="-1" data-dy="0">◀</button><button data-dx="0" data-dy="1">▼</button><button data-dx="1" data-dy="0">▶</button>
+              </div>
+            </div>
+            <div class="rv-st-foot"><button id="stCancel">取消</button><button id="stSave">保存</button></div>
+          </div>
         </div></div>
         <div id="asm"><div class="rv-st-box" style="width:min(96vw,660px)">
           <h3>🔧 组装家具</h3><div class="rv-xclose" id="asmX">✕</div>

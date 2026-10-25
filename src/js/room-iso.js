@@ -266,16 +266,28 @@ function artSet(art, r, c, hex){
   return true;
 }
 function artGet(art, r, c){
-  if (r < 0 || c < 0 || r >= art.s || c >= art.s) return null;
-  const cell = art.rows[r].substr(c * 2, 2);
+  if (!art || r < 0 || c < 0 || r >= art.s || c >= art.s) return null;
+  const row = art.rows && art.rows[r];
+  if (typeof row !== 'string') return null;
+  const cell = row.substr(c * 2, 2);
   if (cell === '..') return null;
   return art.pal[parseInt(cell, 16)] || null;
 }
+// 二改修复（32 格真机白屏）：旧实现每格一个 <rect>，32×32 满画＝1024 个节点，
+// TA 每走一步（700ms）还要整段重建一次，真机 WebView 容易被拖垮→白屏/卡死。
+// 这里把同一行相邻同色格合并成一个 rect（满画降到几十个节点，观感不变）。
 function pixRects(art, x, y, w, h){
-  let s = ''; const cw = w / art.s, ch = h / art.s;
-  for (let r = 0; r < art.s; r++) for (let c = 0; c < art.s; c++){
-    const col = artGet(art, r, c); if (!col) continue;
-    s += '<rect x="' + (x + c * cw).toFixed(2) + '" y="' + (y + r * ch).toFixed(2) + '" width="' + (cw + 0.09).toFixed(2) + '" height="' + (ch + 0.09).toFixed(2) + '" fill="' + col + '"/>';
+  let s = ''; const n = art.s, cw = w / n, ch = h / n;
+  for (let r = 0; r < n; r++){
+    let c = 0;
+    while (c < n){
+      const col = artGet(art, r, c);
+      if (!col){ c++; continue; }
+      let c2 = c + 1;
+      while (c2 < n && artGet(art, r, c2) === col) c2++;
+      s += '<rect x="' + (x + c * cw).toFixed(2) + '" y="' + (y + r * ch).toFixed(2) + '" width="' + ((c2 - c) * cw + 0.09).toFixed(2) + '" height="' + (ch + 0.09).toFixed(2) + '" fill="' + col + '"/>';
+      c = c2;
+    }
   }
   return s;
 }
@@ -725,8 +737,10 @@ function dollSVG(artOv, s, lookOv){
   t += '</g></svg>';
   return t;
 }
+let _taSvgSig = '', _taSvg = '';
 function renderTA(){
   const ta = document.getElementById('ta');
+  if (!ta) return;
   const p = A(d.ta.x, d.ta.y);
   const h = (d.look && d.look.h) || 1;
   ta.style.width = (56 * h) + 'px'; ta.style.height = (66 * h) + 'px';
@@ -735,7 +749,10 @@ function renderTA(){
   const moving = d.ta.x !== d.ta.tx || d.ta.y !== d.ta.ty;
   ta.classList.toggle('rv-walking', moving && !RM);
   ta.classList.toggle('rv-seated', !moving && (d.ta.act === 'sit' || d.ta.act === 'lie'));
-  ta.innerHTML = dollSVG();
+  // 二改修复：外观没变就不重建整段 SVG——走路时每 700ms 重建上千个节点会把真机拖垮
+  let sig = '';
+  try { sig = JSON.stringify(d.look || {}) + '|' + JSON.stringify(d.lookArt || {}); } catch (e) { sig = ''; }
+  if (sig !== _taSvgSig || !ta.firstChild){ _taSvgSig = sig; _taSvg = dollSVG(); ta.innerHTML = _taSvg; }
 }
 function updHud(){
   const cap = LV_CAP[Math.min(d.lv, LV_CAP.length - 1)];
@@ -1455,7 +1472,7 @@ document.getElementById('stSizeN').addEventListener('change', function(){
   STUDIO.art = resizeArt(STUDIO.art, ns);
   syncSizeSeg(); drawStCanvas(); drawStPreview();
 });
-document.querySelectorAll('#studio .dpad button').forEach(function(b){
+document.querySelectorAll('#studio .rv-dpad button').forEach(function(b){
   b.addEventListener('click', function(){
     pushUndo();
     shiftArt(STUDIO.art, Number(b.dataset.dx), Number(b.dataset.dy));
@@ -1505,7 +1522,9 @@ document.getElementById('stSave').addEventListener('click', function(){
     d.lookArt[k] = snapshot;
     toast('穿上了！');
   }
-  save(); renderAll(); closeStudio();
+  save();
+  try { renderAll(); } catch (e) { }   // 二改：渲染出错也不能把用户困在画室里（下面是 closeStudio）
+  closeStudio();
 });
 /* ================= 组装台 v2（部件级拼装 + 自由视角预览） ================= */
 function shade(hex, f){
