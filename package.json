@@ -9,6 +9,7 @@
     "verify:device": "node tools/verify-device-regression.mjs",
     "verify:all": "node tools/verify-suite.mjs",
     "verify:room": "node tools/verify-room-core.mjs",
+    "verify:bar": "node tools/verify-bar-data.mjs",
     "verify:room:browser": "node tools/verify-room-iso.mjs",
     "preview:room": "node tools/shot-room-preview.mjs"
   },

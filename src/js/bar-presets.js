@@ -5,7 +5,7 @@
 //   removable:false＝预设不可删；temporary:false＝非合成物。
 // 幂等：bar.js 按 version 判断是否已初始化，避免覆盖用户已删改的原料。
 (function () {
-  var PRESET_VERSION = 1;
+  var PRESET_VERSION = 2;
 
   // [id, name, family, suffix, emoji, color] —— 基底 base
   var BASE = [
@@ -51,7 +51,12 @@
     ['red_wine', '红酒', 'alcohol', '酒', '🍷', '#7a1f2b'],
     ['plum_wine', '梅酒', 'alcohol', '酒', '🍑', '#d98a4a'],
     ['baijiu', '白酒', 'alcohol', '酒', '🍶', '#eef2f5'],
-    ['soju', '烧酒', 'alcohol', '酒', '🍶', '#eaf0f0']
+    ['soju', '烧酒', 'alcohol', '酒', '🍶', '#eaf0f0'],
+    // 咖啡 / 奶 / 酒：cream 只作为基底，咖啡利口酒跨咖啡与酒
+    ['cream', '鲜奶油', 'milk', '奶', '🥛', '#f7f2e8'],
+    ['coffee_liqueur', '咖啡利口酒', 'alcohol', '酒', '🥃', '#4a2a18'],
+    ['sparkling_wine', '起泡酒', 'alcohol', '酒', '🍾', '#f2d98a'],
+    ['rice_wine', '米酒', 'alcohol', '酒', '🍶', '#f0ead0']
   ];
 
   // [id, name, emoji, color] —— 主料 main（水果 + 花草/风味）
@@ -82,7 +87,13 @@
     ['lavender', '薰衣草', '💜', '#9b8bd0'],
     ['ginger', '姜', '🫚', '#e8b96a'],
     ['cocoa', '可可', '🍫', '#6b4326'],
-    ['coffee_bean', '咖啡豆', '☕', '#5a3a22']
+    ['coffee_bean', '咖啡豆', '☕', '#5a3a22'],
+    // 花类 / 果泥
+    ['jasmine', '茉莉花', '🌼', '#f5f0d8'],
+    ['butterfly_pea', '蝶豆花', '🦋', '#4f6bd8'],
+    ['yuzu_flower', '柚子花', '🌼', '#f2e6a6'],
+    ['borage', '琉璃苣', '💠', '#6b8fd8'],
+    ['peach_puree', '水蜜桃果泥', '🍑', '#f5b58f']
   ];
 
   // [id, name, emoji, color] —— 修饰 modifier
@@ -111,7 +122,16 @@
     ['lotus_seed', '莲子', '⚪', '#f0ead0'],
     ['taro', '芋头', '🟣', '#b79bd0'],
     ['pumpkin', '南瓜', '🎃', '#f08a1f'],
-    ['sweet_potato', '红薯', '🍠', '#d4732a']
+    ['sweet_potato', '红薯', '🍠', '#d4732a'],
+    // 花蜜 / 糖浆 / 奶盖
+    ['osmanthus_syrup', '桂花糖浆', '🌼', '#f2c14e'],
+    ['jasmine_honey', '茉莉花蜜', '🍯', '#f5e6b0'],
+    ['rose_syrup', '玫瑰香蜜', '🌹', '#e87a9a'],
+    ['lavender_syrup', '薰衣草糖浆', '💜', '#9b8bd0'],
+    ['yuzu_flower_syrup', '柚子花液', '🍋', '#f2e6a6'],
+    ['brown_sugar_syrup', '黑糖糖浆', '🟤', '#6b4326'],
+    ['cane_syrup', '蔗糖糖浆', '🍬', '#f5e8c8'],
+    ['cheese_foam', '芝士奶盖', '🧁', '#f7e6b0']
   ];
 
   // [id, name, emoji, color] —— 小料 addon
@@ -127,7 +147,11 @@
     ['red_bean', '红豆', '🟤', '#7a3a2a'],
     ['mung_bean', '绿豆', '🟢', '#8fbb5a'],
     ['oat', '燕麦', '🌾', '#e6d9bd'],
-    ['crispy_boba', '脆波波', '🟤', '#c8874a']
+    ['crispy_boba', '脆波波', '🟤', '#c8874a'],
+    ['black_sugar_pearl', '黑糖珍珠', '🟤', '#6b4326'],
+    ['edible_flower', '三色堇装饰花', '🌸', '#c7a8e8'],
+    ['snow_cake', '雪饼', '🍘', '#f2e6c8'],
+    ['ice_cube', '冰块', '🧊', '#dfeff5']
   ];
 
   function baseIng(a) {

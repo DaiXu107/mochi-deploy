@@ -57,18 +57,23 @@
 
   // ============ 液体混色（规格 3.10，必须经 HSL 提饱和 + 钳亮度）============
   var ROLE_WEIGHT = { base: 1.0, main: 1.2, modifier: 0.5, addon: 0.3 };
+  // 蝶豆花遇酸变色：蓝 → 紫。合成后的固定搭配也已直接写入紫色 result.color。
+  var ACID_IDS = { lemon: 1, lime: 1, yuzu_flower: 1, green_plum: 1, passion_fruit: 1 };
   function mixLiquidColor(ings) {
     ings = ings || [];
     if (!ings.length) return { r: 238, g: 238, b: 238 };
-    var wr = 0, wg = 0, wb = 0, wt = 0;
+    var wr = 0, wg = 0, wb = 0, wt = 0, hasButterfly = false, hasAcid = false;
     for (var i = 0; i < ings.length; i++) {
       var it = ings[i];
       if (!it) continue;
+      if (it.id === 'butterfly_pea') hasButterfly = true;
+      if (ACID_IDS[it.id]) hasAcid = true;
       var c = hexToRgb(it.color);
       var w = ROLE_WEIGHT[it.role] || 1;
       wr += c.r * w; wg += c.g * w; wb += c.b * w; wt += w;
     }
     if (!wt) return { r: 238, g: 238, b: 238 };
+    if (hasButterfly && hasAcid) return { r: 176, g: 92, b: 208 };
     var hsl = rgbToHsl(wr / wt, wg / wt, wb / wt);   // 1. RGB 加权平均 → 2. 转 HSL
     hsl.s = Math.min(100, hsl.s + 10);                // 3. 饱和 +10
     hsl.l = clamp(hsl.l, 35, 75);                     // 4. 亮度钳制
