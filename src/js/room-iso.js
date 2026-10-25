@@ -118,11 +118,26 @@ function fix(o){
   Object.keys(o.customFurn).forEach(function(k){ const cf = o.customFurn[k]; if (cf && cf.art){ const a = toArt(cf.art); cf.art = a || blankArt(12); } });
   return o;
 }
+// 二改修复（「刷新一次自绘就消失」）：localStorage 配额满/隐私模式下房间数据只落在
+// IndexedDB；启动早期 load() 读空 → 回落 fresh，随后任何 save() 整包写回就把库里那份
+// （含自绘/家具/点数）永久顶掉。下面把「读不到」与「确实没有」分开：
+//   读不准（数据层未就绪或该键本该在库里）时一律不写；mochi-restore-done 后再按权威值重载。
+let roomLoadUncertain = false;
+function roomDataReady(){ try { return !!window.__mochiDataReady; } catch (e) { return true; } }
+function roomKeyUnread(){ try { var s = ST(); return !!(s && s.awaitingBigKey && s.awaitingBigKey(KEY)); } catch (e) { return false; } }
 function load(){
-  try { var s = ST(); var o = s ? JSON.parse(s.get(KEY) || 'null') : null; if (o && o.fx) return fix(o); } catch (e) {}
+  let raw = null;
+  try { var s = ST(); raw = s ? s.get(KEY) : null; } catch (e) { raw = null; }
+  if (raw){
+    try { var o = JSON.parse(raw); if (o && o.fx){ roomLoadUncertain = false; return fix(o); } } catch (e) {}
+  }
+  // 读不到：数据层未就绪 / 库里本该有却读不出 → 不能当「确实没有」
+  roomLoadUncertain = !roomDataReady() || roomKeyUnread();
   return fix(fresh());
 }
 function save(){
+  // 读不准就别写（否则用 fresh 顶掉库里那份 = 刷新丢自绘）
+  if (roomLoadUncertain) return;
   try { var s = ST(); if (s) s.set(KEY, JSON.stringify(d)); } catch (e) {}
   // IndexedDB 镜像（与 room.js/garden 同款兜底：LS 配额满或隐私模式时 IDB 还在）
   try { if (window.idbSet) window.idbSet(window.activePrefix() + ':' + KEY, JSON.stringify(d)); } catch (e) {}
@@ -2689,6 +2704,18 @@ if (page){
   document.addEventListener('contact-switched', function(){
     d = load();
     if (!page.hidden){ resetCam(); renderAll(); refreshTiles(); }
+  });
+  // 二改修复：数据回填完成后，若早前那次读空（不确定）就按权威值重载一次，房间开着就重画
+  document.addEventListener('mochi-restore-done', function(){
+    if (!page || !roomLoadUncertain) return;
+    d = load();
+    if (!page.hidden){ resetCam(); renderAll(); refreshTiles(); }
+  });
+  // 12s 保险丝：库里没有「这一格本该有」的证据时，解除写入封锁（避免新设备被永久挡住）
+  document.addEventListener('mochi-restore-slow', function(){
+    if (!roomLoadUncertain) return;
+    if (roomKeyUnread()) return;
+    roomLoadUncertain = false;
   });
 }
 window.openRoom = openRoom;

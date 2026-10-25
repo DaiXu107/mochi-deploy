@@ -113,11 +113,20 @@ Object.keys(o.lookArt).forEach(function(k){ const a = toArt(o.lookArt[k]); if (a
 Object.keys(o.customFurn).forEach(function(k){ const cf = o.customFurn[k]; if (cf && cf.art){ const a = toArt(cf.art); cf.art = a || blankArt(12); } });
 return o;
 }
+let roomLoadUncertain = false;
+function roomDataReady(){ try { return !!window.__mochiDataReady; } catch (e) { return true; } }
+function roomKeyUnread(){ try { var s = ST(); return !!(s && s.awaitingBigKey && s.awaitingBigKey(KEY)); } catch (e) { return false; } }
 function load(){
-try { var s = ST(); var o = s ? JSON.parse(s.get(KEY) || 'null') : null; if (o && o.fx) return fix(o); } catch (e) {}
+let raw = null;
+try { var s = ST(); raw = s ? s.get(KEY) : null; } catch (e) { raw = null; }
+if (raw){
+try { var o = JSON.parse(raw); if (o && o.fx){ roomLoadUncertain = false; return fix(o); } } catch (e) {}
+}
+roomLoadUncertain = !roomDataReady() || roomKeyUnread();
 return fix(fresh());
 }
 function save(){
+if (roomLoadUncertain) return;
 try { var s = ST(); if (s) s.set(KEY, JSON.stringify(d)); } catch (e) {}
 try { if (window.idbSet) window.idbSet(window.activePrefix() + ':' + KEY, JSON.stringify(d)); } catch (e) {}
 }
@@ -2649,6 +2658,16 @@ if (d.followSys && !page.hidden) renderAll();
 document.addEventListener('contact-switched', function(){
 d = load();
 if (!page.hidden){ resetCam(); renderAll(); refreshTiles(); }
+});
+document.addEventListener('mochi-restore-done', function(){
+if (!page || !roomLoadUncertain) return;
+d = load();
+if (!page.hidden){ resetCam(); renderAll(); refreshTiles(); }
+});
+document.addEventListener('mochi-restore-slow', function(){
+if (!roomLoadUncertain) return;
+if (roomKeyUnread()) return;
+roomLoadUncertain = false;
 });
 }
 window.openRoom = openRoom;
