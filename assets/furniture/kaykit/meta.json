@@ -1,0 +1,290 @@
+{
+  "armchair_pillows": {
+    "frames": {
+      "45": {
+        "file": "armchair_pillows-45.webp",
+        "w": 132,
+        "h": 106
+      },
+      "135": {
+        "file": "armchair_pillows-135.webp",
+        "w": 132,
+        "h": 99
+      },
+      "225": {
+        "file": "armchair_pillows-225.webp",
+        "w": 132,
+        "h": 99
+      },
+      "315": {
+        "file": "armchair_pillows-315.webp",
+        "w": 132,
+        "h": 106
+      }
+    }
+  },
+  "couch_pillows": {
+    "frames": {
+      "45": {
+        "file": "couch_pillows-45.webp",
+        "w": 180,
+        "h": 124
+      },
+      "135": {
+        "file": "couch_pillows-135.webp",
+        "w": 180,
+        "h": 117
+      },
+      "225": {
+        "file": "couch_pillows-225.webp",
+        "w": 180,
+        "h": 117
+      },
+      "315": {
+        "file": "couch_pillows-315.webp",
+        "w": 180,
+        "h": 124
+      }
+    }
+  },
+  "bed_double_A": {
+    "frames": {
+      "45": {
+        "file": "bed_double_A-45.webp",
+        "w": 237,
+        "h": 142
+      },
+      "135": {
+        "file": "bed_double_A-135.webp",
+        "w": 237,
+        "h": 117
+      },
+      "225": {
+        "file": "bed_double_A-225.webp",
+        "w": 237,
+        "h": 117
+      },
+      "315": {
+        "file": "bed_double_A-315.webp",
+        "w": 237,
+        "h": 142
+      }
+    }
+  },
+  "table_low": {
+    "frames": {
+      "45": {
+        "file": "table_low-45.webp",
+        "w": 148,
+        "h": 80
+      },
+      "135": {
+        "file": "table_low-135.webp",
+        "w": 148,
+        "h": 80
+      },
+      "225": {
+        "file": "table_low-225.webp",
+        "w": 148,
+        "h": 80
+      },
+      "315": {
+        "file": "table_low-315.webp",
+        "w": 148,
+        "h": 80
+      }
+    }
+  },
+  "table_medium_long": {
+    "frames": {
+      "45": {
+        "file": "table_medium_long-45.webp",
+        "w": 200,
+        "h": 128
+      },
+      "135": {
+        "file": "table_medium_long-135.webp",
+        "w": 200,
+        "h": 128
+      },
+      "225": {
+        "file": "table_medium_long-225.webp",
+        "w": 200,
+        "h": 128
+      },
+      "315": {
+        "file": "table_medium_long-315.webp",
+        "w": 200,
+        "h": 128
+      }
+    }
+  },
+  "chair_stool": {
+    "frames": {
+      "45": {
+        "file": "chair_stool-45.webp",
+        "w": 62,
+        "h": 50
+      },
+      "135": {
+        "file": "chair_stool-135.webp",
+        "w": 62,
+        "h": 50
+      },
+      "225": {
+        "file": "chair_stool-225.webp",
+        "w": 62,
+        "h": 50
+      },
+      "315": {
+        "file": "chair_stool-315.webp",
+        "w": 62,
+        "h": 50
+      }
+    }
+  },
+  "lamp_standing": {
+    "frames": {
+      "45": {
+        "file": "lamp_standing-45.webp",
+        "w": 74,
+        "h": 145
+      },
+      "135": {
+        "file": "lamp_standing-135.webp",
+        "w": 74,
+        "h": 145
+      },
+      "225": {
+        "file": "lamp_standing-225.webp",
+        "w": 74,
+        "h": 145
+      },
+      "315": {
+        "file": "lamp_standing-315.webp",
+        "w": 74,
+        "h": 145
+      }
+    }
+  },
+  "rug_oval_A": {
+    "frames": {
+      "45": {
+        "file": "rug_oval_A-45.webp",
+        "w": 170,
+        "h": 71
+      },
+      "135": {
+        "file": "rug_oval_A-135.webp",
+        "w": 170,
+        "h": 71
+      },
+      "225": {
+        "file": "rug_oval_A-225.webp",
+        "w": 170,
+        "h": 71
+      },
+      "315": {
+        "file": "rug_oval_A-315.webp",
+        "w": 170,
+        "h": 71
+      }
+    }
+  },
+  "cabinet_medium_decorated": {
+    "frames": {
+      "45": {
+        "file": "cabinet_medium_decorated-45.webp",
+        "w": 121,
+        "h": 113
+      },
+      "135": {
+        "file": "cabinet_medium_decorated-135.webp",
+        "w": 121,
+        "h": 109
+      },
+      "225": {
+        "file": "cabinet_medium_decorated-225.webp",
+        "w": 121,
+        "h": 124
+      },
+      "315": {
+        "file": "cabinet_medium_decorated-315.webp",
+        "w": 121,
+        "h": 129
+      }
+    }
+  },
+  "cabinet_small_decorated": {
+    "frames": {
+      "45": {
+        "file": "cabinet_small_decorated-45.webp",
+        "w": 82,
+        "h": 103
+      },
+      "135": {
+        "file": "cabinet_small_decorated-135.webp",
+        "w": 82,
+        "h": 92
+      },
+      "225": {
+        "file": "cabinet_small_decorated-225.webp",
+        "w": 82,
+        "h": 102
+      },
+      "315": {
+        "file": "cabinet_small_decorated-315.webp",
+        "w": 82,
+        "h": 105
+      }
+    }
+  },
+  "cactus_medium_A": {
+    "frames": {
+      "45": {
+        "file": "cactus_medium_A-45.webp",
+        "w": 54,
+        "h": 55
+      },
+      "135": {
+        "file": "cactus_medium_A-135.webp",
+        "w": 53,
+        "h": 51
+      },
+      "225": {
+        "file": "cactus_medium_A-225.webp",
+        "w": 54,
+        "h": 54
+      },
+      "315": {
+        "file": "cactus_medium_A-315.webp",
+        "w": 53,
+        "h": 57
+      }
+    }
+  },
+  "book_set": {
+    "frames": {
+      "45": {
+        "file": "book_set-45.webp",
+        "w": 48,
+        "h": 47
+      },
+      "135": {
+        "file": "book_set-135.webp",
+        "w": 48,
+        "h": 46
+      },
+      "225": {
+        "file": "book_set-225.webp",
+        "w": 48,
+        "h": 46
+      },
+      "315": {
+        "file": "book_set-315.webp",
+        "w": 48,
+        "h": 47
+      }
+    }
+  }
+}

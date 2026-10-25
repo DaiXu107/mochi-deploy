@@ -974,6 +974,9 @@ try {
     if (lu) lu.textContent = deskNameText('lbl-user');
     const lp = document.getElementById('lbl-partner');
     if (lp) lp.textContent = deskNameText('lbl-partner');
+    // 打卡横幅「和 X 一起摸鱼」跟随当前联系人昵称/称呼（默认男性＝他）
+    const ck = document.getElementById('ck-ta-word');
+    if (ck) ck.textContent = deskNameText('lbl-partner');
   }
   function bindLabel(id, key) {
     const el = document.getElementById(id);

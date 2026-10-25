@@ -391,11 +391,17 @@
   window.storeForCid = function (cid) { return cid === 'default' ? defaultStore() : window.xyStore(G + ':' + cid); };
 
   // ---- 联系人性别 / TA 称呼跟随 ----
-  // 存储键：<cid>:partner-gender = 'he' | 'she' | ''（未设置 → 默认「TA」），随联系人命名空间隔离。
+  // 存储键：<cid>:partner-gender = 'he' | 'she' | ''（显式空串＝用户选「不设置」→ TA），
+  // 从未设置过的联系人默认按男性「he」显示（用户 2026-10-25 要求默认联系人为男性）。
   // 各模块在【显示层】调 window.taFit(text[, cid]) 把指代联系人的「他/TA/ta」替换为「他/她/TA/ta」；
   // 只改显示不改存储原文，历史消息重新渲染即自动跟随。
   window.partnerGenderFor = function (cid) {
-    try { return window.xyStore(G + ':' + (cid || 'default')).get('partner-gender') || ''; } catch (e) { return ''; }
+    try {
+      const v = window.xyStore(G + ':' + (cid || 'default')).get('partner-gender');
+      if (v === 'he' || v === 'she') return v;
+      if (v === '') return '';          // 用户主动选了「不设置」：保留 TA
+      return 'he';                       // 键不存在 → 默认男性
+    } catch (e) { return 'he'; }
   };
   window.taWordFor = function (cid) {
     const g = window.partnerGenderFor(cid);
@@ -439,6 +445,28 @@
     return segs.join('');
   };
 
+  // 默认男性：给「从未设置过」的联系人补 he；并给没有桌面昵称的联系人补「他 / 她」，
+  // 让仍直接读 lbl-partner 的老模块（信箱/日历/小游戏等）也显示「他」而不是 TA。
+  // 必须等 IndexedDB 回填完成再写，否则会抢在 idbRestore 前把空命名空间写成「他」。
+  function applyDefaultPartnerProfile() {
+    try {
+      if (!window.__mochiDataReady) return;
+      const list = getContacts();
+      list.forEach(function (c) {
+        const s = window.xyStore(G + ':' + c.id);
+        const g = s.get('partner-gender');
+        if (g === null || g === undefined) s.set('partner-gender', 'he');
+        const g2 = s.get('partner-gender');
+        if (g2 !== 'he' && g2 !== 'she') return;   // 显式「不设置」不动
+        const lbl = s.get('lbl-partner');
+        if (!lbl || lbl === 'TA' || lbl === 'ta') s.set('lbl-partner', g2 === 'he' ? '他' : '她');
+      });
+    } catch (e) {}
+  }
+  if (window.__mochiDataReady) applyDefaultPartnerProfile();
+  else document.addEventListener('mochi-restore-done', applyDefaultPartnerProfile);
+  setTimeout(applyDefaultPartnerProfile, 2600);
+
   // ---- 联系人注册表（全局，不随某个联系人隔离） ----
   function regStore() { return window.xyStore(G); }
   function getContacts() {
@@ -462,6 +490,7 @@
     // 的既有行为对齐；不写则新桌面回退 taWord() 恒显「TA」，与默认桌面视觉无差＝
     // 「切了等于没切」（用户口径「添加联系人桌面无反应」的观感之一）。
     try { window.xyStore(G + ':' + id).set('lbl-partner', nm); } catch (e) {}
+    try { window.xyStore(G + ':' + id).set('partner-gender', 'he'); } catch (e) {}
     return id;
   };
   window.renameContact = function (id, name) {
@@ -1081,7 +1110,7 @@
     }, {
       noInput: true,
       pill: cur,
-      staticText: '小字说明：设置后，桌面浮字、聊天、朋友圈、信箱等消息里的「TA／他」会跟随显示为「他」或「她」；选「不设置」则保持默认「TA」。该设置为每个联系人独立保存，只改显示方式，不会改动已保存的消息原文。',
+      staticText: '小字说明：未设置过的联系人默认显示「他」；设置后，桌面浮字、聊天、朋友圈、信箱等消息里的「TA／他」会跟随显示为「他」或「她」；选「不设置」则保持「TA」。该设置为每个联系人独立保存，只改显示方式，不会改动已保存的消息原文。',
       pills: [
         { label: '他（男生）', value: 'he' },
         { label: '她（女生）', value: 'she' },

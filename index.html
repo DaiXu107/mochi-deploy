@@ -10762,6 +10762,242 @@ background: #fbfaff; resize: vertical; font-family: ui-monospace, Menlo, monospa
 #page-room.rv-deco #controls { display: none !important; }
 #page-room.rv-deco #rio-view { flex: 1; }
 #page-room #winband { border: 0 !important; background: transparent !important; }
+#page-room {
+--rv-accent: #8a7bd8;
+--rv-accent-deep: #6c5fc0;
+--rv-paper: #fffdf8;
+--rv-shadow-s: 0 1px 2px rgba(40, 28, 20, .08), 0 4px 12px rgba(40, 28, 20, .10);
+--rv-shadow-m: 0 8px 24px rgba(40, 28, 20, .16);
+--rv-radius: 16px;
+--rv-hairline: rgba(72, 56, 46, .12);
+}
+#page-room.rv-dark {
+--rv-paper: #171a2e;
+--rv-shadow-s: 0 1px 2px rgba(0, 0, 0, .35), 0 6px 18px rgba(0, 0, 0, .32);
+--rv-shadow-m: 0 10px 30px rgba(0, 0, 0, .48);
+--rv-hairline: rgba(255, 255, 255, .14);
+}
+#page-room #scene::before {
+content: "";
+position: absolute; inset: 0; z-index: 22; pointer-events: none;
+background: radial-gradient(72% 48% at 50% 2%, rgba(255, 245, 222, .30), rgba(255, 245, 222, 0) 68%);
+mix-blend-mode: soft-light;
+}
+#page-room.rv-dark #scene::before {
+background: radial-gradient(70% 46% at 50% 2%, rgba(156, 176, 255, .15), rgba(156, 176, 255, 0) 70%);
+}
+#page-room .rv-furn::after {
+content: "";
+position: absolute; left: 50%; bottom: -1px;
+width: 62%; height: 10px; transform: translateX(-50%);
+border-radius: 50%;
+background: radial-gradient(ellipse at center, rgba(36, 22, 16, .30), rgba(36, 22, 16, 0) 72%);
+pointer-events: none; z-index: -1;
+}
+#page-room .rv-furn svg { filter: drop-shadow(0 7px 7px rgba(30, 20, 16, .26)); }
+#page-room #ta svg { filter: drop-shadow(0 5px 5px rgba(30, 20, 16, .22)); }
+#page-room #hud .rv-statbar {
+background: var(--rv-paper);
+border-color: var(--rv-hairline);
+box-shadow: var(--rv-shadow-s);
+backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+#page-room #controls {
+margin: 4px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+padding: 6px 8px;
+border-radius: 18px;
+background: var(--rv-paper);
+border-color: var(--rv-hairline);
+box-shadow: var(--rv-shadow-m);
+backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+#page-room button.rv-act { border-radius: 13px; }
+#page-room button.rv-act:active { background: color-mix(in srgb, var(--rv-accent) 14%, transparent); }
+#page-room button.rv-act svg { color: var(--rv-accent-deep); }
+#page-room.rv-dark button.rv-act svg { color: var(--rv-accent); }
+#page-room .rv-pill:active,
+#page-room .rv-card:active,
+#page-room .rv-seg button.rv-on,
+#page-room .rv-tg.on,
+#page-room .rv-st-tools button.rv-on,
+#page-room #stSave,
+#page-room .rv-dsw.rv-sel {
+background: linear-gradient(180deg, var(--rv-accent), var(--rv-accent-deep));
+border-color: var(--rv-accent-deep);
+}
+#page-room .rv-pill,
+#page-room .rv-card,
+#page-room .rv-seg button,
+#page-room .rv-st-tools button,
+#page-room .rv-addb,
+#page-room .rv-mini-btn,
+#page-room .rv-dpad button {
+border-color: color-mix(in srgb, var(--rv-accent) 22%, #e5dcf0);
+}
+#page-room .rv-pill:active,
+#page-room .rv-card:active { filter: brightness(.98); }
+#page-room .rv-card.rv-sel { box-shadow: 0 0 0 2px color-mix(in srgb, var(--rv-accent) 38%, transparent); }
+#page-room .rv-badge { background: var(--rv-accent-deep); }
+#page-room #stPal button.rv-sel { border-color: var(--rv-accent-deep); }
+#page-room .rv-prow input[type=range] { accent-color: var(--rv-accent); }
+#page-room #daynight { color: var(--rv-accent-deep); box-shadow: var(--rv-shadow-s); }
+#page-room.rv-dark #daynight { color: var(--rv-accent); }
+#page-room #winband { border-color: var(--rv-accent); background: color-mix(in srgb, var(--rv-accent) 12%, transparent); }
+#page-room .rv-panel,
+#page-room .rv-st-box {
+border-radius: var(--rv-radius);
+box-shadow: var(--rv-shadow-m);
+background: var(--rv-paper);
+}
+#page-room .rv-panel h3,
+#page-room .rv-st-box h3 { font-weight: 650; letter-spacing: .2px; padding-right: 28px; }
+#page-room .rv-panel .rv-desc { color: var(--rv-sub); }
+#page-room .rv-sec { border-top-color: var(--rv-hairline); }
+#page-room #decoBar {
+border-radius: 18px;
+background: var(--rv-paper);
+border-color: var(--rv-hairline);
+box-shadow: var(--rv-shadow-m);
+}
+#page-room #decoBar .rv-dbtn { border-radius: 10px; }
+#page-room #decoBar #dSave {
+background: linear-gradient(180deg, var(--rv-accent), var(--rv-accent-deep));
+border-color: var(--rv-accent-deep);
+color: #fff;
+}
+#page-room #decoTag {
+border-color: var(--rv-hairline);
+background: var(--rv-paper);
+box-shadow: var(--rv-shadow-s);
+}
+@media (max-width: 380px) {
+#page-room #controls { margin: 2px 6px calc(8px + env(safe-area-inset-bottom, 0px)); padding: 4px; gap: 2px; }
+#page-room button.rv-act { padding: 7px 2px; }
+#page-room button.rv-act span { font-size: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+#page-room #ta.rv-walking svg,
+#page-room .rv-halo,
+#page-room .rv-flame { animation: none !important; }
+}
+#page-room .rv-furn img.rv-sprite {
+position: absolute; left: 50%; bottom: 0;
+width: auto; height: auto; max-width: none;
+transform: translateX(-50%) scale(var(--rv-s-s, .64));
+transform-origin: bottom center;
+pointer-events: auto; cursor: pointer;
+filter: saturate(.78) contrast(.96) brightness(1.02) drop-shadow(0 6px 6px rgba(30, 20, 16, .22));
+}
+#page-room .rv-furn.rv-r-flip img.rv-sprite {
+transform: translateX(-50%) scaleX(-1) scale(var(--rv-s-s, .64));
+}
+#page-room .rv-furn.rv-dragging img.rv-sprite {
+filter: saturate(.78) contrast(.96) brightness(1.02) drop-shadow(0 14px 12px rgba(30, 20, 16, .34));
+}
+#page-room .rv-card .rv-thumb img.rv-thumb-sprite {
+max-height: 54px; max-width: 62px; width: auto; height: auto;
+object-fit: contain; display: block;
+}
+#page-room #rv-selbar,
+#page-room #rv-placebar {
+position: absolute; left: 50%; bottom: 158px; z-index: 45;
+transform: translateX(-50%);
+display: flex; align-items: center; gap: 5px;
+max-width: 94vw; white-space: nowrap;
+padding: 6px 7px 6px 12px; border-radius: 999px;
+background: var(--rv-paper); border: 1px solid var(--rv-hairline);
+box-shadow: var(--rv-shadow-m);
+}
+#page-room #rv-selbar[hidden],
+#page-room #rv-placebar[hidden] { display: none; }
+#page-room .rv-selname {
+font-size: 12px; font-weight: 650; color: var(--rv-ink);
+max-width: 108px; overflow: hidden; text-overflow: ellipsis;
+}
+#page-room #rv-selbar button,
+#page-room #rv-placebar button {
+flex: 0 0 auto; border: 0; border-radius: 999px;
+padding: 7px 10px; font-size: 11.5px; line-height: 1;
+background: var(--rv-chip); color: var(--rv-ink); cursor: pointer;
+}
+#page-room #rv-selbar button:active,
+#page-room #rv-placebar button:active { background: var(--rv-chipb); }
+#page-room #rv-selbar .rv-selclose,
+#page-room #rv-placebar .rv-selclose {
+width: 28px; height: 28px; padding: 0;
+background: var(--rv-chipb); font-size: 12px;
+}
+#page-room .rv-furn.rv-selected img.rv-sprite {
+filter: saturate(.78) contrast(.96) brightness(1.02)
+drop-shadow(0 0 3px rgba(138,123,216,.95))
+drop-shadow(0 6px 6px rgba(30,20,16,.22));
+}
+#page-room .rv-furn.rv-selected svg {
+filter: drop-shadow(0 0 3px rgba(138,123,216,.95))
+drop-shadow(0 6px 6px rgba(30,20,16,.22));
+}
+#page-room #static [data-wi].rv-selected { filter: drop-shadow(0 0 3px rgba(138,123,216,.95)); }
+#page-room .rv-ghost {
+opacity: .66; pointer-events: none !important; z-index: 9998 !important;
+}
+#page-room .rv-ghost * { pointer-events: none !important; }
+#page-room .rv-ghost.rv-ghost-bad { opacity: .36; }
+#page-room .rv-ghost img.rv-sprite { filter: drop-shadow(0 5px 5px rgba(30,20,16,.18)); }
+#page-room.rv-deco #rv-selbar,
+#page-room.rv-deco #rv-placebar { display: none !important; }
+#page-room #planEditor {
+position: absolute; inset: 0; z-index: 70;
+display: flex; flex-direction: column;
+background: #f4efe6; color: #3a3444;
+font-size: 13px;
+}
+#page-room #planEditor[hidden] { display: none; }
+#page-room .pe-head {
+flex: 0 0 auto; display: flex; align-items: center; gap: 10px;
+padding: 12px 14px; border-bottom: 1px solid rgba(70,50,35,.12);
+background: #fffdf8;
+}
+#page-room .pe-head b { font-size: 15px; }
+#page-room #peSize { font-size: 11.5px; color: #9a8b78; }
+#page-room .pe-x {
+margin-left: auto; width: 30px; height: 30px; border-radius: 50%;
+border: 1px solid #e7ddcf; background: #f6f1e8; color: #6b5f52; cursor: pointer;
+}
+#page-room .pe-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 8px 10px; overflow: auto; }
+#page-room #planSvg {
+width: 100%; height: auto; max-height: 56vh; display: block;
+touch-action: none; user-select: none; -webkit-user-select: none;
+background: #fffdf8; border-radius: 10px;
+box-shadow: 0 6px 18px rgba(70,45,25,.10);
+}
+#page-room #planSvg [data-pedge] { cursor: ew-resize; }
+#page-room #planSvg [data-pfi], #page-room #planSvg [data-pwi] { cursor: move; }
+#page-room .pe-hint { min-height: 16px; font-size: 11px; color: #9a8b78; text-align: center; padding: 0 10px; }
+#page-room .pe-bar {
+flex: 0 0 auto; display: flex; align-items: center; flex-wrap: wrap; gap: 5px;
+padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+background: #fffdf8; border-top: 1px solid rgba(70,50,35,.12);
+}
+#page-room .pe-bar button {
+border: 1px solid #e2d8c9; background: #f8f3ea; color: #5b4f43;
+border-radius: 9px; padding: 7px 9px; font-size: 11.5px; cursor: pointer; line-height: 1;
+}
+#page-room .pe-bar button.on { background: #8a7bd8; border-color: #6c5fc0; color: #fff; }
+#page-room .pe-bar button.pe-save { background: #3b8f6b; border-color: #2f7657; color: #fff; }
+#page-room .pe-bar .pe-sep { width: 1px; height: 18px; background: #e2d8c9; margin: 0 3px; }
+#page-room .pe-extra { display: flex; gap: 6px; justify-content: center; padding: 0 10px 8px; background: #fffdf8; }
+#page-room .pe-extra[hidden] { display: none; }
+#page-room .pe-extra button { width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
+#page-room .pe-extra button.sel { border-color: #5b4ac0; box-shadow: 0 0 0 2px #fff inset; }
+#page-room .pe-extra .pe-erase-floor { width: auto; border-radius: 8px; padding: 0 8px; font-size: 10.5px; background: #f0e9dc; border: 1px solid #d9cbb9; }
+#page-room #planBack {
+position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%);
+z-index: 80; border: 1px solid var(--rv-hairline); border-radius: 999px;
+padding: 10px 16px; background: var(--rv-paper); color: var(--rv-ink);
+box-shadow: var(--rv-shadow-m); font-size: 13px; cursor: pointer;
+}
+#page-room #planBack[hidden] { display: none; }
+#page-room.rv-plan3d #controls, #page-room.rv-plan3d #hud { display: none !important; }
 #page-drift { overflow: hidden; }
 .drift-scroll {
 flex: 1; overflow-y: auto;
@@ -11732,7 +11968,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
            （名称+版号 / 部署时间+实时秒 / 版本检测行）收成一行；检测行随 ver-check.js 退役删除。
            data-build-ts / data-version 两属性保留：device.js 诊断、bg-keep 自检、pwa.js 旧包检测
            仍只读属性（诊断版本号走 data-version 兜底，device.js 两处缓存原生支持）。 -->
-      <div class="splash-ver" id="splash-ver" data-build-ts="1792909349688" data-version="v8.4">
+      <div class="splash-ver" id="splash-ver" data-build-ts="1792922394223" data-version="v8.0">
         <span class="sv-app">Mochi 字卡传讯 已完结停更</span>
       </div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
@@ -11826,7 +12062,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
 
           <div class="checkin glass" data-desk-widget="checkin" data-card-bg="checkin">
             <span class="ck-heart">♥</span>
-            <span class="ck-txt">和 TA 一起摸鱼 · 今天也要甜甜的</span>
+            <span class="ck-txt">和 <span id="ck-ta-word">他</span> 一起摸鱼 · 今天也要甜甜的</span>
             <span class="ck-btn">打卡</span>
           </div>
 
@@ -13343,7 +13579,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
         <div class="set-row" id="row-changelog">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 12c0-5.5 3.5-10 10-10 3.7 0 7 2 8.8 5M22 12c0 5.5-3.5 10-10 10-3.7 0-7-2-8.8-5"/></svg></div>
           <div class="txt">版本与更新<span class="sub">当前版本 · 一键更新到最新（更新摘要见开屏公告）</span></div>
-          <div class="val" id="about-ver-val">v8.4</div>
+          <div class="val" id="about-ver-val">v8.0</div>
           <div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
         </div>
         <!-- #606 开源与致谢：开源/私有部署说明 + 灵感来源与致谢（内容与功能介绍页同源，做成独立入口） -->
@@ -13434,7 +13670,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
         </div>
       </div>
       </div><!-- /them-sec about -->
-      <div class="ver">Mochi 字卡传讯 v8.4</div>
+      <div class="ver">Mochi 字卡传讯 v8.0</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
       <!-- v3.27.x：设置页底部防骗声明 -->
       <div class="set-alert">
@@ -13833,7 +14069,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
             <div class="lic-hero-top">
               <div class="lic-title">Mochi 字卡传讯</div>
               <span class="lic-badge">原版</span>
-              <span class="lic-ver">v8.4</span>
+              <span class="lic-ver">v8.0</span>
             </div>
             <div class="lic-p">原创极简风情侣字卡传讯，不是小手机：黑白灰简约设计，数据全部保存在本地、无需联网；所有内容均为代码触发、按概率运行，联系方可主动发送聊天消息。代码从零编写并完全开源——本作即原版。</div>
             <!-- v3.26.x #648：原版口径澄清——唯一原版使用网站＋其他版本均为开放二传二改产生的二传/二改版 -->
@@ -17831,6 +18067,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
         </div>
         <div id="controls">
           <button class="rv-act" id="bInv"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8l8-4 8 4v9l-8 4-8-4V8z"/><path d="M4 8l8 4 8-4M12 12v9"/></svg><span>仓库</span></button>
+          <button class="rv-act" id="bPlan"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 3v18M3 9h18"/></svg><span>户型</span></button>
           <button class="rv-act" id="bRoom"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h13v4H8v3"/><rect x="6" y="12" width="4" height="7" rx="1"/></svg><span>装修</span></button>
           <button class="rv-act" id="bStudio"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19l-4 1z"/><path d="M14 7l3 3"/></svg><span>自绘</span></button>
           <button class="rv-act" id="bMore"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7"/></svg><span>设置</span></button>
@@ -18881,7 +19118,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
   // v3.5.123：readonly 起手（防 Chrome 密码弹条破坏表单签名）——这里立即解除，
   // 早于所有功能模块，任何设备都不会出现输入框不可用的情况
   (function () { var _ci = document.getElementById('chat-input'); if (_ci) _ci.readOnly = false; })();
-window.__jsErrors = window.__jsErrors || []; window.__mochiLoaded = window.__mochiLoaded || []; window.__mochiErrLoaded = window.__mochiErrLoaded || []; window.__mochiBootAt = Date.now(); window.__mochiJsFiles = ["device.js","splash-cosmos.js","entry-notice.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","mail-postal.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-iso.js","room.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","pwa.js","cjian.js","feature-hub.js","app-market.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"]; window.__mochiExtFiles = ["splash-cosmos.js","entry-notice.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","mail-postal.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-iso.js","room.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","cjian.js","feature-hub.js","app-market.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"];
+window.__jsErrors = window.__jsErrors || []; window.__mochiLoaded = window.__mochiLoaded || []; window.__mochiErrLoaded = window.__mochiErrLoaded || []; window.__mochiBootAt = Date.now(); window.__mochiJsFiles = ["device.js","splash-cosmos.js","entry-notice.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","mail-postal.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-core.js","room-iso.js","room.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","pwa.js","cjian.js","feature-hub.js","app-market.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"]; window.__mochiExtFiles = ["splash-cosmos.js","entry-notice.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","mail-postal.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-core.js","room-iso.js","room.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","cjian.js","feature-hub.js","app-market.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"];
 (function () { try {
 (function () {
 try { window.__jsErrors = window.__jsErrors || []; } catch (e0) {}
@@ -23762,6 +23999,7 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 <script defer src="js/bar-names.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('bar-names.js')"></script>
 <script defer src="js/bar-render.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('bar-render.js')"></script>
 <script defer src="js/bar.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('bar.js')"></script>
+<script defer src="js/room-core.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('room-core.js')"></script>
 <script defer src="js/room-iso.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('room-iso.js')"></script>
 <script defer src="js/room.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('room.js')"></script>
 <script defer src="js/drift-bottle.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('drift-bottle.js')"></script>
@@ -23816,4 +24054,4 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 </body>
 </html>
 
-<!-- __MOCHI_EOF__ mvnfxo3c -->
+<!-- __MOCHI_EOF__ mvnnp9bj -->

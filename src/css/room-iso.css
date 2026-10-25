@@ -143,3 +143,267 @@
 #page-room.rv-deco #rio-view { flex: 1; }
 /* 开窗/装门预览：整块场景的覆盖层（不再是被拉扁的虚线方框） */
 #page-room #winband { border: 0 !important; background: transparent !important; }
+
+/* ================= 美术第二轮：统一色板 + 环境光 + 悬浮 UI =================
+   目标：不再让每个家具/按钮各自为政。所有强调色收进 --rv-accent（由数据里的
+   风格预设写入），阴影/圆角/毛玻璃也统一；渲染层只负责几何位置。 */
+#page-room {
+  --rv-accent: #8a7bd8;
+  --rv-accent-deep: #6c5fc0;
+  --rv-paper: #fffdf8;
+  --rv-shadow-s: 0 1px 2px rgba(40, 28, 20, .08), 0 4px 12px rgba(40, 28, 20, .10);
+  --rv-shadow-m: 0 8px 24px rgba(40, 28, 20, .16);
+  --rv-radius: 16px;
+  --rv-hairline: rgba(72, 56, 46, .12);
+}
+#page-room.rv-dark {
+  --rv-paper: #171a2e;
+  --rv-shadow-s: 0 1px 2px rgba(0, 0, 0, .35), 0 6px 18px rgba(0, 0, 0, .32);
+  --rv-shadow-m: 0 10px 30px rgba(0, 0, 0, .48);
+  --rv-hairline: rgba(255, 255, 255, .14);
+}
+
+/* 场景环境光：顶部窗光 + 四周轻暗角，不挡触摸 */
+#page-room #scene::before {
+  content: "";
+  position: absolute; inset: 0; z-index: 22; pointer-events: none;
+  /* 只保留「顶部窗光」：外圈必须在场景边界前就淡到全透明。
+     旧版第二层径向暗角在场景矩形边界处仍有 ~10% 不透明度，截图上会看到
+     一整块比页面底色更暗的方框（夜间尤其明显）——那正是要避免的「贴片感」。 */
+  background: radial-gradient(72% 48% at 50% 2%, rgba(255, 245, 222, .30), rgba(255, 245, 222, 0) 68%);
+  mix-blend-mode: soft-light;
+}
+#page-room.rv-dark #scene::before {
+  background: radial-gradient(70% 46% at 50% 2%, rgba(156, 176, 255, .15), rgba(156, 176, 255, 0) 70%);
+}
+/* 家具脚底接触阴影：SVG 自带投影之外再补一层，落地感更稳 */
+#page-room .rv-furn::after {
+  content: "";
+  position: absolute; left: 50%; bottom: -1px;
+  width: 62%; height: 10px; transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(36, 22, 16, .30), rgba(36, 22, 16, 0) 72%);
+  pointer-events: none; z-index: -1;
+}
+#page-room .rv-furn svg { filter: drop-shadow(0 7px 7px rgba(30, 20, 16, .26)); }
+#page-room #ta svg { filter: drop-shadow(0 5px 5px rgba(30, 20, 16, .22)); }
+
+/* 状态条 / 控制条：一张悬浮的纸，而不是一条横贯屏幕的灰条 */
+#page-room #hud .rv-statbar {
+  background: var(--rv-paper);
+  border-color: var(--rv-hairline);
+  box-shadow: var(--rv-shadow-s);
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+#page-room #controls {
+  margin: 4px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+  padding: 6px 8px;
+  border-radius: 18px;
+  background: var(--rv-paper);
+  border-color: var(--rv-hairline);
+  box-shadow: var(--rv-shadow-m);
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+#page-room button.rv-act { border-radius: 13px; }
+#page-room button.rv-act:active { background: color-mix(in srgb, var(--rv-accent) 14%, transparent); }
+#page-room button.rv-act svg { color: var(--rv-accent-deep); }
+#page-room.rv-dark button.rv-act svg { color: var(--rv-accent); }
+
+/* 强调色统一：按钮、选中态、滑条、开关 */
+#page-room .rv-pill:active,
+#page-room .rv-card:active,
+#page-room .rv-seg button.rv-on,
+#page-room .rv-tg.on,
+#page-room .rv-st-tools button.rv-on,
+#page-room #stSave,
+#page-room .rv-dsw.rv-sel {
+  background: linear-gradient(180deg, var(--rv-accent), var(--rv-accent-deep));
+  border-color: var(--rv-accent-deep);
+}
+#page-room .rv-pill,
+#page-room .rv-card,
+#page-room .rv-seg button,
+#page-room .rv-st-tools button,
+#page-room .rv-addb,
+#page-room .rv-mini-btn,
+#page-room .rv-dpad button {
+  border-color: color-mix(in srgb, var(--rv-accent) 22%, #e5dcf0);
+}
+#page-room .rv-pill:active,
+#page-room .rv-card:active { filter: brightness(.98); }
+#page-room .rv-card.rv-sel { box-shadow: 0 0 0 2px color-mix(in srgb, var(--rv-accent) 38%, transparent); }
+#page-room .rv-badge { background: var(--rv-accent-deep); }
+#page-room #stPal button.rv-sel { border-color: var(--rv-accent-deep); }
+#page-room .rv-prow input[type=range] { accent-color: var(--rv-accent); }
+#page-room #daynight { color: var(--rv-accent-deep); box-shadow: var(--rv-shadow-s); }
+#page-room.rv-dark #daynight { color: var(--rv-accent); }
+#page-room #winband { border-color: var(--rv-accent); background: color-mix(in srgb, var(--rv-accent) 12%, transparent); }
+
+/* 弹层：纸面 + 统一圆角；标题行留出关闭键空间 */
+#page-room .rv-panel,
+#page-room .rv-st-box {
+  border-radius: var(--rv-radius);
+  box-shadow: var(--rv-shadow-m);
+  background: var(--rv-paper);
+}
+#page-room .rv-panel h3,
+#page-room .rv-st-box h3 { font-weight: 650; letter-spacing: .2px; padding-right: 28px; }
+#page-room .rv-panel .rv-desc { color: var(--rv-sub); }
+#page-room .rv-sec { border-top-color: var(--rv-hairline); }
+
+/* 装修操作台：圆角纸片 + 更明确的保存按钮 */
+#page-room #decoBar {
+  border-radius: 18px;
+  background: var(--rv-paper);
+  border-color: var(--rv-hairline);
+  box-shadow: var(--rv-shadow-m);
+}
+#page-room #decoBar .rv-dbtn { border-radius: 10px; }
+#page-room #decoBar #dSave {
+  background: linear-gradient(180deg, var(--rv-accent), var(--rv-accent-deep));
+  border-color: var(--rv-accent-deep);
+  color: #fff;
+}
+#page-room #decoTag {
+  border-color: var(--rv-hairline);
+  background: var(--rv-paper);
+  box-shadow: var(--rv-shadow-s);
+}
+
+/* 小屏：控制条更紧凑，避免把场景压得太矮 */
+@media (max-width: 380px) {
+  #page-room #controls { margin: 2px 6px calc(8px + env(safe-area-inset-bottom, 0px)); padding: 4px; gap: 2px; }
+  #page-room button.rv-act { padding: 7px 2px; }
+  #page-room button.rv-act span { font-size: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #page-room #ta.rv-walking svg,
+  #page-room .rv-halo,
+  #page-room .rv-flame { animation: none !important; }
+}
+
+/* ================= 开源家具精灵（KayKit CC0，预渲染等距 WebP） =================
+   预渲染时 1 世界单位≈116px，统一缩到 0.55 → 1 格家具约 64px；
+   透明边已裁掉，图片底边就是家具脚底，直接 bottom:0 对齐地块。 */
+#page-room .rv-furn img.rv-sprite {
+  position: absolute; left: 50%; bottom: 0;
+  width: auto; height: auto; max-width: none;
+  transform: translateX(-50%) scale(var(--rv-s-s, .64));
+  transform-origin: bottom center;
+  pointer-events: auto; cursor: pointer;
+  filter: saturate(.78) contrast(.96) brightness(1.02) drop-shadow(0 6px 6px rgba(30, 20, 16, .22));
+}
+#page-room .rv-furn.rv-r-flip img.rv-sprite {
+  transform: translateX(-50%) scaleX(-1) scale(var(--rv-s-s, .64));
+}
+#page-room .rv-furn.rv-dragging img.rv-sprite {
+  filter: saturate(.78) contrast(.96) brightness(1.02) drop-shadow(0 14px 12px rgba(30, 20, 16, .34));
+}
+#page-room .rv-card .rv-thumb img.rv-thumb-sprite {
+  max-height: 54px; max-width: 62px; width: auto; height: auto;
+  object-fit: contain; display: block;
+}
+
+/* ================= 轻量交互：选中条 / 放置幽灵 / 放置操作条 ================= */
+#page-room #rv-selbar,
+#page-room #rv-placebar {
+  position: absolute; left: 50%; bottom: 158px; z-index: 45;
+  transform: translateX(-50%);
+  display: flex; align-items: center; gap: 5px;
+  max-width: 94vw; white-space: nowrap;
+  padding: 6px 7px 6px 12px; border-radius: 999px;
+  background: var(--rv-paper); border: 1px solid var(--rv-hairline);
+  box-shadow: var(--rv-shadow-m);
+}
+#page-room #rv-selbar[hidden],
+#page-room #rv-placebar[hidden] { display: none; }
+#page-room .rv-selname {
+  font-size: 12px; font-weight: 650; color: var(--rv-ink);
+  max-width: 108px; overflow: hidden; text-overflow: ellipsis;
+}
+#page-room #rv-selbar button,
+#page-room #rv-placebar button {
+  flex: 0 0 auto; border: 0; border-radius: 999px;
+  padding: 7px 10px; font-size: 11.5px; line-height: 1;
+  background: var(--rv-chip); color: var(--rv-ink); cursor: pointer;
+}
+#page-room #rv-selbar button:active,
+#page-room #rv-placebar button:active { background: var(--rv-chipb); }
+#page-room #rv-selbar .rv-selclose,
+#page-room #rv-placebar .rv-selclose {
+  width: 28px; height: 28px; padding: 0;
+  background: var(--rv-chipb); font-size: 12px;
+}
+#page-room .rv-furn.rv-selected img.rv-sprite {
+  filter: saturate(.78) contrast(.96) brightness(1.02)
+    drop-shadow(0 0 3px rgba(138,123,216,.95))
+    drop-shadow(0 6px 6px rgba(30,20,16,.22));
+}
+#page-room .rv-furn.rv-selected svg {
+  filter: drop-shadow(0 0 3px rgba(138,123,216,.95))
+    drop-shadow(0 6px 6px rgba(30,20,16,.22));
+}
+#page-room #static [data-wi].rv-selected { filter: drop-shadow(0 0 3px rgba(138,123,216,.95)); }
+#page-room .rv-ghost {
+  opacity: .66; pointer-events: none !important; z-index: 9998 !important;
+}
+#page-room .rv-ghost * { pointer-events: none !important; }
+#page-room .rv-ghost.rv-ghost-bad { opacity: .36; }
+#page-room .rv-ghost img.rv-sprite { filter: drop-shadow(0 5px 5px rgba(30,20,16,.18)); }
+#page-room.rv-deco #rv-selbar,
+#page-room.rv-deco #rv-placebar { display: none !important; }
+
+/* ================= 2D 户型编辑器 ================= */
+#page-room #planEditor {
+  position: absolute; inset: 0; z-index: 70;
+  display: flex; flex-direction: column;
+  background: #f4efe6; color: #3a3444;
+  font-size: 13px;
+}
+#page-room #planEditor[hidden] { display: none; }
+#page-room .pe-head {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; border-bottom: 1px solid rgba(70,50,35,.12);
+  background: #fffdf8;
+}
+#page-room .pe-head b { font-size: 15px; }
+#page-room #peSize { font-size: 11.5px; color: #9a8b78; }
+#page-room .pe-x {
+  margin-left: auto; width: 30px; height: 30px; border-radius: 50%;
+  border: 1px solid #e7ddcf; background: #f6f1e8; color: #6b5f52; cursor: pointer;
+}
+#page-room .pe-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 8px 10px; overflow: auto; }
+#page-room #planSvg {
+  width: 100%; height: auto; max-height: 56vh; display: block;
+  touch-action: none; user-select: none; -webkit-user-select: none;
+  background: #fffdf8; border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(70,45,25,.10);
+}
+#page-room #planSvg [data-pedge] { cursor: ew-resize; }
+#page-room #planSvg [data-pfi], #page-room #planSvg [data-pwi] { cursor: move; }
+#page-room .pe-hint { min-height: 16px; font-size: 11px; color: #9a8b78; text-align: center; padding: 0 10px; }
+#page-room .pe-bar {
+  flex: 0 0 auto; display: flex; align-items: center; flex-wrap: wrap; gap: 5px;
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+  background: #fffdf8; border-top: 1px solid rgba(70,50,35,.12);
+}
+#page-room .pe-bar button {
+  border: 1px solid #e2d8c9; background: #f8f3ea; color: #5b4f43;
+  border-radius: 9px; padding: 7px 9px; font-size: 11.5px; cursor: pointer; line-height: 1;
+}
+#page-room .pe-bar button.on { background: #8a7bd8; border-color: #6c5fc0; color: #fff; }
+#page-room .pe-bar button.pe-save { background: #3b8f6b; border-color: #2f7657; color: #fff; }
+#page-room .pe-bar .pe-sep { width: 1px; height: 18px; background: #e2d8c9; margin: 0 3px; }
+#page-room .pe-extra { display: flex; gap: 6px; justify-content: center; padding: 0 10px 8px; background: #fffdf8; }
+#page-room .pe-extra[hidden] { display: none; }
+#page-room .pe-extra button { width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
+#page-room .pe-extra button.sel { border-color: #5b4ac0; box-shadow: 0 0 0 2px #fff inset; }
+#page-room .pe-extra .pe-erase-floor { width: auto; border-radius: 8px; padding: 0 8px; font-size: 10.5px; background: #f0e9dc; border: 1px solid #d9cbb9; }
+#page-room #planBack {
+  position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%);
+  z-index: 80; border: 1px solid var(--rv-hairline); border-radius: 999px;
+  padding: 10px 16px; background: var(--rv-paper); color: var(--rv-ink);
+  box-shadow: var(--rv-shadow-m); font-size: 13px; cursor: pointer;
+}
+#page-room #planBack[hidden] { display: none; }
+#page-room.rv-plan3d #controls, #page-room.rv-plan3d #hud { display: none !important; }

@@ -683,6 +683,8 @@ const lu = document.getElementById('lbl-user');
 if (lu) lu.textContent = deskNameText('lbl-user');
 const lp = document.getElementById('lbl-partner');
 if (lp) lp.textContent = deskNameText('lbl-partner');
+const ck = document.getElementById('ck-ta-word');
+if (ck) ck.textContent = deskNameText('lbl-partner');
 }
 function bindLabel(id, key) {
 const el = document.getElementById(id);

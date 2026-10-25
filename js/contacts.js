@@ -140,7 +140,12 @@ try { if (cb) cb(); } catch (e2) {}
 window.storeFor = function (cid) { return window.xyStore(G + ':' + cid); };
 window.storeForCid = function (cid) { return cid === 'default' ? defaultStore() : window.xyStore(G + ':' + cid); };
 window.partnerGenderFor = function (cid) {
-try { return window.xyStore(G + ':' + (cid || 'default')).get('partner-gender') || ''; } catch (e) { return ''; }
+try {
+const v = window.xyStore(G + ':' + (cid || 'default')).get('partner-gender');
+if (v === 'he' || v === 'she') return v;
+if (v === '') return '';          // 用户主动选了「不设置」：保留 TA
+return 'he';                       // 键不存在 → 默认男性
+} catch (e) { return 'he'; }
 };
 window.taWordFor = function (cid) {
 const g = window.partnerGenderFor(cid);
@@ -173,6 +178,24 @@ segs[i] = parts.join('');
 }
 return segs.join('');
 };
+function applyDefaultPartnerProfile() {
+try {
+if (!window.__mochiDataReady) return;
+const list = getContacts();
+list.forEach(function (c) {
+const s = window.xyStore(G + ':' + c.id);
+const g = s.get('partner-gender');
+if (g === null || g === undefined) s.set('partner-gender', 'he');
+const g2 = s.get('partner-gender');
+if (g2 !== 'he' && g2 !== 'she') return;   // 显式「不设置」不动
+const lbl = s.get('lbl-partner');
+if (!lbl || lbl === 'TA' || lbl === 'ta') s.set('lbl-partner', g2 === 'he' ? '他' : '她');
+});
+} catch (e) {}
+}
+if (window.__mochiDataReady) applyDefaultPartnerProfile();
+else document.addEventListener('mochi-restore-done', applyDefaultPartnerProfile);
+setTimeout(applyDefaultPartnerProfile, 2600);
 function regStore() { return window.xyStore(G); }
 function getContacts() {
 try {
@@ -190,6 +213,7 @@ const nm = name || ('联系人' + (list.length));
 list.push({ id: id, name: nm });
 regStore().set('contacts', JSON.stringify(list));
 try { window.xyStore(G + ':' + id).set('lbl-partner', nm); } catch (e) {}
+try { window.xyStore(G + ':' + id).set('partner-gender', 'he'); } catch (e) {}
 return id;
 };
 window.renameContact = function (id, name) {
@@ -642,7 +666,7 @@ hideContactModal(m);
 }, {
 noInput: true,
 pill: cur,
-staticText: '小字说明：设置后，桌面浮字、聊天、朋友圈、信箱等消息里的「TA／他」会跟随显示为「他」或「她」；选「不设置」则保持默认「TA」。该设置为每个联系人独立保存，只改显示方式，不会改动已保存的消息原文。',
+staticText: '小字说明：未设置过的联系人默认显示「他」；设置后，桌面浮字、聊天、朋友圈、信箱等消息里的「TA／他」会跟随显示为「他」或「她」；选「不设置」则保持「TA」。该设置为每个联系人独立保存，只改显示方式，不会改动已保存的消息原文。',
 pills: [
 { label: '他（男生）', value: 'he' },
 { label: '她（女生）', value: 'she' },

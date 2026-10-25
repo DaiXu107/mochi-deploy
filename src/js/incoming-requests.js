@@ -524,7 +524,7 @@
       const c = (window.getContacts() || []).find(x => x.id === cid);
       if (c && c.name) return c.name;
     } catch (e) {}
-    return cid === 'default' ? 'TA' : 'TA';
+    return window.taWordFor ? window.taWordFor(cid) : 'TA';
   }
   // 该桌面联系人自己的 partner 头像（聊天头像 cs-avatar-partner 优先，回退该桌面
   // 的身份图标 feed-ta-avatar，再回退桌面装饰 avatar-partner）——

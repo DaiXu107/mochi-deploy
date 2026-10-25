@@ -389,7 +389,7 @@ try {
 const c = (window.getContacts() || []).find(x => x.id === cid);
 if (c && c.name) return c.name;
 } catch (e) {}
-return cid === 'default' ? 'TA' : 'TA';
+return window.taWordFor ? window.taWordFor(cid) : 'TA';
 }
 function cAvatar(cid) {
 try {
