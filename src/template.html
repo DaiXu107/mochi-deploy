@@ -3500,6 +3500,8 @@
             <div class="gs-sub">你发出的普通消息有概率被对方拒收；命中的这一条不再触发回复，气泡旁出现红色感叹号。0 = 从不拒收。</div>
             <div class="gs-row"><span>同意撤销拒收概率</span><div class="stepper" data-k="ta-reject-undo-prob" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="ta-reject-undo-prob-val" readonly><button class="stp-max">+</button></div></div>
             <div class="gs-sub">你点红色感叹号向 TA 申请撤销拒收时，TA 按这个概率同意；不同意则拒收保留。0 = 永远不答应，100 = 每次都答应。</div>
+            <div class="gs-row"><span>TA 主动申请撤销拒收概率</span><div class="stepper" data-k="ta-reject-request-prob" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="ta-reject-request-prob-val" readonly><button class="stp-max">+</button></div></div>
+            <div class="gs-sub">你拒收 TA 的普通消息后，TA 有概率主动发一条「可以不要拒收吗」的申请；你点那条消息旁的红色感叹号即可同意。0 = 永不主动申请，100 = 每次被拒收都申请。</div>
           </div>
           <div class="gs-title">回复机制（默认＝mochi 原机制）</div>
           <div class="set-group glass">
@@ -3883,6 +3885,7 @@
           <div class="gs-row"><span>秋季冷饮概率</span><div class="stepper" data-k="bar-cold-autumn" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="bar-cold-autumn-val" readonly><button class="stp-max">+</button></div></div>
           <div class="gs-row"><span>冬季冷饮概率</span><div class="stepper" data-k="bar-cold-winter" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="bar-cold-winter-val" readonly><button class="stp-max">+</button></div></div>
           <div class="gs-row"><span>经期冷饮概率</span><div class="stepper" data-k="bar-cold-period" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="bar-cold-period-val" readonly><button class="stp-max">+</button></div></div>
+          <div class="gs-row"><span>TA 收藏你送的饮品概率</span><div class="stepper" data-k="bar-ta-fav-prob" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="bar-ta-fav-prob-val" readonly><button class="stp-max">+</button></div></div>
         </div>
         <div class="gs-sub" style="padding:0 14px 14px">吧台里「随机冰度」的冷饮（去冰 / 少冰 / 正常冰 / 多冰 / 冰沙）出现概率。①<b>四季各一枚，值就是那一季的冷饮概率</b>——默认春 55 / 夏 75 / 秋 50 / 冬 30（%），按当前季节取用，想哪季多给冰就调哪季，调 0 = 那一季基本不出冷饮（心情特别好时仍会再加一点点）；当天上传过心情的话会在此之上加减（开心 +12%、平静 +4%、不舒服 −10%、难过 −18%），最终封顶 90%；②「经期冷饮概率」= 经期（及经期前后 3 天）窗口内冷饮概率的上限，<b>默认 15%</b>，调 0 = 经期一律温热/常温，调 100 = 经期不额外压制（按上面当季那份概率走）。只影响「随机冰度」和 TA 帮调制替你选冰度，你手动挑的冰度不受影响；按联系人桌面独立保存</div>
         </div>

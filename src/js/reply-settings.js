@@ -12,10 +12,12 @@
     //   bar-cold-period＝经期窗口内的冷饮概率上限（默认 15）。消费侧见 src/js/bar.js。
     'bar-cold-spring': 55, 'bar-cold-summer': 75, 'bar-cold-autumn': 50, 'bar-cold-winter': 30,
     'bar-cold-period': 15,
+    // 吧台：联系人收到用户赠送饮品后，主动收藏这杯的概率（%，默认 55）
+    'bar-ta-fav-prob': 55,
     'rs-min': 1, 'rs-max': 40,
     'reply-min': 1, 'reply-max': 2,
     // 二改：聊天互相拒收（概率从聊天设置迁到回复设置·聊天 tab）
-    'ta-reject-prob': 5, 'ta-reject-undo-prob': 50,
+    'ta-reject-prob': 5, 'ta-reject-undo-prob': 50, 'ta-reject-request-prob': 35,
     // #1180 TA 消息总量限流（用户直派「回复条数只管基础回复，撤回补发/逐卡连发/心情分享/红包捎话/
     // 主动发送全都绕过上限，导致聊天里联系人发送的消息非常多」）——rl-en 总开关（**默认关闭**＝行为
     // 与改造前一字不变）、rl-win 窗口分钟数、rl-max 窗口内最多条数。生效见 chat.js rateLimitFull

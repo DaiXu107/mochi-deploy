@@ -6,6 +6,7 @@ if (!G) return;
 var K_ING = 'bar-ingredients', K_VER = 'bar-presets-version', K_SKIP = 'bar-skip-shake';
 var K_RECENT = 'bar-named-recent', K_LOG = 'bar-log';
 var K_MY_LIKES = 'bar-my-likes', K_TA_LIKES = 'bar-ta-likes';
+var K_MY_DRINK_FAVS = 'bar-my-drink-favs';
 var K_ADVICE = 'period-cold-advice-last', K_TAGIFT = 'bar-ta-gift-last';
 var MAX_SLOT = 4;
 var ICE_OPTIONS = ['去冰', '少冰', '正常冰', '多冰', '冰沙', '温热', '常温'];
@@ -133,6 +134,53 @@ if (i >= 0) cur.ing.splice(i, 1); else cur.ing.push(id);
 writeLikes(which, cur);
 return i < 0;
 }
+function drinkFavEntry(e) {
+if (typeof e === 'string') return { name: e, emoji: '🍸', ingredients: '', ice: '', sweet: '', ts: 0 };
+e = e || {};
+return {
+id: e.id || '', name: String(e.name || e.drinkName || ''), emoji: e.emoji || '🍸',
+ingredients: String(e.ingredients || ''), ice: e.ice || e.drinkIce || '', sweet: e.sweet || e.drinkSweet || '',
+mode: e.mode || '', ts: Number(e.ts) || 0, from: e.from || ''
+};
+}
+function drinkFavKey(e) {
+var x = drinkFavEntry(e);
+return [x.name, x.ingredients, x.ice, x.sweet].join('|');
+}
+function readDrinkFavs(which) {
+if (which === 'ta') return (readLikes('ta').drinks || []).slice();
+try { var s = activeS(); if (!s) return []; var v = JSON.parse(s.get(K_MY_DRINK_FAVS) || '[]'); return Array.isArray(v) ? v : []; }
+catch (e) { return []; }
+}
+function writeDrinkFavs(which, list) {
+if (which === 'ta'){ var cur = readLikes('ta'); cur.drinks = (list || []).slice(0, 200); writeLikes('ta', cur); return; }
+try { var s = activeS(); if (s) s.set(K_MY_DRINK_FAVS, JSON.stringify((list || []).slice(0, 200))); } catch (e) {}
+}
+function isDrinkFav(which, e) {
+var k = drinkFavKey(e);
+return readDrinkFavs(which).some(function (x){ return drinkFavKey(x) === k; });
+}
+function toggleDrinkFav(which, e) {
+var list = readDrinkFavs(which).slice(), k = drinkFavKey(e);
+var i = -1;
+for (var n = 0; n < list.length; n++) if (drinkFavKey(list[n]) === k){ i = n; break; }
+if (i >= 0) list.splice(i, 1);
+else list.unshift(drinkFavEntry(e));
+writeDrinkFavs(which, list);
+return i < 0;
+}
+function taFavProb() { return barKnob('bar-ta-fav-prob', 55) / 100; }
+function maybeTaFav(d, mode, sweet, logId) {
+if (mode !== 'gift' && mode !== 'together') return;
+if (Math.random() >= taFavProb()) return;
+var added = toggleDrinkFav('ta', {
+id: logId || '', name: d.name, emoji: d.emoji, ingredients: d.ingredients,
+ice: d.ice, sweet: sweet || '', mode: mode, ts: Date.now(), from: 'me'
+});
+if (added) setTimeout(function(){ toast('TA 收藏了你的「' + d.name + '」'); }, 900);
+}
+window.barIsDrinkFav = isDrinkFav;
+window.barToggleDrinkFav = toggleDrinkFav;
 function ensureTaLikes() {
 var cur = readLikes('ta');
 if (cur.ing.length) return cur;
@@ -148,7 +196,8 @@ while (dr.length < 3 && g2++ < 60 && names.length) {
 var n = names[Math.floor(Math.random() * names.length)];
 if (dr.indexOf(n) < 0) dr.push(n);
 }
-cur = { ing: ids, drinks: dr };
+var hadDrinks = Array.isArray(cur.drinks) && cur.drinks.length;
+cur = { ing: ids, drinks: hadDrinks ? cur.drinks : dr };
 writeLikes('ta', cur);
 return cur;
 }
@@ -580,8 +629,15 @@ ts: Date.now()
 }
 function pushLog(d, mode, wish, sweet) {
 var log = readLog();
-log.push({ name: d.name, emoji: d.emoji, color: d.color, ingredients: d.ingredients, ice: d.ice, sweet: sweet || '', mode: mode, wish: wish || '', fused: d.fused, manual: d.manual, ts: Date.now() });
+var entry = {
+id: 'bl_' + Date.now().toString(36) + '_' + Math.floor(Math.random() * 1e6).toString(36),
+name: d.name, emoji: d.emoji, color: d.color, ingredients: d.ingredients, ice: d.ice,
+sweet: sweet || '', mode: mode, wish: wish || '', fused: d.fused, manual: d.manual,
+side: mode === 'ta_gift' ? 'in' : 'out', from: mode === 'ta_gift' ? 'ta' : 'me', ts: Date.now()
+};
+log.push(entry);
 writeLog(log);
+return entry;
 }
 function sendToChat(ice, mode, wish, sweet) {
 if (!canSend()) { toast('先加至少一份原料'); return; }
@@ -599,7 +655,8 @@ rec.drinkBoxId = boxId;
 }
 if (window.chatAddGift) window.chatAddGift(rec);
 else if (window.chatAddIn) window.chatAddIn(rec.text, {});
-pushLog(d, mode, wish, sweet);
+var logEntry = pushLog(d, mode, wish, sweet);
+maybeTaFav(d, mode, sweet, logEntry && logEntry.id);
 if (needBox && boxId) {
 boxAdd({ id: boxId, name: d.name, emoji: d.emoji, ingredients: d.ingredients, ice: d.ice, sweet: sweet, mode: mode, wish: wish, side: 'out', ts: Date.now(), claimed: 0, replies: [] });
 taReactToDrink(boxId);
@@ -738,6 +795,7 @@ var rec = buildRec(d, 'ta_gift', 'in', '', sw);
 var tbId = 'db_' + Date.now().toString(36) + '_' + Math.floor(Math.random() * 1e6).toString(36);
 rec.drinkBoxId = tbId;
 boxAdd({ id: tbId, name: d.name, emoji: d.emoji, ingredients: d.ingredients, ice: d.ice, sweet: sw, mode: 'ta_gift', wish: '', side: 'in', ts: Date.now(), claimed: 0, replies: [] });
+pushLog(d, 'ta_gift', '', sw);
 if (window.chatAddGift) window.chatAddGift(rec);
 try { G.set(K_TAGIFT, todayStr()); } catch (e) {}
 } catch (e) {}
@@ -761,20 +819,25 @@ if (window.chatAddIn) window.chatAddIn(line, { tag: '经期关心', nightAllow: 
 G.set(K_ADVICE, todayStr());
 } catch (e) {}
 }
-var MODE_LABEL = { gift: '送出', together: '一起', self: '自饮', ta_gift: 'TA送出' };
+var MODE_LABEL = { gift: '送出', together: '一起', self: '自饮', ta_gift: 'TA 为你调' };
 function openLogModal() {
 var log = readLog().slice().reverse();
 var mask = document.createElement('div');
 mask.className = 'mg-mask'; mask.id = 'bar-log-mask';
 var body = log.length
-? log.map(function (e) {
+? log.map(function (e, i) {
 var t = new Date(e.ts);
 var tm = (t.getMonth() + 1) + '/' + t.getDate() + ' ' + t.getHours() + ':' + (t.getMinutes() < 10 ? '0' : '') + t.getMinutes();
+var incoming = e.side === 'in' || e.mode === 'ta_gift';
+var mineFav = incoming && isDrinkFav('my', e);
+var taFav = !incoming && isDrinkFav('ta', e);
 return '<div class="bar-log-item"><span class="bl-emoji">' + (e.emoji || '🍸') + '</span>' +
 '<div class="bl-main"><div class="bl-name">' + e.name +
 '<span class="bl-ice">' + (e.ice || '常温') + '</span>' +
 (e.mode && e.mode !== 'gift' ? '<span class="bl-mode">' + (MODE_LABEL[e.mode] || '') + '</span>' : '') +
+(taFav ? '<span class="bl-fav-ta">TA ♥</span>' : '') +
 '</div><div class="bl-ing">' + (e.ingredients || '') + '</div></div>' +
+(incoming ? '<button class="bl-fav' + (mineFav ? ' on' : '') + '" data-logfav="' + i + '" title="收藏这杯">' + (mineFav ? '♥' : '♡') + '</button>' : '') +
 '<span class="bl-time">' + tm + '</span></div>';
 }).join('')
 : '<div class="bar-log-empty">' + partnerName() + '还没有调制记录，先去调一杯吧</div>';
@@ -785,6 +848,57 @@ document.body.appendChild(mask);
 var close = function () { try { mask.remove(); } catch (e) {} };
 mask.querySelector('.mg-close').addEventListener('click', close);
 mask.addEventListener('click', function (e) { if (e.target === mask) close(); });
+mask.querySelectorAll('[data-logfav]').forEach(function (b) {
+b.addEventListener('click', function (e) {
+e.stopPropagation();
+var e0 = log[Number(b.dataset.logfav)];
+if (!e0) return;
+toggleDrinkFav('my', e0);
+close(); openLogModal();
+});
+});
+}
+function openDrinkFavModal() {
+var old = document.getElementById('bar-fav-mask');
+if (old) old.remove();
+var my = readDrinkFavs('my'), ta = readDrinkFavs('ta').filter(function (x){ return x && typeof x === 'object'; });
+function rows(list, which) {
+if (!list.length) return '<div class="bar-fav-empty">还没有收藏</div>';
+return list.map(function (e, i) {
+var x = drinkFavEntry(e);
+var t = x.ts ? new Date(x.ts) : null;
+var tm = t ? ((t.getMonth() + 1) + '/' + t.getDate() + ' ' + t.getHours() + ':' + (t.getMinutes() < 10 ? '0' : '') + t.getMinutes()) : '';
+return '<div class="bar-fav-item"><span class="bl-emoji">' + (x.emoji || '🍸') + '</span>' +
+'<div class="bl-main"><div class="bl-name">' + (x.name || '未命名') +
+(x.ice ? '<span class="bl-ice">' + x.ice + '</span>' : '') +
+(x.sweet ? '<span class="bl-mode">' + x.sweet + '</span>' : '') +
+'</div><div class="bl-ing">' + (x.ingredients || '') + '</div></div>' +
+(tm ? '<span class="bl-time">' + tm + '</span>' : '') +
+'<button class="bl-fav on" data-favdel="' + which + ':' + i + '">♥</button></div>';
+}).join('');
+}
+var mask = document.createElement('div');
+mask.className = 'mg-mask'; mask.id = 'bar-fav-mask';
+mask.innerHTML = '<div class="mg-panel bar-fav-panel">' +
+'<div class="mg-head"><span>饮品收藏</span><button class="mg-close">✕</button></div>' +
+'<div class="bar-fav-body">' +
+'<div class="bar-fav-sec">我收藏的 · ' + partnerName() + '送的</div>' + rows(my, 'my') +
+'<div class="bar-fav-sec">' + partnerName() + '收藏的 · 我送的</div>' + rows(ta, 'ta') +
+'</div></div>';
+document.body.appendChild(mask);
+var close = function () { try { mask.remove(); } catch (e) {} };
+mask.querySelector('.mg-close').addEventListener('click', close);
+mask.addEventListener('click', function (e) { if (e.target === mask) close(); });
+mask.querySelectorAll('[data-favdel]').forEach(function (b) {
+b.addEventListener('click', function (e) {
+e.stopPropagation();
+var pair = String(b.dataset.favdel).split(':');
+var list = readDrinkFavs(pair[0]);
+var item = list[Number(pair[1])];
+if (item) toggleDrinkFav(pair[0], item);
+openDrinkFavModal();
+});
+});
 }
 function openCabinet() {
 var mask = document.getElementById('bar-cab-mask');
@@ -1036,6 +1150,7 @@ page.innerHTML =
 '<span class="ch-back" id="bar-back"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></span>' +
 '<span class="ch-name">吧台</span>' +
 '<span class="bar-cab-btn" id="bar-log-btn">📋 调制记录</span>' +
+'<span class="bar-cab-btn" id="bar-fav-btn">❤️ 收藏</span>' +
 '<span class="bar-cab-btn" id="bar-cab-btn">🧺 原料柜</span>' +
 '</div>' +
 '<div class="bar-scroll">' +
@@ -1069,6 +1184,7 @@ function bindPage() {
 var back = page.querySelector('#bar-back'); if (back) back.addEventListener('click', closeBar);
 var cab = page.querySelector('#bar-cab-btn'); if (cab) cab.addEventListener('click', openCabinet);
 var logBtn = page.querySelector('#bar-log-btn'); if (logBtn) logBtn.addEventListener('click', openLogModal);
+var favBtn = page.querySelector('#bar-fav-btn'); if (favBtn) favBtn.addEventListener('click', openDrinkFavModal);
 var reroll = page.querySelector('#bar-reroll');
 if (reroll) reroll.addEventListener('click', function () { randomName(); });
 var edit = page.querySelector('#bar-edit'); if (edit) edit.addEventListener('click', renameDrink);
@@ -1151,6 +1267,7 @@ pick: openSlotPicker, hasBase: hasBase,
 recipe: recipeText, recipeList: recipeList,
 coldProb: coldProb, coldWindow: coldWindow, pickIce: pickIce, season: function () { return SEASON_NAME[seasonIdx()]; },
 moodScore: moodScore, likes: readLikes, toggleLike: toggleLike, taLikes: ensureTaLikes,
+drinkFavs: readDrinkFavs, toggleDrinkFav: toggleDrinkFav, favPanel: openDrinkFavModal, taFavProb: taFavProb,
 seasonCold: seasonCold, periodCold: periodCold,
 taGift: taSpontaneousGift, advice: maybeColdAdvice, simulate: simulateCup,
 box: function () { return boxRead(); }, boxMeta: window.drinkBoxMeta, boxClaim: window.drinkBoxMarkClaimed, boxReply: window.drinkBoxAttachReply

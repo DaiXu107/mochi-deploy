@@ -5,9 +5,10 @@ const ls = window.activeStore();
 const DEFAULTS = {
 'bar-cold-spring': 55, 'bar-cold-summer': 75, 'bar-cold-autumn': 50, 'bar-cold-winter': 30,
 'bar-cold-period': 15,
+'bar-ta-fav-prob': 55,
 'rs-min': 1, 'rs-max': 40,
 'reply-min': 1, 'reply-max': 2,
-'ta-reject-prob': 5, 'ta-reject-undo-prob': 50,
+'ta-reject-prob': 5, 'ta-reject-undo-prob': 50, 'ta-reject-request-prob': 35,
 'rl-en': 0, 'rl-win': 5, 'rl-max': 15,
 'turn-en': 0,
 'rn-prob': 20, 'touch-prob': 5,

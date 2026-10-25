@@ -4516,7 +4516,7 @@ m.removeEventListener('animationend', onEnterEnd);
 function undoRejectedMsg(m, rec, doneMsg) {
 if (!rec || !rec.rejected) return;
 var wasLastMine = rec.side === 'out' && lastMineIdx >= 0 && msgs[lastMineIdx] === rec;
-try { delete rec.rejected; delete rec.rejectedAt; } catch (e) {}
+try { delete rec.rejected; delete rec.rejectedAt; delete rec.taAskUndo; } catch (e) {}
 saveMsgs();
 // 600ms 等待期间可能重渲过，节点断了就按 data-idx 找回屏上那一格
 try {
@@ -4552,11 +4552,49 @@ try { toast('TA 没有同意撤销，拒收保留'); } catch (e) {}
 }
 }, 600);
 }
+// 二改：我拒收 TA 的普通消息后，TA 按「主动申请撤销拒收概率」主动发一条申请。
+// 用户点被拒收消息旁的红色感叹号即可同意；不点则保持拒收。
+function maybeTaRequestUndo(rec) {
+if (!rec || rec.rejected !== 'me') return;
+var p = 35;
+try {
+var v = cfg()['ta-reject-request-prob'];
+var n = parseInt(v, 10);
+if (!isNaN(n)) p = Math.max(0, Math.min(100, n));
+} catch (e) {}
+if (Math.random() * 100 >= p) return;
+var cid = window.__activeCid || 'default';
+var wait = 1400 + Math.floor(Math.random() * 2600);
+setTimeout(function () {
+try {
+if ((window.__activeCid || 'default') !== cid) return;
+if (!rec || rec.rejected !== 'me' || rec.taAskUndo) return;
+var msg = addIn('刚刚那条……可以不要拒收吗？点一下那条消息旁的红色感叹号就行。', {
+special: 'poke', initiative: 'ta', nightAllow: true, rateAllow: true,
+dedupExempt: true, tag: 'TA 申请撤销拒收', tagNoDup: true
+});
+if (!msg) return;
+rec.taAskUndo = Date.now();
+saveMsgs();
+var idx = msgs.indexOf(rec);
+if (idx >= 0) {
+var el = body.querySelector('.msg[data-idx="' + idx + '"]');
+if (el) decorateRejectedMsg(el, rec);
+}
+} catch (e) {}
+}, wait);
+}
 function decorateRejectedMsg(m, rec) {
 if (!m || !rec || !rec.rejected) return;
 m.classList.add('msg-rejected');
 var b = m.querySelector('.msg-bubble');
-if (!b || b.querySelector('.msg-reject-icon')) return;
+if (!b) return;
+var oldIcon = b.querySelector('.msg-reject-icon');
+if (oldIcon) {
+oldIcon.title = rec.rejected === 'ta' ? '对方拒收了这条消息（点击申请撤销）'
+: (rec.taAskUndo ? 'TA 申请撤销这次拒收（点击同意）' : '你已拒收了这条消息（点击撤销）');
+return;
+}
 // 兼容旧版文字戳 / 淡化包裹：拆掉，只留微信式红色感叹号
 var oldTag = b.querySelector('.msg-reject-tag'); if (oldTag) oldTag.remove();
 var oldDim = b.querySelector('.msg-reject-dim');
@@ -4568,7 +4606,8 @@ var btn = document.createElement('button');
 btn.type = 'button';
 btn.className = 'msg-reject-icon';
 btn.textContent = '!';
-btn.title = rec.rejected === 'ta' ? '对方拒收了这条消息（点击申请撤销）' : '你已拒收了这条消息（点击撤销）';
+btn.title = rec.rejected === 'ta' ? '对方拒收了这条消息（点击申请撤销）'
+: (rec.taAskUndo ? 'TA 申请撤销这次拒收（点击同意）' : '你已拒收了这条消息（点击撤销）');
 btn.addEventListener('click', function (e) {
 e.preventDefault();
 e.stopPropagation();
@@ -14070,9 +14109,11 @@ closeMsgActions();
 if (rec && rec.side === 'in' && !rec.special && !rec.rejected) {
 rec.rejected = 'me';
 rec.rejectedAt = Date.now();
+delete rec.taAskUndo;
 saveMsgs();
 try { if (activeMsgEl) decorateRejectedMsg(activeMsgEl, rec); } catch (e) {}
 toast('已拒收这条消息');
+try { maybeTaRequestUndo(rec); } catch (e) {}
 }
 closeMsgActions();
 } else if (act === 'del') {
