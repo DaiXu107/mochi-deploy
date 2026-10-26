@@ -4248,6 +4248,26 @@ return;
 // #985：礼物卡的【领取】与【回复】——两条都只对「联系人送我的礼物」出现（giftSelf 的 TA 自买卡
 // 与历史卡不响应）。按钮点击必须 stopPropagation：礼物卡在 msg 容器内，冒泡上去会顶掉卡片自身的
 // 手势层（同下面心愿卡【送 TA】的口径）。
+// 吧台饮品卡：收藏到总收藏的「调制」（聊天卡直达，不需要进吧台）
+const drinkFavBtn = e.target.closest('.msg-drink-fav');
+if (drinkFavBtn && drinkFavBtn.closest('.msg-drink')) {
+  e.stopPropagation();
+  const fItem = drinkFavBtn.closest('[data-idx]');
+  const fIdx = fItem && fItem.dataset.idx !== undefined ? Number(fItem.dataset.idx) : -1;
+  const fRec = fIdx >= 0 ? msgs[fIdx] : null;
+  if (fRec && fRec.special === 'drink' && fRec.side === 'in') {
+    if (window.barToggleDrinkFav) {
+      try {
+        const added = window.barToggleDrinkFav('my', drinkFavEntryOf(fRec));
+        drinkPatchCard(fIdx);
+        toast(added ? '已收进总收藏 · 调制' : '已取消收藏');
+      } catch (err) { toast('收藏失败，请稍后再试'); }
+    } else {
+      toast('吧台还没准备好，稍后再试');
+    }
+  }
+  return;
+}
 // 吧台饮品卡：接收 / 拒收（必须在礼物分支之前——礼物分支对非 gift 记录会提前 return）
 const drinkActBtn = e.target.closest('.msg-gift-claim, .msg-gift-reject');
 if (drinkActBtn && drinkActBtn.closest('.msg-drink')) {
@@ -6516,7 +6536,6 @@ m.innerHTML = '<div class="msg-gift-card msg-drink-card">' +
 '<span class="msg-gift-price">' + escTxt((rec.drinkIce ? rec.drinkIce + ' · ' : '') + (rec.drinkSweet ? rec.drinkSweet + ' · ' : '') + (rec.drinkFused ? '固定搭配' : '自由调制')) + '</span></div>' +
 drinkCardActsHtml(rec) +
 drinkCardReplHtml(rec) +
-favHeartHtml(rec) +
 '</div>';
 appendMsg(m);
 maybeScrollChatBottom(rec.side);
@@ -7685,7 +7704,32 @@ function drinkCardActsInner(rec) {
   }
   return meta.claimed === 1 ? '<span class="msg-gift-got">✓ 已被领取</span>' : '<span class="mg-drink-wait">待领取</span>';
 }
-function drinkCardActsHtml(rec) { return (rec && rec.drinkBoxId) ? '<div class="msg-gift-acts">' + drinkCardActsInner(rec) + '</div>' : ''; }
+// TA 直接送到聊天框的饮品（含 ta_gift 自由调制）不经过吧台槽位，但也能从聊天卡
+// 直接收进总收藏 → 调制。数据仍写 bar-my-drink-favs，和吧台记录里的 ♥ 是同一份。
+function drinkFavEntryOf(rec) {
+  if (!rec) return null;
+  return {
+    name: rec.drinkName || '特调', emoji: rec.drinkEmoji || '🍸',
+    ingredients: rec.drinkIngredients || '', ice: rec.drinkIce || '', sweet: rec.drinkSweet || '',
+    mode: rec.drinkMode || 'ta_gift', ts: rec.ts || 0
+  };
+}
+function drinkFavOn(rec) {
+  try {
+    return !!(window.barIsDrinkFav && window.barIsDrinkFav('my', drinkFavEntryOf(rec)));
+  } catch (e) { return false; }
+}
+function drinkFavBtnHtml(rec) {
+  if (!rec || rec.side !== 'in') return '';
+  const on = drinkFavOn(rec);
+  return '<button class="msg-drink-fav' + (on ? ' on' : '') + '" type="button" title="收藏到总收藏 · 调制" aria-label="收藏到总收藏 · 调制">' +
+    '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>';
+}
+function drinkCardActsHtml(rec) {
+  const acts = (rec && rec.drinkBoxId) ? drinkCardActsInner(rec) : '';
+  const fav = (rec && rec.side === 'in') ? drinkFavBtnHtml(rec) : '';
+  return (acts || fav) ? '<div class="msg-gift-acts">' + acts + fav + '</div>' : '';
+}
 function drinkCardReplHtml(rec) { return '<div class="msg-gift-repl"' + (drinkReplList(rec).length ? '' : ' hidden') + '>' + drinkReplRows(rec) + '</div>'; }
 // 就地补卡：只换动作区与回复区（其余节点零触碰）
 function drinkPatchCard(idx) {

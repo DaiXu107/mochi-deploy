@@ -211,6 +211,21 @@
 .mg-drink-wait { font-size:11.5px; color:var(--muted,#8a8a8a); }
 .msg-gift-reject { margin-left:8px; font-size:12px; font-weight:600; color:var(--muted,#8a8a8a); cursor:pointer; background:var(--card-soft,#f2f3f5); border:1px solid var(--card-border,rgba(0,0,0,.08)); padding:5px 12px; border-radius:999px; }
 
+/* 聊天里的吧台饮品卡：收藏到总收藏「调制」——联系人直接送的饮品不进吧台也能收 */
+.msg-drink-fav {
+  flex:0 0 auto; width:34px; height:34px; margin-left:auto;
+  display:inline-flex; align-items:center; justify-content:center;
+  border-radius:50%; border:1px solid rgba(232,90,143,.22);
+  background:rgba(255,255,255,.9); color:#c9a6b4;
+  cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+  transition:background .15s, color .15s, border-color .15s, transform .12s;
+}
+.msg-drink-fav svg { width:15px; height:15px; display:block; }
+.msg-drink-fav.on { color:#e85a8f; background:rgba(232,90,143,.10); border-color:rgba(232,90,143,.38); }
+.msg-drink-fav:active { transform:scale(.92); background:rgba(232,90,143,.12); }
+[data-theme="dark"] .msg-drink-fav { background:rgba(255,255,255,.08); border-color:rgba(232,90,143,.25); color:#a98b98; }
+[data-theme="dark"] .msg-drink-fav.on { color:#ff8fb3; background:rgba(232,90,143,.16); }
+
 /* 槽位：点击「+」选料；最后一格固定为基底 */
 .bar-slot { cursor: pointer; }
 .bs-plus { background: transparent; border: none; padding: 0; cursor: pointer; font-size: 22px; line-height: 1; color: var(--hint-ink, #ccc); }
