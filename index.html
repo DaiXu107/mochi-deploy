@@ -24,6 +24,8 @@
      脚本只认 dark、系统深色的 auto 用户会先白闪再由 personalize.js 纠正（FOUC）。
      另：旧版本残留的 data-theme 属性在此强制清掉，保证「选浅色」真回浅色。 -->
 <script>try{var _tm=localStorage.getItem('xy-home-v2:theme-mode');if(_tm==='dark'||(_tm!=='light'&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.setAttribute('data-theme','dark');else document.documentElement.removeAttribute('data-theme');}catch(e){}</script>
+<!-- 二改预览：BETWEEN US 纸页皮肤（?paper=1 或本地预览开关），在首帧前挂类避免闪白 -->
+<script>try{var _ui=localStorage.getItem('mochi-ui-style')||'classic';var _q=location.search;if(/(^|[?&])paper=1(&|$)/.test(_q))_ui='paper';else if(/(^|[?&])paper=0(&|$)/.test(_q))_ui='classic';if(_ui==='paper'){var _de=document.documentElement;if(_de.getAttribute('data-theme')==='dark'){try{var _tm0=localStorage.getItem('xy-home-v2:theme-mode')||'dark';localStorage.setItem('mochi-paper-theme-mode',_tm0);localStorage.setItem('xy-home-v2:theme-mode','light');}catch(e2){}_de.removeAttribute('data-theme');}_de.classList.add('paper-skin');}}catch(e){}</script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 :root {
@@ -11508,6 +11510,546 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
 #chat-flight-panel.game-fs .fc-stage { max-width:min(94vw,620px); flex:0 1 auto; }
 #chat-flight-panel.game-fs .fc-canvas { width:auto; height:auto; max-width:min(94vw,620px); max-height:70vh; }
 #chat-flight-panel.game-fs .fc-controls { flex-shrink:0; }
+html.paper-skin {
+--ink: #242522;
+--muted: #6f716c;
+--line: #d4d3cc;
+--page-bg: #e6e7e3;
+--page-bg-grad: #f2f2ef;
+--phone-bg-a: #f2f2ef;
+--phone-bg-b: #efeee9;
+--phone-inset: #dfded7;
+--card-bg: #f7f5ef;
+--card-bg-97: rgba(247, 245, 239, .97);
+--card-border: rgba(36, 37, 34, .16);
+--card-shadow: rgba(36, 37, 34, .05);
+--input-bg: #faf8f2;
+--input-border: #cfcec5;
+--input-focus-border: #242522;
+--btn-bg: #242522;
+--btn-ink: #f2f2ef;
+--btn-cancel-bg: #e9e7df;
+--btn-cancel-ink: #4f514c;
+--static-bg: rgba(36, 37, 34, .045);
+--track-bg: #dedcd4;
+--hint-ink: #a5a49c;
+--soft-ink: #4f514c;
+--pill-border: #c9c7bf;
+--glass-bg: rgba(243, 242, 236, .92);
+--bg-a: #f2f2ef;
+--bg-b: #f2f2ef;
+--paper-blue: #1834d4;
+--paper-guide: #b8bab8;
+--paper-frame: #8c908e;
+--paper-ochre: #b19b67;
+}
+html.paper-skin body {
+background: radial-gradient(70% 55% at 50% 0%, #f7f6f1 0%, transparent 65%), #e6e7e3;
+}
+html.paper-skin,
+html.paper-skin body,
+html.paper-skin *,
+html.paper-skin *::before,
+html.paper-skin *::after {
+font-family: "Times New Roman", "Noto Serif SC", "Songti SC", SimSun, serif !important;
+}
+html.paper-skin .phone {
+background:
+radial-gradient(120% 60% at 50% 0%, rgba(255, 255, 255, .55), transparent 70%),
+repeating-linear-gradient(0deg, rgba(36, 37, 34, .012) 0 1px, transparent 1px 3px),
+#f2f2ef;
+box-shadow: 0 24px 60px rgba(36, 37, 34, .18), 0 0 0 1px rgba(36, 37, 34, .16);
+}
+html.paper-skin #phone-bg-layer {
+opacity: .10 !important;
+filter: grayscale(1) sepia(.18) contrast(.92) !important;
+-webkit-filter: grayscale(1) sepia(.18) contrast(.92) !important;
+}
+html.paper-skin .statusbar {
+font-family: Georgia, "Times New Roman", "Songti SC", serif;
+letter-spacing: .09em;
+border-bottom: 1px solid rgba(36, 37, 34, .24);
+}
+html.paper-skin .deco-widget {
+position: relative;
+margin-top: 18px !important;
+margin-bottom: 18px !important;
+border: 1px solid rgba(36, 37, 34, .30) !important;
+border-radius: 2px !important;
+background-color: rgba(250, 248, 242, .32) !important;
+box-shadow: none !important;
+}
+html.paper-skin .deco-widget::after {
+content: "MOCHI × BETWEEN US";
+position: absolute;
+right: 11px;
+bottom: 9px;
+font: 400 7.5px/1 Georgia, serif;
+letter-spacing: .14em;
+color: var(--paper-frame);
+}
+html.paper-skin .deco-avatar .ring {
+border: 1px solid rgba(36, 37, 34, .55) !important;
+background: rgba(250, 248, 242, .45) !important;
+box-shadow: 0 0 0 5px #f2f2ef, 0 0 0 6px rgba(24, 52, 212, .20);
+}
+html.paper-skin .deco-avatar .lbl {
+background: transparent !important;
+border: 1px solid rgba(36, 37, 34, .38) !important;
+border-radius: 0 !important;
+color: var(--ink) !important;
+font-family: Georgia, "Songti SC", serif;
+letter-spacing: .06em;
+}
+html.paper-skin .deco-heart { color: var(--paper-blue) !important; }
+html.paper-skin .deco-love {
+border-top: 1px dashed var(--paper-guide) !important;
+}
+html.paper-skin .checkin {
+border-radius: 2px !important;
+margin-bottom: 18px !important;
+}
+html.paper-skin .checkin .ck-heart {
+background: transparent !important;
+border: 1px solid rgba(36, 37, 34, .38);
+color: var(--paper-blue) !important;
+}
+html.paper-skin .checkin .ck-btn {
+background: transparent !important;
+color: var(--paper-blue) !important;
+border: 1px solid var(--paper-blue) !important;
+border-radius: 999px !important;
+box-shadow: none !important;
+font-family: Georgia, "Songti SC", serif;
+font-weight: 400;
+letter-spacing: .06em;
+}
+html.paper-skin .deco-love #love-days {
+font-family: Georgia, "Songti SC", serif;
+font-weight: 400;
+letter-spacing: .06em;
+}
+html.paper-skin .deco-love #love-date { font-family: Georgia, serif; letter-spacing: .08em; }
+html.paper-skin .mini-row {
+gap: 14px !important;
+margin-bottom: 18px !important;
+}
+html.paper-skin .mini-card {
+border-radius: 2px !important;
+background-color: rgba(250, 248, 242, .32) !important;
+border: 1px solid rgba(36, 37, 34, .22) !important;
+box-shadow: none !important;
+}
+html.paper-skin .checkin,
+html.paper-skin .weekend-box,
+html.paper-skin .music-widget,
+html.paper-skin .memo-card,
+html.paper-skin .mood-card,
+html.paper-skin .week-card,
+html.paper-skin .desk-clock,
+html.paper-skin .desk-cal,
+html.paper-skin .desk-timer,
+html.paper-skin .desk-anniv,
+html.paper-skin .desk-period,
+html.paper-skin .desk-text-widget,
+html.paper-skin .desk-countdown-widget {
+background-color: rgba(250, 248, 242, .30) !important;
+border: 1px solid rgba(36, 37, 34, .22) !important;
+box-shadow: none !important;
+}
+html.paper-skin .mini-card .mc-t { font-family: Georgia, "Songti SC", "SimSun", serif; }
+html.paper-skin .app .app-ico {
+position: relative;
+border-radius: 3px !important;
+background-color: rgba(250, 248, 242, .30) !important;
+border: 1px solid rgba(36, 37, 34, .26) !important;
+box-shadow: none !important;
+}
+html.paper-skin .app .app-ico::after {
+content: "";
+position: absolute;
+top: 5px;
+right: 5px;
+width: 3px;
+height: 3px;
+border-radius: 50%;
+background: var(--paper-blue);
+}
+html.paper-skin .app .app-ico img { border-radius: 2px !important; }
+html.paper-skin .app .app-name {
+font-family: Georgia, "Songti SC", "SimSun", serif;
+font-size: 10px;
+letter-spacing: .08em;
+}
+html.paper-skin #desktop-dots { position: relative; }
+html.paper-skin #desktop-dots::before {
+content: "BETWEEN US / MOCHI *";
+position: absolute;
+left: 50%;
+bottom: 15px;
+transform: translateX(-50%);
+white-space: nowrap;
+font: 400 7.5px/1 Georgia, "Times New Roman", serif;
+letter-spacing: .2em;
+color: var(--paper-frame);
+}
+html.paper-skin #desktop-dots .dot {
+width: 12px;
+height: 1px;
+border-radius: 0;
+background: var(--paper-guide);
+}
+html.paper-skin #desktop-dots .dot.active {
+height: 2px;
+background: var(--paper-blue);
+}
+html.paper-skin .tabbar {
+margin: 0 !important;
+padding: 8px 12px !important;
+border: 0 !important;
+border-top: 1px solid rgba(36, 37, 34, .72) !important;
+border-radius: 0 !important;
+background: #f2f2ef !important;
+box-shadow: none !important;
+backdrop-filter: none !important;
+-webkit-backdrop-filter: none !important;
+display: flex !important;
+align-items: center !important;
+justify-content: center !important;
+gap: 0 !important;
+}
+html.paper-skin .tabbar[hidden] { display: none !important; }
+html.paper-skin .tabbar .tab {
+position: relative;
+border-radius: 0;
+padding: 9px 4px;
+flex: 0 1 92px;
+min-height: 52px;
+display: flex;
+align-items: center;
+justify-content: center;
+}
+html.paper-skin .tabbar.paper-nav-ready .tab > svg,
+html.paper-skin .tabbar.paper-nav-ready .tab > img,
+html.paper-skin .tabbar.paper-nav-ready .tab > .tab-ico,
+html.paper-skin .tabbar.paper-nav-ready .tab > *:not(.paper-tab-label) { display: none !important; }
+html.paper-skin .paper-tab-label {
+display: flex;
+flex-direction: column;
+align-items: center;
+gap: 3px;
+position: relative;
+z-index: 1;
+}
+html.paper-skin .paper-tab-label b {
+font-family: "Times New Roman", "Noto Serif SC", "Songti SC", SimSun, serif !important;
+font-size: 13px;
+font-weight: 400;
+line-height: 1;
+letter-spacing: .08em;
+text-transform: uppercase;
+color: var(--ink);
+}
+html.paper-skin .paper-tab-label i {
+font-family: "Times New Roman", "Noto Serif SC", "Songti SC", SimSun, serif !important;
+font-style: normal;
+font-size: 10px;
+line-height: 1.2;
+letter-spacing: .06em;
+color: var(--muted);
+}
+html.paper-skin .tabbar .tab.active .paper-tab-label b { color: var(--paper-blue); }
+html.paper-skin .tabbar .tab.active .paper-tab-label i { color: var(--ink); }
+html.paper-skin .paper-nav-slash {
+flex: 0 0 auto;
+align-self: center;
+padding: 0 4px;
+color: var(--paper-guide);
+font-size: 14px;
+line-height: 1;
+opacity: .9;
+}
+html.paper-skin .tabbar .tab.active::before {
+content: "";
+position: absolute;
+top: 50%;
+left: 50%;
+width: 66px;
+height: 46px;
+margin: -23px 0 0 -33px;
+border: 1px solid var(--paper-blue);
+border-radius: 50%;
+transform: rotate(-6deg) scaleX(1.04);
+opacity: .9;
+pointer-events: none;
+}
+html.paper-skin .tabbar .tab.active::after {
+content: "";
+position: absolute;
+bottom: 2px;
+left: 50%;
+width: 3px;
+height: 3px;
+margin-left: -1.5px;
+border-radius: 50%;
+background: var(--paper-blue);
+}
+html.paper-skin #page-chat { background: #f2f2ef; }
+html.paper-skin #page-chat .chat-head {
+background: #f2f2ef !important;
+border-bottom: 1px solid rgba(36, 37, 34, .30) !important;
+box-shadow: none !important;
+padding: calc(16px + env(safe-area-inset-top, 0px)) 18px 13px !important;
+}
+html.paper-skin .chat-head .ch-back,
+html.paper-skin .chat-head .ch-settings {
+background: transparent !important;
+border-color: transparent !important;
+box-shadow: none !important;
+}
+html.paper-skin .chat-head .ch-back svg,
+html.paper-skin .chat-head .ch-settings svg { stroke: var(--ink) !important; }
+html.paper-skin .ch-av {
+width: 40px;
+height: 40px;
+border: 1px solid rgba(36, 37, 34, .72);
+background: #f7f5ef !important;
+box-shadow: 0 0 0 4px #f2f2ef, 0 0 0 5px rgba(24, 52, 212, .30);
+}
+html.paper-skin .ch-av svg { stroke: var(--ink) !important; }
+html.paper-skin .ch-name,
+html.paper-skin #chat-partner-name {
+font-family: Georgia, "Times New Roman", "Songti SC", serif !important;
+font-weight: 400 !important;
+font-size: 20px !important;
+letter-spacing: .05em;
+}
+html.paper-skin .ch-id::after {
+content: "与你 · 此刻";
+display: block;
+margin-top: 3px;
+font: 400 9px/1.35 Georgia, "Times New Roman", "Songti SC", serif;
+letter-spacing: .1em;
+color: var(--paper-frame);
+}
+html.paper-skin .ch-id.paper-has-status::after { display: none; }
+html.paper-skin .ch-id .ch-status {
+display: block;
+margin-top: 3px;
+font-family: Georgia, "Songti SC", serif;
+font-size: 10px;
+letter-spacing: .06em;
+color: var(--paper-frame);
+}
+html.paper-skin .chat-body {
+gap: 18px;
+padding: 8px 18px 22px;
+background:
+radial-gradient(circle at calc(100% + 34px) 150px, transparent 0 92px, rgba(184, 186, 184, .30) 93px 94px, transparent 95px),
+radial-gradient(circle at -58px 470px, transparent 0 126px, rgba(184, 186, 184, .18) 127px 128px, transparent 129px),
+radial-gradient(circle at calc(100% - 28px) 565px, rgba(24, 52, 212, .55) 0 1.6px, transparent 2px),
+#f2f2ef;
+}
+html.paper-skin .chat-body::before {
+content: "PRIVATE CONVERSATION  ·  只属于你们";
+flex: 0 0 auto;
+align-self: center;
+margin: 0 0 2px;
+padding: 0 14px;
+font: 400 8px/1.6 Georgia, "Times New Roman", "Songti SC", serif;
+letter-spacing: .18em;
+color: var(--paper-frame);
+background:
+linear-gradient(90deg, transparent, var(--paper-guide)) left center / 34% 1px no-repeat,
+linear-gradient(90deg, var(--paper-guide), transparent) right center / 34% 1px no-repeat;
+}
+html.paper-skin .msg-in .msg-bubble {
+background: #fbfaf5 !important;
+color: var(--ink) !important;
+border: 1px solid rgba(36, 37, 34, .13);
+border-radius: 16px 16px 16px 4px;
+box-shadow: 0 2px 10px rgba(36, 37, 34, .035) !important;
+}
+html.paper-skin .msg-out .msg-bubble {
+background: #e2e7ff !important;
+color: var(--ink) !important;
+border: 1px solid rgba(24, 52, 212, .16);
+border-radius: 16px 16px 4px 16px;
+box-shadow: 0 2px 10px rgba(24, 52, 212, .05) !important;
+}
+html.paper-skin .msg-bubble { font-family: Georgia, "Songti SC", "SimSun", serif; }
+html.paper-skin .msg-time {
+font-family: Georgia, serif;
+font-size: 9px;
+letter-spacing: .1em;
+color: var(--paper-frame);
+opacity: .8;
+}
+html.paper-skin .msg-av {
+border: 1px solid rgba(36, 37, 34, .38);
+background: #f7f5ef;
+border-radius: 50%;
+box-shadow: 0 0 0 3px #f2f2ef, 0 0 0 4px rgba(24, 52, 212, .14);
+}
+html.paper-skin .msg-av svg { stroke: var(--ink) !important; }
+html.paper-skin .msg-ask-card,
+html.paper-skin .msg-choose-card,
+html.paper-skin .msg-survey-card,
+html.paper-skin .msg-rp-card,
+html.paper-skin .msg-flower-card,
+html.paper-skin .msg-center-card,
+html.paper-skin .msg-rps-card {
+border-radius: 2px !important;
+border: 1px solid rgba(36, 37, 34, .42) !important;
+background: #f7f5ef !important;
+box-shadow: none !important;
+font-family: Georgia, "Songti SC", "SimSun", serif;
+}
+html.paper-skin .msg-poke > span {
+background: transparent !important;
+border: 0 !important;
+border-radius: 0 !important;
+box-shadow: none !important;
+color: var(--paper-frame) !important;
+font-family: Georgia, "Songti SC", serif;
+font-size: 10px;
+letter-spacing: .08em;
+padding: 2px 8px;
+}
+html.paper-skin .msg-time-divider span {
+background: #f2f2ef !important;
+border: 1px solid var(--paper-guide) !important;
+border-radius: 0 !important;
+color: var(--paper-frame) !important;
+font-family: Georgia, serif;
+letter-spacing: .08em;
+}
+html.paper-skin body:not(.cs-gift-cracker) .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) {
+border-radius: 2px;
+border: 1px solid rgba(36, 37, 34, .62);
+background: #f7f5ef;
+box-shadow: 5px 5px 0 rgba(24, 52, 212, .10);
+}
+html.paper-skin body:not(.cs-gift-cracker) .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .msg-gift-emoji {
+background: transparent !important;
+border: 1px solid var(--paper-guide);
+border-radius: 50%;
+}
+html.paper-skin body:not(.cs-gift-cracker) .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .msg-gift-name {
+font-family: Georgia, "Songti SC", "SimSun", serif;
+font-weight: 400;
+letter-spacing: .08em;
+}
+html.paper-skin body:not(.cs-gift-cracker) .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .msg-gift-divider {
+background: var(--paper-guide);
+}
+html.paper-skin body:not(.cs-gift-cracker) .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .msg-gift-wish {
+color: var(--muted);
+font-style: italic;
+}
+html.paper-skin body:not(.cs-gift-cracker) .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .msg-gift-claim {
+background: var(--paper-blue);
+border-radius: 2px;
+font-family: Georgia, "Songti SC", serif;
+font-weight: 400;
+}
+html.paper-skin body:not(.cs-gift-cracker) .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .msg-gift-reply {
+border-color: var(--paper-guide);
+border-radius: 2px;
+color: var(--ink);
+font-family: Georgia, "Songti SC", serif;
+}
+html.paper-skin body:not(.cs-gift-cracker) .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .msg-gift-price,
+html.paper-skin body:not(.cs-gift-cracker) .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .mg-side {
+color: var(--paper-frame);
+}
+html.paper-skin #page-chat > .chat-input-row {
+margin: 8px 16px 24px !important;
+padding: 8px 8px 8px 14px !important;
+border-radius: 24px !important;
+background: rgba(251, 250, 245, .96) !important;
+border: 1px solid rgba(36, 37, 34, .16) !important;
+box-shadow: 0 5px 18px rgba(36, 37, 34, .06) !important;
+}
+html.paper-skin .chat-input {
+font-family: Georgia, "Songti SC", "SimSun", serif;
+font-size: 15px;
+}
+html.paper-skin #page-chat .chat-input:empty::before {
+content: "想和你说…";
+font-family: Georgia, "Songti SC", serif;
+letter-spacing: .04em;
+color: var(--paper-frame);
+}
+html.paper-skin .ch-input-btn {
+width: 34px;
+height: 34px;
+border-radius: 50%;
+border: 1px solid rgba(36, 37, 34, .12);
+background: transparent;
+color: var(--ink);
+}
+html.paper-skin .chat-send {
+width: 38px !important;
+height: 38px !important;
+padding: 0 !important;
+border-radius: 50% !important;
+background: var(--paper-blue) !important;
+color: #fff !important;
+border: 0 !important;
+font-size: 0 !important;
+display: flex !important;
+align-items: center;
+justify-content: center;
+box-shadow: 0 2px 10px rgba(24, 52, 212, .22);
+}
+html.paper-skin .chat-send::after {
+content: "→";
+font: 17px/1 Georgia, "Times New Roman", serif !important;
+color: #fff;
+letter-spacing: 0;
+}
+html.paper-skin #page-chat::after {
+content: "本机保存 · 只属于你们";
+position: absolute;
+left: 0;
+right: 0;
+bottom: 6px;
+text-align: center;
+font: 400 8px/1.4 Georgia, "Songti SC", serif;
+letter-spacing: .14em;
+color: var(--paper-frame);
+pointer-events: none;
+}
+html.paper-skin .glass {
+background: rgba(247, 245, 239, .82) !important;
+border-color: rgba(36, 37, 34, .14) !important;
+backdrop-filter: none !important;
+-webkit-backdrop-filter: none !important;
+}
+html.paper-skin .set-group,
+html.paper-skin .sh-group,
+html.paper-skin .gs-panel {
+border-radius: 2px !important;
+box-shadow: none !important;
+}
+html.paper-skin .set-title,
+html.paper-skin .gs-title,
+html.paper-skin .sh-sec {
+font-family: Georgia, "Times New Roman", "Songti SC", serif;
+font-weight: 400;
+letter-spacing: .06em;
+}
+html.paper-skin .set-row .txt { font-family: Georgia, "Songti SC", "SimSun", serif; }
+html.paper-skin .set-row .sub { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; }
+html.paper-skin .modal {
+border-radius: 2px !important;
+border: 1px solid rgba(36, 37, 34, .5);
+background: #f7f5ef !important;
+box-shadow: 6px 6px 0 rgba(24, 52, 212, .12) !important;
+}
+html.paper-skin .modal-btn { border-radius: 2px !important; }
+html.paper-skin[data-theme="dark"] .phone { box-shadow: 0 24px 60px rgba(0, 0, 0, .5); }
 </style>
 </head>
 <body>
@@ -12014,7 +12556,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
            （名称+版号 / 部署时间+实时秒 / 版本检测行）收成一行；检测行随 ver-check.js 退役删除。
            data-build-ts / data-version 两属性保留：device.js 诊断、bg-keep 自检、pwa.js 旧包检测
            仍只读属性（诊断版本号走 data-version 兜底，device.js 两处缓存原生支持）。 -->
-      <div class="splash-ver" id="splash-ver" data-build-ts="1792976547434" data-version="v8.0">
+      <div class="splash-ver" id="splash-ver" data-build-ts="1793117438470" data-version="v8.4">
         <span class="sv-app">Mochi 字卡传讯 已完结停更</span>
       </div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
@@ -13171,9 +13713,9 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
     </div>
 <!-- 设置页（经典设置） -->
     <div class="page" id="page-setting" hidden>
-      <!-- 二改：经典设置页保留，但加了「退出键」和「回设置中心」切换入口，不再只能靠子页返回 -->
+      <!-- 二改：经典设置页保留；左上角「退出键」回主页，右上角「设置中心」切到新设置中心 -->
       <div class="set-title sh-title-row">
-        <button class="set-back" id="set-back" type="button" title="返回设置中心" aria-label="返回设置中心">
+        <button class="set-back" id="set-back" type="button" title="退出设置，回到主页" aria-label="退出设置，回到主页">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
         <span>设置</span>
@@ -13257,6 +13799,12 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg></div>
           <div class="txt">深色模式</div>
           <div class="val" id="theme-mode-val">关闭</div>
+        </div>
+        <!-- 二改：界面风格切换（经典 Mochi / 纸页 · BETWEEN US），更多风格预留 -->
+        <div class="set-row" id="row-ui-style">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 12l9 5 9-5"/><path d="M3 16l9 5 9-5"/></svg></div>
+          <div class="txt">界面风格<span class="sub">经典 Mochi / 纸页 · BETWEEN US；更多风格位置已预留</span></div>
+          <div class="val" id="ui-style-val">经典</div>
         </div>
         <div class="set-row" id="row-appearance">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 2.5 15 0 18M12 3c-2.5 2.5-2.5 15 0 18"/></svg></div>
@@ -13625,7 +14173,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
         <div class="set-row" id="row-changelog">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 12c0-5.5 3.5-10 10-10 3.7 0 7 2 8.8 5M22 12c0 5.5-3.5 10-10 10-3.7 0-7-2-8.8-5"/></svg></div>
           <div class="txt">版本与更新<span class="sub">当前版本 · 一键更新到最新（更新摘要见开屏公告）</span></div>
-          <div class="val" id="about-ver-val">v8.0</div>
+          <div class="val" id="about-ver-val">v8.4</div>
           <div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
         </div>
         <!-- #606 开源与致谢：开源/私有部署说明 + 灵感来源与致谢（内容与功能介绍页同源，做成独立入口） -->
@@ -13716,7 +14264,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
         </div>
       </div>
       </div><!-- /them-sec about -->
-      <div class="ver">Mochi 字卡传讯 v8.0</div>
+      <div class="ver">Mochi 字卡传讯 v8.4</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
       <!-- v3.27.x：设置页底部防骗声明 -->
       <div class="set-alert">
@@ -14115,7 +14663,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
             <div class="lic-hero-top">
               <div class="lic-title">Mochi 字卡传讯</div>
               <span class="lic-badge">原版</span>
-              <span class="lic-ver">v8.0</span>
+              <span class="lic-ver">v8.4</span>
             </div>
             <div class="lic-p">原创极简风情侣字卡传讯，不是小手机：黑白灰简约设计，数据全部保存在本地、无需联网；所有内容均为代码触发、按概率运行，联系方可主动发送聊天消息。代码从零编写并完全开源——本作即原版。</div>
             <!-- v3.26.x #648：原版口径澄清——唯一原版使用网站＋其他版本均为开放二传二改产生的二传/二改版 -->
@@ -19167,7 +19715,7 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
   // v3.5.123：readonly 起手（防 Chrome 密码弹条破坏表单签名）——这里立即解除，
   // 早于所有功能模块，任何设备都不会出现输入框不可用的情况
   (function () { var _ci = document.getElementById('chat-input'); if (_ci) _ci.readOnly = false; })();
-window.__jsErrors = window.__jsErrors || []; window.__mochiLoaded = window.__mochiLoaded || []; window.__mochiErrLoaded = window.__mochiErrLoaded || []; window.__mochiBootAt = Date.now(); window.__mochiJsFiles = ["device.js","splash-cosmos.js","entry-notice.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","mail-postal.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-core.js","room-iso.js","room.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","pwa.js","cjian.js","feature-hub.js","app-market.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"]; window.__mochiExtFiles = ["splash-cosmos.js","entry-notice.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","mail-postal.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-core.js","room-iso.js","room.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","cjian.js","feature-hub.js","app-market.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"];
+window.__jsErrors = window.__jsErrors || []; window.__mochiLoaded = window.__mochiLoaded || []; window.__mochiErrLoaded = window.__mochiErrLoaded || []; window.__mochiBootAt = Date.now(); window.__mochiJsFiles = ["device.js","splash-opening.js","paper-skin.js","entry-notice.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","mail-postal.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-core.js","room-iso.js","room.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","pwa.js","cjian.js","feature-hub.js","app-market.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"]; window.__mochiExtFiles = ["splash-opening.js","paper-skin.js","entry-notice.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","mail-postal.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-core.js","room-iso.js","room.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","cjian.js","feature-hub.js","app-market.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"];
 (function () { try {
 (function () {
 try { window.__jsErrors = window.__jsErrors || []; } catch (e0) {}
@@ -23983,7 +24531,8 @@ else window.addEventListener('load', boot);
 if (window.__mochiLoaded) window.__mochiLoaded.push("pwa.js");
 } catch (__e) { if (window.__mochiErrLoaded) window.__mochiErrLoaded.push("pwa.js"); try { console.error("[JS] pwa.js", __e && __e.message || __e); } catch (x) {} if (window.__jsErrors) window.__jsErrors.push("[pwa.js] " + String(__e && __e.message || __e)); } })();
 window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} };(function () { function selfContained() { try { return location.protocol === "file:" || !document.querySelector("script[src]"); } catch (e0) { return false; } } function bar() {  if (selfContained()) return;  if (document.getElementById("boot-retry-bar")) return;  var off = 0; try { off = sessionStorage.getItem("mochi-boot-bar-off") === "1" ? 1 : 0; } catch (e6) {}  if (off) return;  var b = document.createElement("div");  b.className = "ver-update-bar"; b.id = "boot-retry-bar"; b.style.cursor = "pointer";  b.style.flexWrap = "wrap"; b.style.rowGap = "6px";  b.innerHTML = "<span class=\"vub-txt\">网络不佳·部分功能没加载完</span><b class=\"vub-act\">点此重试</b><b class=\"vub-act\" id=\"boot-retry-off\">知道了</b>";  b.addEventListener("click", function () { window.__mochiBootRetry(); });  var x = b.querySelector("#boot-retry-off");  if (x) x.addEventListener("click", function (ev) { ev.stopPropagation(); try { sessionStorage.setItem("mochi-boot-bar-off", "1"); } catch (e7) {} if (b.parentNode) b.parentNode.removeChild(b); });  (document.body || document.documentElement).appendChild(b); } function missing() { var e = window.__mochiJsFiles || [], g = window.__mochiLoaded || []; return Math.max(0, e.length - g.length - (window.__mochiErrLoaded || []).length); } function heal() {  try {   if (window.__mochiDataReady && missing() === 0) return;   if (selfContained()) return;   if (!navigator.onLine || missing() === 0) return;   var now = Date.now(), last = 0;   try { last = Number(sessionStorage.getItem("mochi-boot-heal")) || 0; } catch (e2) {}   if (now - last < 7200000) return;   try { sessionStorage.setItem("mochi-boot-heal", String(now)); } catch (e3) {}   setTimeout(function () { try { location.replace(location.href); } catch (e4) {} }, 400);  } catch (e) {} } function sweep() { var ex = (window.__mochiJsFiles || []).length, ok = !!window.__mochiDataReady && ex - (window.__mochiLoaded || []).length - (window.__mochiErrLoaded || []).length <= 0; var b = ok && document.getElementById("boot-retry-bar"); if (b && b.parentNode) b.parentNode.removeChild(b); return ok; } function check(auto) { var ok = sweep(); if (!ok) bar(); if (auto && typeof heal === "function") heal(); } try { document.addEventListener("mochi-restore-done", function () { setTimeout(sweep, 50); }); } catch (e5) {} if (document.readyState === "complete") { setTimeout(function(){check(false);}, 3000); setTimeout(function(){check(true);}, 8000); } else window.addEventListener("load", function () { setTimeout(function(){check(false);}, 3000); setTimeout(function(){check(true);}, 8000); });})();</script>
-<script defer src="js/splash-cosmos.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('splash-cosmos.js')"></script>
+<script defer src="js/splash-opening.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('splash-opening.js')"></script>
+<script defer src="js/paper-skin.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('paper-skin.js')"></script>
 <script defer src="js/entry-notice.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('entry-notice.js')"></script>
 <script defer src="js/idb.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('idb.js')"></script>
 <script defer src="js/contacts.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('contacts.js')"></script>
@@ -24103,4 +24652,4 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 </body>
 </html>
 
-<!-- __MOCHI_EOF__ mvojxy7e -->
+<!-- __MOCHI_EOF__ mvqvtqfa -->

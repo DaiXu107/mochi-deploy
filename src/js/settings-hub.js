@@ -203,6 +203,11 @@
         H.push(stepRow('桌面字号', '桌面图标文字大小（仅桌面/大屏生效）', 'store', 'desk-font-size', 85, 120, 1, '%', 'p', 'deskfont', 100, '字体 字号 大小 文字'));
         H.push(segRow('深色模式', '切换深色 / 浅色 / 跟随系统', 'theme',
           [['light', '浅色'], ['dark', '深色'], ['auto', '跟随系统']], readTheme(), 'g'));
+        H.push('<div class="sh-row" data-act="ui-style" data-q="界面风格 皮肤 主题 纸页 经典 风格">'
+          + '<div class="sh-l"><div class="sh-label">界面风格' + badge('g') + '</div>'
+          + '<span class="sh-note">经典 Mochi / 纸页 · BETWEEN US；更多风格位置已预留</span></div>'
+          + '<span class="sh-badge g" id="sh-ui-style-val">' + ((window.mochiUiStyle && window.mochiUiStyle() === 'paper') ? '纸页' : '经典') + '</span>'
+          + '<i class="sh-chev"></i></div>');
         H.push(navRow('聊天气泡与壁纸', '气泡颜色、透明度、圆角、壁纸', 'page-chat-settings', { q: '气泡 壁纸 聊天美化' }));
         H.push(navRow('手机桌面美化', '主题色、图标、壁纸、卡片大小', 'page-theme', { q: '桌面 美化 图标 壁纸' }));
       });
@@ -418,6 +423,7 @@
     }).observe(page, { attributes: true, attributeFilter: ['hidden'] });
   } catch (e) {}
   document.addEventListener('contact-switched', function () { if (!page.hidden) render(); });
+  document.addEventListener('mochi-ui-style-changed', function () { if (!page.hidden) render(); });
 
   // 桌面【设置】图标进入（二传调整：设置从底部 tab 移到桌面第一页，原占卜位）
   var deskIco = document.querySelector('.app[data-app="settings"]');
@@ -435,12 +441,16 @@
         if (window.openIconMenu) { e.stopPropagation(); window.openIconMenu(deskIco); }
         return;
       }
-      document.querySelectorAll('.page').forEach(function (p) { p.hidden = (p !== page); });
-      // 设置中心不是底部 tab 页：清掉底部高亮，避免停在「首页」造成误解
+      // 二改：纸页风格优先进入「经典设置」（纸面观感更适配），
+      // 经典设置页右侧的「设置中心」按钮再切回新的设置中心；经典风格仍默认进设置中心。
+      var paper = document.documentElement.classList.contains('paper-skin');
+      var target = paper ? document.getElementById('page-setting') : page;
+      document.querySelectorAll('.page').forEach(function (p) { p.hidden = (p !== target); });
+      // 设置页不是底部 tab 页：清掉底部高亮，避免停在「首页」造成误解
       try {
         document.querySelectorAll('.tabbar .tab').forEach(function (t) { t.classList.remove('active'); });
       } catch (e1) {}
-      setTimeout(render, 0);
+      if (!paper) setTimeout(render, 0);
     });
   }
 
@@ -453,8 +463,9 @@
     });
   }
   var backToHub = function () { go('page-settings-hub'); };
+  // 经典设置左上角是「退出设置回主页」；右上角「设置中心」才是切到新设置中心
   var setBack = document.getElementById('set-back');
-  if (setBack) setBack.addEventListener('click', backToHub);
+  if (setBack) setBack.addEventListener('click', function () { go('page-phone'); });
   var switchHub = document.getElementById('set-switch-hub');
   if (switchHub) switchHub.addEventListener('click', backToHub);
 

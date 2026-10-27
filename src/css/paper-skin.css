@@ -1,0 +1,568 @@
+/* ===== 纸页皮肤 · BETWEEN US 风格预览（二改）=====
+   只在 html.paper-skin 下生效；?paper=1 或 localStorage:mochi-paper-preview=1 开启。
+   参考 github.com/knacl47/between-us 的视觉语言：骨瓷纸底、墨黑、克莱因蓝、
+   发丝线框、衬线标题、编号与英文小字。只做「换皮」，不改任何功能与数据结构。
+   关闭：点右下角「关闭预览」，或在 URL 去掉 ?paper=1 后刷新。 */
+
+html.paper-skin {
+  --ink: #242522;
+  --muted: #6f716c;
+  --line: #d4d3cc;
+  --page-bg: #e6e7e3;
+  --page-bg-grad: #f2f2ef;
+  --phone-bg-a: #f2f2ef;
+  --phone-bg-b: #efeee9;
+  --phone-inset: #dfded7;
+  --card-bg: #f7f5ef;
+  --card-bg-97: rgba(247, 245, 239, .97);
+  --card-border: rgba(36, 37, 34, .16);
+  --card-shadow: rgba(36, 37, 34, .05);
+  --input-bg: #faf8f2;
+  --input-border: #cfcec5;
+  --input-focus-border: #242522;
+  --btn-bg: #242522;
+  --btn-ink: #f2f2ef;
+  --btn-cancel-bg: #e9e7df;
+  --btn-cancel-ink: #4f514c;
+  --static-bg: rgba(36, 37, 34, .045);
+  --track-bg: #dedcd4;
+  --hint-ink: #a5a49c;
+  --soft-ink: #4f514c;
+  --pill-border: #c9c7bf;
+  --glass-bg: rgba(243, 242, 236, .92);
+  --bg-a: #f2f2ef;
+  --bg-b: #f2f2ef;
+  --paper-blue: #1834d4;
+  --paper-guide: #b8bab8;
+  --paper-frame: #8c908e;
+  --paper-ochre: #b19b67;
+}
+
+html.paper-skin body {
+  background: radial-gradient(70% 55% at 50% 0%, #f7f6f1 0%, transparent 65%), #e6e7e3;
+}
+/* 参考项目的字体：全站衬线（Times / Noto Serif / 宋体），包括按钮与输入框 */
+html.paper-skin,
+html.paper-skin body,
+html.paper-skin *,
+html.paper-skin *::before,
+html.paper-skin *::after {
+  font-family: "Times New Roman", "Noto Serif SC", "Songti SC", SimSun, serif !important;
+}
+
+/* ---------- 手机壳 / 纸底 ---------- */
+html.paper-skin .phone {
+  background:
+    radial-gradient(120% 60% at 50% 0%, rgba(255, 255, 255, .55), transparent 70%),
+    repeating-linear-gradient(0deg, rgba(36, 37, 34, .012) 0 1px, transparent 1px 3px),
+    #f2f2ef;
+  box-shadow: 0 24px 60px rgba(36, 37, 34, .18), 0 0 0 1px rgba(36, 37, 34, .16);
+}
+html.paper-skin #phone-bg-layer {
+  opacity: .10 !important;
+  filter: grayscale(1) sepia(.18) contrast(.92) !important;
+  -webkit-filter: grayscale(1) sepia(.18) contrast(.92) !important;
+}
+html.paper-skin .statusbar {
+  font-family: Georgia, "Times New Roman", "Songti SC", serif;
+  letter-spacing: .09em;
+  border-bottom: 1px solid rgba(36, 37, 34, .24);
+}
+
+/* ---------- 主页：编号卡片 / 线框图标 / 分页刻线 ---------- */
+html.paper-skin .deco-widget {
+  position: relative;
+  margin-top: 18px !important;
+  margin-bottom: 18px !important;
+  border: 1px solid rgba(36, 37, 34, .30) !important;
+  border-radius: 2px !important;
+  background-color: rgba(250, 248, 242, .32) !important;
+  box-shadow: none !important;
+}
+html.paper-skin .deco-widget::after {
+  content: "MOCHI × BETWEEN US";
+  position: absolute;
+  right: 11px;
+  bottom: 9px;
+  font: 400 7.5px/1 Georgia, serif;
+  letter-spacing: .14em;
+  color: var(--paper-frame);
+}
+html.paper-skin .deco-avatar .ring {
+  border: 1px solid rgba(36, 37, 34, .55) !important;
+  background: rgba(250, 248, 242, .45) !important;
+  box-shadow: 0 0 0 5px #f2f2ef, 0 0 0 6px rgba(24, 52, 212, .20);
+}
+html.paper-skin .deco-avatar .lbl {
+  background: transparent !important;
+  border: 1px solid rgba(36, 37, 34, .38) !important;
+  border-radius: 0 !important;
+  color: var(--ink) !important;
+  font-family: Georgia, "Songti SC", serif;
+  letter-spacing: .06em;
+}
+html.paper-skin .deco-heart { color: var(--paper-blue) !important; }
+html.paper-skin .deco-love {
+  border-top: 1px dashed var(--paper-guide) !important;
+}
+html.paper-skin .checkin {
+  border-radius: 2px !important;
+  margin-bottom: 18px !important;
+}
+html.paper-skin .checkin .ck-heart {
+  background: transparent !important;
+  border: 1px solid rgba(36, 37, 34, .38);
+  color: var(--paper-blue) !important;
+}
+html.paper-skin .checkin .ck-btn {
+  background: transparent !important;
+  color: var(--paper-blue) !important;
+  border: 1px solid var(--paper-blue) !important;
+  border-radius: 999px !important;
+  box-shadow: none !important;
+  font-family: Georgia, "Songti SC", serif;
+  font-weight: 400;
+  letter-spacing: .06em;
+}
+html.paper-skin .deco-love #love-days {
+  font-family: Georgia, "Songti SC", serif;
+  font-weight: 400;
+  letter-spacing: .06em;
+}
+html.paper-skin .deco-love #love-date { font-family: Georgia, serif; letter-spacing: .08em; }
+
+html.paper-skin .mini-row {
+  gap: 14px !important;
+  margin-bottom: 18px !important;
+}
+html.paper-skin .mini-card {
+  border-radius: 2px !important;
+  background-color: rgba(250, 248, 242, .32) !important;
+  border: 1px solid rgba(36, 37, 34, .22) !important;
+  box-shadow: none !important;
+}
+/* 其余小组件统一走「半透明纸面 + 发丝线」：留出纸纹和呼吸感 */
+html.paper-skin .checkin,
+html.paper-skin .weekend-box,
+html.paper-skin .music-widget,
+html.paper-skin .memo-card,
+html.paper-skin .mood-card,
+html.paper-skin .week-card,
+html.paper-skin .desk-clock,
+html.paper-skin .desk-cal,
+html.paper-skin .desk-timer,
+html.paper-skin .desk-anniv,
+html.paper-skin .desk-period,
+html.paper-skin .desk-text-widget,
+html.paper-skin .desk-countdown-widget {
+  background-color: rgba(250, 248, 242, .30) !important;
+  border: 1px solid rgba(36, 37, 34, .22) !important;
+  box-shadow: none !important;
+}
+html.paper-skin .mini-card .mc-t { font-family: Georgia, "Songti SC", "SimSun", serif; }
+
+html.paper-skin .app .app-ico {
+  position: relative;
+  border-radius: 3px !important;
+  background-color: rgba(250, 248, 242, .30) !important;
+  border: 1px solid rgba(36, 37, 34, .26) !important;
+  box-shadow: none !important;
+}
+html.paper-skin .app .app-ico::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--paper-blue);
+}
+html.paper-skin .app .app-ico img { border-radius: 2px !important; }
+html.paper-skin .app .app-name {
+  font-family: Georgia, "Songti SC", "SimSun", serif;
+  font-size: 10px;
+  letter-spacing: .08em;
+}
+html.paper-skin #desktop-dots { position: relative; }
+html.paper-skin #desktop-dots::before {
+  content: "BETWEEN US / MOCHI *";
+  position: absolute;
+  left: 50%;
+  bottom: 15px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font: 400 7.5px/1 Georgia, "Times New Roman", serif;
+  letter-spacing: .2em;
+  color: var(--paper-frame);
+}
+html.paper-skin #desktop-dots .dot {
+  width: 12px;
+  height: 1px;
+  border-radius: 0;
+  background: var(--paper-guide);
+}
+html.paper-skin #desktop-dots .dot.active {
+  height: 2px;
+  background: var(--paper-blue);
+}
+
+/* ---------- 底栏：满宽纸带 + 手绘圈中当前页 ---------- */
+html.paper-skin .tabbar {
+  margin: 0 !important;
+  padding: 8px 12px !important;
+  border: 0 !important;
+  border-top: 1px solid rgba(36, 37, 34, .72) !important;
+  border-radius: 0 !important;
+  background: #f2f2ef !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0 !important;
+}
+html.paper-skin .tabbar[hidden] { display: none !important; }
+html.paper-skin .tabbar .tab {
+  position: relative;
+  border-radius: 0;
+  padding: 9px 4px;
+  flex: 0 1 92px;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+html.paper-skin .tabbar.paper-nav-ready .tab > svg,
+html.paper-skin .tabbar.paper-nav-ready .tab > img,
+html.paper-skin .tabbar.paper-nav-ready .tab > .tab-ico,
+html.paper-skin .tabbar.paper-nav-ready .tab > *:not(.paper-tab-label) { display: none !important; }
+html.paper-skin .paper-tab-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  position: relative;
+  z-index: 1;
+}
+html.paper-skin .paper-tab-label b {
+  font-family: "Times New Roman", "Noto Serif SC", "Songti SC", SimSun, serif !important;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+html.paper-skin .paper-tab-label i {
+  font-family: "Times New Roman", "Noto Serif SC", "Songti SC", SimSun, serif !important;
+  font-style: normal;
+  font-size: 10px;
+  line-height: 1.2;
+  letter-spacing: .06em;
+  color: var(--muted);
+}
+html.paper-skin .tabbar .tab.active .paper-tab-label b { color: var(--paper-blue); }
+html.paper-skin .tabbar .tab.active .paper-tab-label i { color: var(--ink); }
+html.paper-skin .paper-nav-slash {
+  flex: 0 0 auto;
+  align-self: center;
+  padding: 0 4px;
+  color: var(--paper-guide);
+  font-size: 14px;
+  line-height: 1;
+  opacity: .9;
+}
+html.paper-skin .tabbar .tab.active::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 66px;
+  height: 46px;
+  margin: -23px 0 0 -33px;
+  border: 1px solid var(--paper-blue);
+  border-radius: 50%;
+  transform: rotate(-6deg) scaleX(1.04);
+  opacity: .9;
+  pointer-events: none;
+}
+html.paper-skin .tabbar .tab.active::after {
+  content: "";
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  width: 3px;
+  height: 3px;
+  margin-left: -1.5px;
+  border-radius: 50%;
+  background: var(--paper-blue);
+}
+
+/* ---------- 聊天页 ---------- */
+html.paper-skin #page-chat { background: #f2f2ef; }
+html.paper-skin #page-chat .chat-head {
+  background: #f2f2ef !important;
+  border-bottom: 1px solid rgba(36, 37, 34, .30) !important;
+  box-shadow: none !important;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) 18px 13px !important;
+}
+html.paper-skin .chat-head .ch-back,
+html.paper-skin .chat-head .ch-settings {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+html.paper-skin .chat-head .ch-back svg,
+html.paper-skin .chat-head .ch-settings svg { stroke: var(--ink) !important; }
+html.paper-skin .ch-av {
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(36, 37, 34, .72);
+  background: #f7f5ef !important;
+  box-shadow: 0 0 0 4px #f2f2ef, 0 0 0 5px rgba(24, 52, 212, .30);
+}
+html.paper-skin .ch-av svg { stroke: var(--ink) !important; }
+html.paper-skin .ch-name,
+html.paper-skin #chat-partner-name {
+  font-family: Georgia, "Times New Roman", "Songti SC", serif !important;
+  font-weight: 400 !important;
+  font-size: 20px !important;
+  letter-spacing: .05em;
+}
+html.paper-skin .ch-id::after {
+  content: "与你 · 此刻";
+  display: block;
+  margin-top: 3px;
+  font: 400 9px/1.35 Georgia, "Times New Roman", "Songti SC", serif;
+  letter-spacing: .1em;
+  color: var(--paper-frame);
+}
+html.paper-skin .ch-id.paper-has-status::after { display: none; }
+html.paper-skin .ch-id .ch-status {
+  display: block;
+  margin-top: 3px;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 10px;
+  letter-spacing: .06em;
+  color: var(--paper-frame);
+}
+html.paper-skin .chat-body {
+  gap: 18px;
+  padding: 8px 18px 22px;
+  background:
+    radial-gradient(circle at calc(100% + 34px) 150px, transparent 0 92px, rgba(184, 186, 184, .30) 93px 94px, transparent 95px),
+    radial-gradient(circle at -58px 470px, transparent 0 126px, rgba(184, 186, 184, .18) 127px 128px, transparent 129px),
+    radial-gradient(circle at calc(100% - 28px) 565px, rgba(24, 52, 212, .55) 0 1.6px, transparent 2px),
+    #f2f2ef;
+}
+html.paper-skin .chat-body::before {
+  content: "PRIVATE CONVERSATION  ·  只属于你们";
+  flex: 0 0 auto;
+  align-self: center;
+  margin: 0 0 2px;
+  padding: 0 14px;
+  font: 400 8px/1.6 Georgia, "Times New Roman", "Songti SC", serif;
+  letter-spacing: .18em;
+  color: var(--paper-frame);
+  background:
+    linear-gradient(90deg, transparent, var(--paper-guide)) left center / 34% 1px no-repeat,
+    linear-gradient(90deg, var(--paper-guide), transparent) right center / 34% 1px no-repeat;
+}
+html.paper-skin .msg-in .msg-bubble {
+  background: #fbfaf5 !important;
+  color: var(--ink) !important;
+  border: 1px solid rgba(36, 37, 34, .13);
+  border-radius: 16px 16px 16px 4px;
+  box-shadow: 0 2px 10px rgba(36, 37, 34, .035) !important;
+}
+html.paper-skin .msg-out .msg-bubble {
+  background: #e2e7ff !important;
+  color: var(--ink) !important;
+  border: 1px solid rgba(24, 52, 212, .16);
+  border-radius: 16px 16px 4px 16px;
+  box-shadow: 0 2px 10px rgba(24, 52, 212, .05) !important;
+}
+html.paper-skin .msg-bubble { font-family: Georgia, "Songti SC", "SimSun", serif; }
+html.paper-skin .msg-time {
+  font-family: Georgia, serif;
+  font-size: 9px;
+  letter-spacing: .1em;
+  color: var(--paper-frame);
+  opacity: .8;
+}
+html.paper-skin .msg-av {
+  border: 1px solid rgba(36, 37, 34, .38);
+  background: #f7f5ef;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px #f2f2ef, 0 0 0 4px rgba(24, 52, 212, .14);
+}
+html.paper-skin .msg-av svg { stroke: var(--ink) !important; }
+html.paper-skin .msg-ask-card,
+html.paper-skin .msg-choose-card,
+html.paper-skin .msg-survey-card,
+html.paper-skin .msg-rp-card,
+html.paper-skin .msg-flower-card,
+html.paper-skin .msg-center-card,
+html.paper-skin .msg-rps-card {
+  border-radius: 2px !important;
+  border: 1px solid rgba(36, 37, 34, .42) !important;
+  background: #f7f5ef !important;
+  box-shadow: none !important;
+  font-family: Georgia, "Songti SC", "SimSun", serif;
+}
+html.paper-skin .msg-poke > span {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  color: var(--paper-frame) !important;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 10px;
+  letter-spacing: .08em;
+  padding: 2px 8px;
+}
+html.paper-skin .msg-time-divider span {
+  background: #f2f2ef !important;
+  border: 1px solid var(--paper-guide) !important;
+  border-radius: 0 !important;
+  color: var(--paper-frame) !important;
+  font-family: Georgia, serif;
+  letter-spacing: .08em;
+}
+
+/* 礼物卡：纸页模式下默认换成「标本卡」；若用户在聊天设置里选了苏打饼干，
+   body.cs-gift-cracker 的规则优先级更高，饼干皮保持不变 */
+html.paper-skin body:not(.cs-gift-cracker) .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) {
+  border-radius: 2px;
+  border: 1px solid rgba(36, 37, 34, .62);
+  background: #f7f5ef;
+  box-shadow: 5px 5px 0 rgba(24, 52, 212, .10);
+}
+html.paper-skin body:not(.cs-gift-cracker) .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .msg-gift-emoji {
+  background: transparent !important;
+  border: 1px solid var(--paper-guide);
+  border-radius: 50%;
+}
+html.paper-skin body:not(.cs-gift-cracker) .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .msg-gift-name {
+  font-family: Georgia, "Songti SC", "SimSun", serif;
+  font-weight: 400;
+  letter-spacing: .08em;
+}
+html.paper-skin body:not(.cs-gift-cracker) .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .msg-gift-divider {
+  background: var(--paper-guide);
+}
+html.paper-skin body:not(.cs-gift-cracker) .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .msg-gift-wish {
+  color: var(--muted);
+  font-style: italic;
+}
+html.paper-skin body:not(.cs-gift-cracker) .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .msg-gift-claim {
+  background: var(--paper-blue);
+  border-radius: 2px;
+  font-family: Georgia, "Songti SC", serif;
+  font-weight: 400;
+}
+html.paper-skin body:not(.cs-gift-cracker) .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .msg-gift-reply {
+  border-color: var(--paper-guide);
+  border-radius: 2px;
+  color: var(--ink);
+  font-family: Georgia, "Songti SC", serif;
+}
+html.paper-skin body:not(.cs-gift-cracker) .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .msg-gift-price,
+html.paper-skin body:not(.cs-gift-cracker) .msg-gift-card:not(.msg-dish-card):not(.msg-drink-card) .mg-side {
+  color: var(--paper-frame);
+}
+
+/* 输入栏：参考项目的大圆角纸面 + 蓝色圆形发送箭头 */
+html.paper-skin #page-chat > .chat-input-row {
+  margin: 8px 16px 24px !important;
+  padding: 8px 8px 8px 14px !important;
+  border-radius: 24px !important;
+  background: rgba(251, 250, 245, .96) !important;
+  border: 1px solid rgba(36, 37, 34, .16) !important;
+  box-shadow: 0 5px 18px rgba(36, 37, 34, .06) !important;
+}
+html.paper-skin .chat-input {
+  font-family: Georgia, "Songti SC", "SimSun", serif;
+  font-size: 15px;
+}
+html.paper-skin #page-chat .chat-input:empty::before {
+  content: "想和你说…";
+  font-family: Georgia, "Songti SC", serif;
+  letter-spacing: .04em;
+  color: var(--paper-frame);
+}
+html.paper-skin .ch-input-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(36, 37, 34, .12);
+  background: transparent;
+  color: var(--ink);
+}
+html.paper-skin .chat-send {
+  width: 38px !important;
+  height: 38px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  background: var(--paper-blue) !important;
+  color: #fff !important;
+  border: 0 !important;
+  font-size: 0 !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 10px rgba(24, 52, 212, .22);
+}
+html.paper-skin .chat-send::after {
+  content: "→";
+  font: 17px/1 Georgia, "Times New Roman", serif !important;
+  color: #fff;
+  letter-spacing: 0;
+}
+html.paper-skin #page-chat::after {
+  content: "本机保存 · 只属于你们";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  text-align: center;
+  font: 400 8px/1.4 Georgia, "Songti SC", serif;
+  letter-spacing: .14em;
+  color: var(--paper-frame);
+  pointer-events: none;
+}
+
+/* ---------- 设置 / 卡片通用纸面 ---------- */
+html.paper-skin .glass {
+  background: rgba(247, 245, 239, .82) !important;
+  border-color: rgba(36, 37, 34, .14) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html.paper-skin .set-group,
+html.paper-skin .sh-group,
+html.paper-skin .gs-panel {
+  border-radius: 2px !important;
+  box-shadow: none !important;
+}
+html.paper-skin .set-title,
+html.paper-skin .gs-title,
+html.paper-skin .sh-sec {
+  font-family: Georgia, "Times New Roman", "Songti SC", serif;
+  font-weight: 400;
+  letter-spacing: .06em;
+}
+html.paper-skin .set-row .txt { font-family: Georgia, "Songti SC", "SimSun", serif; }
+html.paper-skin .set-row .sub { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; }
+html.paper-skin .modal {
+  border-radius: 2px !important;
+  border: 1px solid rgba(36, 37, 34, .5);
+  background: #f7f5ef !important;
+  box-shadow: 6px 6px 0 rgba(24, 52, 212, .12) !important;
+}
+html.paper-skin .modal-btn { border-radius: 2px !important; }
+
+/* 纸页风格固定浅色纸面：深色设置在切回经典时还原（paper-skin.js 负责） */
+html.paper-skin[data-theme="dark"] .phone { box-shadow: 0 24px 60px rgba(0, 0, 0, .5); }

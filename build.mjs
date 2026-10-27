@@ -112,8 +112,8 @@ function minifyCss(code) {
 }
 
 // ===== 按顺序拼接样式 / 脚本（顺序即生效顺序） =====
-const cssFiles = ['base.css', 'home.css', 'chat-main.css', 'chat-pages.css', 'market.css', 'group-chat.css', 'setting.css', 'settings-hub.css', 'desk-edit.css', 'tabbar.css', 'dark.css', 'garden.css', 'bar.css', 'memo.css', 'memo-arc.css', 'room.css', 'room-iso.css', 'drift-bottle.css', 'applock.css', 'feature-data.css', 'display-tune.css', 'birthday.css', 'flight-chess.css'];
-const jsFiles = ['device.js', 'splash-cosmos.js', 'entry-notice.js', 'idb.js', 'contacts.js', 'applock.js', 'card-lock.js', 'dcp-master.js', 'media-pool.js','storage-slim.js', 'perf-check.js', 'energy-check.js', 'flash-check.js', 'img-compress.js', 'img-ingest.js', 'clock.js', 'tabs.js', 'desktop-slider.js', 'quote-cards.js', 'personalize.js', 'chat.js', 'group-chat.js', 'chatcard.js', 'chat-settings.js', 'reply-settings.js', 'settings-hub.js', 'fav-settings.js', 'default-cards-data.js', 'dict-ext-data.js', 'default-cards.js', 'quote-spell.js', 'dream-free.js', 'mood-followup-data.js', 'mood-reply-cards.js', 'ta-mood-data.js', 'ta-mood.js', 'music-player.js', 'calendar.js', 'lunar.js', 'birthday.js', 'divination.js', 'avatar-lib.js', 'ta-ask.js', 'ck-question.js', 'incoming-requests.js', 'ta-invite.js', 'bg-keep.js', 'records.js', 'call.js', 'mail.js', 'mail-postal.js', 'feed.js', 'loc-lib.js', 'p2-features.js', 'gift-shop.js', 'memo-app.js', 'memo-arc.js', 'my-arc.js', 'period.js', 'accounting.js', 'garden.js', 'bar-presets.js', 'bar-fusions.js', 'bar-names.js', 'bar-render.js', 'bar.js', 'room-core.js', 'room-iso.js', 'room.js', 'drift-bottle.js', 'decision.js', 'group-decision.js', 'pong.js', 'snake-game.js', 'breakout.js', 'connect-four.js', 'coop-mine.js', 'fishing.js', 'memory-game.js', 'gomoku.js', 'linkup.js', 'match3.js', 'auction.js', 'flight-chess.js', 'arcade.js', 'mood-diary.js', 'sfx.js', 'fullscreen.js', 'data-backup.js', 'feature-data.js', 'pwa.js', 'cjian.js', 'feature-hub.js', 'app-market.js', 'settings-help.js', 'onboarding.js', 'page-coach.js', 'card-audit.js', 'storage-guide.js', 'mobile-adapt.js'];
+const cssFiles = ['base.css', 'home.css', 'chat-main.css', 'chat-pages.css', 'market.css', 'group-chat.css', 'setting.css', 'settings-hub.css', 'desk-edit.css', 'tabbar.css', 'dark.css', 'garden.css', 'bar.css', 'memo.css', 'memo-arc.css', 'room.css', 'room-iso.css', 'drift-bottle.css', 'applock.css', 'feature-data.css', 'display-tune.css', 'birthday.css', 'flight-chess.css', 'paper-skin.css'];
+const jsFiles = ['device.js', 'splash-opening.js', 'paper-skin.js', 'entry-notice.js', 'idb.js', 'contacts.js', 'applock.js', 'card-lock.js', 'dcp-master.js', 'media-pool.js','storage-slim.js', 'perf-check.js', 'energy-check.js', 'flash-check.js', 'img-compress.js', 'img-ingest.js', 'clock.js', 'tabs.js', 'desktop-slider.js', 'quote-cards.js', 'personalize.js', 'chat.js', 'group-chat.js', 'chatcard.js', 'chat-settings.js', 'reply-settings.js', 'settings-hub.js', 'fav-settings.js', 'default-cards-data.js', 'dict-ext-data.js', 'default-cards.js', 'quote-spell.js', 'dream-free.js', 'mood-followup-data.js', 'mood-reply-cards.js', 'ta-mood-data.js', 'ta-mood.js', 'music-player.js', 'calendar.js', 'lunar.js', 'birthday.js', 'divination.js', 'avatar-lib.js', 'ta-ask.js', 'ck-question.js', 'incoming-requests.js', 'ta-invite.js', 'bg-keep.js', 'records.js', 'call.js', 'mail.js', 'mail-postal.js', 'feed.js', 'loc-lib.js', 'p2-features.js', 'gift-shop.js', 'memo-app.js', 'memo-arc.js', 'my-arc.js', 'period.js', 'accounting.js', 'garden.js', 'bar-presets.js', 'bar-fusions.js', 'bar-names.js', 'bar-render.js', 'bar.js', 'room-core.js', 'room-iso.js', 'room.js', 'drift-bottle.js', 'decision.js', 'group-decision.js', 'pong.js', 'snake-game.js', 'breakout.js', 'connect-four.js', 'coop-mine.js', 'fishing.js', 'memory-game.js', 'gomoku.js', 'linkup.js', 'match3.js', 'auction.js', 'flight-chess.js', 'arcade.js', 'mood-diary.js', 'sfx.js', 'fullscreen.js', 'data-backup.js', 'feature-data.js', 'pwa.js', 'cjian.js', 'feature-hub.js', 'app-market.js', 'settings-help.js', 'onboarding.js', 'page-coach.js', 'card-audit.js', 'storage-guide.js', 'mobile-adapt.js'];
 
 // ===== PERF-PLAN 阶段 1：JS 外置化（2026-09-18）=====
 // 首开「3.8MB 内联 JS 主线程整段解析执行」是 iOS/中低端安卓卡顿的结构性大头
@@ -369,6 +369,11 @@ pwaFiles.forEach(f => copyFileSync(join(root, 'src', 'pwa', f), join(root, f)));
 // 开屏地球贴图（src/assets → 根 assets，SW 预缓存）
 mkdirSync(join(root, 'assets'), { recursive: true });
 ['earth-day.jpg', 'earth-night.jpg', 'earth-clouds.png'].forEach(f => copyFileSync(join(root, 'src', 'assets', f), join(root, 'assets', f)));
+// 二改预览：三角开花开屏（BETWEEN US，iframe 独立页面 + 本地 GSAP）
+mkdirSync(join(root, 'opening', 'vendor'), { recursive: true });
+['index.html', 'opening.js', 'flowers.png', 'flowers_fill.png', 'crack1.png', 'crack2.png', 'README.md'].forEach(f => copyFileSync(join(root, 'src', 'opening', f), join(root, 'opening', f)));
+copyFileSync(join(root, 'src', 'opening', 'vendor', 'gsap.min.js'), join(root, 'opening', 'vendor', 'gsap.min.js'));
+copyFileSync(join(root, 'src', 'opening', 'LICENSE-between-us.txt'), join(root, 'opening', 'LICENSE-between-us.txt'));
 const swPath = join(root, 'sw.js');
 let sw = readFileSync(swPath, 'utf8');
 sw = sw.replace(/const CACHE = 'mochi-[^']*';/, "const CACHE = 'mochi-" + buildStamp + "';");
@@ -382,7 +387,9 @@ const furnitureSprites = (function () {
   try { return readdirSync(join(root, 'assets', 'furniture', 'kaykit')).filter(f => /\.webp$/i.test(f)).map(f => './assets/furniture/kaykit/' + f); }
   catch (e) { return []; }
 })();
-sw = sw.replace(/const PRECACHE = \[[^\]]*\];/, 'const PRECACHE = ' + JSON.stringify(['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-180.png', './assets/fc-board.jpg', './assets/earth-day.jpg', './assets/earth-night.jpg', './assets/earth-clouds.png'].concat(extFiles.map(f => './js/' + f)).concat(furnitureSprites)) + ';');
+sw = sw.replace(/const PRECACHE = \[[^\]]*\];/, 'const PRECACHE = ' + JSON.stringify(['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-180.png', './assets/fc-board.jpg', './assets/earth-day.jpg', './assets/earth-night.jpg', './assets/earth-clouds.png',
+  './opening/index.html', './opening/opening.js', './opening/vendor/gsap.min.js',
+  './opening/flowers.png', './opening/flowers_fill.png', './opening/crack1.png', './opening/crack2.png'].concat(extFiles.map(f => './js/' + f)).concat(furnitureSprites)) + ';');
 writeFileSync(swPath, sw);
 console.log('已复制 PWA 文件 → ' + pwaFiles.join(', ') + '（sw 缓存版本: mochi-' + buildStamp + '）');
 } else {

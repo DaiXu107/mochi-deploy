@@ -24,6 +24,8 @@
      脚本只认 dark、系统深色的 auto 用户会先白闪再由 personalize.js 纠正（FOUC）。
      另：旧版本残留的 data-theme 属性在此强制清掉，保证「选浅色」真回浅色。 -->
 <script>try{var _tm=localStorage.getItem('xy-home-v2:theme-mode');if(_tm==='dark'||(_tm!=='light'&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.setAttribute('data-theme','dark');else document.documentElement.removeAttribute('data-theme');}catch(e){}</script>
+<!-- 二改预览：BETWEEN US 纸页皮肤（?paper=1 或本地预览开关），在首帧前挂类避免闪白 -->
+<script>try{var _ui=localStorage.getItem('mochi-ui-style')||'classic';var _q=location.search;if(/(^|[?&])paper=1(&|$)/.test(_q))_ui='paper';else if(/(^|[?&])paper=0(&|$)/.test(_q))_ui='classic';if(_ui==='paper'){var _de=document.documentElement;if(_de.getAttribute('data-theme')==='dark'){try{var _tm0=localStorage.getItem('xy-home-v2:theme-mode')||'dark';localStorage.setItem('mochi-paper-theme-mode',_tm0);localStorage.setItem('xy-home-v2:theme-mode','light');}catch(e2){}_de.removeAttribute('data-theme');}_de.classList.add('paper-skin');}}catch(e){}</script>
 <style>
 /*__STYLES__*/
 </style>
@@ -1689,9 +1691,9 @@
     </div>
 <!-- 设置页（经典设置） -->
     <div class="page" id="page-setting" hidden>
-      <!-- 二改：经典设置页保留，但加了「退出键」和「回设置中心」切换入口，不再只能靠子页返回 -->
+      <!-- 二改：经典设置页保留；左上角「退出键」回主页，右上角「设置中心」切到新设置中心 -->
       <div class="set-title sh-title-row">
-        <button class="set-back" id="set-back" type="button" title="返回设置中心" aria-label="返回设置中心">
+        <button class="set-back" id="set-back" type="button" title="退出设置，回到主页" aria-label="退出设置，回到主页">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
         <span>设置</span>
@@ -1775,6 +1777,12 @@
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg></div>
           <div class="txt">深色模式</div>
           <div class="val" id="theme-mode-val">关闭</div>
+        </div>
+        <!-- 二改：界面风格切换（经典 Mochi / 纸页 · BETWEEN US），更多风格预留 -->
+        <div class="set-row" id="row-ui-style">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 12l9 5 9-5"/><path d="M3 16l9 5 9-5"/></svg></div>
+          <div class="txt">界面风格<span class="sub">经典 Mochi / 纸页 · BETWEEN US；更多风格位置已预留</span></div>
+          <div class="val" id="ui-style-val">经典</div>
         </div>
         <div class="set-row" id="row-appearance">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 2.5 15 0 18M12 3c-2.5 2.5-2.5 15 0 18"/></svg></div>

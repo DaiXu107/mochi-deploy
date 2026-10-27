@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>开屏</title>
+<style>
+  :root { --klein: #002fa7; --black: #0b0b0d; --white: #f3f1ec; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; background: transparent; overflow: hidden; }
+  /* 碎完露出来的底层（独立运行时是空占位，嵌入时透出外层页面） */
+  #home { position: fixed; inset: 0; opacity: 0; display: grid; place-items: center; background: transparent; color: #555;
+    font: 15px system-ui, sans-serif; letter-spacing: .3em; }
+  #stage { position: fixed; inset: 0; }
+  .facet { position: absolute; inset: 0; }
+  .card { position: absolute; inset: 0; will-change: transform; }
+  .face { position: absolute; inset: 0; background: var(--bg); }
+  /* 花：线稿当遮罩，线的颜色是 --line；跟底色一样时就藏着 */
+  /* 花瓣填色：整朵花的剪影，颜色是 --fill（光有线在黑底上看不出来） */
+  .fill { position: absolute; inset: 0; background: var(--fill); -webkit-mask: var(--fill-url, url("flowers_fill.png?v=1023")) 0 0 / 100% 100% no-repeat; mask: var(--fill-url, url("flowers_fill.png?v=1023")) 0 0 / 100% 100% no-repeat; }
+  .art { position: absolute; inset: 0; background: var(--line); -webkit-mask: var(--flowers) 0 0 / 100% 100% no-repeat; mask: var(--flowers) 0 0 / 100% 100% no-repeat; }
+  .decal { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+  /* 真裂痕：从落点一圈圈露出来（--r0/--r1 由动画推大） */
+  #stage { --r0: 0px; --r1: 0px; }
+  .crk { position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+    -webkit-mask: radial-gradient(circle at var(--cx) var(--cy), #000 var(--r), transparent calc(var(--r) * 1.8));
+    mask: radial-gradient(circle at var(--cx) var(--cy), #000 var(--r), transparent calc(var(--r) * 1.8)); }
+  #cracks, .cl { position: absolute; inset: 0; pointer-events: none; }
+  /* 反色版三角里是克莱因蓝块，蓝裂纹会消失，那里提成白的 */
+  .cl.bright img { filter: brightness(2.6) saturate(0); }
+  .crk img { position: absolute; max-width: none; -webkit-mask: linear-gradient(#0000, #000 9%, #000 91%, #0000); mask: linear-gradient(#0000, #000 9%, #000 91%, #0000); }
+  #dot { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: var(--klein); transform: scale(0); }
+  #grow { position: absolute; inset: 0; background: var(--klein); }
+  #rim { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .bullet { position: absolute; height: 2px; transform-origin: 0 50%; background: linear-gradient(90deg, transparent, var(--klein) 30%, #9db4ff); box-shadow: 0 0 6px rgba(90, 130, 255, .8); }
+  /* 等待中：素材没下完之前盖住整屏 */
+  #loading { position: fixed; inset: 0; z-index: 8; background: var(--black); display: grid; place-content: center; justify-items: center; gap: 14px; color: rgba(243, 241, 236, .55); font: 11px/1 Georgia, "Times New Roman", serif; letter-spacing: .32em; }
+  #loading i { width: 10px; height: 10px; border-radius: 50%; background: var(--klein); animation: ld-beat 1.1s ease-in-out infinite; }
+  #loading b { font-weight: 400; font-size: 10px; color: rgba(243, 241, 236, .3); letter-spacing: .2em; }
+  @keyframes ld-beat { 0%, 100% { transform: translateY(0) scale(1); } 40% { transform: translateY(-10px) scale(.9); } 60% { transform: translateY(0) scale(1.15, .85); } }
+  #skip { position: fixed; right: 14px; bottom: calc(14px + env(safe-area-inset-bottom)); color: rgba(255, 255, 255, .35); font: 12px system-ui; letter-spacing: .2em; z-index: 9; }
+</style>
+</head>
+<body>
+<div id="home" aria-hidden="true"></div>
+<div id="stage"></div>
+<div id="loading" role="status"><i></i><span>等待中 · LOADING</span><b id="ld-n"></b></div>
+<button id="skip" type="button" style="border:0;background:transparent;padding:12px;cursor:pointer">跳过 / SKIP</button>
+<script src="vendor/gsap.min.js"></script>
+<script src="opening.js"></script>
+
+</body>
+</html>
