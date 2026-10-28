@@ -1,0 +1,1598 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>花园 · Herbarium 预览</title>
+<style>
+@font-face {
+  font-family: "Mochi Serif";
+  src: url("../../assets/fonts/MochiSerif-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+:root{
+  --paper:#F1EDE3;
+  --paper-2:#F8F5EC;
+  --paper-3:#E8E2D4;
+  --ink:#2B2B24;
+  --ink-2:#4E4C41;
+  --muted:#74705F;
+  --faint:rgba(43,43,36,.42);
+  --line:rgba(43,43,36,.20);
+  --line-soft:rgba(43,43,36,.11);
+  --sage:#77836D;
+  --moss:#4F5B48;
+  --rose:#B37778;
+  --terra:#B05F45;
+  --brass:#A98452;
+  --brass-soft:rgba(169,132,82,.42);
+  --serif:"Times New Roman","Mochi Serif","Songti SC","SimSun",serif;
+  --sans:"Helvetica Neue",Arial,"PingFang SC","Microsoft YaHei",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  background:#DED8CB;
+  color:var(--ink);
+  font-family:var(--serif);
+  -webkit-font-smoothing:antialiased;
+  display:grid;
+  place-items:center;
+  min-height:100dvh;
+}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+.app{
+  position:relative;
+  width:min(100vw,430px);
+  height:min(100dvh,900px);
+  overflow:hidden;
+  background:var(--paper);
+  isolation:isolate;
+}
+/* ---------- 场景：玻璃温室 + 石灰岩铺地，全部由 CSS/SVG 绘制 ---------- */
+.scene{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.scene::before{
+  content:"";
+  position:absolute;inset:0;
+  background:
+    radial-gradient(120% 62% at 18% -8%, rgba(255,252,241,.96) 0 18%, rgba(255,252,241,0) 58%),
+    radial-gradient(90% 55% at 88% 8%, rgba(228,235,221,.48), transparent 68%),
+    linear-gradient(180deg,#F6F2E8 0%,#F1EDE3 34%,#ECE7DB 64%,#E7E1D3 100%);
+}
+.scene .house{position:absolute;left:0;right:0;top:0;width:100%;height:280px;opacity:.9}
+.scene .paving{
+  position:absolute;left:-6%;right:-6%;top:30%;bottom:-8%;
+  opacity:.7;
+  background-image:
+    linear-gradient(rgba(82,74,58,.075) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(82,74,58,.065) 1px,transparent 1px),
+    linear-gradient(rgba(82,74,58,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(82,74,58,.03) 1px,transparent 1px);
+  background-size:76px 58px,76px 58px,38px 29px,38px 29px;
+  background-position:0 0,0 0,18px 13px,18px 13px;
+  transform:perspective(700px) rotateX(18deg);
+  transform-origin:50% 0;
+  -webkit-mask-image:linear-gradient(180deg,transparent 0%,#000 18%,#000 76%,transparent 100%);
+  mask-image:linear-gradient(180deg,transparent 0%,#000 18%,#000 76%,transparent 100%);
+}
+.scene .sun{
+  position:absolute;right:34px;top:122px;width:104px;height:104px;border-radius:50%;
+  border:1px solid rgba(169,132,82,.22);
+  background:radial-gradient(circle at 42% 38%,rgba(255,250,232,.6),rgba(255,250,232,0) 66%);
+}
+.scene .sun::after{
+  content:"";position:absolute;left:50%;top:50%;width:1px;height:150px;
+  background:linear-gradient(180deg,rgba(169,132,82,.18),transparent);
+  transform:translate(-50%,-50%) rotate(28deg);
+}
+.scene .sprig{position:absolute;opacity:.34;color:var(--sage)}
+.scene .sprig.left{left:-28px;bottom:84px;width:150px;height:260px;transform:rotate(-6deg)}
+.scene .sprig.right{right:-34px;top:206px;width:132px;height:230px;transform:scaleX(-1) rotate(8deg)}
+.scene .grain{
+  position:absolute;inset:0;opacity:.3;mix-blend-mode:multiply;
+  background-image:repeating-linear-gradient(0deg,rgba(90,80,60,.026) 0 1px,transparent 1px 3px);
+}
+.scene .frame{
+  position:absolute;inset:11px;border:1px solid rgba(43,43,36,.10);
+}
+.scene .frame::before,.scene .frame::after{
+  content:"+";position:absolute;font:10px/1 var(--sans);color:rgba(43,43,36,.30)
+}
+.scene .frame::before{left:-5px;top:-7px}
+.scene .frame::after{right:-5px;bottom:-7px}
+/* ---------- 顶栏 ---------- */
+.top{position:relative;z-index:4;padding:calc(15px + env(safe-area-inset-top)) 18px 0}
+.top-row{display:flex;align-items:flex-start;gap:10px}
+.back{
+  width:32px;height:32px;margin:1px 0 0 -7px;display:grid;place-items:center;
+  color:var(--ink);opacity:.82;
+}
+.back svg{width:21px;height:21px;stroke:currentColor;stroke-width:1.35;fill:none}
+.title{flex:1;min-width:0}
+.eyebrow{
+  display:block;font:600 7px/1 var(--sans);letter-spacing:.26em;color:var(--faint);
+  text-transform:uppercase;
+}
+.title h1{
+  margin:5px 0 0;font:400 25px/1 var(--serif);letter-spacing:.08em;color:var(--ink);
+}
+.title h1 em{font-style:normal;color:var(--brass)}
+.top-meta{
+  text-align:right;font:400 8px/1.8 var(--sans);letter-spacing:.12em;color:var(--muted);
+  padding-top:2px;white-space:nowrap;
+}
+.top-meta b{display:block;font:400 11px/1.3 var(--serif);letter-spacing:.1em;color:var(--ink-2)}
+.level{display:flex;align-items:center;gap:10px;margin:16px 0 0}
+.level .lv{font:600 7px/1 var(--sans);letter-spacing:.18em;color:var(--muted)}
+.level .track{flex:1;height:1px;background:var(--line);position:relative}
+.level .track i{position:absolute;left:0;top:0;height:1px;width:71%;background:var(--brass)}
+.level .track i::after{
+  content:"";position:absolute;right:-3px;top:-2.5px;width:6px;height:6px;
+  background:var(--brass);transform:rotate(45deg);
+}
+.level .exp{font:400 8px/1 var(--sans);letter-spacing:.1em;color:var(--faint)}
+/* ---------- 页签 ---------- */
+.tabs{
+  display:flex;gap:0;margin:13px -18px 0;padding:0 18px;
+  border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none;
+}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+  position:relative;flex:0 0 auto;padding:0 10px 9px;font:400 11px/1 var(--serif);
+  letter-spacing:.1em;color:var(--muted);white-space:nowrap;
+}
+.tab:first-child{padding-left:0}
+.tab.on{color:var(--ink)}
+.tab.on::after{
+  content:"";position:absolute;left:0;right:10px;bottom:-1px;height:1px;background:var(--ink);
+}
+.tab.on:first-child::after{left:1px}
+.tab small{display:block;margin-top:3px;font:600 6px/1 var(--sans);letter-spacing:.16em;opacity:.45}
+/* ---------- 今日 ---------- */
+.daily{
+  display:flex;align-items:center;gap:0;margin:0 -18px;padding:9px 18px 8px;
+  border-bottom:1px solid var(--line-soft);color:var(--muted);
+  font:400 9px/1 var(--sans);letter-spacing:.04em;white-space:nowrap;
+}
+.daily .lbl{font-weight:600;font-size:7px;letter-spacing:.2em;color:var(--brass);margin-right:10px}
+.daily .task{display:flex;align-items:center;gap:5px;padding:0 9px;border-left:1px solid var(--line-soft)}
+.daily .task:first-of-type{border-left:0;padding-left:0}
+.daily .dot{width:4px;height:4px;border-radius:50%;background:var(--sage)}
+.daily .dot.rose{background:var(--rose)}
+.daily .dot.brass{background:var(--brass)}
+.daily b{font-weight:400;color:var(--ink-2)}
+/* ---------- 花圃 ---------- */
+.garden{
+  position:relative;z-index:3;
+  margin:0 16px;
+  padding-top:62px;
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  grid-template-rows:repeat(4,1fr);
+  gap:2px 4px;
+  height:calc(100% - 196px - 106px);
+}
+.plot{
+  position:relative;min-width:0;min-height:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+  padding-top:6px;border-radius:12px;
+  -webkit-tap-highlight-color:transparent;
+}
+.plot .no{
+  position:absolute;left:5px;top:1px;font:600 6px/1 var(--sans);letter-spacing:.12em;
+  color:rgba(43,43,36,.34);z-index:2;
+}
+.plot .pot{
+  position:relative;width:92px;height:92px;border-radius:50%;
+  background:
+    linear-gradient(150deg,#DCD2BF 0%,#CBBFA9 42%,#B7AA93 100%);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.55) inset,
+    0 8px 12px -6px rgba(58,50,38,.26),
+    0 0 0 1px rgba(88,77,58,.24);
+  transition:transform .22s ease,box-shadow .22s ease;
+}
+.plot .pot::before{
+  content:"";position:absolute;inset:7px;border-radius:50%;
+  background-image:
+    radial-gradient(circle at 25% 65%,rgba(255,240,210,.18) 0 1px,transparent 1.5px),
+    radial-gradient(circle at 62% 38%,rgba(255,240,210,.12) 0 1px,transparent 1.5px),
+    radial-gradient(circle at 38% 30%,rgba(143,109,76,.98) 0 30%,rgba(112,82,56,.98) 60%,#6A4E36 100%);
+  background-size:15px 13px,19px 17px,auto;
+  background-position:0 0,7px 5px,0 0;
+  box-shadow:inset 0 4px 9px rgba(37,26,17,.42),inset 0 0 0 1px rgba(255,244,221,.16),inset 0 0 12px rgba(35,25,16,.30);
+}
+.plot .pot::after{
+  content:"";position:absolute;inset:0;border-radius:50%;
+  border-top:1px solid rgba(255,251,238,.62);
+  border-left:1px solid rgba(255,251,238,.30);
+  transform:rotate(-32deg);
+}
+.plot .pot-shadow{
+  position:absolute;left:50%;top:86px;width:80px;height:12px;transform:translateX(-50%);
+  background:radial-gradient(ellipse at 50% 40%,rgba(65,55,40,.24),rgba(65,55,40,0) 70%);
+  pointer-events:none;
+}
+.plant-svg{
+  position:absolute;inset:0;width:100%;height:100%;z-index:2;
+  transform:none;
+  overflow:visible;pointer-events:none;
+  filter:drop-shadow(0 2px 1px rgba(57,45,30,.10));
+}
+.plot .pot-grain{
+  position:absolute;inset:6px;border-radius:50%;z-index:3;pointer-events:none;
+  background:url("grain.png") repeat;background-size:34px;
+  opacity:.55;mix-blend-mode:multiply;
+}
+.plot .tag{
+  position:relative;z-index:2;margin-top:5px;padding:2px 3px 1px;
+  text-align:center;line-height:1.2;
+  background:linear-gradient(180deg,rgba(246,242,233,.80),rgba(246,242,233,.52));
+}
+.plot .tag b{display:block;font:400 10px/1.25 var(--serif);letter-spacing:.06em;color:var(--ink);white-space:nowrap}
+.plot .tag i{display:block;margin-top:1px;font:600 6.5px/1.2 var(--sans);letter-spacing:.12em;color:var(--faint);font-style:normal;text-transform:uppercase;white-space:nowrap}
+.plot .tag .ready{color:var(--terra)}
+.plot.sel .pot{
+  transform:translateY(-2px);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.7) inset,
+    0 12px 18px -8px rgba(58,50,38,.36),
+    0 0 0 1px rgba(88,77,58,.30),
+    0 0 0 5px rgba(169,132,82,.20),
+    0 0 0 6px rgba(169,132,82,.55);
+}
+.plot.sel .tag b{color:var(--ink)}
+.plot.sel .no{color:var(--brass)}
+.plot.ready .pot{box-shadow:0 0 0 1px rgba(88,77,58,.24),0 0 0 4px rgba(176,95,69,.12),0 8px 12px -6px rgba(58,50,38,.26)}
+/* 空地 */
+.plot.empty .plant-svg{opacity:.32}
+.plot.empty .tag i{opacity:.65}
+/* ---------- 底部 ---------- */
+.folio{
+  position:absolute;left:18px;right:18px;bottom:calc(126px + env(safe-area-inset-bottom));
+  display:flex;justify-content:space-between;align-items:center;
+  font:600 6px/1 var(--sans);letter-spacing:.2em;color:rgba(43,43,36,.40);
+  z-index:4;pointer-events:none;
+}
+.folio .hint{letter-spacing:.14em;font-weight:400;color:rgba(43,43,36,.48)}
+.dock{
+  position:absolute;left:0;right:0;bottom:0;z-index:6;
+  height:calc(62px + env(safe-area-inset-bottom));
+  padding:0 14px env(safe-area-inset-bottom);
+  display:flex;align-items:center;
+  background:linear-gradient(180deg,rgba(246,242,233,.82),rgba(241,237,227,.96) 38%,#F1EDE3);
+  border-top:1px solid var(--line);
+  backdrop-filter:blur(6px);
+}
+.dock .tool{
+  flex:1;height:100%;position:relative;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  font:400 10px/1 var(--serif);letter-spacing:.12em;color:var(--muted);
+}
+.dock .tool .idx{font:600 6px/1 var(--sans);letter-spacing:.14em;color:rgba(43,43,36,.34)}
+.dock .tool.on{color:var(--ink)}
+.dock .tool.on::after{content:"";position:absolute;left:50%;bottom:8px;width:14px;height:1px;background:var(--brass);transform:translateX(-50%)}
+.dock .tool.more{color:var(--terra)}
+
+/* ---------- 档案页（日志 / 图鉴 / 工坊 / 装饰 / 成就 / 年报） ---------- */
+.chapter{
+  position:absolute;left:0;right:0;bottom:0;top:146px;z-index:9;
+  display:none;overflow-y:auto;overscroll-behavior:contain;
+  background:var(--paper);
+  padding:16px 20px calc(26px + env(safe-area-inset-bottom));
+}
+.chapter.open{display:block}
+.app.chapter-open .daily{display:none}
+.app.chapter-open .garden,
+.app.chapter-open .folio,
+.app.chapter-open .dock{visibility:hidden}
+.ch-head{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.ch-head .kicker{display:block;font:600 6.5px/1 var(--sans);letter-spacing:.22em;color:var(--brass);text-transform:uppercase}
+.ch-head h2{margin:5px 0 0;font:400 24px/1 var(--serif);letter-spacing:.06em}
+.ch-head .count{font:600 6.5px/1.6 var(--sans);letter-spacing:.12em;color:var(--faint);text-align:right;white-space:nowrap}
+.ch-sub{margin:9px 0 0;font:400 9px/1.6 var(--serif);color:var(--muted);letter-spacing:.04em}
+.ch-section{margin-top:18px}
+.ch-section h3{margin:0 0 6px;font:600 6.5px/1 var(--sans);letter-spacing:.2em;color:var(--faint);text-transform:uppercase}
+.jr{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--line-soft)}
+.jr .date{width:40px;flex:0 0 40px;font:600 6.5px/1.5 var(--sans);letter-spacing:.08em;color:var(--brass)}
+.jr .txt{flex:1;min-width:0}
+.jr .txt b{display:block;font:400 11px/1.4 var(--serif);letter-spacing:.04em;color:var(--ink)}
+.jr .txt span{display:block;margin-top:3px;font:400 8.5px/1.5 var(--sans);letter-spacing:.03em;color:var(--muted)}
+.idx-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}
+.idx{border:1px solid var(--line-soft);background:rgba(255,252,244,.4);padding:8px 5px 7px;text-align:center}
+.idx-art{position:relative;width:50px;height:50px;margin:0 auto 5px;border-radius:50%;overflow:hidden;
+  background:radial-gradient(circle at 40% 32%,#8F6D4C 0 30%,#705238 60%,#6A4E36 100%);
+  box-shadow:0 0 0 1px rgba(88,77,58,.25)}
+.idx-art .plant-svg{position:absolute;inset:0;width:100%;height:100%}
+.idx b{display:block;font:400 9.5px/1.3 var(--serif);letter-spacing:.05em;color:var(--ink)}
+.idx i{display:block;margin-top:2px;font:600 5.5px/1.2 var(--sans);letter-spacing:.12em;color:var(--faint);font-style:normal;text-transform:uppercase}
+.idx.locked{opacity:.86}
+.idx.locked .plant-svg{filter:grayscale(.35) sepia(.06);opacity:.84}
+.idx.locked b{color:var(--muted)}
+.idx.rare{background:rgba(255,250,236,.62);border-color:rgba(169,132,82,.34)}
+.idx.rare.locked{opacity:.96}
+.idx.rare.locked .plant-svg{filter:grayscale(0) sepia(.06);opacity:.94}
+.idx-tag{display:inline-block;margin-top:3px;padding:2px 4px 1px;border:1px solid rgba(169,132,82,.5);font:600 5px/1 var(--sans);letter-spacing:.16em;color:var(--brass)}
+.idx-stats{display:flex;gap:16px;margin-top:12px;padding:9px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.idx-stats span{font:600 6.5px/1 var(--sans);letter-spacing:.12em;color:var(--muted)}
+.idx-stats b{display:block;margin-bottom:4px;font:400 19px/1 var(--serif);letter-spacing:.04em;color:var(--ink)}
+.idx-note{margin-top:7px;font:400 8px/1.6 var(--sans);color:var(--faint);letter-spacing:.03em}
+.recipe{border:1px solid var(--line-soft);padding:11px 12px;margin-top:9px;background:rgba(255,252,244,.35)}
+.recipe .rt{display:flex;justify-content:space-between;align-items:baseline}
+.recipe b{font:400 13px/1.2 var(--serif);letter-spacing:.08em}
+.recipe .state{font:600 6.5px/1 var(--sans);letter-spacing:.14em;color:var(--terra)}
+.recipe p{margin:6px 0 0;font:400 8.5px/1.6 var(--sans);color:var(--muted)}
+.recipe .need{margin-top:7px;font:600 6.5px/1.4 var(--sans);letter-spacing:.1em;color:var(--faint)}
+.deco-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid var(--line-soft)}
+.deco-row .name{font:400 12px/1.3 var(--serif);letter-spacing:.05em}
+.deco-row .sub{font:400 8px/1.4 var(--sans);color:var(--muted);margin-top:2px}
+.deco-row .price{font:600 7px/1 var(--sans);letter-spacing:.08em;color:var(--brass);white-space:nowrap}
+.mark{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--line-soft)}
+.mark .badge{width:30px;height:30px;flex:0 0 30px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font:400 13px/1 var(--serif);color:var(--brass)}
+.mark .mt b{display:block;font:400 11px/1.3 var(--serif);letter-spacing:.04em}
+.mark .mt span{display:block;margin-top:2px;font:400 8px/1.4 var(--sans);color:var(--muted)}
+.mark.locked{opacity:.5}
+.annual-grid{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line);border-left:1px solid var(--line);margin-top:14px}
+.annual-cell{border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:14px 12px}
+.annual-cell .k{font:600 6.5px/1 var(--sans);letter-spacing:.18em;color:var(--faint)}
+.annual-cell .v{margin-top:8px;font:400 30px/1 var(--serif)}
+.annual-cell .v small{font:600 7px/1 var(--sans);letter-spacing:.1em;color:var(--muted);margin-left:3px}
+.ch-back{display:block;width:100%;margin-top:24px;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);font:400 10px/1 var(--serif);letter-spacing:.16em;color:var(--terracotta)}
+
+
+/* ---------- 3D 工具台 ---------- */
+.tool-tray{
+  position:absolute;left:0;right:0;bottom:0;z-index:6;
+  height:calc(112px + env(safe-area-inset-bottom));
+  display:flex;align-items:flex-end;justify-content:space-around;
+  padding:0 16px calc(14px + env(safe-area-inset-bottom));
+  pointer-events:none;
+  background:linear-gradient(180deg,rgba(241,237,227,0),rgba(241,237,227,.52) 30%,rgba(232,226,214,.92) 100%);
+}
+.tool-tray::before{
+  content:"";position:absolute;left:0;right:0;bottom:calc(8px + env(safe-area-inset-bottom));
+  height:16px;border-top:1px solid rgba(90,74,52,.42);
+  background:linear-gradient(180deg,#D4C2A3,#B7A07B 45%,#8C7558 100%);
+  box-shadow:0 1px 0 rgba(255,250,236,.6) inset,0 -2px 0 rgba(70,55,38,.16) inset,0 5px 10px rgba(55,44,30,.12);
+}
+.tool-tray::after{
+  content:"";position:absolute;left:0;right:0;bottom:0;height:calc(8px + env(safe-area-inset-bottom));
+  background:linear-gradient(180deg,#8B7558,#65523A);
+}
+.tray-hint{
+  position:absolute;left:18px;top:7px;
+  font:600 6px/1 var(--sans);letter-spacing:.2em;color:rgba(43,43,36,.38);
+  pointer-events:none;
+}
+.tool-obj{
+  pointer-events:auto;position:relative;width:76px;height:92px;
+  cursor:grab;touch-action:none;z-index:2;
+  filter:drop-shadow(0 6px 7px rgba(55,44,30,.18));
+  transform-origin:50% 88%;transition:transform .18s ease,opacity .18s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+.tool-obj svg{width:100%;height:100%;display:block;overflow:visible}
+.tool-obj:active{cursor:grabbing;transform:scale(.96)}
+.tool-obj.dragging{opacity:.30}
+.tool-no{
+  position:absolute;left:0;right:0;bottom:0;text-align:center;
+  font:600 6px/1 var(--sans);letter-spacing:.12em;color:rgba(43,43,36,.55);
+  text-shadow:0 1px 0 rgba(255,250,236,.7);
+}
+.drag-aura{
+  position:fixed;z-index:9998;width:156px;height:156px;pointer-events:none;
+  transform:translate(-50%,-50%);border-radius:50%;opacity:.95;
+}
+.drag-aura::before,.drag-aura::after{content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none}
+.drag-aura::before{filter:blur(9px);animation:auraPulse 1.5s ease-in-out infinite}
+.drag-aura::after{animation:auraRing 1.5s ease-out infinite}
+.aura-water::before{background:radial-gradient(circle at 45% 40%,rgba(111,168,194,.52) 0 20%,rgba(126,174,196,.22) 48%,transparent 72%)}
+.aura-water::after{
+  border:1px solid rgba(126,174,196,.42);
+  background:
+    radial-gradient(circle at 28% 64%,rgba(255,255,255,.88) 0 1.6px,transparent 2.3px),
+    radial-gradient(circle at 70% 55%,rgba(150,199,220,.92) 0 2px,transparent 2.7px),
+    radial-gradient(circle at 61% 28%,rgba(255,255,255,.75) 0 1.4px,transparent 2px),
+    radial-gradient(circle at 42% 78%,rgba(150,199,220,.82) 0 1.5px,transparent 2.1px),
+    radial-gradient(circle at 50% 50%,transparent 52%,rgba(126,174,196,.14) 53%,transparent 70%);
+}
+.aura-spray::before{background:radial-gradient(circle at 45% 40%,rgba(124,138,108,.40) 0 20%,rgba(124,138,108,.16) 48%,transparent 72%)}
+.aura-spray::after{
+  border:1px solid rgba(124,138,108,.34);
+  background:
+    radial-gradient(circle at 32% 62%,rgba(240,245,230,.85) 0 1.8px,transparent 2.4px),
+    radial-gradient(circle at 68% 48%,rgba(190,205,175,.85) 0 1.5px,transparent 2.2px),
+    radial-gradient(circle at 55% 28%,rgba(240,245,230,.7) 0 1.2px,transparent 1.9px);
+}
+.aura-fertilize::before{background:radial-gradient(circle at 45% 40%,rgba(191,153,92,.38) 0 18%,rgba(191,153,92,.14) 46%,transparent 70%)}
+.aura-fertilize::after{border:1px solid rgba(191,153,92,.30);box-shadow:0 0 0 20px rgba(191,153,92,.05)}
+.aura-seed::before{background:radial-gradient(circle at 45% 40%,rgba(110,128,96,.36) 0 18%,rgba(110,128,96,.14) 46%,transparent 70%)}
+.aura-seed::after{border:1px solid rgba(110,128,96,.28);box-shadow:0 0 0 20px rgba(110,128,96,.05)}
+@keyframes auraPulse{0%,100%{transform:scale(.9);opacity:.78}50%{transform:scale(1.06);opacity:1}}
+@keyframes auraRing{0%{transform:scale(.8);opacity:.65}100%{transform:scale(1.15);opacity:0}}
+.tool-ghost{
+  position:fixed;z-index:9999;width:78px;height:92px;pointer-events:none;
+  transform:translate(-50%,-58%);
+  filter:drop-shadow(0 14px 14px rgba(55,44,30,.28));
+}
+.plot.hover-tool .pot{
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.7) inset,
+    0 12px 18px -8px rgba(58,50,38,.36),
+    0 0 0 1px rgba(88,77,58,.30),
+    0 0 0 5px rgba(169,132,82,.30),
+    0 0 0 6px rgba(169,132,82,.65) !important;
+}
+.pest{
+  position:absolute;right:13px;top:14px;z-index:4;width:7px;height:7px;border-radius:50%;
+  background:#8D4C3C;box-shadow:0 0 0 2px rgba(241,237,227,.75),0 0 0 3px rgba(141,76,60,.25);
+  display:none;
+}
+.pest.on{display:block;animation:pestPulse 2.4s ease-in-out infinite}
+@keyframes pestPulse{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.25);opacity:1}}
+.fx{position:absolute;left:50%;top:44%;width:84px;height:84px;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:5}
+.fx-water{border:1px solid rgba(91,143,170,.7);animation:fxRing .72s ease-out forwards}
+.fx-water::before,.fx-water::after{content:"";position:absolute;left:50%;top:38%;width:4px;height:7px;border-radius:50% 50% 50% 50%/60% 60% 40% 40%;background:rgba(91,143,170,.75);animation:fxDrop .7s ease-out forwards}
+.fx-water::after{left:60%;top:52%;animation-delay:.08s}
+.fx-spray{background:radial-gradient(circle,rgba(124,138,108,.30),rgba(124,138,108,0) 70%);animation:fxMist .8s ease-out forwards}
+.fx-fertilize{background:radial-gradient(circle,rgba(191,153,92,.32),rgba(191,153,92,0) 68%);animation:fxMist .8s ease-out forwards}
+.fx-seed{background:radial-gradient(circle,rgba(110,128,96,.28),rgba(110,128,96,0) 68%);animation:fxMist .8s ease-out forwards}
+@keyframes fxRing{from{transform:translate(-50%,-50%) scale(.55);opacity:1}to{transform:translate(-50%,-50%) scale(1.25);opacity:0}}
+@keyframes fxDrop{from{transform:translateY(0);opacity:0}30%{opacity:1}to{transform:translateY(16px);opacity:0}}
+@keyframes fxMist{from{transform:translate(-50%,-50%) scale(.7);opacity:0}30%{opacity:1}to{transform:translate(-50%,-50%) scale(1.3);opacity:0}}
+.toast{
+  position:absolute;left:50%;bottom:calc(126px + env(safe-area-inset-bottom));z-index:40;
+  transform:translate(-50%,8px);max-width:80%;padding:8px 13px;
+  background:rgba(43,43,36,.92);color:var(--paper-2);
+  font:400 9px/1.5 var(--serif);letter-spacing:.08em;text-align:center;
+  opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;
+}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.app.chapter-open .tool-tray{visibility:hidden}
+
+/* ---------- 花名右侧小轮盘 ---------- */
+.name-row{display:flex;align-items:flex-start;gap:8px}
+.name-row h2{flex:1;min-width:0}
+.mini-wheel{
+  position:relative;width:82px;height:82px;flex:0 0 82px;margin:-9px -4px 0 0;
+  border:1px solid var(--brass-soft);border-radius:50%;
+  background:radial-gradient(circle at 45% 40%,rgba(255,252,242,.62),rgba(255,252,242,0) 68%);
+}
+.mini-wheel::before{content:"";position:absolute;inset:17%;border:1px solid var(--line-soft);border-radius:50%}
+.mw-center{
+  position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px;
+  border:1px solid var(--line);border-radius:50%;display:grid;place-items:center;
+  font:400 9px/1 var(--serif);color:var(--brass);background:rgba(248,245,236,.8);
+}
+.mw-btn{
+  position:absolute;left:50%;top:50%;width:25px;height:25px;margin:-12.5px;
+  display:grid;place-items:center;border-radius:50%;color:var(--muted);
+  transition:color .16s ease,background .16s ease,transform .16s ease;
+}
+.mw-btn:hover,.mw-btn:focus-visible{color:var(--terra);background:rgba(255,252,244,.95);transform:scale(1.08)}
+.mw-btn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.35;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- 标本抽屉 ---------- */
+.sheet-mask{
+  position:absolute;inset:0;z-index:14;background:rgba(36,34,27,.28);
+  opacity:0;visibility:hidden;transition:opacity .24s ease,visibility .24s;
+}
+.sheet{
+  position:absolute;left:0;right:0;bottom:0;z-index:15;
+  background:var(--paper-2);
+  border-top:1px solid rgba(43,43,36,.42);
+  box-shadow:0 -24px 60px rgba(50,43,32,.18);
+  transform:translateY(101%);
+  transition:transform .3s cubic-bezier(.22,.7,.2,1);
+  padding:16px 20px calc(18px + env(safe-area-inset-bottom));
+  max-height:56%;
+  overflow:auto;
+}
+.sheet-mask.open,.sheet.open{opacity:1;visibility:visible;transform:translateY(0)}
+.sheet-head{display:flex;justify-content:space-between;align-items:center;
+  font:600 6.5px/1 var(--sans);letter-spacing:.2em;color:var(--faint);
+  padding-bottom:9px;border-bottom:1px solid var(--line);
+}
+.sheet-head button{padding:4px 0 4px 12px;font:600 7px/1 var(--sans);letter-spacing:.16em;color:var(--muted)}
+.specimen{display:flex;gap:14px;padding:14px 0 12px;align-items:flex-start}
+.specimen-thumb{
+  width:74px;height:74px;flex:0 0 74px;border:1px solid var(--line);
+  background:var(--paper-3);display:grid;place-items:center;position:relative;overflow:hidden;
+}
+.specimen-thumb .thumb-pot{
+  width:50px;height:50px;border-radius:50%;position:relative;
+  background:linear-gradient(150deg,#DCD2BF,#B7AA93);
+  box-shadow:0 0 0 1px rgba(88,77,58,.22),inset 0 1px 0 rgba(255,255,255,.6);
+}
+.specimen-thumb .thumb-pot::before{
+  content:"";position:absolute;inset:4px;border-radius:50%;
+  background:radial-gradient(circle at 40% 32%,#6E563F,#4B382A);
+}
+.specimen-thumb .plant-svg{left:0;bottom:0;width:100%;height:100%;transform:none;filter:none}
+.specimen-main{flex:1;min-width:0}
+.specimen-main h2{margin:0;font:400 23px/1.12 var(--serif);letter-spacing:.06em}
+.specimen-main .latin{margin-top:5px;font:600 6.5px/1 var(--sans);letter-spacing:.2em;color:var(--faint);text-transform:uppercase}
+.specimen-main .meta{margin-top:9px;font:400 9px/1.5 var(--serif);color:var(--muted);letter-spacing:.04em}
+.status{
+  display:inline-block;margin-top:2px;padding:2px 0;font:400 10px/1.3 var(--serif);
+  letter-spacing:.12em;color:var(--terra);
+}
+.status::before{content:"— ";color:var(--brass)}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.metric{padding:11px 0 10px}
+.metric + .metric{border-left:1px solid var(--line);padding-left:16px}
+.metric .k{font:600 6.5px/1 var(--sans);letter-spacing:.18em;color:var(--faint)}
+.metric .v{margin-top:7px;font:400 26px/1 var(--serif);letter-spacing:.02em}
+.metric .v small{font:600 7px/1 var(--sans);letter-spacing:.1em;color:var(--muted);margin-left:3px}
+.metric .bar{height:1px;background:var(--line-soft);margin-top:8px;position:relative}
+.metric .bar i{display:block;height:1px;background:var(--brass)}
+.metric.water .bar i{background:var(--sage)}
+.note{font:400 10px/1.65 var(--serif);color:var(--muted);letter-spacing:.03em;padding:10px 0 12px}
+.sheet-actions{display:grid;grid-template-columns:1fr 1fr 1fr .9fr;gap:7px}
+.sheet-actions button{
+  height:42px;border:1px solid rgba(43,43,36,.34);
+  font:400 11px/1 var(--serif);letter-spacing:.14em;color:var(--ink);
+  background:rgba(255,252,244,.5);
+}
+.sheet-actions button.primary{background:var(--ink);color:var(--paper-2);border-color:var(--ink)}
+.sheet-actions button.wheel{border-color:var(--brass);color:var(--terracotta)}
+/* ---------- 轮盘 ---------- */
+.dial-layer{
+  position:absolute;inset:0;z-index:20;display:grid;place-items:center;
+  opacity:0;visibility:hidden;transition:opacity .22s ease,visibility .22s;
+  background:radial-gradient(circle at 50% 55%,rgba(248,245,236,.88) 0 26%,rgba(241,237,227,.62) 54%,rgba(241,237,227,.42) 100%);
+  backdrop-filter:blur(3px);
+}
+.dial-layer.open{opacity:1;visibility:visible}
+.dial{
+  position:relative;width:min(82vw,318px);aspect-ratio:1;border-radius:50%;
+  border:1px solid rgba(169,132,82,.55);
+  background:radial-gradient(circle,rgba(248,245,236,.44),rgba(248,245,236,0) 68%);
+  touch-action:none;user-select:none;
+  transform:scale(.96);transition:transform .24s ease;
+}
+.dial-layer.open .dial{transform:scale(1)}
+.dial::before{content:"";position:absolute;inset:9%;border:1px solid rgba(43,43,36,.16);border-radius:50%}
+.ticks{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.ticks line{stroke:rgba(43,43,36,.34);stroke-width:.35}
+.ticks line.major{stroke:rgba(43,43,36,.62);stroke-width:.65}
+.hand{
+  position:absolute;left:50%;top:50%;height:1px;width:40%;background:var(--brass);
+  transform-origin:0 50%;transition:transform .25s cubic-bezier(.2,.7,.2,1);pointer-events:none;
+}
+.hand::after{content:"";position:absolute;right:-3px;top:-3px;width:7px;height:7px;background:var(--brass);transform:rotate(45deg)}
+.dial-card{
+  position:absolute;left:50%;top:50%;width:128px;min-height:92px;transform:translate(-50%,-50%);
+  background:rgba(248,245,236,.94);border:1px solid rgba(43,43,36,.36);
+  padding:10px 12px;text-align:center;
+}
+.dial-card .idx{font:600 6.5px/1 var(--sans);letter-spacing:.2em;color:var(--brass)}
+.dial-card .fn{margin-top:7px;font:400 17px/1 var(--serif);letter-spacing:.1em}
+.dial-card .nm{margin-top:9px;padding-top:8px;border-top:1px solid var(--line-soft);font:400 11px/1.4 var(--serif);color:var(--ink-2)}
+.dial-card .st{margin-top:3px;font:600 6.5px/1.4 var(--sans);letter-spacing:.12em;color:var(--muted)}
+.dial-tool{
+  position:absolute;left:50%;top:50%;width:58px;height:38px;margin:-19px -29px;
+  font:400 11px/1 var(--serif);letter-spacing:.12em;color:var(--muted);
+  transform:translate(var(--x),var(--y));transition:color .18s ease;
+}
+.dial-tool.on{color:var(--terra)}
+.dial-tool.on::before{content:"";display:block;width:18px;height:1px;margin:0 auto 5px;background:var(--terra)}
+.dial-help{
+  position:absolute;left:0;right:0;bottom:calc(20px + env(safe-area-inset-bottom));
+  text-align:center;font:600 6.5px/1 var(--sans);letter-spacing:.22em;color:var(--faint);
+}
+@media (max-height:760px){
+  .garden{height:calc(100% - 188px - 100px);padding-top:52px}
+  .plant-svg{width:68px;height:82px;bottom:34px}
+  .plot .pot{width:76px;height:76px}
+  .plot .pot-shadow{top:70px;width:64px}
+  .sheet{max-height:61%}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;animation:none!important}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="scene" aria-hidden="true">
+    <svg class="house" viewBox="0 0 390 280" preserveAspectRatio="xMidYMin slice">
+      <g fill="none" stroke="#555545" stroke-opacity=".10" stroke-width="1">
+        <path d="M-20 232 C40 74 152 18 195 18 C238 18 350 74 410 232"/>
+        <path d="M22 232 V122 M78 232 V72 M134 232 V38 M195 18 V232 M256 232 V38 M312 232 V72 M368 232 V122"/>
+        <path d="M0 232 H390"/>
+        <path d="M195 18 L96 232 M195 18 L294 232"/>
+        <path d="M78 72 H312" stroke-opacity=".06"/>
+        <path d="M40 150 H350" stroke-opacity=".045"/>
+      </g>
+    </svg>
+    <div class="paving"></div>
+    <div class="sun"></div>
+    <svg class="sprig left" viewBox="0 0 150 260" fill="none" stroke="currentColor" stroke-width=".9">
+      <path d="M72 260 C64 194 58 138 63 70"/>
+      <path d="M66 196 C42 180 28 154 26 126 C52 136 66 160 70 186Z" fill="currentColor" fill-opacity=".10"/>
+      <path d="M65 168 C92 152 108 124 111 94 C84 104 68 130 65 158Z" fill="currentColor" fill-opacity=".08"/>
+      <path d="M64 136 C44 122 34 100 36 76 C56 86 64 108 66 128Z" fill="currentColor" fill-opacity=".07"/>
+      <path d="M63 106 C82 94 94 74 96 50 C73 58 63 80 63 96Z" fill="currentColor" fill-opacity=".08"/>
+      <path d="M62 78 C48 68 42 54 44 38 C58 46 63 60 64 70Z" fill="currentColor" fill-opacity=".06"/>
+    </svg>
+    <svg class="sprig right" viewBox="0 0 132 230" fill="none" stroke="currentColor" stroke-width=".9">
+      <path d="M62 230 C72 174 78 120 72 54"/>
+      <path d="M70 178 C96 164 110 138 112 108 C86 116 72 142 69 168Z" fill="currentColor" fill-opacity=".08"/>
+      <path d="M72 146 C48 134 34 110 32 82 C56 92 70 116 73 136Z" fill="currentColor" fill-opacity=".10"/>
+      <path d="M73 112 C92 100 102 78 102 56 C80 66 72 86 72 102Z" fill="currentColor" fill-opacity=".07"/>
+    </svg>
+    <div class="grain"></div>
+    <div class="frame"></div>
+  </div>
+
+  <header class="top">
+    <div class="top-row">
+      <button class="back" aria-label="返回"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <div class="title">
+        <span class="eyebrow">Mochi Herbarium · Plate 07</span>
+        <h1>云上花园</h1>
+      </div>
+      <div class="top-meta"><b>晴 / 微风</b>SPRING · 03</div>
+    </div>
+    <div class="level">
+      <span class="lv">LV. 10</span>
+      <span class="track"><i></i></span>
+      <span class="exp">908 EXP</span>
+    </div>
+    <nav class="tabs" aria-label="花园页签">
+      <button class="tab on" data-tab="garden">花园<small>GARDEN</small></button>
+      <button class="tab" data-tab="journal">日志<small>JOURNAL</small></button>
+      <button class="tab" data-tab="dex">图鉴<small>INDEX</small></button>
+      <button class="tab" data-tab="craft">工坊<small>ATELIER</small></button>
+      <button class="tab" data-tab="decor">装饰<small>OBJECTS</small></button>
+      <button class="tab" data-tab="marks">成就<small>MARKS</small></button>
+      <button class="tab" data-tab="annual">年报<small>ANNUAL</small></button>
+    </nav>
+    <div class="daily">
+      <span class="lbl">TODAY</span>
+      <span class="task"><i class="dot"></i>浇水 <b>0/5</b></span>
+      <span class="task"><i class="dot rose"></i>收获 <b>0/3</b></span>
+      <span class="task"><i class="dot brass"></i>施肥 <b>0/1</b></span>
+    </div>
+  </header>
+
+  <main class="garden" id="garden" aria-label="花圃"></main>
+
+  <section class="chapter" id="chapter" aria-label="花园档案"></section>
+
+  <div class="folio">
+    <span>19 CULTIVARS · 13 RARE</span>
+    <span class="hint">轻触花圃 · 查看标本</span>
+  </div>
+
+  <div class="tool-tray" id="toolTray" aria-label="花园工具">
+    <div class="tray-hint">DRAG TO THE GARDEN</div>
+    <button class="tool-obj" data-tool="water" aria-label="水壶：拖到花盆上浇水" title="浇水"><span class="tool-no">WATER</span>
+      <svg viewBox="10 8 82 86" aria-hidden="true">
+        <defs>
+          <linearGradient id="tg-metal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#AEBBA4"/><stop offset=".4" stop-color="#7C8B72"/><stop offset="1" stop-color="#4B5846"/></linearGradient>
+          <linearGradient id="tg-metal2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#97A78C"/><stop offset="1" stop-color="#505E4A"/></linearGradient>
+          <linearGradient id="tg-brass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#D6B57B"/><stop offset=".5" stop-color="#B08A50"/><stop offset="1" stop-color="#7C5E32"/></linearGradient>
+        </defs>
+        <ellipse cx="50" cy="90" rx="29" ry="5.5" fill="#2E3A2C" opacity=".22"/>
+        <path d="M32 48 H74 L70 82 Q69 89 62 89 H42 Q35 89 34 82 Z" fill="url(#tg-metal)" stroke="#384434" stroke-width="1.35"/>
+        <path d="M37 50 C39 65 38 77 41 86" fill="none" stroke="#DCE5CF" stroke-opacity=".38" stroke-width="3.2" stroke-linecap="round"/>
+        <ellipse cx="53" cy="48" rx="21" ry="5.5" fill="#66745F" stroke="#384434" stroke-width="1.25"/>
+        <ellipse cx="53" cy="47.6" rx="17.5" ry="3.6" fill="#84927A" opacity=".55"/>
+        <path d="M37 48 C37 26 67 26 67 48" fill="none" stroke="#7A5C32" stroke-width="4.6" stroke-linecap="round"/>
+        <path d="M37 48 C37 30 67 30 67 48" fill="none" stroke="#D2B27B" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M66 56 L74 60 L94 38 L98 43 L76 68 L68 66 Z" fill="url(#tg-metal2)" stroke="#384434" stroke-width="1.25"/>
+        <path d="M79 56 L82 57 L96 42 L94 41 Z" fill="#C6D3B8" opacity=".5"/>
+        <path d="M64 53 L75 57 L73 66 L62 62 Z" fill="url(#tg-brass)" stroke="#5E4827" stroke-width="1.1"/>
+        <path d="M67 57 C71 58 73 61 73 65" fill="none" stroke="#EEDCB6" stroke-opacity=".6" stroke-width="1.2"/>
+        <ellipse cx="95" cy="39" rx="7.2" ry="3.4" transform="rotate(-40 95 39)" fill="url(#tg-brass)" stroke="#5E4827" stroke-width="1.05"/>
+        <path d="M64 54 C64 70 63 79 61 86" fill="none" stroke="#2F3B2D" stroke-opacity=".35" stroke-width="1.2"/>
+        <path d="M38 56 H68" stroke="#A98452" stroke-width="1.6" opacity=".7"/>
+        <path d="M38 57.5 H68" stroke="#E7D3A8" stroke-width=".6" opacity=".4"/>
+      </svg>
+    </button>
+    <button class="tool-obj" data-tool="fertilize" aria-label="肥料袋：拖到花盆上施肥" title="施肥"><span class="tool-no">FEED</span>
+      <svg viewBox="10 8 82 86" aria-hidden="true">
+        <defs><linearGradient id="tg-burlap" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#CDB58D"/><stop offset=".55" stop-color="#B79A6D"/><stop offset="1" stop-color="#8E7554"/></linearGradient></defs>
+        <ellipse cx="50" cy="91" rx="27" ry="5" fill="#3B3024" opacity=".18"/>
+        <path d="M30 38 Q28 28 38 26 H62 Q72 28 70 38 L74 84 Q74 90 68 90 H32 Q26 90 26 84 Z" fill="url(#tg-burlap)" stroke="#705B40" stroke-width="1.2"/>
+        <path d="M30 38 Q34 31 40 35 Q46 40 50 35 Q54 40 60 35 Q66 31 70 38" fill="#C6AC83" stroke="#705B40" stroke-width="1"/>
+        <path d="M29 48 Q50 52 71 48 M29 54 Q50 58 71 54" fill="none" stroke="#8A704C" stroke-width=".7" opacity=".45"/>
+        <rect x="36" y="56" width="28" height="25" fill="#F1E9D7" stroke="#8A7354" stroke-width=".8"/>
+        <path d="M50 74 V63 M50 69 C44 69 41 66 41 62 C46 62 50 65 50 69 M50 66 C56 66 59 63 59 59 C54 59 50 62 50 66" fill="none" stroke="#5E7458" stroke-width="1.1" stroke-linecap="round"/>
+        <path d="M50 46 V38 M50 42 C46 42 44 40 44 37 C48 37 50 39 50 42 M50 40 C54 40 56 38 56 35 C52 35 50 37 50 40" fill="none" stroke="#5E7458" stroke-width=".9" opacity=".8"/>
+        <path d="M34 80 Q50 84 66 80" fill="none" stroke="#6F563A" stroke-width=".7" opacity=".55"/>
+      </svg>
+    </button>
+    <button class="tool-obj" data-tool="seed" aria-label="种子袋：拖到空花盆上种植" title="种植"><span class="tool-no">SEED</span>
+      <svg viewBox="10 8 82 86" aria-hidden="true">
+        <defs><linearGradient id="tg-linen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E8DCC5"/><stop offset="1" stop-color="#C7B393"/></linearGradient></defs>
+        <ellipse cx="50" cy="91" rx="25" ry="5" fill="#3B3024" opacity=".18"/>
+        <path d="M34 34 Q28 30 34 25 H66 Q72 30 66 34 L72 77 Q72 86 63 86 H37 Q28 86 28 77 Z" fill="url(#tg-linen)" stroke="#826D50" stroke-width="1.15"/>
+        <path d="M34 34 Q50 29 66 34" fill="none" stroke="#826D50" stroke-width="1.1"/>
+        <path d="M32 40 Q50 35 68 40" fill="none" stroke="#5D4C36" stroke-width="1.4"/>
+        <path d="M34 42 Q30 44 32 47 M68 42 Q72 44 70 47" fill="none" stroke="#5D4C36" stroke-width="1.2"/>
+        <g fill="#8A6C42" stroke="#5D4C36" stroke-width=".5">
+          <ellipse cx="42" cy="80" rx="3.2" ry="1.9" transform="rotate(24 42 80)"/>
+          <ellipse cx="50" cy="84" rx="3.4" ry="2" transform="rotate(-12 50 84)"/>
+          <ellipse cx="58" cy="79" rx="3" ry="1.8" transform="rotate(32 58 79)"/>
+          <ellipse cx="47" cy="76" rx="2.8" ry="1.7" transform="rotate(-28 47 76)"/>
+        </g>
+        <rect x="38" y="54" width="24" height="18" fill="#F2EADA" stroke="#8A7354" stroke-width=".8"/>
+        <path d="M50 67 C45 67 43 64 43 60 C47 60 50 63 50 67 M50 64 C54 64 57 62 57 58 C53 58 50 60 50 64" fill="none" stroke="#5E7458" stroke-width="1" stroke-linecap="round"/>
+        <path d="M35 44 Q50 50 65 44" fill="none" stroke="#7A6347" stroke-width=".6" opacity=".5"/>
+      </svg>
+    </button>
+    <button class="tool-obj" data-tool="spray" aria-label="驱虫喷雾：拖到花盆上驱虫" title="驱虫"><span class="tool-no">SPRAY</span>
+      <svg viewBox="10 8 82 86" aria-hidden="true">
+        <defs><linearGradient id="tg-glass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C9D2B5" stop-opacity=".92"/><stop offset=".55" stop-color="#9AAA82" stop-opacity=".9"/><stop offset="1" stop-color="#6E7F5C" stop-opacity=".95"/></linearGradient></defs>
+        <ellipse cx="50" cy="91" rx="24" ry="5" fill="#3B3024" opacity=".18"/>
+        <path d="M38 42 Q38 33 47 33 H63 Q72 33 72 42 V82 Q72 90 63 90 H47 Q38 90 38 82 Z" fill="url(#tg-glass)" stroke="#5A5B4B" stroke-width="1.2"/>
+        <path d="M41 60 H69 V82 Q69 87 63 87 H47 Q41 87 41 82 Z" fill="#B49A62" opacity=".62"/>
+        <path d="M46 33 V23 H60 V33" fill="none" stroke="#5A5B4B" stroke-width="2.2"/>
+        <path d="M60 23 H77 V27 H66 L64 37 H60 Z" fill="#6D695B" stroke="#4E4B40" stroke-width="1"/>
+        <path d="M77 23 H85 V27 H77 Z" fill="#4E4B40"/>
+        <circle cx="72" cy="17" r="2" fill="#7C8A6C" opacity=".55"/>
+        <g fill="#7C8A6C" opacity=".55"><circle cx="63" cy="13" r="1.6"/><circle cx="57" cy="18" r="1.2"/><circle cx="68" cy="9" r="1.1"/></g>
+        <path d="M43 48 C43 64 42 76 45 84" fill="none" stroke="#F4F2E6" stroke-opacity=".55" stroke-width="2"/>
+        <path d="M52 54 H64" stroke="#5C5A4B" stroke-width=".7" opacity=".35"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="sheet-mask" id="sheetMask"></div>
+  <section class="sheet" id="sheet" aria-label="标本详情">
+    <div class="sheet-head"><span>SPECIMEN / <b id="specIdx">005</b></span><button id="sheetClose">CLOSE ×</button></div>
+    <div class="specimen">
+      <div class="specimen-thumb" id="specThumb"></div>
+      <div class="specimen-main">
+        <div class="name-row"><h2 id="specName">晨露玫瑰</h2><div class="mini-wheel" id="miniWheel" aria-label="打理轮盘"></div></div>
+        <div class="latin" id="specLatin">Rosa / Morning Dew</div>
+        <div class="meta" id="specMeta">普通花 · 春季 · 由我种植</div>
+        <span class="status" id="specStatus">可收获</span>
+      </div>
+    </div>
+    <div class="metrics">
+      <div class="metric"><div class="k">GROWTH · 生长进度</div><div class="v" id="specGrow">100<small>%</small></div><div class="bar"><i id="specGrowBar" style="width:100%"></i></div></div>
+      <div class="metric water"><div class="k">WATER · 土壤水分</div><div class="v" id="specWater">82<small>%</small></div><div class="bar"><i id="specWaterBar" style="width:82%"></i></div></div>
+    </div>
+    <div class="note" id="specNote">花开得正好。收获后，可以做成花束送给 TA。</div>
+  </section>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var THEME = {
+    peony:{f:'#B06A72',s:'#6B4248',latin:'Paeonia suffruticosa',label:'牡丹'},
+    lavender:{f:'#7F769C',s:'#554E6B',latin:'Lavandula angustifolia',label:'薰衣草'},
+    bamboo:{f:'#687B5D',s:'#45523D',latin:'Bambusoideae',label:'竹'},
+    clover:{f:'#778A5B',s:'#4C5B3B',latin:'Trifolium repens',label:'幸运草'},
+    cactus:{f:'#6C8260',s:'#46563F',latin:'Cactaceae',label:'仙人掌'},
+    iris:{f:'#7C779E',s:'#4E4A6B',latin:'Iris tectorum',label:'鳳尾'},
+    lotus:{f:'#BE7C7A',s:'#7C4F4C',latin:'Nelumbo nucifera',label:'荷花'},
+    jasmine:{f:'#CFC39E',s:'#7F7358',latin:'Jasminum sambac',label:'茉莉'},
+    sakura:{f:'#CD9597',s:'#855A5C',latin:'Prunus serrulata',label:'樱花'},
+    camellia:{f:'#A75D56',s:'#6E3E39',latin:'Camellia japonica',label:'山茶花'},
+    tulip:{f:'#BE7A63',s:'#774A3A',latin:'Tulipa gesneriana',label:'郁金香'},
+    rose:{f:'#AA646A',s:'#6E4145',latin:'Rosa / Morning Dew',label:'玫瑰'},
+    sunflower:{f:'#D8A64B',s:'#8A5A20',latin:'Helianthus annuus',label:'向日葵',leafA:'#7E8C5A',leafB:'#4E5C37'},
+    daisy:{f:'#F1E8D4',s:'#A9976F',latin:'Bellis perennis',label:'雏菊',leafA:'#7A8C65',leafB:'#4B5B3B'},
+    hibiscus:{f:'#C8695E',s:'#7C3D38',latin:'Hibiscus rosa-sinensis',label:'芙蓉'},
+    lily:{f:'#EFE6D0',s:'#B49B70',latin:'Lilium brownii',label:'百合',leafA:'#6F835F',leafB:'#43543A'},
+    orchid:{f:'#C3A3C2',s:'#775879',latin:'Cymbidium goeringii',label:'兰花',leafA:'#6E8360',leafB:'#40523A'},
+    maple:{f:'#B06A45',s:'#6B3F2B',latin:'Acer palmatum',label:'枫叶',leafA:'#A66B45',leafB:'#6B3F2B'},
+    wheat:{f:'#C9A96A',s:'#7F6034',latin:'Triticum aestivum',label:'麦穗',leafA:'#C0A96D',leafB:'#7A6436'},
+    flameRose:{f:'#D2543D',s:'#7A2318',latin:'Rosa ignis',label:'绚樱玫瑰',rare:true},
+    blueRose:{f:'#6F7FBD',s:'#35406F',latin:'Rosa caerulea',label:'蓝玫瑰',rare:true},
+    goldSun:{f:'#E3B842',s:'#8A651B',latin:'Helianthus aureus',label:'金向日葵',rare:true,leafA:'#8C8A4E',leafB:'#5C5A2E'},
+    nightLotus:{f:'#7A6FAE',s:'#2E2A56',latin:'Nelumbo nocturna',label:'夜莲',rare:true},
+    rainbowClover:{f:'#B986A8',s:'#4F6B57',latin:'Trifolium iridis',label:'彩虹草',rare:true,leafA:'#8C8A5A',leafB:'#4E6244'},
+    iceRose:{f:'#A9C9DA',s:'#5C7F94',latin:'Rosa glacialis',label:'冰玫瑰',rare:true},
+    starLily:{f:'#F4ECD0',s:'#8C7F5F',latin:'Lilium stellatum',label:'星光百合',rare:true,leafA:'#7E8C70',leafB:'#4C5C46'},
+    moonFlower:{f:'#D9D3B4',s:'#7D7860',latin:'Ipomoea alba',label:'月光花',rare:true},
+    crystalOrchid:{f:'#A9D3CE',s:'#4E7E7A',latin:'Cymbidium crystallinum',label:'水晶兰',rare:true},
+    phoenix:{f:'#D9643C',s:'#7E2B1B',latin:'Delonix regia',label:'凤凰花',rare:true},
+    gloriosa:{f:'#CF5338',s:'#7A1E1A',latin:'Gloriosa superba',label:'嘉兰百合',rare:true,isNew:true,leafA:'#6F8A5E',leafB:'#3F5438'},
+    blackDatura:{f:'#4F335E',s:'#140E1A',latin:'Datura metel',label:'黑色曼陀罗',rare:true,isNew:true,leafA:'#5E7057',leafB:'#33422F'},
+    starflower:{f:'#86A5D0',s:'#4E6E9E',latin:'Limonium sinuatum',label:'星辰花',rare:true,isNew:true,leafA:'#728A66',leafB:'#43563B'},
+    empty:{f:'#8C7B63',s:'#5B4C3B',latin:'—',label:'空地'}
+  };
+  var SPECIES = [
+    'rose','sunflower','tulip','cactus','lavender','daisy','sakura','hibiscus','lotus','clover',
+    'camellia','lily','peony','orchid','maple','wheat','jasmine','iris','bamboo',
+    'flameRose','blueRose','goldSun','nightLotus','rainbowClover','iceRose','starLily','moonFlower','crystalOrchid','phoenix',
+    'gloriosa','blackDatura','starflower'
+  ];
+  var PLOTS = [
+    {name:'牡丹',type:'peony',stage:'盛开',grow:92,water:67,ready:false},
+    {name:'薰衣草',type:'lavender',stage:'盛开',grow:88,water:71,ready:false,pests:true},
+    {name:'竹',type:'bamboo',stage:'生长中',grow:46,water:64,ready:false},
+    {name:'幸运草',type:'clover',stage:'盛开',grow:100,water:78,ready:false},
+    {name:'仙人掌',type:'cactus',stage:'生长中',grow:34,water:52,ready:false},
+    {name:'鳳尾',type:'iris',stage:'生长中',grow:58,water:69,ready:false},
+    {name:'荷花',type:'lotus',stage:'可收获',grow:100,water:86,ready:true},
+    {name:'茉莉',type:'jasmine',stage:'盛开',grow:96,water:73,ready:false},
+    {name:'樱花',type:'sakura',stage:'盛开',grow:90,water:80,ready:false,pests:true},
+    {name:'空地',type:'empty',stage:'可种植',grow:0,water:42,ready:false},
+    {name:'郁金香',type:'tulip',stage:'可收获',grow:100,water:82,ready:true},
+    {name:'玫瑰',type:'rose',stage:'可收获',grow:100,water:82,ready:true}
+  ];
+
+  var UID = 0;
+  function lighten(hex, amt) {
+    var n = parseInt(hex.slice(1), 16);
+    var r = Math.min(255, Math.round(((n >> 16) & 255) + (255 - ((n >> 16) & 255)) * amt));
+    var g = Math.min(255, Math.round(((n >> 8) & 255) + (255 - ((n >> 8) & 255)) * amt));
+    var b = Math.min(255, Math.round((n & 255) + (255 - (n & 255)) * amt));
+    return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+  }
+  function petal(u, cx, cy, r, angle, narrow, shade) {
+    var w = r * (narrow ? .23 : .39);
+    var shape = 'M' + cx + ' ' + cy +
+      ' C' + (cx - w) + ' ' + (cy - r * .30) + ',' + (cx - w * .94) + ' ' + (cy - r * .92) + ',' + cx + ' ' + (cy - r * 1.03) +
+      ' C' + (cx + w * .94) + ' ' + (cy - r * .92) + ',' + (cx + w) + ' ' + (cy - r * .30) + ',' + cx + ' ' + cy + 'Z';
+    return '<g transform="rotate(' + angle + ' ' + cx + ' ' + cy + ')">' +
+      '<path d="' + shape + '" fill="' + THEME.__s + '" opacity=".16" transform="translate(.4 1.4)"/>' +
+      '<path d="' + shape + '" fill="url(#' + u + (shade ? '-petB' : '-pet') + ')" stroke="' + THEME.__s + '" stroke-opacity=".46" stroke-width=".38"/>' +
+      '<path d="M' + (cx + w * .12) + ' ' + (cy - r * .18) + ' C' + (cx + w * .45) + ' ' + (cy - r * .44) + ',' + (cx + w * .40) + ' ' + (cy - r * .76) + ',' + cx + ' ' + (cy - r * .96) + '" fill="none" stroke="#fff" stroke-opacity=".30" stroke-width=".42"/>' +
+      '<path d="M' + cx + ' ' + (cy - r * .10) + ' L' + cx + ' ' + (cy - r * .78) + '" fill="none" stroke="' + THEME.__s + '" stroke-opacity=".18" stroke-width=".34"/>' +
+    '</g>';
+  }
+  function ring(u, cx, cy, r, n, off, narrow) {
+    var s = '';
+    for (var i = 0; i < n; i++) {
+      var j = ((i * 37 + 11) % 9) / 100;
+      var ang = (off || 0) + i * 360 / n + (((i * 13) % 5) - 2) * .7;
+      s += petal(u, cx, cy, r * (.91 + j * .18), ang, narrow, i % 3 === 1);
+    }
+    return s;
+  }
+  function leaf(u, angle, len, wide, tint) {
+    var w = len * wide;
+    var tip = 50 - len;
+    return '<g transform="rotate(' + angle + ' 50 50)">' +
+      '<path d="M50 50 C' + (50 - w) + ' ' + (50 - len * .42) + ',' + (50 - w * .82) + ' ' + (tip + len * .28) + ',50 ' + tip +
+      ' C' + (50 + w * .82) + ' ' + (tip + len * .28) + ',' + (50 + w) + ' ' + (50 - len * .42) + ',50 50Z"' +
+      ' fill="url(#' + u + '-leaf)" stroke="' + (tint || '#485A43') + '" stroke-opacity=".55" stroke-width=".45"/>' +
+      '<path d="M50 48 L50 ' + (tip + 2) + '" fill="none" stroke="' + (tint || '#485A43') + '" stroke-opacity=".34" stroke-width=".4"/>' +
+      '<path d="M50 43 L' + (50 - w * .34) + ' 38 M50 38 L' + (50 - w * .3) + ' 33 M50 43 L' + (50 + w * .34) + ' 38 M50 38 L' + (50 + w * .3) + ' 33" fill="none" stroke="' + (tint || '#485A43') + '" stroke-opacity=".22" stroke-width=".3"/>' +
+    '</g>';
+  }
+  function leaves(u, angles, len, wide, tint) {
+    var s = '';
+    angles.forEach(function(a, i) {
+      var f = .86 + ((i * 7) % 5) * .055;
+      s += leaf(u, a + (((i * 11) % 5) - 2) * .8, len * f, wide * (.9 + ((i * 5) % 3) * .07), tint);
+    });
+    return s;
+  }
+  function spiral(u, cx, cy, r) {
+    return '<path d="M' + cx + ' ' + cy + ' C' + (cx + r * .7) + ' ' + (cy - r * .2) + ',' + (cx + r * .2) + ' ' + (cy + r * .62) + ',' + (cx - r * .5) + ' ' + (cy + r * .1) +
+      ' C' + (cx - r * .9) + ' ' + (cy - r * .3) + ',' + (cx - r * .2) + ' ' + (cy - r * .85) + ',' + (cx + r * .35) + ' ' + (cy - r * .45) + '" fill="none" stroke="' + THEME.__s + '" stroke-opacity=".62" stroke-width=".8" stroke-linecap="round"/>';
+  }
+  function star(x, y, r, color, op) {
+    var q = r * .24;
+    return '<path d="M' + x + ' ' + (y - r) + ' L' + (x + q) + ' ' + (y - q) + ' L' + (x + r) + ' ' + y + ' L' + (x + q) + ' ' + (y + q) +
+      ' L' + x + ' ' + (y + r) + ' L' + (x - q) + ' ' + (y + q) + ' L' + (x - r) + ' ' + y + ' L' + (x - q) + ' ' + (y - q) + 'Z" fill="' + color + '" opacity="' + (op || .8) + '"/>';
+  }
+  function forgetMeNot(u, cx, cy, r, rot) {
+    var s = '';
+    for (var i = 0; i < 5; i++) {
+      var a = (rot + i * 72) * Math.PI / 180;
+      var px = cx + Math.cos(a) * r * .6, py = cy + Math.sin(a) * r * .6;
+      s += '<ellipse cx="' + px + '" cy="' + py + '" rx="' + r * .46 + '" ry="' + r * .36 + '" transform="rotate(' + (rot + i * 72) + ' ' + px + ' ' + py + ')" fill="url(#' + u + '-pet)" stroke="' + THEME.__s + '" stroke-opacity=".38" stroke-width=".3"/>';
+    }
+    s += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r * .22 + '" fill="#E7C97A" stroke="' + THEME.__s + '" stroke-opacity=".35" stroke-width=".25"/>';
+    return s;
+  }
+  function finish(o, u) { return o + '<circle cx="50" cy="50" r="39" fill="url(#' + u + '-depth)" pointer-events="none"/></svg>'; }
+  function plantSVG(type) {
+    var t = THEME[type] || THEME.empty;
+    THEME.__s = t.s;
+    var u = 'h' + (++UID);
+    var petalLight = lighten(t.f, .52);
+    var leafA = t.leafA || '#788A6D';
+    var leafB = t.leafB || '#46563F';
+    var glorDef = type === 'gloriosa' ? '<linearGradient id="' + u + '-glor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F5CC72"/><stop offset=".42" stop-color="#E8873F"/><stop offset=".76" stop-color="#C6402E"/><stop offset="1" stop-color="#841E1B"/></linearGradient>' : '';
+    var defs = '<defs>' + glorDef +
+      '<radialGradient id="' + u + '-pet" cx="38%" cy="28%" r="78%"><stop offset="0" stop-color="' + petalLight + '"/><stop offset=".52" stop-color="' + t.f + '"/><stop offset="1" stop-color="' + t.s + '"/></radialGradient>' +
+      '<radialGradient id="' + u + '-petB" cx="40%" cy="34%" r="78%"><stop offset="0" stop-color="' + lighten(t.f, .30) + '"/><stop offset=".55" stop-color="' + t.s + '"/><stop offset="1" stop-color="' + lighten(t.s, .05) + '"/></radialGradient>' +
+      '<linearGradient id="' + u + '-leaf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + leafA + '"/><stop offset="1" stop-color="' + leafB + '"/></linearGradient>' +
+      '<filter id="' + u + '-soft" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3.2"/></filter>' +
+      '<radialGradient id="' + u + '-depth" cx="50%" cy="45%" r="55%"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".16"/></radialGradient>' +
+      '<clipPath id="' + u + '-clip"><circle cx="50" cy="50" r="39"/></clipPath>' +
+    '</defs>';
+    var o = '<svg class="plant-svg" viewBox="0 0 100 100" aria-hidden="true">' + defs + '<g clip-path="url(#' + u + '-clip)">' +
+      '<circle cx="53" cy="55" r="34" fill="#2F2418" opacity=".22" filter="url(#' + u + '-soft)"/>'+
+      '<circle cx="56" cy="58" r="25" fill="#2B1F18" opacity=".18" filter="url(#' + u + '-soft)"/>'+
+      '<g filter="url(#' + u + '-soft)"><ellipse cx="47" cy="52" rx="30" ry="27" fill="' + t.f + '" opacity=".14"/><ellipse cx="55" cy="48" rx="19" ry="17" fill="' + t.s + '" opacity=".08"/></g>';
+    if (type === 'empty') {
+      return o + '<g fill="none" stroke="' + t.s + '" stroke-width=".9" opacity=".55"><path d="M38 58 h24"/><circle cx="43" cy="50" r="1.5"/><circle cx="52" cy="48" r="1.2"/><circle cx="58" cy="54" r="1"/><path d="M50 42 l-5 7 M50 42 l5 7" opacity=".5"/></g></svg>';
+    }
+    if (type === 'bamboo') {
+      o += leaves(u, [-155,-125,-95,-65,-35,-5,25,55], 30, .20, t.s);
+      o += '<g fill="none" stroke="' + t.s + '" stroke-width="1.6" opacity=".9"><path d="M42 76 L42 44 M58 70 L58 38"/><path d="M40 58 H44 M40 48 H44 M56 52 H60 M56 42 H60" stroke-width=".7"/></g>';
+      return finish(o, u);
+    }
+    if (type === 'iris') {
+      o += leaves(u, [-160,-130,-100,-70,-40,-10,20,50], 26, .14, t.s);
+      // three wide falls + three small upright standards
+      o += ring(u, 50, 50, 27, 3, 90, false);
+      o += ring(u, 50, 50, 12, 3, 30, true);
+      for (var ib = 0; ib < 3; ib++) {
+        var ia = (90 + ib * 120) * Math.PI / 180;
+        var ix = 50 + Math.cos(ia) * 15, iy = 50 + Math.sin(ia) * 15;
+        o += '<ellipse cx="' + ix + '" cy="' + iy + '" rx="4.6" ry="2.2" transform="rotate(' + (90 + ib * 120) + ' ' + ix + ' ' + iy + ')" fill="#E3C477" stroke="' + t.s + '" stroke-opacity=".4" stroke-width=".35"/>';
+        o += '<path d="M' + (50 + Math.cos(ia) * 8) + ' ' + (50 + Math.sin(ia) * 8) + ' L' + (50 + Math.cos(ia) * 24) + ' ' + (50 + Math.sin(ia) * 24) + '" stroke="' + t.s + '" stroke-opacity=".35" stroke-width=".4"/>';
+      }
+      o += '<circle cx="50" cy="50" r="2.6" fill="#B8895C" stroke="' + t.s + '" stroke-width=".35"/>';
+      return finish(o, u);
+    }
+    if (type === 'cactus') {
+      o += '<circle cx="50" cy="52" r="30" fill="#6F8563" stroke="' + t.s + '" stroke-width=".9"/>';
+      for (var c = 0; c < 12; c++) {
+        var aa = c * 30 * Math.PI / 180;
+        o += '<path d="M' + (50 + Math.cos(aa) * 6) + ' ' + (52 + Math.sin(aa) * 6) + ' L' + (50 + Math.cos(aa) * 28) + ' ' + (52 + Math.sin(aa) * 28) + '" stroke="' + t.s + '" stroke-opacity=".35" stroke-width=".7"/>';
+      }
+      o += '<g stroke="' + t.s + '" stroke-opacity=".5" stroke-width=".45">' +
+        '<path d="M38 40 l-3 -3 M62 40 l3 -3 M35 54 l-3 0 M65 54 l3 0 M40 66 l-2 3 M60 66 l2 3"/>' +
+      '</g>';
+      o += '<g transform="translate(50 26)">' + ring(u, 0, 0, 9, 6, 0) + '<circle cx="0" cy="0" r="3.2" fill="#B05F45"/></g>';
+      return finish(o, u);
+    }
+    // leafy rosette bases
+    var baseAngles = [-168,-140,-112,-84,-56,-28,0,28,56,84,112,140];
+    if (type === 'lavender') {
+      o += leaves(u, [-160,-130,-100,-70,-40,-10,20,50], 31, .15, t.s);
+      for (var l = 0; l < 4; l++) {
+        var lx = 50 + (l - 1.5) * 7;
+        o += '<path d="M' + lx + ' 72 L' + (lx + (l - 1.5) * 2) + ' 30" stroke="' + t.s + '" stroke-width=".8" stroke-opacity=".8"/>';
+        for (var q = 0; q < 7; q++) {
+          o += '<circle cx="' + (lx + (l - 1.5) * 2 + (q % 2 ? 2.2 : -2.2)) + '" cy="' + (32 + q * 5) + '" r="2.8" fill="url(#' + u + '-pet)" stroke="' + t.s + '" stroke-opacity=".35" stroke-width=".3"/>';
+        }
+      }
+      return finish(o, u);
+    }
+    if (type === 'clover' || type === 'rainbowClover') {
+      o += leaves(u, [-160,-120,-80,-40,0,40,80,120], 30, .24, t.s);
+      // three heart-shaped leaves at centre
+      for (var h = 0; h < 3; h++) {
+        o += '<g transform="rotate(' + (h * 120) + ' 50 50)"><path d="M50 50 C38 45 35 32 43 27 C48 24 50 30 50 35 C50 30 52 24 57 27 C65 32 62 45 50 50Z" fill="url(#' + u + '-leaf)" stroke="' + t.s + '" stroke-opacity=".55" stroke-width=".55"/></g>';
+      }
+      o += '<g fill="#F4EEDC" stroke="' + t.s + '" stroke-opacity=".4" stroke-width=".35"><circle cx="46" cy="47" r="2"/><circle cx="52" cy="45" r="2.2"/><circle cx="55" cy="51" r="1.8"/><circle cx="46" cy="54" r="1.7"/><circle cx="51" cy="55" r="2"/></g>';
+      if (type === 'rainbowClover') {
+        var rb = ['#D8899A','#D9B36A','#8FB18A','#7FA6B8','#A68BB8'];
+        for (var rq = 0; rq < 10; rq++) {
+          var ra = rq * 36 * Math.PI / 180;
+          o += '<circle cx="' + (50 + Math.cos(ra) * (16 + (rq % 3) * 5)) + '" cy="' + (50 + Math.sin(ra) * (16 + (rq % 3) * 5)) + '" r="1.6" fill="' + rb[rq % 5] + '" opacity=".9"/>';
+        }
+      }
+      return finish(o, u);
+    }
+    if (type === 'lotus' || type === 'nightLotus') {
+      o += '<circle cx="50" cy="53" r="29" fill="#6E8066" fill-opacity=".22" stroke="' + t.s + '" stroke-opacity=".35" stroke-width=".6"/>';
+      o += ring(u, 50, 50, 26, 12, 0);
+      o += ring(u, 50, 50, 20, 9, 22);
+      o += ring(u, 50, 50, 12, 7, 10);
+      o += ring(u, 50, 50, 6, 5, 20);
+      o += '<circle cx="50" cy="50" r="3.5" fill="#C9A35C" stroke="' + t.s + '" stroke-width=".45"/>';
+      if (type === 'nightLotus') {
+        o += '<path d="M65 30 A8 8 0 1 0 70 42 A6.4 6.4 0 1 1 65 30Z" fill="#EFE3B8" opacity=".9"/>';
+        o += star(34, 31, 2.2, '#EFE3B8', .85) + star(29, 62, 1.6, '#EFE3B8', .65) + star(70, 66, 1.4, '#EFE3B8', .55);
+        o += '<circle cx="50" cy="50" r="30" fill="' + t.f + '" opacity=".08" filter="url(#' + u + '-soft)"/>';
+      }
+      return finish(o, u);
+    }
+    if (type === 'daisy') {
+      o += leaves(u, [-160,-130,-100,-70,-40,-10,20,50], 31, .19, t.s);
+      o += ring(u, 50, 50, 24, 16, 0, true);
+      o += ring(u, 50, 50, 17, 12, 12, true);
+      o += '<circle cx="50" cy="50" r="8.2" fill="#D9B45E" stroke="#8C6A30" stroke-width=".6"/>';
+      o += '<g fill="#A87C36" opacity=".7"><circle cx="47" cy="47" r=".9"/><circle cx="52" cy="47" r=".8"/><circle cx="49" cy="51" r=".9"/><circle cx="54" cy="52" r=".8"/><circle cx="46" cy="53" r=".8"/><circle cx="51" cy="54" r=".7"/></g>';
+      return finish(o, u);
+    }
+    if (type === 'maple') {
+      for (var m = 0; m < 6; m++) {
+        var ma = m * 60;
+        var ms = .86 + (m % 3) * .10;
+        o += '<g transform="rotate(' + ma + ' 50 50) translate(50 50) scale(' + ms + ') translate(-50 -50)">' +
+          '<path d="M50 50 L45 40 L35 34 L42 33 L36 24 L46 28 L50 16 L54 28 L64 24 L58 33 L65 34 L55 40 Z" fill="url(#' + u + '-leaf)" stroke="' + t.s + '" stroke-opacity=".6" stroke-width=".55"/>' +
+          '<path d="M50 50 L50 22 M50 34 L44 28 M50 34 L56 28" fill="none" stroke="' + t.s + '" stroke-opacity=".38" stroke-width=".4"/>' +
+          '<path d="M50 50 L50 58" fill="none" stroke="' + t.s + '" stroke-opacity=".5" stroke-width=".55"/>' +
+        '</g>';
+      }
+      o += '<circle cx="50" cy="50" r="2.4" fill="' + t.s + '" opacity=".7"/>';
+      return finish(o, u);
+    }
+    if (type === 'wheat') {
+      for (var w = 0; w < 3; w++) {
+        var wx = 42 + w * 8;
+        var wt = 25 + Math.abs(w - 1) * 3;
+        o += '<path d="M' + wx + ' 80 C' + (wx - 3) + ' 63,' + (wx + 2) + ' 46,' + wx + ' ' + wt + '" fill="none" stroke="' + t.s + '" stroke-opacity=".75" stroke-width=".85"/>';
+        for (var g = 0; g < 4; g++) {
+          var gy = wt + 5 + g * 7.6;
+          o += '<ellipse cx="' + (wx - 3.4) + '" cy="' + gy + '" rx="3.7" ry="2.3" transform="rotate(-40 ' + (wx - 3.4) + ' ' + gy + ')" fill="url(#' + u + '-pet)" stroke="' + t.s + '" stroke-opacity=".4" stroke-width=".3"/>' +
+               '<ellipse cx="' + (wx + 3.4) + '" cy="' + (gy + 3.8) + '" rx="3.7" ry="2.3" transform="rotate(40 ' + (wx + 3.4) + ' ' + (gy + 3.8) + ')" fill="url(#' + u + '-pet)" stroke="' + t.s + '" stroke-opacity=".4" stroke-width=".3"/>';
+        }
+        o += '<path d="M' + wx + ' ' + (wt + 4) + ' L' + (wx - 4) + ' ' + (wt - 9) + ' M' + wx + ' ' + (wt + 4) + ' L' + wx + ' ' + (wt - 11) + ' M' + wx + ' ' + (wt + 4) + ' L' + (wx + 4) + ' ' + (wt - 9) + '" stroke="' + t.s + '" stroke-opacity=".42" stroke-width=".45"/>';
+      }
+      return finish(o, u);
+    }
+    // generic rosette leaves
+    o += leaves(u, baseAngles.concat([-154,-126,-98,-70,-42,-14,14,42,70,98,126,154]), 30, .22, t.s);
+    if (type === 'peony') {
+      o += ring(u, 50, 50, 27, 10, 0);
+      o += ring(u, 50, 50, 22, 9, 18);
+      o += ring(u, 50, 50, 16, 8, 9);
+      o += ring(u, 50, 50, 10, 6, 26);
+      o += ring(u, 50, 50, 4.5, 5, 12);
+      o += ring(u, 32, 40, 5.8, 5, 0);
+      o += '<g stroke="#C9A35C" stroke-width=".45" opacity=".85">' + [0,36,72,108,144,180,216,252,288,324].map(function(a){return '<path d="M50 50 L'+(50+Math.cos(a*Math.PI/180)*6)+' '+(50+Math.sin(a*Math.PI/180)*6)+'"/>';}).join('') + '</g><circle cx="50" cy="50" r="1.5" fill="#C9A35C"/>';
+      o += spiral(u, 50, 50, 4);
+    } else if (type === 'rose' || type === 'flameRose' || type === 'blueRose' || type === 'iceRose') {
+      o += ring(u, 50, 50, 25, 9, 0);
+      o += ring(u, 50, 50, 20, 8, 24);
+      o += ring(u, 50, 50, 14.5, 7, 10);
+      o += ring(u, 50, 50, 9, 5, 30);
+      o += spiral(u, 50, 50, 5.5);
+      o += ring(u, 34, 38, 5.4, 5, 0) + ring(u, 66, 61, 4.4, 5, 18);
+      if (type === 'flameRose') {
+        o += '<circle cx="50" cy="50" r="31" fill="#E5683F" opacity=".12" filter="url(#' + u + '-soft)"/>';
+        o += star(71, 33, 2.6, '#F2C46E', .9) + star(31, 64, 2, '#F2C46E', .7);
+        o += '<g fill="#F2C46E" opacity=".8"><circle cx="63" cy="24" r="1"/><circle cx="25" cy="45" r=".8"/><circle cx="49" cy="75" r=".9"/></g>';
+      } else if (type === 'blueRose') {
+        o += '<g fill="#E2F0F7" opacity=".85"><circle cx="34" cy="39" r="1.4"/><circle cx="66" cy="44" r="1.1"/><circle cx="56" cy="68" r="1.2"/><circle cx="31" cy="58" r=".9"/></g>';
+      } else if (type === 'iceRose') {
+        o += '<circle cx="50" cy="50" r="29" fill="none" stroke="#EAF6FA" stroke-opacity=".5" stroke-width=".7"/>';
+        o += star(30, 32, 2.4, '#F4FBFD', .95) + star(69, 36, 1.9, '#F4FBFD', .85) + star(61, 69, 1.5, '#F4FBFD', .7) + star(33, 64, 1.3, '#F4FBFD', .6);
+      }
+    } else if (type === 'camellia') {
+      o += ring(u, 50, 50, 22, 7, 0);
+      o += ring(u, 50, 50, 17, 6, 30);
+      o += ring(u, 50, 50, 11, 5, 15);
+      o += '<g stroke="#C9A35C" stroke-width=".55" opacity=".9">' +
+        [0,45,90,135,180,225,270,315].map(function(ang){return '<path d="M50 50 L'+(50+Math.cos(ang*Math.PI/180)*7)+' '+(50+Math.sin(ang*Math.PI/180)*7)+'"/>';}).join('') +
+        '</g><circle cx="50" cy="50" r="2.2" fill="#C9A35C"/>';
+    } else if (type === 'sakura') {
+      o += ring(u, 50, 50, 21, 5, 0);
+      o += ring(u, 50, 50, 14, 5, 36, true);
+      o += ring(u, 50, 50, 8, 5, 12, true);
+      o += '<circle cx="50" cy="50" r="2.4" fill="#C9A35C"/>';
+    } else if (type === 'jasmine') {
+      o += ring(u, 50, 50, 20, 5, 0, true);
+      o += ring(u, 50, 50, 13.5, 5, 36, true);
+      o += ring(u, 50, 50, 8, 5, 12, true);
+      o += '<circle cx="50" cy="50" r="3" fill="#C9A35C" stroke="#8A7E60" stroke-width=".4"/>';
+    } else if (type === 'tulip') {
+      o += ring(u, 50, 50, 23, 6, 0);
+      o += ring(u, 50, 50, 17, 6, 30);
+      o += ring(u, 50, 50, 9.5, 3, 12);
+      o += '<circle cx="50" cy="50" r="4" fill="#8A5B3C" fill-opacity=".55"/>';
+    } else if (type === 'lily' || type === 'starLily') {
+      o += ring(u, 50, 50, 26, 6, 0, true);
+      o += ring(u, 50, 50, 18, 6, 30, true);
+      for (var ls = 0; ls < 5; ls++) {
+        var la = (ls * 72 - 90) * Math.PI / 180;
+        var lx2 = 50 + Math.cos(la) * 13, ly2 = 50 + Math.sin(la) * 13;
+        o += '<path d="M50 50 L' + lx2 + ' ' + ly2 + '" stroke="' + t.s + '" stroke-opacity=".55" stroke-width=".55"/>' +
+          '<ellipse cx="' + lx2 + '" cy="' + ly2 + '" rx="2.2" ry="1.2" transform="rotate(' + (ls * 72) + ' ' + lx2 + ' ' + ly2 + ')" fill="#C9A35C" stroke="' + t.s + '" stroke-opacity=".35" stroke-width=".3"/>';
+      }
+      o += '<circle cx="50" cy="50" r="2.6" fill="#D8BC78"/>';
+      if (type === 'starLily') {
+        o += star(29, 33, 2.4, '#FFFBE8', .95) + star(70, 31, 1.9, '#FFFBE8', .9) + star(66, 68, 1.7, '#FFFBE8', .8) + star(34, 67, 1.4, '#FFFBE8', .65);
+        o += '<circle cx="50" cy="50" r="30" fill="#F4ECD0" opacity=".08" filter="url(#' + u + '-soft)"/>';
+      }
+    } else if (type === 'orchid' || type === 'crystalOrchid') {
+      o += ring(u, 50, 50, 21, 5, 0);
+      o += ring(u, 50, 50, 15, 5, 36);
+      o += '<path d="M50 56 C41 58 37 66 41 73 C45 79 55 79 59 73 C63 66 59 58 50 56Z" fill="url(#' + u + '-petB)" stroke="' + t.s + '" stroke-opacity=".55" stroke-width=".5"/>';
+      o += '<ellipse cx="50" cy="50" rx="5.4" ry="4.2" fill="#D8B96C" stroke="' + t.s + '" stroke-opacity=".4" stroke-width=".35"/>';
+      o += '<g fill="' + t.s + '" opacity=".55"><circle cx="46" cy="64" r=".9"/><circle cx="52" cy="67" r=".8"/><circle cx="56" cy="63" r=".7"/><circle cx="49" cy="70" r=".7"/></g>';
+      if (type === 'crystalOrchid') {
+        o += '<g fill="none" stroke="#E7FBFA" stroke-opacity=".55" stroke-width=".45"><path d="M50 50 L33 38 M50 50 L68 41 M50 50 L40 69 M50 50 L60 66"/></g>';
+        o += star(30, 33, 2.2, '#E7FBFA', .9) + star(69, 59, 1.7, '#E7FBFA', .8) + star(43, 72, 1.3, '#E7FBFA', .6);
+      }
+    } else if (type === 'hibiscus') {
+      o += ring(u, 50, 50, 24, 5, 0);
+      o += ring(u, 50, 50, 17, 5, 36);
+      o += '<path d="M50 48 C51 39 55 32 61 27" fill="none" stroke="' + t.s + '" stroke-width=".9" stroke-opacity=".8"/>';
+      o += '<circle cx="61" cy="27" r="2.6" fill="#D8B25E" stroke="' + t.s + '" stroke-width=".4"/>';
+      o += '<g fill="#D8B25E" opacity=".9"><circle cx="64" cy="24" r="1"/><circle cx="66" cy="29" r=".9"/><circle cx="58" cy="24" r=".8"/></g>';
+      o += '<circle cx="50" cy="50" r="4.2" fill="#8C3B34" opacity=".8"/>';
+    } else if (type === 'moonFlower') {
+      o += ring(u, 50, 50, 26, 6, 0);
+      o += ring(u, 50, 50, 19, 6, 30);
+      o += ring(u, 50, 50, 12, 5, 10);
+      o += '<circle cx="50" cy="50" r="4.4" fill="#D8C98C" stroke="' + t.s + '" stroke-opacity=".4" stroke-width=".4"/>';
+      o += '<path d="M67 27 A7.4 7.4 0 1 0 71 39 A6 6 0 1 1 67 27Z" fill="#F2E8BC" opacity=".9"/>';
+      o += star(30, 32, 1.9, '#F2E8BC', .85) + star(33, 66, 1.5, '#F2E8BC', .65) + star(69, 62, 1.3, '#F2E8BC', .6);
+      o += '<circle cx="50" cy="50" r="31" fill="#E8DDAA" opacity=".09" filter="url(#' + u + '-soft)"/>';
+    } else if (type === 'phoenix') {
+      o += ring(u, 50, 50, 27, 7, 0, true);
+      o += ring(u, 50, 50, 20, 6, 25, true);
+      o += ring(u, 50, 50, 13, 5, 10);
+      o += '<circle cx="50" cy="50" r="4" fill="#E8B45C" stroke="' + t.s + '" stroke-opacity=".5" stroke-width=".45"/>';
+      o += '<g fill="#F0A24E" opacity=".85"><circle cx="31" cy="38" r="1.1"/><circle cx="67" cy="34" r=".9"/><circle cx="70" cy="59" r="1"/><circle cx="29" cy="61" r=".8"/><circle cx="49" cy="24" r=".9"/></g>';
+    } else if (type === 'gloriosa') {
+      // narrow lanceolate leaves + two curling tendrils
+      o += leaves(u, [-165,-138,-111,-84,-57,-30,-3,24,51], 30, .11, t.s);
+      o += '<path d="M31 62 C21 60,17 51,23 47 C29 43,35 49,31 54 C28 58,23 55,25 51" fill="none" stroke="' + t.s + '" stroke-opacity=".55" stroke-width=".6" stroke-linecap="round"/>';
+      o += '<path d="M69 62 C79 60,83 51,77 47 C71 43,65 49,69 54 C72 58,77 55,75 51" fill="none" stroke="' + t.s + '" stroke-opacity=".55" stroke-width=".6" stroke-linecap="round"/>';
+      // six asymmetric, reflexed flame tepals: gold tip -> orange -> crimson base
+      var gp = 'M50 50 C47 45,44 41,43 36 C42 33,43.5 30,42.5 27 C41.5 24,43.5 20,43 17 C43 13,46 9,50 8 C51 11,53 13,53 16 C53 19,52 21,53 24 C54 27,56 30,55 34 C54 40,52 46,50 50Z';
+      for (var gl = 0; gl < 6; gl++) {
+        var gs = .94 + (gl % 3) * .045;
+        var gmir = gl % 2 ? ' translate(100 0) scale(-1 1)' : '';
+        o += '<g transform="rotate(' + (gl * 60 + (gl % 2 ? 3 : -2)) + ' 50 50) translate(50 50) scale(' + gs + ') translate(-50 -50)' + gmir + '">' +
+          '<path d="' + gp + '" fill="url(#' + u + '-glor)" stroke="' + t.s + '" stroke-opacity=".55" stroke-width=".45"/>' +
+          '<path d="' + gp + '" fill="none" stroke="#F3C86E" stroke-opacity=".62" stroke-width=".65"/>' +
+          '<path d="M50 50 C48 41,46 31,47 20" fill="none" stroke="#F7D98C" stroke-opacity=".5" stroke-width=".45"/>' +
+          '<path d="M48 32 C44 30,42 27,41 24 M49 26 C53 24,55 21,56 18" fill="none" stroke="#7A1E1A" stroke-opacity=".25" stroke-width=".35"/>' +
+        '</g>';
+      }
+      // long, curving stamens with prominent anthers
+      for (var gst = 0; gst < 7; gst++) {
+        var gda = gst * 51.4 + 8;
+        var gra = gda * Math.PI / 180;
+        var gca = Math.cos(gra), gsa2 = Math.sin(gra);
+        var gex = 50 + gca * (34 + (gst % 3) * 2.6), gey = 50 + gsa2 * (34 + (gst % 3) * 2.6);
+        var gmx = 50 + gca * 19 - gsa2 * 4, gmy = 50 + gsa2 * 19 + gca * 4;
+        o += '<path d="M50 50 Q' + gmx + ' ' + gmy + ' ' + gex + ' ' + gey + '" fill="none" stroke="#D9B06A" stroke-opacity=".9" stroke-width=".85" stroke-linecap="round"/>' +
+          '<ellipse cx="' + gex + '" cy="' + gey + '" rx="3.6" ry="1.5" transform="rotate(' + gda + ' ' + gex + ' ' + gey + ')" fill="#C9893C" stroke="#7A3A22" stroke-opacity=".7" stroke-width=".32"/>';
+      }
+      // green ovary + pollen specks
+      o += '<circle cx="50" cy="50" r="4.2" fill="#657E52" stroke="#3F5438" stroke-width=".45"/>' +
+        '<g fill="#9AAE76"><circle cx="47.4" cy="48.4" r="1"/><circle cx="52.6" cy="48.8" r=".9"/><circle cx="50" cy="52.8" r=".9"/></g>' +
+        '<g fill="#F0C36A" opacity=".8"><circle cx="44" cy="45" r=".7"/><circle cx="56" cy="44" r=".6"/><circle cx="55" cy="56" r=".6"/></g>';
+      o += '<circle cx="50" cy="50" r="30" fill="#E5683F" opacity=".07" filter="url(#' + u + '-soft)"/>';
+    } else if (type === 'blackDatura') {
+      o += leaves(u, [-160,-128,-96,-64,-32,0,32,64,96,128], 30, .19, t.s);
+      // five-pointed dark trumpet face
+      for (var bd = 0; bd < 5; bd++) {
+        o += '<g transform="rotate(' + (bd * 72) + ' 50 50)">' +
+          '<path d="M50 50 C43 46,36 37,36 27 C36 20,40 15,46 21 L50 28 L54 21 C60 15,64 20,64 27 C64 37,57 46,50 50Z" fill="url(#' + u + '-pet)" stroke="' + t.s + '" stroke-opacity=".72" stroke-width=".55"/>' +
+          '<path d="M50 50 L50 29" stroke="#B79BC4" stroke-opacity=".45" stroke-width=".45"/>' +
+          '<path d="M50 50 C46 43,43 35,42 28" fill="none" stroke="#B79BC4" stroke-opacity=".22" stroke-width=".4"/>' +
+        '</g>';
+      }
+      o += '<circle cx="50" cy="50" r="13" fill="#2A1B30" fill-opacity=".88" stroke="' + t.s + '" stroke-width=".55"/>' +
+        '<circle cx="50" cy="50" r="8.4" fill="#3B2844" stroke="#8E6E9C" stroke-opacity=".4" stroke-width=".4"/>';
+      for (var bds = 0; bds < 5; bds++) {
+        var bda = (bds * 72 - 90) * Math.PI / 180;
+        var bdx = 50 + Math.cos(bda) * 10, bdy = 50 + Math.sin(bda) * 10;
+        o += '<path d="M50 50 L' + bdx + ' ' + bdy + '" stroke="#C9AFCB" stroke-opacity=".55" stroke-width=".5"/>' +
+          '<circle cx="' + bdx + '" cy="' + bdy + '" r="1.15" fill="#E3C877" opacity=".85"/>';
+      }
+      o += '<circle cx="50" cy="50" r="3" fill="#C9A35C"/>' +
+        '<circle cx="50" cy="50" r="30" fill="none" stroke="#B79BC4" stroke-opacity=".2" stroke-width=".6"/>';
+    } else if (type === 'starflower') {
+      o += leaves(u, [-160,-130,-100,-70,-40,-10,20,50], 24, .14, t.s);
+      // cluster of forget-me-not-like five-petal blossoms
+      var fm = [[50,50,10,0],[37,42,7.5,18],[63,42,7.5,36],[35,60,7,8],[65,59,7,50],[50,33,6,30],[50,67,6,12],[29,50,5.5,44],[71,50,5.5,6]];
+      fm.forEach(function (f) { o += forgetMeNot(u, f[0], f[1], f[2], f[3]); });
+      o += '<g fill="' + t.s + '" opacity=".5"><circle cx="24" cy="38" r="1"/><circle cx="76" cy="38" r="1"/><circle cx="26" cy="66" r="1"/><circle cx="74" cy="66" r="1"/></g>';
+      o += '<circle cx="50" cy="50" r="31" fill="#86A5D0" opacity=".07" filter="url(#' + u + '-soft)"/>';
+    } else if (type === 'hydrangea') {
+      var pts=[[50,42],[39,50],[61,50],[45,60],[55,60]];
+      pts.forEach(function(p){ o += '<g transform="translate('+p[0]+' '+p[1]+')">'+ring(u,0,0,7,4,0,true)+'</g>'; });
+    } else if (type === 'sunflower' || type === 'goldSun') {
+      o += ring(u, 50, 50, 21, 18, 0, true);
+      o += ring(u, 50, 50, 15, 14, 12, true);
+      o += '<circle cx="50" cy="50" r="9" fill="#4A382A" stroke="' + t.s + '" stroke-width=".6"/>';
+      o += '<g fill="#6B4E2C" opacity=".65"><circle cx="47" cy="47" r="1"/><circle cx="53" cy="47" r=".9"/><circle cx="50" cy="51" r="1"/><circle cx="46" cy="53" r=".8"/><circle cx="54" cy="53" r=".8"/></g>';
+      if (type === 'goldSun') {
+        o += star(30, 31, 2.3, '#F8E3A0', .9) + star(70, 35, 1.8, '#F8E3A0', .8) + star(67, 67, 1.5, '#F8E3A0', .7);
+      }
+    } else {
+      o += ring(u, 50, 50, 20, 6, 0);
+    }
+    return finish(o, u);
+  }
+  var garden = document.getElementById('garden');
+  var selected = 11;
+  function renderGarden(){
+    var html = '';
+    PLOTS.forEach(function(p,i){
+      html += '<button class="plot'+(p.ready?' ready':'')+(p.type==='empty'?' empty':'')+'" data-i="'+i+'" aria-label="'+p.name+' · '+p.stage+'">'+
+        '<span class="no">'+String(i+1).padStart(2,'0')+'</span>'+
+        '<span class="pot"><span class="pot-shadow"></span><span class="pot-grain"></span>'+plantSVG(p.type)+'</span>'+
+        '<span class="pest'+(p.pests?' on':'')+'" aria-hidden="true"></span>'+
+        '<span class="tag"><b>'+p.name+'</b><i class="'+(p.ready?'ready':'')+'">'+p.stage+'</i></span>'+
+      '</button>';
+    });
+    garden.innerHTML = html;
+  }
+  renderGarden();
+  var sheet = document.getElementById('sheet');
+  var sheetMask = document.getElementById('sheetMask');
+  var specIdx = document.getElementById('specIdx');
+  var specName = document.getElementById('specName');
+  var specLatin = document.getElementById('specLatin');
+  var specMeta = document.getElementById('specMeta');
+  var specStatus = document.getElementById('specStatus');
+  var specGrow = document.getElementById('specGrow');
+  var specWater = document.getElementById('specWater');
+  var specGrowBar = document.getElementById('specGrowBar');
+  var specWaterBar = document.getElementById('specWaterBar');
+  var specNote = document.getElementById('specNote');
+  var specThumb = document.getElementById('specThumb');
+
+  function plotEl(i){ return garden.querySelector('.plot[data-i="'+i+'"]'); }
+  function select(i){
+    selected = i;
+    garden.querySelectorAll('.plot').forEach(function(el){el.classList.remove('sel');});
+    plotEl(i).classList.add('sel');
+  }
+  function statusText(p){
+    if(p.stage==='可收获') return '可收获';
+    if(p.stage==='盛开') return '盛开';
+    if(p.stage==='生长中') return '生长中';
+    return p.stage;
+  }
+  function openSheet(i){
+    if(typeof i==='number') select(i);
+    var p = PLOTS[selected], t = THEME[p.type];
+    specIdx.textContent = String(selected+1).padStart(3,'0');
+    specName.textContent = p.name;
+    specLatin.textContent = t.latin;
+    specMeta.textContent = p.type==='empty' ? '空地 · 可以播种' : '普通花 · 春季 · 由我种植';
+    specStatus.textContent = p.pests ? '需要驱虫' : statusText(p);
+    specGrow.innerHTML = Math.round(p.grow)+'<small>%</small>';
+    specWater.innerHTML = Math.round(p.water)+'<small>%</small>';
+    specGrowBar.style.width = p.grow+'%';
+    specWaterBar.style.width = p.water+'%';
+    specNote.textContent = p.type==='empty' ? '这块地还空着。把种子袋拖进来，或点右侧小轮盘播种。' : (p.pests ? '叶片背面有虫。把驱虫喷雾拖到花盆上，或点右侧小轮盘处理。' : (p.ready ? '花开得正好。收获后，可以做成花束送给 TA。' : '还差一点。保持水分，等它慢慢长成。'));
+    specThumb.innerHTML = '<span class="thumb-pot">'+plantSVG(p.type)+'</span>';
+    sheet.classList.add('open'); sheetMask.classList.add('open');
+    document.querySelectorAll('.plot').forEach(function(el){el.classList.remove('sel');});
+    plotEl(selected).classList.add('sel');
+  }
+  function closeSheet(){
+    sheet.classList.remove('open'); sheetMask.classList.remove('open');
+    document.querySelectorAll('.plot').forEach(function(el){el.classList.remove('sel');});
+  }
+  garden.addEventListener('click', function(e){
+    var b=e.target.closest('.plot'); if(!b) return;
+    openSheet(+b.dataset.i);
+  });
+  document.getElementById('sheetClose').addEventListener('click', closeSheet);
+  sheetMask.addEventListener('click', closeSheet);
+  /* ---------- 工具、反馈与小轮盘 ---------- */
+  var TOOL_LABEL = { water: '浇水', fertilize: '施肥', seed: '种植', spray: '驱虫', harvest: '收获', hybrid: '杂交' };
+  var SEED_POOL = [
+    { name: '玫瑰', type: 'rose' }, { name: '郁金香', type: 'tulip' },
+    { name: '雏菊', type: 'jasmine' }, { name: '樱花', type: 'sakura' }
+  ];
+
+  function toast(msg) {
+    var el = document.getElementById('toast');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(el._t);
+    el._t = setTimeout(function () { el.classList.remove('show'); }, 1700);
+  }
+  function fx(i, kind) {
+    var el = plotEl(i);
+    if (!el) return;
+    var s = document.createElement('span');
+    s.className = 'fx fx-' + kind;
+    el.appendChild(s);
+    setTimeout(function () { if (s.parentNode) s.parentNode.removeChild(s); }, 820);
+  }
+  function applyTool(tool, i, opts) {
+    opts = opts || {};
+    var p = PLOTS[i];
+    if (!p) return;
+    var who = p.name;
+    var ok = true;
+    var fxKind = '';
+    if (tool === 'water') {
+      p.water = Math.min(100, p.water + 16);
+      fxKind = 'water';
+    } else if (tool === 'fertilize') {
+      if (p.type === 'empty') { if (!opts.silent) toast('先种一株花再施肥'); return; }
+      p.grow = Math.min(100, p.grow + 9);
+      fxKind = 'fertilize';
+    } else if (tool === 'spray') {
+      if (!p.pests) { if (!opts.silent) toast('没有发现虫害'); return; }
+      p.pests = false;
+      fxKind = 'spray';
+    } else if (tool === 'seed') {
+      if (p.type !== 'empty') { if (!opts.silent) toast('这块地已经有花了'); return; }
+      var s = SEED_POOL[Math.floor(Math.random() * SEED_POOL.length)];
+      p.type = s.type;
+      p.name = s.name;
+      p.stage = '幼苗';
+      p.grow = 8;
+      p.water = 52;
+      p.ready = false;
+      fxKind = 'seed';
+    } else if (tool === 'harvest') {
+      if (!p.ready) { if (!opts.silent) toast('还没成熟，再等一等'); return; }
+      p.type = 'empty';
+      p.name = '空地';
+      p.stage = '可种植';
+      p.grow = 0;
+      p.water = 44;
+      p.ready = false;
+      fxKind = 'seed';
+    } else if (tool === 'hybrid') {
+      if (!opts.silent) toast('先选另一株花，作为杂交对象（预览）');
+      return;
+    }
+    renderGarden();
+    select(selected);
+    if (fxKind) fx(i, fxKind);
+    if (sheet.classList.contains('open') && i === selected) openSheet(selected);
+    if (!opts.silent && ok) toast(TOOL_LABEL[tool] + ' · ' + who);
+  }
+
+  /* 点花盆 → 弹窗；弹窗右侧小轮盘直接执行 */
+  var MINI = [
+    { id: 'water', label: '浇水', icon: '<path d="M12 3S6 10 6 14a6 6 0 0012 0c0-4-6-11-6-11z"/>' },
+    { id: 'fertilize', label: '施肥', icon: '<path d="M12 21V9"/><path d="M12 14c-4 0-6-2-6-5 4 0 6 2 6 5z"/><path d="M12 11c4 0 6-2 6-5-4 0-6 2-6 5z"/><circle cx="8" cy="19" r=".7"/><circle cx="16" cy="19" r=".7"/>' },
+    { id: 'harvest', label: '收获', icon: '<path d="M4 11h16l-2 8H6z"/><path d="M8 11V7a4 4 0 018 0v4"/><path d="M9 15h6"/>' },
+    { id: 'seed', label: '种植', icon: '<path d="M12 21c0-6 3-9 8-9-1 6-3 9-8 9z"/><path d="M12 21c0-5-3-8-8-8 1 5 3 8 8 8z"/>' },
+    { id: 'spray', label: '驱虫', icon: '<path d="M9 8h6v12H9z"/><path d="M10 8V5h4v3"/><path d="M15 11h6"/><path d="M17 8l3 2v3"/><circle cx="22" cy="7" r=".8"/><circle cx="20" cy="4" r=".6"/>' },
+    { id: 'hybrid', label: '杂交', icon: '<circle cx="9" cy="12" r="5"/><circle cx="15" cy="12" r="5"/><path d="M12 7v10"/>' }
+  ];
+  function buildMiniWheel() {
+    var w = document.getElementById('miniWheel');
+    if (!w) return;
+    var cx = 41, cy = 41, r = 28, n = MINI.length;
+    var html = '<span class="mw-center">✦</span>';
+    MINI.forEach(function (m, i) {
+      var a = (-90 + i * 360 / n) * Math.PI / 180;
+      var x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
+      html += '<button type="button" class="mw-btn" data-act="' + m.id + '" title="' + m.label + '" aria-label="' + m.label + '" style="left:' + x + 'px;top:' + y + 'px;margin:-12.5px">' +
+        '<svg viewBox="0 0 24 24" aria-hidden="true">' + m.icon + '</svg></button>';
+    });
+    w.innerHTML = html;
+    w.querySelectorAll('.mw-btn').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        applyTool(b.getAttribute('data-act'), selected);
+      });
+    });
+  }
+  buildMiniWheel();
+
+  /* 3D 工具拖拽：经过的花盆逐个生效 */
+  var dragTool = null;
+  var toolLabel = function (t) { return TOOL_LABEL[t] || '工具'; };
+  function startTool(e) {
+    if (dragTool) return;
+    e.preventDefault();
+    var el = e.currentTarget;
+    var ghost = el.cloneNode(true);
+    ghost.classList.remove('dragging');
+    ghost.classList.add('tool-ghost');
+    ghost.style.left = e.clientX + 'px';
+    ghost.style.top = e.clientY + 'px';
+    document.body.appendChild(ghost);
+    el.classList.add('dragging');
+    var aura = document.createElement('div');
+    aura.className = 'drag-aura aura-' + el.getAttribute('data-tool');
+    aura.style.left = e.clientX + 'px';
+    aura.style.top = e.clientY + 'px';
+    document.body.appendChild(aura);
+    dragTool = { tool: el.getAttribute('data-tool'), el: el, ghost: ghost, aura: aura, seen: {}, count: 0 };
+    window.addEventListener('pointermove', moveTool);
+    window.addEventListener('pointerup', endTool, { once: true });
+    window.addEventListener('pointercancel', endTool, { once: true });
+  }
+  function moveTool(e) {
+    if (!dragTool) return;
+    dragTool.ghost.style.left = e.clientX + 'px';
+    dragTool.ghost.style.top = e.clientY + 'px';
+    if (dragTool.aura) { dragTool.aura.style.left = e.clientX + 'px'; dragTool.aura.style.top = e.clientY + 'px'; }
+    var under = document.elementFromPoint(e.clientX, e.clientY);
+    var plot = under && under.closest ? under.closest('.plot') : null;
+    document.querySelectorAll('.plot.hover-tool').forEach(function (p) { p.classList.remove('hover-tool'); });
+    if (!plot) return;
+    var i = +plot.getAttribute('data-i');
+    if (!dragTool.seen[i]) {
+      dragTool.seen[i] = 1;
+      dragTool.count++;
+      applyTool(dragTool.tool, i, { silent: true, drag: true });
+    }
+    var fresh = plotEl(i);
+    if (fresh) fresh.classList.add('hover-tool');
+  }
+  function endTool() {
+    window.removeEventListener('pointermove', moveTool);
+    document.querySelectorAll('.plot.hover-tool').forEach(function (p) { p.classList.remove('hover-tool'); });
+    if (dragTool) {
+      var t = dragTool.tool, c = dragTool.count;
+      dragTool.ghost.remove();
+      if (dragTool.aura) dragTool.aura.remove();
+      dragTool.el.classList.remove('dragging');
+      dragTool = null;
+      if (c > 0) toast(toolLabel(t) + ' · ' + c + ' 块花圃');
+      else toast('把' + toolLabel(t) + '拖到花盆上使用');
+    }
+  }
+  document.querySelectorAll('.tool-obj').forEach(function (el) {
+    el.addEventListener('pointerdown', startTool);
+  });
+
+  /* ---------- 档案页签 ---------- */
+  var app = document.getElementById('app');
+  var tabsEl = document.querySelector('.tabs');
+  var chapter = document.getElementById('chapter');
+  var CHAPTERS = {
+    journal: {
+      kicker: 'JOURNAL / 日志',
+      title: '花园日志',
+      count: '最近 7 天<br>12 条记录',
+      sub: '每一次浇水、开花与收获，都按时间收在这里。',
+      body: function () {
+        var rows = [
+          ['10/28', '收获「晨露玫瑰」3 枝', '完美品质 · 已送入工坊'],
+          ['10/28', '给 6 块花圃浇了水', '土壤水分回到 82%'],
+          ['10/27', '荷花第一次开花', '「并蒂」成就进度 1/3'],
+          ['10/27', '杂交出「蓝月」', '飞燕草 × 玫瑰 · 新配方'],
+          ['10/26', '完成今日打理', '连续 1 天 · +11 经验'],
+          ['10/25', '山茶花进入生长期', '还差 13 小时成熟']
+        ];
+        return '<div class="ch-section"><h3>RECENT ENTRIES</h3>' + rows.map(function (r) {
+          return '<div class="jr"><span class="date">' + r[0] + '</span><div class="txt"><b>' + r[1] + '</b><span>' + r[2] + '</span></div></div>';
+        }).join('') + '</div>';
+      }
+    },
+    dex: {
+      kicker: 'INDEX / 图鉴',
+      title: '花的图鉴',
+      count: '已采集 11<br>共 32 种',
+      sub: '19 种常见花与 13 种稀有花。花圃里种过的品种，会在图鉴里留下标本。',
+      body: function () {
+        var found = {};
+        PLOTS.forEach(function (p) { if (p.type !== 'empty') found[p.type] = 1; });
+        var got = Object.keys(found).length;
+        var card = function (type) {
+          var t = THEME[type];
+          var rare = !!t.rare;
+          var has = !!found[type];
+          return '<div class="idx' + (rare ? ' rare' : '') + (has ? '' : ' locked') + '">' +
+            '<div class="idx-art">' + plantSVG(type) + '</div>' +
+            '<b>' + t.label + '</b>' +
+            '<i>' + (has ? t.latin : (rare ? '稀有 · 待发现' : '未采集')) + '</i>' +
+            (t.isNew ? '<span class="idx-tag">NEW</span>' : (rare ? '<span class="idx-tag">RARE</span>' : '')) +
+          '</div>';
+        };
+        var common = SPECIES.filter(function (s) { return !THEME[s].rare; });
+        var rare = SPECIES.filter(function (s) { return !!THEME[s].rare; });
+        return '<div class="idx-stats">' +
+            '<span><b>' + got + '</b>已采集</span>' +
+            '<span><b>' + (SPECIES.length - got) + '</b>待发现</span>' +
+            '<span><b>' + rare.length + '</b>稀有</span>' +
+          '</div>' +
+          '<div class="ch-section"><h3>COMMON / 常见 · ' + common.length + '</h3><div class="idx-grid">' + common.map(card).join('') + '</div></div>' +
+          '<p class="idx-note">稀有花由两株常见花杂交或特殊种子获得；未采集的稀有品种只保留花型，采集后才补上拉丁名。</p>' +
+          '<div class="ch-section"><h3>RARE / 稀有 · ' + rare.length + '</h3><div class="idx-grid">' + rare.map(card).join('') + '</div></div>';
+      }
+    },
+    craft: {
+      kicker: 'ATELIER / 工坊',
+      title: '花艺工坊',
+      count: '今日可做<br>2 束',
+      sub: '把收下来的花做成花束，可以送进聊天。',
+      body: function () {
+        var rows = [
+          ['初戀', '玫瑰 3 · 雏菊 2', '可制作', '已备齐 · 花香偏甜'],
+          ['熱戀', '玫瑰 2 · 向日葵 1', '缺 1 枝', '缺向日葵 · 去花圃种一株'],
+          ['思念', '薰衣草 3 · 樱花 1', '可制作', '已备齐 · 适合寄给远方的 TA']
+        ];
+        return '<div class="ch-section"><h3>RECIPES</h3>' + rows.map(function (r) {
+          return '<div class="recipe"><div class="rt"><b>' + r[0] + '</b><span class="state">' + r[2] + '</span></div><p>' + r[3] + '</p><div class="need">' + r[1] + '</div></div>';
+        }).join('') + '</div>';
+      }
+    },
+    decor: {
+      kicker: 'OBJECTS / 装饰',
+      title: '花园物件',
+      count: '已摆放 7 件',
+      sub: '不改变数值，只让这一小片地方更像你的花园。',
+      body: function () {
+        var rows = [
+          ['石灯', '夜间会在花圃边亮起', '已拥有'],
+          ['铸铁长椅', '放在温室西侧，可坐', '已摆放'],
+          ['月桂拱门', '跨在小径入口', '1,200 露'],
+          ['鸟浴盆', '偶尔会有麻雀停留', '860 露']
+        ];
+        return '<div class="ch-section"><h3>COLLECTION</h3>' + rows.map(function (r) {
+          return '<div class="deco-row"><div><div class="name">' + r[0] + '</div><div class="sub">' + r[1] + '</div></div><span class="price">' + r[2] + '</span></div>';
+        }).join('') + '</div>';
+      }
+    },
+    marks: {
+      kicker: 'MARKS / 成就',
+      title: '园丁的印记',
+      count: '已解锁 5<br>共 24 枚',
+      sub: '慢一点也没关系，花园会记得你做过的事。',
+      body: function () {
+        var rows = [
+          ['满级园丁', '花园达到 Lv.10', '✓', false],
+          ['晨露收藏家', '收获 30 枝带露水的花', '✓', false],
+          ['杂交入门', '第一次成功杂交', '✓', false],
+          ['万紫千红', '收集 20 种花', '◐', false],
+          ['并蒂', '让一株荷花连续开花 3 次', '·', true],
+          ['四季', '经历花园的四个季节', '·', true]
+        ];
+        return '<div class="ch-section"><h3>COLLECTION</h3>' + rows.map(function (r) {
+          return '<div class="mark' + (r[3] ? ' locked' : '') + '"><span class="badge">' + r[2] + '</span><div class="mt"><b>' + r[0] + '</b><span>' + r[1] + '</span></div></div>';
+        }).join('') + '</div>';
+      }
+    },
+    annual: {
+      kicker: 'ANNUAL / 年报',
+      title: '这一年，花园',
+      count: 'SPRING<br>2026',
+      sub: '从第一颗种子，到现在这一片花圃。',
+      body: function () {
+        var cells = [['32', '种花'], ['37', '次收获'], ['23', '束花'], ['12', '块地']];
+        return '<div class="annual-grid">' + cells.map(function (c) {
+          return '<div class="annual-cell"><div class="k">' + c[1] + '</div><div class="v">' + c[0] + '<small>种</small></div></div>';
+        }).join('') + '</div>' +
+          '<div class="ch-section"><h3>FAVOURITE</h3><div class="jr"><span class="date">01</span><div class="txt"><b>晨露玫瑰</b><span>今年一共为你开了 9 次 · 最长的一次开了 4 天</span></div></div>' +
+          '<div class="jr"><span class="date">02</span><div class="txt"><b>最安静的一天</b><span>10 月 22 日 · 你只来浇了一次水，但所有花都活着</span></div></div></div>';
+      }
+    }
+  };
+
+  function setTabActive(id) {
+    Array.prototype.forEach.call(tabsEl.querySelectorAll('.tab'), function (t) {
+      t.classList.toggle('on', t.getAttribute('data-tab') === id);
+    });
+  }
+  function closeChapter() {
+    chapter.classList.remove('open');
+    app.classList.remove('chapter-open');
+    setTabActive('garden');
+    chapter.innerHTML = '';
+  }
+  function openChapter(id) {
+    var c = CHAPTERS[id];
+    if (!c) return;
+    setTabActive(id);
+    app.classList.add('chapter-open');
+    var tr = tabsEl.getBoundingClientRect();
+    var ar = app.getBoundingClientRect();
+    chapter.style.top = Math.round(tr.bottom - ar.top) + 'px';
+    chapter.innerHTML = '<div class="ch-head"><div><span class="kicker">' + c.kicker + '</span><h2>' + c.title + '</h2></div><div class="count">' + c.count + '</div></div>' +
+      '<p class="ch-sub">' + c.sub + '</p>' + c.body() + '<button class="ch-back" data-close>← 返回花圃</button>';
+    chapter.classList.add('open');
+    chapter.scrollTop = 0;
+  }
+  tabsEl.addEventListener('click', function (e) {
+    var b = e.target.closest('.tab');
+    if (!b) return;
+    var id = b.getAttribute('data-tab');
+    if (id === 'garden') closeChapter();
+    else openChapter(id);
+  });
+  chapter.addEventListener('click', function (e) {
+    if (e.target.closest('[data-close]')) closeChapter();
+  });
+  var backBtn = document.querySelector('.back');
+  if (backBtn) backBtn.addEventListener('click', function () {
+    if (chapter.classList.contains('open')) closeChapter();
+  });
+
+  /* 预览直达：?state=sheet / ?state=dial */
+  select(selected);
+  var q = new URLSearchParams(location.search);
+  if(q.get('state')==='sheet') setTimeout(function(){ openSheet(11); }, 60);
+  if(q.get('tab') && CHAPTERS[q.get('tab')]) setTimeout(function(){ openChapter(q.get('tab')); }, 60);
+  window.__gardenPreview = {openSheet:openSheet, closeSheet:closeSheet, select:select, applyTool:applyTool, plots:PLOTS};
+})();
+</script>
+</body>
+</html>

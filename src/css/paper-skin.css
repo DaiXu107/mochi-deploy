@@ -569,3 +569,63 @@ html.paper-skin .modal-btn { border-radius: 2px !important; }
 
 /* 纸页风格固定浅色纸面：深色设置在切回经典时还原（paper-skin.js 负责） */
 html.paper-skin[data-theme="dark"] .phone { box-shadow: 0 24px 60px rgba(0, 0, 0, .5); }
+
+/* ===== 纸页 · 白瓷预览（?paper=white） =====
+   比默认纸页更冷、更白：纸面 #FCFCFA，卡片纯白，细线保持一层灰。
+   只用于预览，不写入 localStorage；直接访问 ?paper=white 即可。
+   花园（herbarium）继续使用自己的暖纸色，形成「系统白纸 / 花园暖纸」的分区。 */
+html.paper-skin.paper-white {
+  --ink: #232421;
+  --muted: #73756f;
+  --line: #dadad5;
+  --page-bg: #ececea;
+  --page-bg-grad: #fbfbf9;
+  --phone-bg-a: #fcfcfa;
+  --phone-bg-b: #f9f9f7;
+  --phone-inset: #e3e3de;
+  --card-bg: #ffffff;
+  --card-bg-97: rgba(255, 255, 255, .97);
+  --card-border: rgba(35, 36, 33, .14);
+  --card-shadow: rgba(35, 36, 33, .04);
+  --input-bg: #ffffff;
+  --input-border: #d6d6d0;
+  --btn-cancel-bg: #efefeb;
+  --btn-cancel-ink: #4f514c;
+  --static-bg: rgba(35, 36, 33, .035);
+  --track-bg: #e4e4df;
+  --hint-ink: #a8a8a1;
+  --soft-ink: #50524d;
+  --pill-border: #d2d2cb;
+  --glass-bg: rgba(255, 255, 255, .94);
+  --bg-a: #fcfcfa;
+  --bg-b: #fcfcfa;
+  --paper-guide: #c3c5c2;
+}
+html.paper-skin.paper-white body {
+  background: radial-gradient(70% 55% at 50% 0%, #fff 0%, transparent 66%), #ececea;
+}
+html.paper-skin.paper-white .phone {
+  background:
+    radial-gradient(120% 60% at 50% 0%, rgba(255, 255, 255, .8), transparent 72%),
+    repeating-linear-gradient(0deg, rgba(35, 36, 33, .008) 0 1px, transparent 1px 3px),
+    #fcfcfa;
+  box-shadow: 0 24px 60px rgba(35, 36, 33, .14), 0 0 0 1px rgba(35, 36, 33, .14);
+}
+html.paper-skin.paper-white .deco-widget { background-color: rgba(255, 255, 255, .5) !important; }
+html.paper-skin.paper-white .deco-avatar .ring { box-shadow: 0 0 0 5px #fcfcfa, 0 0 0 6px rgba(24, 52, 212, .20); }
+html.paper-skin.paper-white #page-chat,
+html.paper-skin.paper-white #page-chat .chat-head,
+html.paper-skin.paper-white .tabbar { background: #fcfcfa !important; }
+html.paper-skin.paper-white .msg-in .msg-bubble,
+html.paper-skin.paper-white .ch-av,
+html.paper-skin.paper-white .msg-av,
+html.paper-skin.paper-white .msg-ask-card,
+html.paper-skin.paper-white .msg-choose-card,
+html.paper-skin.paper-white .msg-survey-card,
+html.paper-skin.paper-white .msg-rp-card,
+html.paper-skin.paper-white .msg-flower-card,
+html.paper-skin.paper-white .msg-center-card,
+html.paper-skin.paper-white .msg-rps-card,
+html.paper-skin.paper-white .modal { background: #fff !important; }
+html.paper-skin.paper-white .ch-av,
+html.paper-skin.paper-white .msg-av { box-shadow: 0 0 0 4px #fcfcfa, 0 0 0 5px rgba(24, 52, 212, .28); }

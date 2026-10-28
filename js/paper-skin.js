@@ -31,7 +31,7 @@ if (s) return s;
 try { return styleText(localStorage.getItem(STYLE_KEY)); } catch (e) { return null; }
 }
 function styleForcedByUrl() {
-try { return /(^|[?&])paper=(1|0)(&|$)/.test(location.search); } catch (e) { return false; }
+try { return /(^|[?&])paper=(1|0|white)(&|$)/.test(location.search); } catch (e) { return false; }
 }
 function syncStoredStyle() {
 if (styleForcedByUrl()) return;
@@ -165,13 +165,14 @@ var paper = style === 'paper';
 saveStyle(paper ? 'paper' : 'classic');
 if (paper) {
 root.classList.add('paper-skin');
+root.classList.remove('paper-white');
 forceLight();
 watchTheme();
 addNavLabels();
 watchChatStatus();
 } else {
 unwatchTheme();
-root.classList.remove('paper-skin');
+root.classList.remove('paper-skin', 'paper-white');
 removeNavLabels();
 restoreTheme();
 syncChatSub();

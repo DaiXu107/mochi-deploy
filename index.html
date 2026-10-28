@@ -25,7 +25,7 @@
      另：旧版本残留的 data-theme 属性在此强制清掉，保证「选浅色」真回浅色。 -->
 <script>try{var _tm=localStorage.getItem('xy-home-v2:theme-mode');if(_tm==='dark'||(_tm!=='light'&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.setAttribute('data-theme','dark');else document.documentElement.removeAttribute('data-theme');}catch(e){}</script>
 <!-- 二改预览：BETWEEN US 纸页皮肤（?paper=1 或本地预览开关），在首帧前挂类避免闪白 -->
-<script>try{var _ui=localStorage.getItem('mochi-ui-style')||'classic';var _q=location.search;if(/(^|[?&])paper=1(&|$)/.test(_q))_ui='paper';else if(/(^|[?&])paper=0(&|$)/.test(_q))_ui='classic';if(_ui==='paper'){var _de=document.documentElement;if(_de.getAttribute('data-theme')==='dark'){try{var _tm0=localStorage.getItem('xy-home-v2:theme-mode')||'dark';localStorage.setItem('mochi-paper-theme-mode',_tm0);localStorage.setItem('xy-home-v2:theme-mode','light');}catch(e2){}_de.removeAttribute('data-theme');}_de.classList.add('paper-skin');}}catch(e){}</script>
+<script>try{var _ui=localStorage.getItem('mochi-ui-style')||'classic';var _q=location.search;var _pw=/(^|[?&])paper=white(&|$)/.test(_q);if(_pw||/(^|[?&])paper=1(&|$)/.test(_q))_ui='paper';else if(/(^|[?&])paper=0(&|$)/.test(_q))_ui='classic';if(_ui==='paper'){var _de=document.documentElement;if(_de.getAttribute('data-theme')==='dark'){try{var _tm0=localStorage.getItem('xy-home-v2:theme-mode')||'dark';localStorage.setItem('mochi-paper-theme-mode',_tm0);localStorage.setItem('xy-home-v2:theme-mode','light');}catch(e2){}_de.removeAttribute('data-theme');}_de.classList.add('paper-skin');if(_pw)_de.classList.add('paper-white');}}catch(e){}</script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 :root {
@@ -12054,6 +12054,61 @@ box-shadow: 6px 6px 0 rgba(24, 52, 212, .12) !important;
 }
 html.paper-skin .modal-btn { border-radius: 2px !important; }
 html.paper-skin[data-theme="dark"] .phone { box-shadow: 0 24px 60px rgba(0, 0, 0, .5); }
+html.paper-skin.paper-white {
+--ink: #232421;
+--muted: #73756f;
+--line: #dadad5;
+--page-bg: #ececea;
+--page-bg-grad: #fbfbf9;
+--phone-bg-a: #fcfcfa;
+--phone-bg-b: #f9f9f7;
+--phone-inset: #e3e3de;
+--card-bg: #ffffff;
+--card-bg-97: rgba(255, 255, 255, .97);
+--card-border: rgba(35, 36, 33, .14);
+--card-shadow: rgba(35, 36, 33, .04);
+--input-bg: #ffffff;
+--input-border: #d6d6d0;
+--btn-cancel-bg: #efefeb;
+--btn-cancel-ink: #4f514c;
+--static-bg: rgba(35, 36, 33, .035);
+--track-bg: #e4e4df;
+--hint-ink: #a8a8a1;
+--soft-ink: #50524d;
+--pill-border: #d2d2cb;
+--glass-bg: rgba(255, 255, 255, .94);
+--bg-a: #fcfcfa;
+--bg-b: #fcfcfa;
+--paper-guide: #c3c5c2;
+}
+html.paper-skin.paper-white body {
+background: radial-gradient(70% 55% at 50% 0%, #fff 0%, transparent 66%), #ececea;
+}
+html.paper-skin.paper-white .phone {
+background:
+radial-gradient(120% 60% at 50% 0%, rgba(255, 255, 255, .8), transparent 72%),
+repeating-linear-gradient(0deg, rgba(35, 36, 33, .008) 0 1px, transparent 1px 3px),
+#fcfcfa;
+box-shadow: 0 24px 60px rgba(35, 36, 33, .14), 0 0 0 1px rgba(35, 36, 33, .14);
+}
+html.paper-skin.paper-white .deco-widget { background-color: rgba(255, 255, 255, .5) !important; }
+html.paper-skin.paper-white .deco-avatar .ring { box-shadow: 0 0 0 5px #fcfcfa, 0 0 0 6px rgba(24, 52, 212, .20); }
+html.paper-skin.paper-white #page-chat,
+html.paper-skin.paper-white #page-chat .chat-head,
+html.paper-skin.paper-white .tabbar { background: #fcfcfa !important; }
+html.paper-skin.paper-white .msg-in .msg-bubble,
+html.paper-skin.paper-white .ch-av,
+html.paper-skin.paper-white .msg-av,
+html.paper-skin.paper-white .msg-ask-card,
+html.paper-skin.paper-white .msg-choose-card,
+html.paper-skin.paper-white .msg-survey-card,
+html.paper-skin.paper-white .msg-rp-card,
+html.paper-skin.paper-white .msg-flower-card,
+html.paper-skin.paper-white .msg-center-card,
+html.paper-skin.paper-white .msg-rps-card,
+html.paper-skin.paper-white .modal { background: #fff !important; }
+html.paper-skin.paper-white .ch-av,
+html.paper-skin.paper-white .msg-av { box-shadow: 0 0 0 4px #fcfcfa, 0 0 0 5px rgba(24, 52, 212, .28); }
 </style>
 </head>
 <body>
@@ -12560,7 +12615,7 @@ html.paper-skin[data-theme="dark"] .phone { box-shadow: 0 24px 60px rgba(0, 0, 0
            （名称+版号 / 部署时间+实时秒 / 版本检测行）收成一行；检测行随 ver-check.js 退役删除。
            data-build-ts / data-version 两属性保留：device.js 诊断、bg-keep 自检、pwa.js 旧包检测
            仍只读属性（诊断版本号走 data-version 兜底，device.js 两处缓存原生支持）。 -->
-      <div class="splash-ver" id="splash-ver" data-build-ts="1793169269514" data-version="v8.4">
+      <div class="splash-ver" id="splash-ver" data-build-ts="1793176575353" data-version="v8.4">
         <span class="sv-app">Mochi 字卡传讯 已完结停更</span>
       </div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
@@ -24654,4 +24709,4 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 </body>
 </html>
 
-<!-- __MOCHI_EOF__ mvrqonii -->
+<!-- __MOCHI_EOF__ mvrv18qh -->
