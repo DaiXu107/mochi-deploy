@@ -2618,7 +2618,7 @@ emptyTip.textContent = '没有匹配的设置项，可换个词试试，或用�
 if (jump.parentNode) jump.parentNode.insertBefore(emptyTip, jump.nextSibling);
 inp.addEventListener('input', () => {
 const q = inp.value.trim().toLowerCase();
-const secs = page.querySelectorAll('.them-sec');
+const secs = page.querySelectorAll('.them-sec:not([data-sec="overview"])');
 const rows = page.querySelectorAll('.set-row');
 if (!q) {
 jump.hidden = true;
@@ -3985,9 +3985,13 @@ const secs = page.querySelectorAll('.them-sec');
 function show(name) {
 secs.forEach(s => { s.hidden = (s.dataset.sec !== name); });
 tabs.forEach(t => { t.classList.toggle('active', t.dataset.tab === name); });
+page.classList.toggle('settings-overview', name === 'overview');
+if (name === 'overview') { try { page.scrollTop = 0; } catch (e) {} }
 }
 tabs.forEach(t => t.addEventListener('click', () => show(t.dataset.tab)));
-show(tabs[0] ? tabs[0].dataset.tab : 'basic');
+var prefer = document.documentElement.classList.contains('paper-skin') ? 'basic' : 'overview';
+if (!tabsEl.querySelector('.them-tab[data-tab="' + prefer + '"]')) prefer = 'basic';
+show(prefer);
 })();
 (function initUseMark() {
 const page = document.getElementById('page-setting');
@@ -9268,8 +9272,7 @@ else { document.addEventListener('mochi-restore-done', function h() { document.r
 const callSettingsRow = document.getElementById('row-call-settings');
 if (callSettingsRow) {
 callSettingsRow.addEventListener('click', () => {
-const hub = document.getElementById('page-settings-hub');
-window.__settingsOrigin = (hub && !hub.hidden) ? 'page-settings-hub' : 'page-setting';
+window.__settingsOrigin = 'page-setting';
 document.querySelectorAll('.page').forEach(p => p.hidden = true);
 const csPage = document.getElementById('page-call-settings');
 if (csPage) csPage.hidden = false;

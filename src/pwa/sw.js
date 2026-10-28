@@ -74,6 +74,19 @@ function isIndexUrl(url) {
   const p = String(url);
   return p.endsWith('/index.html') || p.endsWith('./') || /\/$/.test(p);
 }
+// 只有「应用外壳」导航才允许拿缓存里的 ./index.html 顶替——本站根路径 / 根 index.html。
+// 不能直接用 isIndexUrl：开屏 iframe 的 opening/index.html 也以 /index.html 结尾，
+// 旧逻辑会把整个 App 主页塞进 iframe，SW 接管后开屏就永远加载不出来。
+function isAppShellUrl(url) {
+  try {
+    const scope = String(self.registration.scope || self.location.href);
+    const u = new URL(url, self.location.href);
+    const clean = u.origin + u.pathname;
+    return clean === scope || clean === scope.replace(/\/$/, '') + '/index.html';
+  } catch (e) {
+    return false;
+  }
+}
 function isCompleteHtml(text) {
   return typeof text === 'string' && HTML_EOF_STAMPED.test(text.slice(-300));
 }
@@ -253,6 +266,21 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(Promise.resolve(new Response('', { status: 404, statusText: 'media token (not a network resource)' })));
     return;
   }
+  // 开屏独立页（opening/*）：全部随构建预缓存，命中缓存直接秒开（弱网/离线也能播）；
+  // 未命中再走网络并写回自己的键。以前 opening/index.html 会掉进下面的导航分支，
+  // 被当成 App 主页拿 ./index.html 顶替，SW 一接管开屏就再也出不来。
+  if (u.pathname.indexOf('/opening/') >= 0) {
+    e.respondWith(
+      caches.open(CACHE).then((c) => c.match(req)).then((m) => m || fetch(req).then((res) => {
+        if (res && res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(req, copy));
+        }
+        return res;
+      }))
+    );
+    return;
+  }
   // #802 外置功能包（js/*.js）：缓存优先 + 后台静默刷新——与 #157 导航同构。外置化后 35 个
   // 功能文件每次加载都走「网络优先 3.5s」，弱网（GitHub Pages 国内常态）下每个文件都要白等
   // 3.5s 超时才轮到缓存/重试＝功能面板成片「加载失败」、半死几十秒。改缓存命中立即返回
@@ -297,27 +325,31 @@ self.addEventListener('fetch', (e) => {
   // 有完整 HTML 缓存时立即返回（秒开，弱网增益最大），同时后台用 index 长超时拉最新
   // 完整体写缓存（静默保持新鲜，配合页面版本条「刷新使用新版」）；无缓存（首装/被清/
   // 污染）才落到下方原网络优先兜底链。
+  const isShellNav = req.mode === 'navigate' && isAppShellUrl(req.url);
   const navCached = req.mode === 'navigate'
-    ? caches.open(CACHE).then((c) => c.match('./index.html')).then((m) => m || caches.match(req)).then((m) => {
-        // #143 同款 content-type 守卫：历史 PNG 污染条目当未命中，落回网络兜底链
-        if (m && !/text\/html/i.test(String((m.headers && m.headers.get('content-type')) || 'text/html'))) m = null;
-        if (!m) return null;
-        e.waitUntil(
-          fetchIndexRes(req, INDEX_NETWORK_TIMEOUT).then((res) => {
-            if (res && res.ok) {
-              // 后台刷新体同样必须过 #134 完整性校验才落 canonical 键（第 6 写点）
-              return res.clone().text().then((t) => {
-                if (!isCompleteHtml(t)) return undefined;
-                const copy = res.clone();
-                caches.open(CACHE).then((c) => c.put('./index.html', copy));
-                return res;
-              }).catch(() => {});
-            }
-            return undefined;
-          }).catch(() => {})
-        );
-        return m;
-      }).catch(() => null)
+    ? (isShellNav
+      ? caches.open(CACHE).then((c) => c.match('./index.html')).then((m) => m || caches.match(req)).then((m) => {
+          // #143 同款 content-type 守卫：历史 PNG 污染条目当未命中，落回网络兜底链
+          if (m && !/text\/html/i.test(String((m.headers && m.headers.get('content-type')) || 'text/html'))) m = null;
+          if (!m) return null;
+          e.waitUntil(
+            fetchIndexRes(req, INDEX_NETWORK_TIMEOUT).then((res) => {
+              if (res && res.ok) {
+                // 后台刷新体同样必须过 #134 完整性校验才落 canonical 键（第 6 写点）
+                return res.clone().text().then((t) => {
+                  if (!isCompleteHtml(t)) return undefined;
+                  const copy = res.clone();
+                  caches.open(CACHE).then((c) => c.put('./index.html', copy));
+                  return res;
+                }).catch(() => {});
+              }
+              return undefined;
+            }).catch(() => {})
+          );
+          return m;
+        }).catch(() => null)
+      // 子页面（开屏 iframe、其他独立页面）：只认它自己的缓存键，绝不拿 App 主页顶替
+      : caches.match(req))
     : Promise.resolve(null);
   // 网络优先：在线时始终用最新，超时/失败才回退缓存（导航缓存未命中时才走到这里）
   e.respondWith(
@@ -329,7 +361,7 @@ self.addEventListener('fetch', (e) => {
           // 脚本块（决策/全屏/移动适配/pwa 更新器全灭）且不报错。截断时改走缓存
           // 兜底（下方 catch 分支），缓存也没有就透传截断响应（至少本次能渲染，
           // 但不会污染缓存，下次导航自动重试完整下载）。
-          if (req.mode === 'navigate') {
+          if (isShellNav) {
             return res.clone().text().then((t) => {
               if (isCompleteHtml(t)) {
                 // v3.26.x #136：导航成功统一写 canonical './index.html' 键——原写 req.url 键
@@ -351,7 +383,7 @@ self.addEventListener('fetch', (e) => {
       .catch(() => {
         // 仅导航请求回退到 index.html；其他资源（manifest/图标/JS 等）
         // 只回退自身缓存，绝不用 HTML 顶替——否则安装/更新流程会拿到错误内容
-        const fallback = req.mode === 'navigate'
+        const fallback = isShellNav
           // v3.26.x #136：canonical 键 miss 后补一枪 caches.match(req)——旧版 SW 把导航
           // 成功体写进 req.url 键（存量设备缓存里只有这个键），second chance 接住它们，
           // 否则老缓存有完整 index 也照样回源 → 离线错误页
@@ -386,7 +418,7 @@ self.addEventListener('fetch', (e) => {
               !/text\/html/i.test(String((m.headers && m.headers.get('content-type')) || 'text/html'))) m = null;
           if (m) return m;
           return fetch(req).then((res) => {
-            if (res && res.ok && req.mode === 'navigate') {
+            if (res && res.ok && isShellNav) {
               // FIX 2026-09-03 #143：此重试同时接住非导航请求（慢网络下的图标等）。
               // 原实现把任何成功体一律写 canonical './index.html' 键且不过完整性校验，
               // 双漏洞：① icon-512.png 写进 index 键 = 上述「整页 mochi 字母图」根因；

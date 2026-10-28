@@ -6,7 +6,8 @@
 */
 (function () {
   'use strict';
-  var page = document.getElementById('page-settings-hub');
+  // 统一设置中心：概览嵌在 #page-setting 的「概览」tab 里（不再有第二个设置页）
+  var page = document.getElementById('page-setting');
   if (!page) return;
   var body = document.getElementById('sh-body');
   var searchEl = document.getElementById('sh-search');
@@ -297,7 +298,6 @@
         H.push(navRow('应用锁', '打开 App 需要密码', 'page-setting', { tab: 'system', scope: 'g', q: '应用锁 密码' }));
         H.push(actRow('查看公告与免责声明', '开屏已移除，点此查看原公告与免责声明', 'notice', '公告 开屏 免责 声明 说明', 'g'));
         H.push(navRow('关于 / 隐私 / 帮助', '作者、许可、常见问题', 'page-setting', { tab: 'about', q: '关于 隐私 帮助 问题' }));
-        H.push(navRow('经典设置（原设置页）', '按原来的分类查看全部设置', 'page-setting', { q: '经典 原设置' }));
       });
     });
 
@@ -337,11 +337,18 @@
   function doNav(el) {
     var pageId = el.getAttribute('data-nav');
     if (!pageId) return;
-    // 二改：记住是「设置中心」跳出去的，子页返回时别再一律落到经典设置页
-    window.__settingsOrigin = 'page-settings-hub';
-    if (!go(pageId)) { toast('这个入口暂时打不开'); return; }
-    var tab = el.getAttribute('data-tab');
-    if (tab) { var t = document.querySelector('#set-tabs .them-tab[data-tab="' + tab + '"]'); if (t) t.click(); }
+    // 统一设置中心：子页返回时回到 #page-setting
+    window.__settingsOrigin = 'page-setting';
+    var tab = el.getAttribute('data-tab') || (pageId === 'page-setting' ? 'basic' : '');
+    if (pageId === 'page-setting') {
+      // 概览里的入口＝切到同一页对应的 tab，不再跳到另一个设置页
+      var t0 = document.querySelector('#set-tabs .them-tab[data-tab="' + tab + '"]');
+      if (t0) t0.click();
+      try { page.scrollTop = 0; } catch (e) {}
+    } else {
+      if (!go(pageId)) { toast('这个入口暂时打不开'); return; }
+      if (tab) { var t = document.querySelector('#set-tabs .them-tab[data-tab="' + tab + '"]'); if (t) t.click(); }
+    }
     var sel = el.getAttribute('data-sel');
     if (sel) {
       setTimeout(function () {
@@ -441,33 +448,29 @@
         if (window.openIconMenu) { e.stopPropagation(); window.openIconMenu(deskIco); }
         return;
       }
-      // 二改：纸页风格优先进入「经典设置」（纸面观感更适配），
-      // 经典设置页右侧的「设置中心」按钮再切回新的设置中心；经典风格仍默认进设置中心。
+      // 统一设置中心：经典风格默认「概览」排版，纸页风格默认「通用」完整列表；
+      // 两者只是同一页的不同 tab，不再有第二个设置中心。
       var paper = document.documentElement.classList.contains('paper-skin');
-      var target = paper ? document.getElementById('page-setting') : page;
-      document.querySelectorAll('.page').forEach(function (p) { p.hidden = (p !== target); });
+      document.querySelectorAll('.page').forEach(function (p) { p.hidden = (p !== page); });
+      var prefer = paper ? 'basic' : 'overview';
+      var tab = document.querySelector('#set-tabs .them-tab[data-tab="' + prefer + '"]');
+      if (tab) tab.click();
+      try { page.scrollTop = 0; } catch (e0) {}
       // 设置页不是底部 tab 页：清掉底部高亮，避免停在「首页」造成误解
       try {
         document.querySelectorAll('.tabbar .tab').forEach(function (t) { t.classList.remove('active'); });
       } catch (e1) {}
-      if (!paper) setTimeout(render, 0);
+      if (prefer === 'overview') setTimeout(render, 0);
     });
   }
 
-  // 二改：设置中心 ⇄ 经典设置 的双向切换入口 + 经典设置页的退出键
-  var switchClassic = document.getElementById('set-switch-classic');
-  if (switchClassic) {
-    switchClassic.addEventListener('click', function () {
-      window.__settingsOrigin = 'page-settings-hub';
-      go('page-setting');
-    });
-  }
-  var backToHub = function () { go('page-settings-hub'); };
-  // 经典设置左上角是「退出设置回主页」；右上角「设置中心」才是切到新设置中心
+  // 左上角退出键：回主页
   var setBack = document.getElementById('set-back');
   if (setBack) setBack.addEventListener('click', function () { go('page-phone'); });
-  var switchHub = document.getElementById('set-switch-hub');
-  if (switchHub) switchHub.addEventListener('click', backToHub);
+
+  // 「概览」tab：每次切回来重渲染，别处改过的值要能反映出来
+  var ovTab = document.querySelector('#set-tabs .them-tab[data-tab="overview"]');
+  if (ovTab) ovTab.addEventListener('click', function () { setTimeout(render, 0); });
 
   render();
 })();

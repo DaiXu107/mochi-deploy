@@ -8344,117 +8344,121 @@ button.ca-jump { background:none; border:0; color:inherit; font:inherit; padding
 [data-theme="dark"] .ca-flow-ok { color:#4fd18f; }
 [data-theme="dark"] .ca-flow-no { color:#ef7b76; }
 [data-theme="dark"] .ca-badge { background:#ef7b76; color:#1a1a1a; }
-#page-settings-hub {
+.settings-overview-embed {
 --sh-soft: #f4f4f6; --sh-track: #ececf1; --sh-knob: #ffffff; --sh-seg-ink: #6f6f7a;
 overflow: hidden;
 }
-[data-theme="dark"] #page-settings-hub {
+[data-theme="dark"] .settings-overview-embed {
 --sh-soft: #2c2c33; --sh-track: #2a2a31; --sh-knob: #4d4d59; --sh-seg-ink: #a5a5b0;
 }
-#page-settings-hub .sh-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-#page-settings-hub .sh-search { flex: 0 0 auto; padding: 2px 14px 8px; }
-#page-settings-hub .sh-search input {
+.settings-overview-embed .sh-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.settings-overview-embed .sh-search { flex: 0 0 auto; padding: 2px 14px 8px; }
+.settings-overview-embed .sh-search input {
 width: 100%; box-sizing: border-box; font-size: 13.5px; padding: 9px 12px;
 border-radius: 12px; border: 1px solid var(--input-border, #e0e0e0);
 background: var(--input-bg, #fff); color: var(--ink); outline: none;
 }
-#page-settings-hub .sh-search input::placeholder { color: var(--muted, #9a9a9a); }
-#page-settings-hub .sh-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 14px 24px; -webkit-overflow-scrolling: touch; }
-#page-settings-hub .sh-sec {
+.settings-overview-embed .sh-search input::placeholder { color: var(--muted, #9a9a9a); }
+.settings-overview-embed .sh-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 14px 24px; -webkit-overflow-scrolling: touch; }
+.settings-overview-embed .sh-sec {
 display: flex; align-items: baseline; gap: 8px;
 padding: 16px 4px 7px; font-size: 12.5px; font-weight: 700; color: var(--muted, #8a8a8a);
 letter-spacing: .5px;
 }
-#page-settings-hub .sh-sec:first-child { padding-top: 6px; }
-#page-settings-hub .sh-sec i { font-style: normal; font-weight: 400; font-size: 11px; opacity: .8; }
-#page-settings-hub .sh-group {
+.settings-overview-embed .sh-sec:first-child { padding-top: 6px; }
+.settings-overview-embed .sh-sec i { font-style: normal; font-weight: 400; font-size: 11px; opacity: .8; }
+.settings-overview-embed .sh-group {
 background: var(--card-bg, #fff); border: 1px solid var(--card-border, rgba(0,0,0,.07));
 border-radius: 16px; overflow: hidden;
 }
-#page-settings-hub .sh-row {
+.settings-overview-embed .sh-row {
 display: flex; align-items: center; gap: 10px; min-height: 48px;
 padding: 9px 14px; border-bottom: 1px solid var(--line, #f0f0f0);
 }
-#page-settings-hub .sh-row:last-child { border-bottom: 0; }
-#page-settings-hub .sh-row[data-nav] { cursor: pointer; }
-#page-settings-hub .sh-row[data-nav]:active { background: var(--sh-soft, #f6f6f8); }
-#page-settings-hub .sh-l { flex: 1; min-width: 0; }
-#page-settings-hub .sh-label { font-size: 13.5px; color: var(--ink); line-height: 1.35; }
-#page-settings-hub .sh-note { display: block; font-size: 11px; color: var(--muted, #9a9a9a); margin-top: 2px; line-height: 1.4; }
-#page-settings-hub .sh-badge {
+.settings-overview-embed .sh-row:last-child { border-bottom: 0; }
+.settings-overview-embed .sh-row[data-nav] { cursor: pointer; }
+.settings-overview-embed .sh-row[data-nav]:active { background: var(--sh-soft, #f6f6f8); }
+.settings-overview-embed .sh-l { flex: 1; min-width: 0; }
+.settings-overview-embed .sh-label { font-size: 13.5px; color: var(--ink); line-height: 1.35; }
+.settings-overview-embed .sh-note { display: block; font-size: 11px; color: var(--muted, #9a9a9a); margin-top: 2px; line-height: 1.4; }
+.settings-overview-embed .sh-badge {
 display: inline-block; margin-left: 6px; vertical-align: 1px;
 font-style: normal; font-size: 10px; line-height: 1.5; padding: 0 6px; border-radius: 999px;
 color: #7a6bd0; background: rgba(138,123,216,.13); white-space: nowrap;
 }
-#page-settings-hub .sh-badge.g { color: #5b8db8; background: rgba(91,141,184,.14); }
-#page-settings-hub .sh-sw {
+.settings-overview-embed .sh-badge.g { color: #5b8db8; background: rgba(91,141,184,.14); }
+.settings-overview-embed .sh-sw {
 flex: 0 0 auto; width: 44px; height: 26px; border-radius: 999px; background: var(--sh-track, #d9d9e2);
 position: relative; transition: background .18s; cursor: pointer;
 }
-#page-settings-hub .sh-sw b {
+.settings-overview-embed .sh-sw b {
 position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%;
 background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.22); transition: transform .18s;
 }
-#page-settings-hub .sh-sw.on { background: #8a7bd8; }
-#page-settings-hub .sh-sw.on b { transform: translateX(18px); }
-#page-settings-hub .sh-step { flex: 0 0 auto; display: flex; align-items: center; gap: 2px; }
-#page-settings-hub .sh-step button {
+.settings-overview-embed .sh-sw.on { background: #8a7bd8; }
+.settings-overview-embed .sh-sw.on b { transform: translateX(18px); }
+.settings-overview-embed .sh-step { flex: 0 0 auto; display: flex; align-items: center; gap: 2px; }
+.settings-overview-embed .sh-step button {
 width: 28px; height: 28px; border-radius: 9px; border: 1px solid var(--card-border, rgba(0,0,0,.1));
 background: var(--sh-soft, #f4f4f6); color: var(--ink); font-size: 15px; line-height: 1; cursor: pointer;
 }
-#page-settings-hub .sh-step button:active { background: rgba(138,123,216,.22); }
-#page-settings-hub .sh-val { min-width: 58px; text-align: center; font-size: 13px; color: var(--ink); font-variant-numeric: tabular-nums; }
-#page-settings-hub .sh-chev {
+.settings-overview-embed .sh-step button:active { background: rgba(138,123,216,.22); }
+.settings-overview-embed .sh-val { min-width: 58px; text-align: center; font-size: 13px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.settings-overview-embed .sh-chev {
 flex: 0 0 auto; width: 8px; height: 8px; margin-right: 2px;
 border-right: 1.6px solid #c2c2cc; border-bottom: 1.6px solid #c2c2cc; transform: rotate(-45deg);
 }
-#page-settings-hub .sh-seg2 {
+.settings-overview-embed .sh-seg2 {
 position: relative; flex: 0 0 auto; display: flex; width: 170px; padding: 3px;
 border-radius: 10px; background: var(--sh-track, #ececf1); box-sizing: border-box;
 }
-#page-settings-hub .sh-seg2-thumb {
+.settings-overview-embed .sh-seg2-thumb {
 position: absolute; top: 3px; left: 3px; height: calc(100% - 6px);
 border-radius: 8px; background: var(--sh-knob, #fff); box-shadow: 0 1px 3px rgba(0,0,0,.16);
 transition: transform .22s cubic-bezier(.2,.8,.3,1);
 }
-#page-settings-hub .sh-seg2 button {
+.settings-overview-embed .sh-seg2 button {
 position: relative; z-index: 1; flex: 1; min-width: 0; padding: 5px 0;
 border: 0; background: transparent; font-size: 11.5px; color: var(--sh-seg-ink, #6f6f7a); cursor: pointer;
 transition: color .18s; white-space: nowrap;
 }
-#page-settings-hub .sh-seg2 button.sel { color: var(--ink, #1f1b2e); font-weight: 700; }
-#page-settings-hub .sh-freq-desc { font-size: 11.5px; color: var(--muted, #9a9a9a); padding: 2px 14px 12px; line-height: 1.6; }
-#page-settings-hub .sh-preset-slider { padding: 6px 16px 2px; }
-#page-settings-hub .sh-preset-slider input[type=range] {
+.settings-overview-embed .sh-seg2 button.sel { color: var(--ink, #1f1b2e); font-weight: 700; }
+.settings-overview-embed .sh-freq-desc { font-size: 11.5px; color: var(--muted, #9a9a9a); padding: 2px 14px 12px; line-height: 1.6; }
+.settings-overview-embed .sh-preset-slider { padding: 6px 16px 2px; }
+.settings-overview-embed .sh-preset-slider input[type=range] {
 -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 999px;
 background: linear-gradient(90deg, #bfe3c9 0%, #cfc7ef 50%, #f7b8ac 100%);
 outline: none; margin: 8px 0 6px;
 }
-#page-settings-hub .sh-preset-slider input[type=range]::-webkit-slider-thumb {
+.settings-overview-embed .sh-preset-slider input[type=range]::-webkit-slider-thumb {
 -webkit-appearance: none; appearance: none; width: 26px; height: 26px; border-radius: 50%;
 background: #fff; border: 3px solid #8a7bd8; box-shadow: 0 2px 6px rgba(60,40,110,.28); cursor: grab;
 }
-#page-settings-hub .sh-preset-slider input[type=range]::-moz-range-thumb {
+.settings-overview-embed .sh-preset-slider input[type=range]::-moz-range-thumb {
 width: 22px; height: 22px; border-radius: 50%; background: #fff;
 border: 3px solid #8a7bd8; box-shadow: 0 2px 6px rgba(60,40,110,.28); cursor: grab;
 }
-#page-settings-hub .sh-preset-labels { display: flex; justify-content: space-between; padding: 0 2px; }
-#page-settings-hub .sh-preset-labels span {
+.settings-overview-embed .sh-preset-labels { display: flex; justify-content: space-between; padding: 0 2px; }
+.settings-overview-embed .sh-preset-labels span {
 font-size: 12px; color: var(--muted, #9a9a9a); cursor: pointer; transition: color .18s, font-weight .18s;
 padding: 2px 6px; border-radius: 8px;
 }
-#page-settings-hub .sh-preset-labels span.sel { color: #6c5fc0; font-weight: 800; background: rgba(138,123,216,.12); }
-#page-settings-hub .sh-freq-more {
+.settings-overview-embed .sh-preset-labels span.sel { color: #6c5fc0; font-weight: 800; background: rgba(138,123,216,.12); }
+.settings-overview-embed .sh-freq-more {
 padding: 10px 14px; border-top: 1px solid var(--line, #f0f0f0); cursor: pointer;
 font-size: 12.5px; color: #7a6bd0; display: flex; align-items: center; justify-content: center; gap: 4px;
 }
-#page-settings-hub .sh-sub { background: var(--sh-soft, #f8f8fa); }
-#page-settings-hub .sh-sub .sh-row { padding-left: 22px; }
-#page-settings-hub .sh-sub .sh-label { font-size: 12.5px; color: var(--muted, #666); }
-#page-settings-hub .sh-sub .sh-badge { display: none; }
-#page-settings-hub .sh-empty { padding: 40px 10px; text-align: center; font-size: 12.5px; color: var(--muted, #9a9a9a); }
+.settings-overview-embed .sh-sub { background: var(--sh-soft, #f8f8fa); }
+.settings-overview-embed .sh-sub .sh-row { padding-left: 22px; }
+.settings-overview-embed .sh-sub .sh-label { font-size: 12.5px; color: var(--muted, #666); }
+.settings-overview-embed .sh-sub .sh-badge { display: none; }
+.settings-overview-embed .sh-empty { padding: 40px 10px; text-align: center; font-size: 12.5px; color: var(--muted, #9a9a9a); }
 .sh-hit { animation: shHit 1.4s ease-out; }
 @keyframes shHit { 0%, 35% { background: rgba(138,123,216,.20); } 100% { background: transparent; } }
+.settings-overview-embed { overflow: visible; padding-bottom: 8px; }
+.settings-overview-embed .sh-wrap { display: block; }
+.settings-overview-embed .sh-scroll { overflow: visible; padding: 0 14px 20px; }
+#page-setting.settings-overview .theme-search-wrap { display: none !important; }
 #page-phone .app { position: relative; }
 @keyframes deskAppJiggle {
 0%, 100% { transform: rotate(-1.1deg); }
@@ -11510,6 +11514,17 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
 #chat-flight-panel.game-fs .fc-stage { max-width:min(94vw,620px); flex:0 1 auto; }
 #chat-flight-panel.game-fs .fc-canvas { width:auto; height:auto; max-width:min(94vw,620px); max-height:70vh; }
 #chat-flight-panel.game-fs .fc-controls { flex-shrink:0; }
+@font-face {
+font-family: "Mochi Serif";
+src: url("assets/fonts/MochiSerif-Regular.woff2") format("woff2");
+font-weight: 400;
+font-style: normal;
+font-display: swap;
+}
+只在 html.paper-skin 下生效；?paper=1 或 localStorage:mochi-paper-preview=1 开启。
+参考 github.com/knacl47/between-us 的视觉语言：骨瓷纸底、墨黑、克莱因蓝、
+发丝线框、衬线标题、编号与英文小字。只做「换皮」，不改任何功能与数据结构。
+关闭：点右下角「关闭预览」，或在 URL 去掉 ?paper=1 后刷新。 */
 html.paper-skin {
 --ink: #242522;
 --muted: #6f716c;
@@ -11551,7 +11566,7 @@ html.paper-skin body,
 html.paper-skin *,
 html.paper-skin *::before,
 html.paper-skin *::after {
-font-family: "Times New Roman", "Noto Serif SC", "Songti SC", SimSun, serif !important;
+font-family: "Times New Roman", "Mochi Serif", "Noto Serif SC", "Songti SC", SimSun, serif !important;
 }
 html.paper-skin .phone {
 background:
@@ -11578,15 +11593,6 @@ border: 1px solid rgba(36, 37, 34, .30) !important;
 border-radius: 2px !important;
 background-color: rgba(250, 248, 242, .32) !important;
 box-shadow: none !important;
-}
-html.paper-skin .deco-widget::after {
-content: "MOCHI × BETWEEN US";
-position: absolute;
-right: 11px;
-bottom: 9px;
-font: 400 7.5px/1 Georgia, serif;
-letter-spacing: .14em;
-color: var(--paper-frame);
 }
 html.paper-skin .deco-avatar .ring {
 border: 1px solid rgba(36, 37, 34, .55) !important;
@@ -11742,7 +11748,7 @@ position: relative;
 z-index: 1;
 }
 html.paper-skin .paper-tab-label b {
-font-family: "Times New Roman", "Noto Serif SC", "Songti SC", SimSun, serif !important;
+font-family: "Times New Roman", "Mochi Serif", "Noto Serif SC", "Songti SC", SimSun, serif !important;
 font-size: 13px;
 font-weight: 400;
 line-height: 1;
@@ -11751,7 +11757,7 @@ text-transform: uppercase;
 color: var(--ink);
 }
 html.paper-skin .paper-tab-label i {
-font-family: "Times New Roman", "Noto Serif SC", "Songti SC", SimSun, serif !important;
+font-family: "Times New Roman", "Mochi Serif", "Noto Serif SC", "Songti SC", SimSun, serif !important;
 font-style: normal;
 font-size: 10px;
 line-height: 1.2;
@@ -11849,6 +11855,16 @@ radial-gradient(circle at calc(100% + 34px) 150px, transparent 0 92px, rgba(184,
 radial-gradient(circle at -58px 470px, transparent 0 126px, rgba(184, 186, 184, .18) 127px 128px, transparent 129px),
 radial-gradient(circle at calc(100% - 28px) 565px, rgba(24, 52, 212, .55) 0 1.6px, transparent 2px),
 #f2f2ef;
+}
+html.paper-skin #page-chat.cs-bg-on .chat-body { background: transparent; }
+html.paper-skin #page-chat.cs-bg-on .chat-head {
+background: rgba(242, 242, 239, var(--cs-head-opacity-ink, var(--cs-head-opacity, .92))) !important;
+}
+html.paper-skin #page-chat.cs-bg-on > .chat-input-row {
+background: rgba(251, 250, 245, var(--cs-input-opacity-ink, var(--cs-input-opacity, .96))) !important;
+}
+html.paper-skin #page-chat.cs-bg-on .ch-av {
+box-shadow: 0 0 0 4px rgba(242, 242, 239, .72), 0 0 0 5px rgba(24, 52, 212, .30);
 }
 html.paper-skin .chat-body::before {
 content: "PRIVATE CONVERSATION  ·  只属于你们";
@@ -12008,18 +12024,6 @@ content: "→";
 font: 17px/1 Georgia, "Times New Roman", serif !important;
 color: #fff;
 letter-spacing: 0;
-}
-html.paper-skin #page-chat::after {
-content: "本机保存 · 只属于你们";
-position: absolute;
-left: 0;
-right: 0;
-bottom: 6px;
-text-align: center;
-font: 400 8px/1.4 Georgia, "Songti SC", serif;
-letter-spacing: .14em;
-color: var(--paper-frame);
-pointer-events: none;
 }
 html.paper-skin .glass {
 background: rgba(247, 245, 239, .82) !important;
@@ -12556,7 +12560,7 @@ html.paper-skin[data-theme="dark"] .phone { box-shadow: 0 24px 60px rgba(0, 0, 0
            （名称+版号 / 部署时间+实时秒 / 版本检测行）收成一行；检测行随 ver-check.js 退役删除。
            data-build-ts / data-version 两属性保留：device.js 诊断、bg-keep 自检、pwa.js 旧包检测
            仍只读属性（诊断版本号走 data-version 兜底，device.js 两处缓存原生支持）。 -->
-      <div class="splash-ver" id="splash-ver" data-build-ts="1793117438470" data-version="v8.4">
+      <div class="splash-ver" id="splash-ver" data-build-ts="1793169269514" data-version="v8.4">
         <span class="sv-app">Mochi 字卡传讯 已完结停更</span>
       </div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
@@ -12685,7 +12689,7 @@ html.paper-skin[data-theme="dark"] .phone { box-shadow: 0 24px 60px rgba(0, 0, 0
           <div class="app-name">纪念</div>
         </div>
         <!-- 二传调整：设置从底部 tab 提到桌面第一页（替换原占卜位），占卜移到第二页；
-             打开的是新的设置中心 #page-settings-hub（settings-hub.js 绑定点击） -->
+             打开统一设置中心 #page-setting（settings-hub.js 绑定点击，默认 tab 随风格） -->
         <div class="app" data-app="settings" data-desk-widget="app-settings">
           <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.1"/><path d="M19.4 15a1.7 1.7 0 00.34 1.87l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1.03 1.56V21a2 2 0 11-4 0v-.09a1.7 1.7 0 00-1.11-1.56 1.7 1.7 0 00-1.87.34l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.7 1.7 0 00.34-1.87 1.7 1.7 0 00-1.56-1.03H3a2 2 0 110-4h.09A1.7 1.7 0 004.65 8.7a1.7 1.7 0 00-.34-1.87l-.06-.06a2 2 0 112.83-2.83l.06.06a1.7 1.7 0 001.87.34H9a1.7 1.7 0 001-1.56V3a2 2 0 114 0v.09a1.7 1.7 0 001 1.56 1.7 1.7 0 001.87-.34l.06-.06a2 2 0 112.83 2.83l-.06.06a1.7 1.7 0 00-.34 1.87V10a1.7 1.7 0 001.56 1H21a2 2 0 110 4h-.09a1.7 1.7 0 00-1.51 1z"/></svg></div>
           <div class="app-name">设置</div>
@@ -13702,24 +13706,14 @@ html.paper-skin[data-theme="dark"] .phone { box-shadow: 0 24px 60px rgba(0, 0, 0
       </div>
     </div>
 
-<!-- 设置中心：新的设置首页（IA 依据 docs/设置信息架构-逻辑表.md）——底部第三个 tab 进来的是这里，
-         原设置页成为「经典设置」，从本页最后一条进入 -->
-    <div class="page" id="page-settings-hub" hidden>
-      <div class="set-title sh-title-row"><span>设置</span><button class="set-switch" id="set-switch-classic" type="button" title="切换到经典设置页">经典设置</button></div>
-      <div class="sh-wrap">
-        <div class="sh-search"><input id="sh-search" placeholder="搜索设置（如 字体 / 频率 / 备份 / 夜间）" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
-        <div class="sh-scroll" id="sh-body"></div>
-      </div>
-    </div>
-<!-- 设置页（经典设置） -->
+<!-- 二改：统一设置中心（只有这一页）——「概览」与「通用/聊天/系统/工具/诊断/关于」是同一套设置的不同排版；
+     经典风格默认停在概览，纸页风格默认停在通用，不再有第二个设置中心来回切换。 -->
     <div class="page" id="page-setting" hidden>
-      <!-- 二改：经典设置页保留；左上角「退出键」回主页，右上角「设置中心」切到新设置中心 -->
       <div class="set-title sh-title-row">
         <button class="set-back" id="set-back" type="button" title="退出设置，回到主页" aria-label="退出设置，回到主页">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
         <span>设置</span>
-        <button class="set-switch" id="set-switch-hub" type="button" title="回到简洁的设置中心">设置中心</button>
       </div>
       <!-- #542：设置项上百行、找一项要滚很久——顶部搜索框实时过滤 .set-row（跨 5 个 tag 显示匹配项），
            逻辑复刻美化页的 theme-search（personalize.js bindSettingsSearch）；清空后回到原 tag -->
@@ -13729,12 +13723,20 @@ html.paper-skin[data-theme="dark"] .phone { box-shadow: 0 24px 60px rgba(0, 0, 0
       <!-- v3.33.x：设置页顶部 tag 分类——设置项太多一页堆到底，用户找不到功能；
            复用全站 .them-tabs/.them-sec 互斥显示观感（聊天设置/手机桌面美化同款） -->
       <div class="them-tabs" id="set-tabs">
+        <div class="them-tab" data-tab="overview">概览</div>
         <div class="them-tab active" data-tab="basic">通用</div>
         <div class="them-tab" data-tab="chat">聊天</div>
         <div class="them-tab" data-tab="system">系统</div>
         <div class="them-tab" data-tab="tools">工具</div>
-        <div class="them-tab" data-tab="diag">信息诊断</div>
+        <div class="them-tab" data-tab="diag">诊断</div>
         <div class="them-tab" data-tab="about">关于</div>
+      </div>
+      <!-- 概览：原设置中心的策展首页；与下面的完整设置同页，不再单独成页 -->
+      <div class="them-sec settings-overview-embed" data-sec="overview">
+        <div class="sh-wrap">
+          <div class="sh-search"><input id="sh-search" placeholder="搜索设置（如 字体 / 频率 / 备份 / 夜间）" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+          <div class="sh-scroll" id="sh-body"></div>
+        </div>
       </div>
       <!-- 通用：全屏模式（置顶独立组） + 数据备份（导出/导入） + 联系人 / 桌面 + 入口行为 + 深色模式 / 手机桌面美化 -->
       <div class="them-sec" data-sec="basic">
@@ -24652,4 +24654,4 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 </body>
 </html>
 
-<!-- __MOCHI_EOF__ mvqvtqfa -->
+<!-- __MOCHI_EOF__ mvrqonii -->

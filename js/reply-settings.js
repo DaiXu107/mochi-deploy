@@ -1350,8 +1350,7 @@ const genRow = document.getElementById('row-general');
 if (genRow) {
 genRow.addEventListener('click', () => {
 syncUI();
-const hub = document.getElementById('page-settings-hub');
-window.__settingsOrigin = (hub && !hub.hidden) ? 'page-settings-hub' : 'page-setting';
+window.__settingsOrigin = 'page-setting';
 showPage('page-reply-settings');
 });
 }
@@ -1371,7 +1370,7 @@ if (sc) sc.scrollTop = 0;
 document.querySelectorAll('#page-reply-settings .rps-tab').forEach(tab => {
 tab.addEventListener('click', () => rpsTab(tab.dataset.rps));
 });
-const settingsOrigin = () => window.__settingsOrigin === 'page-settings-hub' ? 'page-settings-hub' : 'page-setting';
+const settingsOrigin = () => 'page-setting';
 const replyBack = document.getElementById('reply-back');
 if (replyBack) {
 replyBack.addEventListener('click', () => {

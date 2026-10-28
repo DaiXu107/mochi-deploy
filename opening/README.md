@@ -20,7 +20,7 @@ python -m http.server 8000
 - 播完再点：重放
 - `?at=3.5`：停在第 3.5 秒那一帧（截图用）
 - `?v=b`：三角外的花改成黑线
-- `?flowers=fake`：不用 `flowers.png`，换成代码里画的临时花
+- `?flowers=fake`：不用 `flowers.webp`，换成代码里画的临时花
 
 ## 换成你自己的花
 
@@ -28,8 +28,8 @@ python -m http.server 8000
 
 | 文件 | 作用 |
 | --- | --- |
-| `flowers.png` | 线稿：透明底，线条处不透明。线的颜色由代码决定（克莱因蓝 / 黑） |
-| `flowers_fill.png` | 剪影：整朵花的填色区域，翻面时用来给花瓣上底色 |
+| `flowers.webp` | 线稿：透明底，线条处不透明。线的颜色由代码决定（克莱因蓝 / 黑） |
+| `flowers_fill.webp` | 剪影：整朵花的填色区域，翻面时用来给花瓣上底色 |
 
 用自己的线稿替换这两张同名文件即可。
 
@@ -50,8 +50,8 @@ python -m http.server 8000
 ## 授权
 
 - **代码**（`index.html`、`opening.js`）：MIT，见 `LICENSE`。
-- **`flowers.png`、`flowers_fill.png`**：由可画（Canva）素材二次拼贴组合而成，**仅供非商业学习使用，请勿单独提取花朵线稿另作他用**。商用请换成你自己有授权的线稿。
-- **`crack1.png`、`crack2.png`**：可商用素材。
+- **`flowers.webp`、`flowers_fill.webp`**：由可画（Canva）素材二次拼贴组合而成，**仅供非商业学习使用，请勿单独提取花朵线稿另作他用**。商用请换成你自己有授权的线稿。
+- **`crack1.webp`、`crack2.webp`**：可商用素材。
 
 ## 作者
 

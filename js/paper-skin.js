@@ -12,8 +12,34 @@ var root = document.documentElement;
 var THEME_KEY = 'xy-home-v2:theme-mode';
 var PAPER_THEME_KEY = 'mochi-paper-theme-mode';
 var STYLE_KEY = 'mochi-ui-style';
+var STORE_NS = 'xy-home-v2';
+var STORE_STYLE_KEY = 'ui-style';
 var themeWatcher = null;
 function isPaper() { return root.classList.contains('paper-skin'); }
+function styleText(v) { return v === 'paper' ? 'paper' : (v === 'classic' ? 'classic' : null); }
+function saveStyle(style) {
+try { localStorage.setItem(STYLE_KEY, style); } catch (e) {}
+try { if (window.xyStore) window.xyStore(STORE_NS).set(STORE_STYLE_KEY, style); } catch (e) {}
+}
+function storedStyle() {
+try {
+if (window.xyStore) {
+var s = styleText(window.xyStore(STORE_NS).get(STORE_STYLE_KEY));
+if (s) return s;
+}
+} catch (e) {}
+try { return styleText(localStorage.getItem(STYLE_KEY)); } catch (e) { return null; }
+}
+function styleForcedByUrl() {
+try { return /(^|[?&])paper=(1|0)(&|$)/.test(location.search); } catch (e) { return false; }
+}
+function syncStoredStyle() {
+if (styleForcedByUrl()) return;
+var s = storedStyle();
+if (!s) return;
+var cur = isPaper() ? 'paper' : 'classic';
+if (s !== cur) setStyle(s, { silent: true });
+}
 function themeNow() { try { return localStorage.getItem(THEME_KEY) || 'light'; } catch (e) { return 'light'; } }
 function setThemeLocal(mode) { try { localStorage.setItem(THEME_KEY, mode); } catch (e) {} }
 function setThemeLabel(mode) {
@@ -136,7 +162,7 @@ if (el2) el2.textContent = short;
 function setStyle(style, opts) {
 opts = opts || {};
 var paper = style === 'paper';
-try { localStorage.setItem(STYLE_KEY, paper ? 'paper' : 'classic'); } catch (e) {}
+saveStyle(paper ? 'paper' : 'classic');
 if (paper) {
 root.classList.add('paper-skin');
 forceLight();
@@ -169,6 +195,7 @@ return;
 setStyle(v);
 }, {
 noInput: true,
+pillSubmit: true,
 pill: cur,
 pills: [
 { label: '经典 Mochi', value: 'classic' },
@@ -195,6 +222,7 @@ syncLabels();
 }
 function init() {
 try { localStorage.removeItem('mochi-paper-preview'); } catch (e) {}
+syncStoredStyle();
 if (isPaper()) {
 forceLight();
 watchTheme();
@@ -204,6 +232,7 @@ watchChatStatus();
 syncChatSub();
 }
 bindEntry();
+try { document.addEventListener('mochi-restore-done', syncStoredStyle); } catch (e) {}
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
 else init();

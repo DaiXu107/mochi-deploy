@@ -1814,9 +1814,8 @@
   if (genRow) {
     genRow.addEventListener('click', () => {
       syncUI();
-      // 二改：从设置中心还是经典设置进来，返回就回哪一页
-      const hub = document.getElementById('page-settings-hub');
-      window.__settingsOrigin = (hub && !hub.hidden) ? 'page-settings-hub' : 'page-setting';
+      // 统一设置中心：回复设置返回 #page-setting
+      window.__settingsOrigin = 'page-setting';
       showPage('page-reply-settings');
     });
   }
@@ -1838,8 +1837,8 @@
   document.querySelectorAll('#page-reply-settings .rps-tab').forEach(tab => {
     tab.addEventListener('click', () => rpsTab(tab.dataset.rps));
   });
-  // 返回：回到进来之前的那一页（设置中心 / 经典设置），不再一律落到经典设置
-  const settingsOrigin = () => window.__settingsOrigin === 'page-settings-hub' ? 'page-settings-hub' : 'page-setting';
+  // 返回：统一设置中心（#page-setting），并保留原来的 tab
+  const settingsOrigin = () => 'page-setting';
   const replyBack = document.getElementById('reply-back');
   if (replyBack) {
     replyBack.addEventListener('click', () => {

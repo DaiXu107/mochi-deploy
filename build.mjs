@@ -371,9 +371,12 @@ mkdirSync(join(root, 'assets'), { recursive: true });
 ['earth-day.jpg', 'earth-night.jpg', 'earth-clouds.png'].forEach(f => copyFileSync(join(root, 'src', 'assets', f), join(root, 'assets', f)));
 // 二改预览：三角开花开屏（BETWEEN US，iframe 独立页面 + 本地 GSAP）
 mkdirSync(join(root, 'opening', 'vendor'), { recursive: true });
-['index.html', 'opening.js', 'flowers.png', 'flowers_fill.png', 'crack1.png', 'crack2.png', 'README.md'].forEach(f => copyFileSync(join(root, 'src', 'opening', f), join(root, 'opening', f)));
+['index.html', 'opening.js', 'flowers.webp', 'flowers_fill.webp', 'crack1.webp', 'crack2.webp', 'README.md'].forEach(f => copyFileSync(join(root, 'src', 'opening', f), join(root, 'opening', f)));
 copyFileSync(join(root, 'src', 'opening', 'vendor', 'gsap.min.js'), join(root, 'opening', 'vendor', 'gsap.min.js'));
 copyFileSync(join(root, 'src', 'opening', 'LICENSE-between-us.txt'), join(root, 'opening', 'LICENSE-between-us.txt'));
+// 纸页风格本地字体（Noto Serif SC 子集，OFL）→ 根 assets/fonts
+mkdirSync(join(root, 'assets', 'fonts'), { recursive: true });
+['MochiSerif-Regular.woff2', 'OFL-NotoSerifSC.txt'].forEach(f => copyFileSync(join(root, 'src', 'assets', 'fonts', f), join(root, 'assets', 'fonts', f)));
 const swPath = join(root, 'sw.js');
 let sw = readFileSync(swPath, 'utf8');
 sw = sw.replace(/const CACHE = 'mochi-[^']*';/, "const CACHE = 'mochi-" + buildStamp + "';");
@@ -387,9 +390,11 @@ const furnitureSprites = (function () {
   try { return readdirSync(join(root, 'assets', 'furniture', 'kaykit')).filter(f => /\.webp$/i.test(f)).map(f => './assets/furniture/kaykit/' + f); }
   catch (e) { return []; }
 })();
+// 纸页字体 1.8MB 不进 PRECACHE：经典风格用户永远用不到，预缓存会让每次安装/更新都多下 1.8MB；
+// 纸页首次加载时由 SW 通用 fetch 分支（同源 GET 成功即 c.put）写入运行时缓存，之后离线可用。
 sw = sw.replace(/const PRECACHE = \[[^\]]*\];/, 'const PRECACHE = ' + JSON.stringify(['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-180.png', './assets/fc-board.jpg', './assets/earth-day.jpg', './assets/earth-night.jpg', './assets/earth-clouds.png',
   './opening/index.html', './opening/opening.js', './opening/vendor/gsap.min.js',
-  './opening/flowers.png', './opening/flowers_fill.png', './opening/crack1.png', './opening/crack2.png'].concat(extFiles.map(f => './js/' + f)).concat(furnitureSprites)) + ';');
+  './opening/flowers.webp', './opening/flowers_fill.webp', './opening/crack1.webp', './opening/crack2.webp'].concat(extFiles.map(f => './js/' + f)).concat(furnitureSprites)) + ';');
 writeFileSync(swPath, sw);
 console.log('已复制 PWA 文件 → ' + pwaFiles.join(', ') + '（sw 缓存版本: mochi-' + buildStamp + '）');
 } else {
@@ -6660,11 +6665,13 @@ if (CHECK_SENTINELS) {
       "c.put('./index.html', res.clone())",
       'rescued ? c.put(\'./index.html\', rescued)',
       // v3.26.x #143：最终重试写点仅限导航 + 兜底命中 content-type 守卫（防 PNG 污染 canonical 键）
-      "res.ok && req.mode === 'navigate'",
+      "res.ok && isShellNav",
       "m.headers.get('content-type')",
       // v3.26.x #157：导航缓存优先+后台静默刷新 + index 专属长超时（修 standalone 快捷方式
       // 网络优先 3.5s 对 4MB 产物必然超时 → 反复刷新打不开）
       "const navCached = req.mode === 'navigate'",
+      // 2026-10-28：只有根路径导航才用 App 主页顶替；开屏 iframe 的 opening/index.html 不能命中
+      "isAppShellUrl(req.url)",
       'INDEX_NETWORK_TIMEOUT = 30000',
       'fetchIndexRes(url, isIndexUrl(url) ? INDEX_NETWORK_TIMEOUT : NETWORK_TIMEOUT)',
       "fetchIndexRes('./index.html', INDEX_NETWORK_TIMEOUT)",
@@ -6697,10 +6704,12 @@ try {
     "c.put('./index.html', res.clone())",
     'rescued ? c.put(\'./index.html\', rescued)',
     // v3.26.x #143：最终重试写点仅限导航 + 兜底命中 content-type 守卫（防 PNG 污染 canonical 键）
-    "res.ok && req.mode === 'navigate'",
+    "res.ok && isShellNav",
     "m.headers.get('content-type')",
     // v3.26.x #157：导航缓存优先+后台静默刷新 + index 专属长超时
     "const navCached = req.mode === 'navigate'",
+    // 2026-10-28：只有根路径导航才用 App 主页顶替；开屏 iframe 的 opening/index.html 不能命中
+    "isAppShellUrl(req.url)",
     'INDEX_NETWORK_TIMEOUT = 30000',
     'fetchIndexRes(url, isIndexUrl(url) ? INDEX_NETWORK_TIMEOUT : NETWORK_TIMEOUT)',
     "fetchIndexRes('./index.html', INDEX_NETWORK_TIMEOUT)",

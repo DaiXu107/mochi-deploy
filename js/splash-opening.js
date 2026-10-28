@@ -6,7 +6,7 @@
 · 收到 between:opening-reveal 时让底下的主页轻轻长出来
 · 收到 between:opening-complete / error 或超时后移除 iframe
 · 每会话一次；?opening=1 强制重播，?opening=0 关闭；reduced-motion 直接跳过
-素材授权：代码 MIT；flowers.png / flowers_fill.png 仅供非商业学习使用（© nival / Canva 拼贴），
+素材授权：代码 MIT；flowers.webp / flowers_fill.webp 仅供非商业学习使用（© nival / Canva 拼贴），
 crack 图可商用。详见 src/opening/README.md 与 LICENSE-between-us.txt。
 */
 (function () {
@@ -83,7 +83,7 @@ cleanup();
 } catch (err) {}
 });
 frame.addEventListener('error', cleanup);
-watchdog = setTimeout(cleanup, 16000);
+watchdog = setTimeout(cleanup, 20000);
 })();
 if (window.__mochiLoaded) window.__mochiLoaded.push("splash-opening.js");
 } catch (__e) { if (window.__mochiErrLoaded) window.__mochiErrLoaded.push("splash-opening.js"); try { console.error("[JS] splash-opening.js", __e && __e.message || __e); } catch (x) {} if (window.__jsErrors) window.__jsErrors.push("[splash-opening.js] " + String(__e && __e.message || __e)); } })();

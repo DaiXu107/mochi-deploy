@@ -663,7 +663,7 @@
           <div class="app-name">纪念</div>
         </div>
         <!-- 二传调整：设置从底部 tab 提到桌面第一页（替换原占卜位），占卜移到第二页；
-             打开的是新的设置中心 #page-settings-hub（settings-hub.js 绑定点击） -->
+             打开统一设置中心 #page-setting（settings-hub.js 绑定点击，默认 tab 随风格） -->
         <div class="app" data-app="settings" data-desk-widget="app-settings">
           <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.1"/><path d="M19.4 15a1.7 1.7 0 00.34 1.87l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1.03 1.56V21a2 2 0 11-4 0v-.09a1.7 1.7 0 00-1.11-1.56 1.7 1.7 0 00-1.87.34l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.7 1.7 0 00.34-1.87 1.7 1.7 0 00-1.56-1.03H3a2 2 0 110-4h.09A1.7 1.7 0 004.65 8.7a1.7 1.7 0 00-.34-1.87l-.06-.06a2 2 0 112.83-2.83l.06.06a1.7 1.7 0 001.87.34H9a1.7 1.7 0 001-1.56V3a2 2 0 114 0v.09a1.7 1.7 0 001 1.56 1.7 1.7 0 001.87-.34l.06-.06a2 2 0 112.83 2.83l-.06.06a1.7 1.7 0 00-.34 1.87V10a1.7 1.7 0 001.56 1H21a2 2 0 110 4h-.09a1.7 1.7 0 00-1.51 1z"/></svg></div>
           <div class="app-name">设置</div>
@@ -1680,24 +1680,14 @@
       </div>
     </div>
 
-<!-- 设置中心：新的设置首页（IA 依据 docs/设置信息架构-逻辑表.md）——底部第三个 tab 进来的是这里，
-         原设置页成为「经典设置」，从本页最后一条进入 -->
-    <div class="page" id="page-settings-hub" hidden>
-      <div class="set-title sh-title-row"><span>设置</span><button class="set-switch" id="set-switch-classic" type="button" title="切换到经典设置页">经典设置</button></div>
-      <div class="sh-wrap">
-        <div class="sh-search"><input id="sh-search" placeholder="搜索设置（如 字体 / 频率 / 备份 / 夜间）" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
-        <div class="sh-scroll" id="sh-body"></div>
-      </div>
-    </div>
-<!-- 设置页（经典设置） -->
+<!-- 二改：统一设置中心（只有这一页）——「概览」与「通用/聊天/系统/工具/诊断/关于」是同一套设置的不同排版；
+     经典风格默认停在概览，纸页风格默认停在通用，不再有第二个设置中心来回切换。 -->
     <div class="page" id="page-setting" hidden>
-      <!-- 二改：经典设置页保留；左上角「退出键」回主页，右上角「设置中心」切到新设置中心 -->
       <div class="set-title sh-title-row">
         <button class="set-back" id="set-back" type="button" title="退出设置，回到主页" aria-label="退出设置，回到主页">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
         <span>设置</span>
-        <button class="set-switch" id="set-switch-hub" type="button" title="回到简洁的设置中心">设置中心</button>
       </div>
       <!-- #542：设置项上百行、找一项要滚很久——顶部搜索框实时过滤 .set-row（跨 5 个 tag 显示匹配项），
            逻辑复刻美化页的 theme-search（personalize.js bindSettingsSearch）；清空后回到原 tag -->
@@ -1707,12 +1697,20 @@
       <!-- v3.33.x：设置页顶部 tag 分类——设置项太多一页堆到底，用户找不到功能；
            复用全站 .them-tabs/.them-sec 互斥显示观感（聊天设置/手机桌面美化同款） -->
       <div class="them-tabs" id="set-tabs">
+        <div class="them-tab" data-tab="overview">概览</div>
         <div class="them-tab active" data-tab="basic">通用</div>
         <div class="them-tab" data-tab="chat">聊天</div>
         <div class="them-tab" data-tab="system">系统</div>
         <div class="them-tab" data-tab="tools">工具</div>
-        <div class="them-tab" data-tab="diag">信息诊断</div>
+        <div class="them-tab" data-tab="diag">诊断</div>
         <div class="them-tab" data-tab="about">关于</div>
+      </div>
+      <!-- 概览：原设置中心的策展首页；与下面的完整设置同页，不再单独成页 -->
+      <div class="them-sec settings-overview-embed" data-sec="overview">
+        <div class="sh-wrap">
+          <div class="sh-search"><input id="sh-search" placeholder="搜索设置（如 字体 / 频率 / 备份 / 夜间）" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+          <div class="sh-scroll" id="sh-body"></div>
+        </div>
       </div>
       <!-- 通用：全屏模式（置顶独立组） + 数据备份（导出/导入） + 联系人 / 桌面 + 入口行为 + 深色模式 / 手机桌面美化 -->
       <div class="them-sec" data-sec="basic">

@@ -1,4 +1,16 @@
 /* ===== 纸页皮肤 · BETWEEN US 风格预览（二改）=====
+/* 本地打包的纸页衬线字体（Noto Serif SC 子集，OFL 1.1，见 assets/fonts/OFL-NotoSerifSC.txt）
+   手机上没有宋体/Noto Serif 时也能保持纸页风格；只含常用字 + 应用内文案字，
+   生僻字仍回落到系统字体。 */
+@font-face {
+  font-family: "Mochi Serif";
+  src: url("assets/fonts/MochiSerif-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+
    只在 html.paper-skin 下生效；?paper=1 或 localStorage:mochi-paper-preview=1 开启。
    参考 github.com/knacl47/between-us 的视觉语言：骨瓷纸底、墨黑、克莱因蓝、
    发丝线框、衬线标题、编号与英文小字。只做「换皮」，不改任何功能与数据结构。
@@ -47,7 +59,7 @@ html.paper-skin body,
 html.paper-skin *,
 html.paper-skin *::before,
 html.paper-skin *::after {
-  font-family: "Times New Roman", "Noto Serif SC", "Songti SC", SimSun, serif !important;
+  font-family: "Times New Roman", "Mochi Serif", "Noto Serif SC", "Songti SC", SimSun, serif !important;
 }
 
 /* ---------- 手机壳 / 纸底 ---------- */
@@ -78,15 +90,6 @@ html.paper-skin .deco-widget {
   border-radius: 2px !important;
   background-color: rgba(250, 248, 242, .32) !important;
   box-shadow: none !important;
-}
-html.paper-skin .deco-widget::after {
-  content: "MOCHI × BETWEEN US";
-  position: absolute;
-  right: 11px;
-  bottom: 9px;
-  font: 400 7.5px/1 Georgia, serif;
-  letter-spacing: .14em;
-  color: var(--paper-frame);
 }
 html.paper-skin .deco-avatar .ring {
   border: 1px solid rgba(36, 37, 34, .55) !important;
@@ -247,7 +250,7 @@ html.paper-skin .paper-tab-label {
   z-index: 1;
 }
 html.paper-skin .paper-tab-label b {
-  font-family: "Times New Roman", "Noto Serif SC", "Songti SC", SimSun, serif !important;
+  font-family: "Times New Roman", "Mochi Serif", "Noto Serif SC", "Songti SC", SimSun, serif !important;
   font-size: 13px;
   font-weight: 400;
   line-height: 1;
@@ -256,7 +259,7 @@ html.paper-skin .paper-tab-label b {
   color: var(--ink);
 }
 html.paper-skin .paper-tab-label i {
-  font-family: "Times New Roman", "Noto Serif SC", "Songti SC", SimSun, serif !important;
+  font-family: "Times New Roman", "Mochi Serif", "Noto Serif SC", "Songti SC", SimSun, serif !important;
   font-style: normal;
   font-size: 10px;
   line-height: 1.2;
@@ -356,6 +359,18 @@ html.paper-skin .chat-body {
     radial-gradient(circle at -58px 470px, transparent 0 126px, rgba(184, 186, 184, .18) 127px 128px, transparent 129px),
     radial-gradient(circle at calc(100% - 28px) 565px, rgba(24, 52, 212, .55) 0 1.6px, transparent 2px),
     #f2f2ef;
+}
+/* 用户设置了聊天壁纸（#page-chat.cs-bg-on 由 chat-settings.js 写入）时，纸页不再用
+   不透明底色盖住壁纸层，行为与默认外观一致；未设置壁纸时仍保留上面的纸面与圆弧。 */
+html.paper-skin #page-chat.cs-bg-on .chat-body { background: transparent; }
+html.paper-skin #page-chat.cs-bg-on .chat-head {
+  background: rgba(242, 242, 239, var(--cs-head-opacity-ink, var(--cs-head-opacity, .92))) !important;
+}
+html.paper-skin #page-chat.cs-bg-on > .chat-input-row {
+  background: rgba(251, 250, 245, var(--cs-input-opacity-ink, var(--cs-input-opacity, .96))) !important;
+}
+html.paper-skin #page-chat.cs-bg-on .ch-av {
+  box-shadow: 0 0 0 4px rgba(242, 242, 239, .72), 0 0 0 5px rgba(24, 52, 212, .30);
 }
 html.paper-skin .chat-body::before {
   content: "PRIVATE CONVERSATION  ·  只属于你们";
@@ -520,18 +535,6 @@ html.paper-skin .chat-send::after {
   font: 17px/1 Georgia, "Times New Roman", serif !important;
   color: #fff;
   letter-spacing: 0;
-}
-html.paper-skin #page-chat::after {
-  content: "本机保存 · 只属于你们";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 6px;
-  text-align: center;
-  font: 400 8px/1.4 Georgia, "Songti SC", serif;
-  letter-spacing: .14em;
-  color: var(--paper-frame);
-  pointer-events: none;
 }
 
 /* ---------- 设置 / 卡片通用纸面 ---------- */

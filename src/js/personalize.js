@@ -3384,7 +3384,8 @@ try {
     if (jump.parentNode) jump.parentNode.insertBefore(emptyTip, jump.nextSibling);
     inp.addEventListener('input', () => {
       const q = inp.value.trim().toLowerCase();
-      const secs = page.querySelectorAll('.them-sec');
+      // 概览是独立搜索，不参与经典列表搜索；避免搜索时把概览分区一起亮出来
+      const secs = page.querySelectorAll('.them-sec:not([data-sec="overview"])');
       const rows = page.querySelectorAll('.set-row');
       if (!q) {
         jump.hidden = true;
@@ -4944,9 +4945,15 @@ try {
     function show(name) {
       secs.forEach(s => { s.hidden = (s.dataset.sec !== name); });
       tabs.forEach(t => { t.classList.toggle('active', t.dataset.tab === name); });
+      // 概览用设置中心自带搜索；切到完整设置时再显示经典搜索
+      page.classList.toggle('settings-overview', name === 'overview');
+      if (name === 'overview') { try { page.scrollTop = 0; } catch (e) {} }
     }
     tabs.forEach(t => t.addEventListener('click', () => show(t.dataset.tab)));
-    show(tabs[0] ? tabs[0].dataset.tab : 'basic');
+    // 同一套设置，两种默认排版：经典风格先看概览，纸页风格先看完整列表
+    var prefer = document.documentElement.classList.contains('paper-skin') ? 'basic' : 'overview';
+    if (!tabsEl.querySelector('.them-tab[data-tab="' + prefer + '"]')) prefer = 'basic';
+    show(prefer);
   })();
 
   // ===== 设置页「本机能不能用」标记（v8.29 #978）：按真实前提标记，不按手机系统 =====
@@ -11381,9 +11388,8 @@ bindAdjDrag(headTop, false); // #1534：拖标题行移动面板（与桌面美�
   const callSettingsRow = document.getElementById('row-call-settings');
   if (callSettingsRow) {
     callSettingsRow.addEventListener('click', () => {
-      // 二改：返回时回到进来之前的那一页（设置中心 / 经典设置）
-      const hub = document.getElementById('page-settings-hub');
-      window.__settingsOrigin = (hub && !hub.hidden) ? 'page-settings-hub' : 'page-setting';
+      // 统一设置中心：通话设置返回 #page-setting
+      window.__settingsOrigin = 'page-setting';
       document.querySelectorAll('.page').forEach(p => p.hidden = true);
       const csPage = document.getElementById('page-call-settings');
       if (csPage) csPage.hidden = false;

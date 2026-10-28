@@ -11,9 +11,37 @@
   var THEME_KEY = 'xy-home-v2:theme-mode';
   var PAPER_THEME_KEY = 'mochi-paper-theme-mode';
   var STYLE_KEY = 'mochi-ui-style';
+  var STORE_NS = 'xy-home-v2';
+  var STORE_STYLE_KEY = 'ui-style';
   var themeWatcher = null;
 
   function isPaper() { return root.classList.contains('paper-skin'); }
+  function styleText(v) { return v === 'paper' ? 'paper' : (v === 'classic' ? 'classic' : null); }
+  // 手机 localStorage 配额满时 setItem 会静默失败：本页能切、刷新就回默认。
+  // 因此风格同时写进 xyStore（内存 + localStorage + IndexedDB），读取时优先用它。
+  function saveStyle(style) {
+    try { localStorage.setItem(STYLE_KEY, style); } catch (e) {}
+    try { if (window.xyStore) window.xyStore(STORE_NS).set(STORE_STYLE_KEY, style); } catch (e) {}
+  }
+  function storedStyle() {
+    try {
+      if (window.xyStore) {
+        var s = styleText(window.xyStore(STORE_NS).get(STORE_STYLE_KEY));
+        if (s) return s;
+      }
+    } catch (e) {}
+    try { return styleText(localStorage.getItem(STYLE_KEY)); } catch (e) { return null; }
+  }
+  function styleForcedByUrl() {
+    try { return /(^|[?&])paper=(1|0)(&|$)/.test(location.search); } catch (e) { return false; }
+  }
+  function syncStoredStyle() {
+    if (styleForcedByUrl()) return;
+    var s = storedStyle();
+    if (!s) return;
+    var cur = isPaper() ? 'paper' : 'classic';
+    if (s !== cur) setStyle(s, { silent: true });
+  }
   function themeNow() { try { return localStorage.getItem(THEME_KEY) || 'light'; } catch (e) { return 'light'; } }
   function setThemeLocal(mode) { try { localStorage.setItem(THEME_KEY, mode); } catch (e) {} }
   function setThemeLabel(mode) {
@@ -142,7 +170,7 @@
   function setStyle(style, opts) {
     opts = opts || {};
     var paper = style === 'paper';
-    try { localStorage.setItem(STYLE_KEY, paper ? 'paper' : 'classic'); } catch (e) {}
+    saveStyle(paper ? 'paper' : 'classic');
     if (paper) {
       root.classList.add('paper-skin');
       forceLight();
@@ -176,6 +204,8 @@
       setStyle(v);
     }, {
       noInput: true,
+      // 点选项即生效并关闭：不再要求再点一次「确定」，避免「以为切了、其实没落盘」
+      pillSubmit: true,
       pill: cur,
       pills: [
         { label: '经典 Mochi', value: 'classic' },
@@ -205,6 +235,9 @@
 
   function init() {
     try { localStorage.removeItem('mochi-paper-preview'); } catch (e) {}
+    // 首帧内联脚本只读得到 localStorage；这里再对一次 xyStore（配额满时值在内存/IndexedDB），
+    // 并在回填完成后再对一次，解决「手机上切换后刷新又回默认」。
+    syncStoredStyle();
     if (isPaper()) {
       forceLight();
       watchTheme();
@@ -214,6 +247,7 @@
       syncChatSub();
     }
     bindEntry();
+    try { document.addEventListener('mochi-restore-done', syncStoredStyle); } catch (e) {}
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

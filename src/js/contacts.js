@@ -18,6 +18,10 @@
     // LS 快路径每启必 miss，全靠 markShown 写的 IDB 那份兜底才没反复重弹）；③ splash-seen:*
     // （每日首开强读标记，见 isExcluded 前缀挡）天天失效。
     'age-confirmed', 'storage-guide-shown',
+    // 二改：界面风格（经典 / 纸页）的备份键——plain mochi-ui-style 在手机 localStorage
+    // 配额满时写不进，xyStore 这条走内存 + IndexedDB 兜底。全局根键，不能被 migrateLegacy
+    // 迁进 default 桌面。
+    'ui-style',
     // v3.17.x：跨桌面「来消息」全局根键——incoming-requests（申请队列）、
     // desk-checkin-en（桌面查岗全局开关）与 desk-call-en（跨桌面来电全局开关）都存
     // 根命名空间、全桌面通，绝不随联系人隔离，防 migrateLegacy 每次刷新搬进 default

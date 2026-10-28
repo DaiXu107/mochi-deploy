@@ -7,7 +7,7 @@
 */
 (function () {
 'use strict';
-var page = document.getElementById('page-settings-hub');
+var page = document.getElementById('page-setting');
 if (!page) return;
 var body = document.getElementById('sh-body');
 var searchEl = document.getElementById('sh-search');
@@ -284,7 +284,6 @@ group(function () {
 H.push(navRow('应用锁', '打开 App 需要密码', 'page-setting', { tab: 'system', scope: 'g', q: '应用锁 密码' }));
 H.push(actRow('查看公告与免责声明', '开屏已移除，点此查看原公告与免责声明', 'notice', '公告 开屏 免责 声明 说明', 'g'));
 H.push(navRow('关于 / 隐私 / 帮助', '作者、许可、常见问题', 'page-setting', { tab: 'about', q: '关于 隐私 帮助 问题' }));
-H.push(navRow('经典设置（原设置页）', '按原来的分类查看全部设置', 'page-setting', { q: '经典 原设置' }));
 });
 });
 return H.join('');
@@ -320,10 +319,16 @@ body.scrollTop = keep;
 function doNav(el) {
 var pageId = el.getAttribute('data-nav');
 if (!pageId) return;
-window.__settingsOrigin = 'page-settings-hub';
+window.__settingsOrigin = 'page-setting';
+var tab = el.getAttribute('data-tab') || (pageId === 'page-setting' ? 'basic' : '');
+if (pageId === 'page-setting') {
+var t0 = document.querySelector('#set-tabs .them-tab[data-tab="' + tab + '"]');
+if (t0) t0.click();
+try { page.scrollTop = 0; } catch (e) {}
+} else {
 if (!go(pageId)) { toast('这个入口暂时打不开'); return; }
-var tab = el.getAttribute('data-tab');
 if (tab) { var t = document.querySelector('#set-tabs .them-tab[data-tab="' + tab + '"]'); if (t) t.click(); }
+}
 var sel = el.getAttribute('data-sel');
 if (sel) {
 setTimeout(function () {
@@ -416,26 +421,21 @@ if (window.openIconMenu) { e.stopPropagation(); window.openIconMenu(deskIco); }
 return;
 }
 var paper = document.documentElement.classList.contains('paper-skin');
-var target = paper ? document.getElementById('page-setting') : page;
-document.querySelectorAll('.page').forEach(function (p) { p.hidden = (p !== target); });
+document.querySelectorAll('.page').forEach(function (p) { p.hidden = (p !== page); });
+var prefer = paper ? 'basic' : 'overview';
+var tab = document.querySelector('#set-tabs .them-tab[data-tab="' + prefer + '"]');
+if (tab) tab.click();
+try { page.scrollTop = 0; } catch (e0) {}
 try {
 document.querySelectorAll('.tabbar .tab').forEach(function (t) { t.classList.remove('active'); });
 } catch (e1) {}
-if (!paper) setTimeout(render, 0);
+if (prefer === 'overview') setTimeout(render, 0);
 });
 }
-var switchClassic = document.getElementById('set-switch-classic');
-if (switchClassic) {
-switchClassic.addEventListener('click', function () {
-window.__settingsOrigin = 'page-settings-hub';
-go('page-setting');
-});
-}
-var backToHub = function () { go('page-settings-hub'); };
 var setBack = document.getElementById('set-back');
 if (setBack) setBack.addEventListener('click', function () { go('page-phone'); });
-var switchHub = document.getElementById('set-switch-hub');
-if (switchHub) switchHub.addEventListener('click', backToHub);
+var ovTab = document.querySelector('#set-tabs .them-tab[data-tab="overview"]');
+if (ovTab) ovTab.addEventListener('click', function () { setTimeout(render, 0); });
 render();
 })();
 if (window.__mochiLoaded) window.__mochiLoaded.push("settings-hub.js");

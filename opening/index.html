@@ -17,7 +17,7 @@
   .face { position: absolute; inset: 0; background: var(--bg); }
   /* 花：线稿当遮罩，线的颜色是 --line；跟底色一样时就藏着 */
   /* 花瓣填色：整朵花的剪影，颜色是 --fill（光有线在黑底上看不出来） */
-  .fill { position: absolute; inset: 0; background: var(--fill); -webkit-mask: var(--fill-url, url("flowers_fill.png?v=1023")) 0 0 / 100% 100% no-repeat; mask: var(--fill-url, url("flowers_fill.png?v=1023")) 0 0 / 100% 100% no-repeat; }
+  .fill { position: absolute; inset: 0; background: var(--fill); -webkit-mask: var(--fill-url, url("flowers_fill.webp?v=1023")) 0 0 / 100% 100% no-repeat; mask: var(--fill-url, url("flowers_fill.webp?v=1023")) 0 0 / 100% 100% no-repeat; }
   .art { position: absolute; inset: 0; background: var(--line); -webkit-mask: var(--flowers) 0 0 / 100% 100% no-repeat; mask: var(--flowers) 0 0 / 100% 100% no-repeat; }
   .decal { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
   /* 真裂痕：从落点一圈圈露出来（--r0/--r1 由动画推大） */
