@@ -122,7 +122,10 @@ var T = {
   starLily: { n: "\u661F\u5149\u767E\u5408", e: ["\uD83C\uDF31", "\uD83C\uDF3F", "\u2728"], sn: ["\u79CD\u5B50", "\u53D1\u82BD", "\u5F00\u82B1"], g: [604800, 1036800], xp: 170, lv: 7, ss: 0, rare: true, m: "\u95EA\u8000\u6C38\u6052" },
   moonFlower: { n: "\u6708\u5149\u82B1", e: ["\uD83C\uDF31", "\uD83C\uDF3F", "\uD83C\uDF19"], sn: ["\u79CD\u5B50", "\u53D1\u82BD", "\u5F00\u82B1"], g: [518400, 864000], xp: 150, lv: 6, ss: 1, rare: true, m: "\u591C\u665A\u7684\u5B88\u5019" },
   crystalOrchid: { n: "\u6C34\u6676\u5170", e: ["\uD83C\uDF31", "\uD83C\uDF3F", "\uD83D\uDC8E"], sn: ["\u79CD\u5B50", "\u53D1\u82BD", "\u5F00\u82B1"], g: [691200, 1209600], xp: 200, lv: 8, ss: 2, rare: true, m: "\u7A00\u4E16\u4E4B\u7F8E" },
-  phoenix: { n: "\u51F0\u51F0\u82B1", e: ["\uD83C\uDF31", "\uD83C\uDF3F", "\uD83D\uDD25"], sn: ["\u79CD\u5B50", "\u53D1\u82BD", "\u5F00\u82B1"], g: [691200, 1209600], xp: 220, lv: 8, ss: 1, rare: true, m: "\u6D85\u69C8\u91CD\u751F" }
+  phoenix: { n: "\u51F0\u51F0\u82B1", e: ["\uD83C\uDF31", "\uD83C\uDF3F", "\uD83D\uDD25"], sn: ["\u79CD\u5B50", "\u53D1\u82BD", "\u5F00\u82B1"], g: [691200, 1209600], xp: 220, lv: 8, ss: 1, rare: true, m: "\u6D85\u69C8\u91CD\u751F" },
+  gloriosa: { n: "\u5609\u5170\u767E\u5408", e: ["\uD83C\uDF31", "\uD83C\uDF3F", "\uD83D\uDD25"], sn: ["\u79CD\u5B50", "\u53D1\u82BD", "\u5F00\u82B1"], g: [604800, 1036800], xp: 180, lv: 7, ss: 2, rare: true, m: "\u70BD\u70C8\u8363\u5149" },
+  blackDatura: { n: "\u9ED1\u8272\u66FC\u9640\u7F57", e: ["\uD83C\uDF31", "\uD83C\uDF3F", "\uD83C\uDF19"], sn: ["\u79CD\u5B50", "\u53D1\u82BD", "\u5F00\u82B1"], g: [691200, 1209600], xp: 210, lv: 8, ss: 1, rare: true, m: "\u591C\u7684\u8C1C\u8BED" },
+  starflower: { n: "\u661F\u8FB0\u82B1", e: ["\uD83C\uDF31", "\uD83C\uDF3F", "\u2728"], sn: ["\u79CD\u5B50", "\u53D1\u82BD", "\u5F00\u82B1"], g: [518400, 950400], xp: 160, lv: 6, ss: 0, rare: true, m: "\u6C38\u6052\u8BB0\u5FC6" }
 };
 var WM = [
   "\u4ECA\u5929\u4E5F\u8F9B\u82E6\u5566\uFF0C\u82B1\u82B1\u4EEC\u4E5F\u5728\u52AA\u529B\u957F\u5927\u54E6",
@@ -556,7 +559,10 @@ var HYBRIDS = [
   { a: "peony", b: "jasmine", r: "starLily" },
   { a: "maple", b: "wheat", r: "phoenix" },
   { a: "iris", b: "lavender", r: "moonFlower" },
-  { a: "lily", b: "clover", r: "iceRose" }
+  { a: "lily", b: "clover", r: "iceRose" },
+  { a: "lily", b: "rose", r: "gloriosa" },
+  { a: "nightLotus", b: "moonFlower", r: "blackDatura" },
+  { a: "lavender", b: "daisy", r: "starflower" }
 ];
 function ensureHybridBtn() {
   if (document.getElementById("garden-tool-hybrid")) return;

@@ -37,19 +37,47 @@
 - **点花盆后的标本弹窗**：底部那排「浇水 / 施肥 / 收获 / 轮盘」文字按钮已移除。花名右边放了一个 82px 的小轮盘，六个图标分别对应浇水、施肥、收获、种植、驱虫、杂交；点图标直接执行，不再出现文字按钮轮盘。
 - **顶部页签都能点**：日志 / 图鉴 / 工坊 / 装饰 / 成就 / 年报各有独立的档案页（细线列表、图鉴三列、配方卡、物件价格、成就墙、年报数字），点「花园」或「← 返回花圃」回到花圃，不再是一排摆设。
 
+## 2026-10-29 视觉返工：White Herbarium
+
+正式花园从暖米色改成更接近白纸的「标本室」：背景近白、温室拱线只留铅笔底稿的浓度，页签改成夹在纸页里的索引签，花盆名签去掉块状底色，底部工具台改成浅色石台。
+
+- **花盆名签**：去掉原来的半透明方块，名字用 11px 宋体，状态前面加一个小圆点；水位线缩到 38px，不再像一条硬横杠。
+- **底部四件工具**：重画水壶、肥料纸袋、种子信封、收获篮。水壶用鼠尾草绿搪瓷 + 黄铜；肥料和种子改成纸袋/信封而不是两块相似的布袋；收获篮加亚麻衬布和花束。托盘文案改成中文「浇水 / 施肥 / 播种 / 收获」。
+- **日志**：改成细线时间轴。成就、奖励、等级、访客、日常各有不同颜色的圆章；系统提示单独做成虚线便签，不再和事件混排。
+- **图鉴**：每张卡插入该品种的俯视 SVG 标本图，未知品种显示压花剪影 +「未采集」，不再用 emoji 当主图。
+- **花艺配方**：每张配方左侧生成一束对应的插花 SVG（花材、包装纸、丝带都按配方颜色变化），右侧是花材 chips、花语和操作按钮。
+- **成就墙**：顶部改成「园丁荣誉」进度环 + 已获得数量 + 下一枚目标；下面改成两列奖章卡，已获得是暖金纸卡，未获得是灰纸卡，并补上成就说明。
+
+## 参考与素材
+
+这次先看了 GitHub 上可用的 UI 方向和素材，再决定自己画 SVG，避免混入不同授权和不同透视的素材：
+
+| 来源 | 借什么 | 是否直接使用素材 |
+| --- | --- | --- |
+| [anthropics/skills · frontend-design](https://github.com/anthropics/skills/tree/main/skills/frontend-design) | 先定视觉方向、字体/布局原则，再做两轮自检；避免模板化的奶油色 + 卡片堆 | 只使用设计方法，不引入代码 |
+| [Cozy Farm Starter](https://aquumgifts.github.io/cozy-game-assets/cozy-farm-starter/) | 温室/花圃的层级、工具与地块的主次关系 | 未复制美术；代码是 MIT，素材授权另见其项目 |
+| [Farmhand](https://github.com/jeremyckahn/farmhand) | 移动端农场 HUD 的信息分区、轻量状态栏 | 未复制代码或美术 |
+| [BloomBox](https://github.com/Rahmankarim/BloomBox) | 花束的「花头聚拢 + 包装纸 + 丝带」构图 | 未复制代码或素材，花束由本项目的 SVG 重新绘制 |
+| [Hearthbrew](https://brunkagames.itch.io/cozy-apothecary-ui-kit-hearthbrew) | 「物件摆在架子上」的空间感、纸卡与黄铜色 | 仅参考，未使用其商业素材 |
+| [Game-icons.net](https://game-icons.net/) | 浇水壶/肥料袋的图标语义参考（CC BY 3.0） | 未打包其图标 |
+| [Open Crop Icons](https://github.com/openfarmcc/open-crop-icons) | CC0 植物图标库的尺寸与留白参考 | 未打包其图标 |
+
+正式花园里的新增图形全部是 `garden-herbarium.js` 内联 SVG，不新增第三方图片依赖；`garden-grain.png` 仍是原有的纸纹颗粒。
+
 ## 预览
 
 直接打开 `docs/garden-preview/index.html`。带参数的直达状态：
 
 - `?state=sheet`：打开玫瑰的标本抽屉
 - `?tab=journal` / `?tab=dex` / `?tab=craft` / `?tab=decor` / `?tab=marks` / `?tab=annual`：直接打开对应档案页
-- `preview-sheet.png`：四联总览；`new-flowers.png`：嘉兰百合、黑色曼陀罗、星辰花的放大特写
+- `preview-sheet.png`：旧版四联总览；`new-flowers.png`：嘉兰百合、黑色曼陀罗、星辰花的放大特写
+- `app-ui-v2.png`：2026-10-29 正式花园的五个页面截图（花圃 / 日志 / 图鉴 / 工坊 / 成就）
 
 预览使用本地 `assets/fonts/MochiSerif-Regular.woff2`，不依赖网络字体。
 
-## 接入计划
+## 已接入真实花园（2026-10-29）
 
-1. 新增 `src/css/garden-herbarium.css` 与 `src/js/garden-herbarium.js`，只在 `#page-garden.herbarium` 下生效，不改原 `garden.js` 的存档与行为。
-2. 先支持 `?garden=herbarium` 预览开关；确认后再设为默认（或做成花园皮肤选项）。
+1. 新增 `src/css/garden-herbarium.css` 与 `src/js/garden-herbarium.js`，只在 `#page-garden.gh` 下生效；`garden.js` 的 `data.p` / `dex` / `log` / 存档键与读写逻辑完全未改，旧花园记录原样保留。
+2. 默认启用新皮肤；带 `?garden=classic` 打开时回退旧版花园，方便对照或排障。
 3. 3D 工具只负责「拖到花盆上」这一个交互，落到真实应用时映射到现有 `.garden-tool[data-tool]` 点击；小轮盘的六个图标也走同一套动作，不改存档结构；页签继续复用现有 tab 逻辑。
-4. 品种 SVG 映射表放在 CSS/JS 内，新增品种时只补一条；没有 SVG 的品种回退通用枝叶，不会空白。
+4. 品种 SVG 映射表放在 CSS/JS 内，新增品种时只补一条；没有 SVG 的品种回退通用枝叶，不会空白。正式 `T` 表现有 19 种常见 + 13 种稀有（共 32 种），新增的嘉兰百合、黑色曼陀罗、星辰花通过杂交获得：百合 × 玫瑰、夜莲 × 月光花、薰衣草 × 雏菊。
