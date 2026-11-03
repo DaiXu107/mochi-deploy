@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0e13">
+<title>Mochi · 睡眠小屋 3D</title>
+<link rel="stylesheet" href="room3d.css">
+<script type="importmap">
+{"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/addons/"}}
+</script>
+</head>
+<body>
+<div id="stage"></div>
+<div id="labels"></div>
+
+<div class="vignette top"></div>
+<div class="vignette bottom"></div>
+
+<header class="room-top">
+  <div class="room-top-left">
+    <button class="embed-back" id="embedBack" aria-label="返回" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <div class="room-title">
+      <span class="eyebrow" id="roomEyebrow">MOCHI · SLEEP ROOM</span>
+      <h1>睡眠小屋</h1>
+    </div>
+  </div>
+  <div class="room-top-right">
+    <button class="clock-pill" id="clockBtn" aria-label="房间时间">
+      <span id="clockText">23:10</span>
+      <i id="playDot" class="play-dot"></i>
+    </button>
+    <button class="monitor-badge" id="monitorBadge" aria-label="监控中，打开房间时间">
+      <i></i><span>监控中</span>
+    </button>
+    <button class="icon-btn" id="menuBtn" aria-label="睡眠小屋设置">⋯</button>
+  </div>
+</header>
+
+<div class="people-strip" id="peopleStrip"></div>
+
+<div class="room-hint" id="hint">单指旋转视角 · 双指拖动缩放 · 点人看状态</div>
+<div class="scrub-time" id="scrubTime">23:10</div>
+<button class="note-hotspot" id="noteHotspot" aria-label="打开床头柜便签"></button>
+
+<div class="loader" id="loader">
+  <div class="loader-glow"></div>
+  <div class="loader-inner">
+    <span class="eyebrow">MOCHI · SLEEP ROOM</span>
+    <h2>正在点亮小屋</h2>
+    <p id="loadText">把夜灯打开，铺好被子…</p>
+    <div class="load-bar"><i id="loadBar"></i></div>
+    <small>房间模型 © dylanheyes · CC-BY · three.js</small>
+  </div>
+</div>
+
+<div class="scanlines" aria-hidden="true"></div>
+<div class="cam-stamp" id="camStamp" aria-hidden="true">
+  <span class="cam-line"><i class="cam-rec"></i><b>CAM 01 · 回放</b></span>
+  <em id="camTime">--:--</em>
+</div>
+
+<div class="sheet-root" id="sheetRoot" hidden></div>
+<div class="toast" id="toast"></div>
+
+<script type="module" src="room3d.js"></script>
+</body>
+</html>

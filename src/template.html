@@ -739,7 +739,7 @@
 <button class="we-btn" id="weekend-fish" title="摸鱼 +1">摸鱼 +<b id="weekend-count">0</b></button>
 </div>
 
-<!-- 第二页功能：两排图标（第一排 音乐/聊天统计/提问记录/寻踪；第二排 花园/此间/同频(注入)/伸手(注入)；
+<!-- 第二页功能：两排图标（第一排 音乐/聊天统计/提问记录/寻踪/睡眠小屋；第二排 花园/此间/同频(注入)/伸手(注入)；
      喝水已移至第三页 p3-grid（p2-features 注入）），整组移到摸鱼组件（周末倒计时）下面 -->
 <div class="app-grid p2-grid" data-app="p2" data-desk-widget="p2apps">
 <div class="app" data-app="music" data-desk-widget="app-music">
@@ -757,6 +757,10 @@
 <div class="app" data-app="checkin" data-desk-widget="app-checkin">
 <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/><path d="M12 3a9 9 0 000 18"/></svg></div>
 <div class="app-name">寻踪</div>
+</div>
+<div class="app" data-app="sleep3d" data-desk-widget="app-sleep3d">
+<div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 17.5v-6.1a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2v6.1"/><path d="M3.5 17.5h17M6 17.5v2.2M18 17.5v2.2"/><path d="M7 9.4V7.1a1.1 1.1 0 0 1 1.1-1.1h3.4"/><path d="M17.3 4.1a2.6 2.6 0 1 0 2.4 4.1 3.1 3.1 0 0 1-2.4-4.1z"/></svg></div>
+<div class="app-name">睡眠小屋</div>
 </div>
 <!-- 花园自第三页移入：第二排「花园 此间 同频 伸手」（此间紧随其后为模板静态图标，同频/伸手由 p2-features 追加） -->
 <div class="app" data-app="garden" data-desk-widget="app-garden">
@@ -7101,6 +7105,10 @@
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 14l-3.5 4M12 14l3.5 4M8 14c1.2-2.6 2-4.5 4-7 1.4 1.8 2.2 3.4 3 4.6M8 14c1.4.5 2.7.5 4 0 1.4.5 2.7.5 4 0"/><circle cx="12" cy="7" r=".8" fill="currentColor" stroke="none"/></svg></span>
             <span>飞行棋</span>
           </button>
+          <button class="more-item" id="more-sleep3d" data-mcat="tool" title="睡眠小屋（3D 睡眠房间）">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 17.5v-6.1a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2v6.1"/><path d="M3.5 17.5h17M6 17.5v2.2M18 17.5v2.2"/><path d="M7 9.4V7.1a1.1 1.1 0 0 1 1.1-1.1h3.4"/><path d="M17.3 4.1a2.6 2.6 0 1 0 2.4 4.1 3.1 3.1 0 0 1-2.4-4.1z"/></svg></span>
+            <span>睡眠小屋</span>
+          </button>
           <button class="more-item" id="more-ck" data-mcat="tool" title="寻踪（打开 TA 的日常）">
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/><path d="M12 3a9 9 0 000 18"/></svg></span>
             <span>寻踪</span>
@@ -7645,6 +7653,11 @@
     <div class="tab" id="tab-switch-contact" title="切换联系人" role="button" aria-label="切换联系人">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.5" r="3.2"/><path d="M2.8 19.5c0-3.4 2.8-5.6 6.2-5.6s6.2 2.2 6.2 5.6"/><path d="M16 4.2h4.6V8.8"/><path d="M20.6 4.2l-5.2 5.2"/></svg>
     </div>
+  </div>
+  <!-- 睡眠小屋 3D 全屏层：必须在 .phone 内、所有 .page 与 tabbar 之外，才能盖住底部导航；
+       入口见 src/js/sleeproom.js（桌面图标 / 聊天更多功能），返回由 iframe 内按钮 postMessage。 -->
+  <div class="sleeproom-shell" id="sleeproom-shell" hidden>
+    <iframe class="sr-frame" id="sleeproom-frame" title="睡眠小屋 3D"></iframe>
   </div>
   </div>
 

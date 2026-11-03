@@ -25,6 +25,7 @@
     stats:       { cat: '记录', desc: '聊天记录与情绪表达统计' },
     interact:    { cat: '记录', desc: 'TA 的询问、好奇与邀请历史' },
     checkin:     { cat: '工具', desc: '寻踪 / 查岗打卡与位置感知' },
+    sleep3d:     { cat: '工具', desc: '3D 睡眠小屋：看睡姿、抱抱、睡眠钟与日历', since: '2026-11-04' },
     garden:      { cat: '娱乐', desc: '种花杂交、花束工坊' },
     bar:         { cat: '娱乐', desc: '用原料调制饮料并送到聊天', since: '2026-10-13' },
     cjian:       { cat: '工具', desc: '每位梦角的世界时间与在场状态' },

@@ -4076,6 +4076,7 @@ window.mochiViewportForm = function (sig) {
     { n: '统计', app: 'stats', page: 'page-stats', open: true },
     { n: '提问记录', app: 'interact', page: 'page-interact', open: true },
     { n: '寻踪打卡', app: 'checkin', page: 'page-checkin', open: true },   // #1279 图标开的是寻踪页 page-checkin（不是字卡库题库页）。#1403 起删掉 gated 那句：总开关不再拦这一页（关掉后页面照开、页顶写明「已禁用」），留着它＝真出故障时诊断会拿「总开关已关闭」当借口，正是 #1279 要治的那一型凭空原因
+    { n: '睡眠小屋 3D', fn: 'openSleepRoom' },   // 全屏 iframe 房间：容器在 .phone 内、不是 .page，故只测入口函数（T3 的 .page/.ch-back 断言不适用）
     { n: '占卜', app: 'divination', page: 'page-divine', open: true },
     { n: '花园', app: 'garden', page: 'page-garden', open: true },
     { n: '此间', app: 'cjian', page: 'page-cjian', open: true },

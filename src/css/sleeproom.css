@@ -1,0 +1,22 @@
+/* ===== 睡眠小屋 3D（src/js/sleeproom.js）=====
+   全屏 iframe 层，放在 .phone 内、所有 .page 与 tabbar 之外。
+   房间页自己带返回按钮（iframe 内 postMessage），所以宿主不画标题栏，
+   让 3D 画面铺满整个手机壳。 */
+.sleeproom-shell {
+  position: absolute;
+  inset: 0;
+  z-index: 1200;
+  background: #0a0a0a;
+  border-radius: inherit;
+  overflow: hidden;
+}
+.sleeproom-shell[hidden] { display: none; }
+.sleeproom-shell iframe {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #0a0a0a;
+}

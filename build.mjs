@@ -2,7 +2,7 @@
 // 把 src/ 下的模板 + 按页面拆分的 CSS + 按功能拆分的 JS
 // 拼装成单个可直接双击打开的 index.html（完整功能）。
 // 用法：在 mochi 目录下运行  node build.mjs
-import { readFileSync, writeFileSync, copyFileSync, mkdirSync, rmSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, copyFileSync, mkdirSync, rmSync, readdirSync, cpSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -112,8 +112,8 @@ function minifyCss(code) {
 }
 
 // ===== 按顺序拼接样式 / 脚本（顺序即生效顺序） =====
-const cssFiles = ['base.css', 'home.css', 'chat-main.css', 'chat-pages.css', 'market.css', 'group-chat.css', 'setting.css', 'settings-hub.css', 'desk-edit.css', 'tabbar.css', 'dark.css', 'garden.css', 'bar.css', 'memo.css', 'memo-arc.css', 'room.css', 'room-iso.css', 'drift-bottle.css', 'applock.css', 'feature-data.css', 'display-tune.css', 'birthday.css', 'flight-chess.css', 'paper-skin.css', 'garden-herbarium.css'];
-const jsFiles = ['device.js', 'splash-opening.js', 'paper-skin.js', 'entry-notice.js', 'idb.js', 'contacts.js', 'applock.js', 'card-lock.js', 'dcp-master.js', 'media-pool.js','storage-slim.js', 'perf-check.js', 'energy-check.js', 'flash-check.js', 'img-compress.js', 'img-ingest.js', 'clock.js', 'tabs.js', 'desktop-slider.js', 'quote-cards.js', 'personalize.js', 'chat.js', 'group-chat.js', 'chatcard.js', 'chat-settings.js', 'reply-settings.js', 'settings-hub.js', 'fav-settings.js', 'default-cards-data.js', 'dict-ext-data.js', 'default-cards.js', 'quote-spell.js', 'dream-free.js', 'mood-followup-data.js', 'mood-reply-cards.js', 'ta-mood-data.js', 'ta-mood.js', 'music-player.js', 'calendar.js', 'lunar.js', 'birthday.js', 'divination.js', 'avatar-lib.js', 'ta-ask.js', 'ck-question.js', 'incoming-requests.js', 'ta-invite.js', 'bg-keep.js', 'records.js', 'call.js', 'mail.js', 'mail-postal.js', 'feed.js', 'loc-lib.js', 'p2-features.js', 'gift-shop.js', 'memo-app.js', 'memo-arc.js', 'my-arc.js', 'period.js', 'accounting.js', 'garden.js', 'garden-herbarium.js', 'bar-presets.js', 'bar-fusions.js', 'bar-names.js', 'bar-render.js', 'bar.js', 'room-core.js', 'room-iso.js', 'room.js', 'drift-bottle.js', 'decision.js', 'group-decision.js', 'pong.js', 'snake-game.js', 'breakout.js', 'connect-four.js', 'coop-mine.js', 'fishing.js', 'memory-game.js', 'gomoku.js', 'linkup.js', 'match3.js', 'auction.js', 'flight-chess.js', 'arcade.js', 'mood-diary.js', 'sfx.js', 'fullscreen.js', 'data-backup.js', 'feature-data.js', 'pwa.js', 'cjian.js', 'feature-hub.js', 'app-market.js', 'settings-help.js', 'onboarding.js', 'page-coach.js', 'card-audit.js', 'storage-guide.js', 'mobile-adapt.js'];
+const cssFiles = ['base.css', 'home.css', 'chat-main.css', 'chat-pages.css', 'market.css', 'group-chat.css', 'setting.css', 'settings-hub.css', 'desk-edit.css', 'tabbar.css', 'dark.css', 'garden.css', 'bar.css', 'memo.css', 'memo-arc.css', 'room.css', 'room-iso.css', 'sleeproom.css', 'drift-bottle.css', 'applock.css', 'feature-data.css', 'display-tune.css', 'birthday.css', 'flight-chess.css', 'paper-skin.css', 'garden-herbarium.css'];
+const jsFiles = ['device.js', 'splash-opening.js', 'paper-skin.js', 'entry-notice.js', 'idb.js', 'contacts.js', 'applock.js', 'card-lock.js', 'dcp-master.js', 'media-pool.js','storage-slim.js', 'perf-check.js', 'energy-check.js', 'flash-check.js', 'img-compress.js', 'img-ingest.js', 'clock.js', 'tabs.js', 'desktop-slider.js', 'quote-cards.js', 'personalize.js', 'chat.js', 'group-chat.js', 'chatcard.js', 'chat-settings.js', 'reply-settings.js', 'settings-hub.js', 'fav-settings.js', 'default-cards-data.js', 'dict-ext-data.js', 'default-cards.js', 'quote-spell.js', 'dream-free.js', 'mood-followup-data.js', 'mood-reply-cards.js', 'ta-mood-data.js', 'ta-mood.js', 'music-player.js', 'calendar.js', 'lunar.js', 'birthday.js', 'divination.js', 'avatar-lib.js', 'ta-ask.js', 'ck-question.js', 'incoming-requests.js', 'ta-invite.js', 'bg-keep.js', 'records.js', 'call.js', 'mail.js', 'mail-postal.js', 'feed.js', 'loc-lib.js', 'p2-features.js', 'gift-shop.js', 'memo-app.js', 'memo-arc.js', 'my-arc.js', 'period.js', 'accounting.js', 'garden.js', 'garden-herbarium.js', 'bar-presets.js', 'bar-fusions.js', 'bar-names.js', 'bar-render.js', 'bar.js', 'room-core.js', 'room-iso.js', 'room.js', 'sleeproom.js', 'drift-bottle.js', 'decision.js', 'group-decision.js', 'pong.js', 'snake-game.js', 'breakout.js', 'connect-four.js', 'coop-mine.js', 'fishing.js', 'memory-game.js', 'gomoku.js', 'linkup.js', 'match3.js', 'auction.js', 'flight-chess.js', 'arcade.js', 'mood-diary.js', 'sfx.js', 'fullscreen.js', 'data-backup.js', 'feature-data.js', 'pwa.js', 'cjian.js', 'feature-hub.js', 'app-market.js', 'settings-help.js', 'onboarding.js', 'page-coach.js', 'card-audit.js', 'storage-guide.js', 'mobile-adapt.js'];
 
 // ===== PERF-PLAN 阶段 1：JS 外置化（2026-09-18）=====
 // 首开「3.8MB 内联 JS 主线程整段解析执行」是 iOS/中低端安卓卡顿的结构性大头
@@ -374,6 +374,10 @@ mkdirSync(join(root, 'opening', 'vendor'), { recursive: true });
 ['index.html', 'opening.js', 'flowers.webp', 'flowers_fill.webp', 'crack1.webp', 'crack2.webp', 'README.md'].forEach(f => copyFileSync(join(root, 'src', 'opening', f), join(root, 'opening', f)));
 copyFileSync(join(root, 'src', 'opening', 'vendor', 'gsap.min.js'), join(root, 'opening', 'vendor', 'gsap.min.js'));
 copyFileSync(join(root, 'src', 'opening', 'LICENSE-between-us.txt'), join(root, 'opening', 'LICENSE-between-us.txt'));
+// 睡眠小屋 3D：独立 iframe 页面（自带 three.js / Draco 本地依赖与 bedroom.glb）
+// 不进 PRECACHE：首次打开由 SW 同源网络优先链按需写入运行时缓存，避免每次安装多下约 3.5MB。
+rmSync(join(root, 'sleeproom'), { recursive: true, force: true });
+cpSync(join(root, 'src', 'sleeproom'), join(root, 'sleeproom'), { recursive: true });
 // 纸页风格本地字体（Noto Serif SC 子集，OFL）→ 根 assets/fonts
 mkdirSync(join(root, 'assets', 'fonts'), { recursive: true });
 ['MochiSerif-Regular.woff2', 'OFL-NotoSerifSC.txt'].forEach(f => copyFileSync(join(root, 'src', 'assets', 'fonts', f), join(root, 'assets', 'fonts', f)));
@@ -5369,6 +5373,7 @@ const FIX_SENTINELS = [
       根因＝src/js/device.js 的 FUNC_ITEMS 那一行错两处：① page 填 page-ta-checkin（字卡库「TA的查岗」题库管理页），而桌面 data-app="checkin" 图标实际打开 page-checkin（p2-features.js 的 openCheckinPage）＝诊断量错了页，pageVisible() 恒假；② 恒假后走 it.gated 分支（本意「该功能有前置条件，打不开不算异常」），那句凭空写的 gated 文案被当结论打印——全站零 geolocation 调用、也没有「绑定 TA」这一步，真实门控只有 checkin-en 总开关（关掉时 openCheckinPage 直接 toast 返回）。
       修法＝一行内同时纠正「量哪个页」与「打不开时说什么」（gated 用冒号，外层打印已有 打开未生效（…） 一对）。零机型／零 UA 分支不变，判据仍是「点图标 → 目标页是否可见」这一个 DOM 事实。行为断言＝tools/verify-1279-func-diag-checkin-row.mjs（g/r 两侧同尺）。 ==== */
   { name: "#1279a 功能诊断「寻踪」量的是寻踪页本身（换回 page-ta-checkin＝诊断去量字卡库那页，图标点开的是寻踪页，恒判「打开未生效」＝用户实报的那行假读数复发）", file: "js/device.js", needle: "app: 'checkin', page: 'page-checkin', open: true" },
+  { name: "#1600 功能诊断登记「睡眠小屋 3D」入口函数（删＝新增全屏房间漏测；该页在 .phone 内不是 .page，只测 openSleepRoom 存在）", file: "js/device.js", needle: "{ n: '睡眠小屋 3D', fn: 'openSleepRoom' }" },
   { name: "#1279z 诊断不得再凭空报「绑定 TA/授权定位」（项目里没有这一步也没有那项权限；回流＝给用户指一个不存在的门槛，用户会去系统设置里找本站没有的定位权限）", file: "js/device.js", needle: "可能需先绑定 TA/授权定位", absent: true },
   /* ==== 2026-09-25 #1280（用户问「帮检查还有没有这种错误？」＝#1279 同族全表扫一遍时发现的第二处）：功能诊断表的「群聊」行也挂着 gated: '可能未开启群聊' 这句门槛，而 group-chat.js 的 enterGroupChat() 里根本没有开关判断——「开启群聊」开关只决定图标放桌面还是收进组件库（personalize.js applyGroupChatMode），无头真点实测（默认未开启群聊）图标照样打开 page-group-chat。
       这句只在「打开失败」时才打印，那种情况下真因永远是模块没加载/别的故障，不会是没开群聊＝又一句凭空原因把排查带偏。修法＝删掉该行 gated，打不开就照实报「✗ 点击图标后页面未打开」。

@@ -11050,6 +11050,24 @@ box-shadow: var(--rv-shadow-m); font-size: 13px; cursor: pointer;
 }
 #page-room #planBack[hidden] { display: none; }
 #page-room.rv-plan3d #controls, #page-room.rv-plan3d #hud { display: none !important; }
+.sleeproom-shell {
+position: absolute;
+inset: 0;
+z-index: 1200;
+background: #0a0a0a;
+border-radius: inherit;
+overflow: hidden;
+}
+.sleeproom-shell[hidden] { display: none; }
+.sleeproom-shell iframe {
+position: absolute;
+inset: 0;
+display: block;
+width: 100%;
+height: 100%;
+border: 0;
+background: #0a0a0a;
+}
 #page-drift { overflow: hidden; }
 .drift-scroll {
 flex: 1; overflow-y: auto;
@@ -13904,7 +13922,7 @@ color: var(--gh-faint);
            （名称+版号 / 部署时间+实时秒 / 版本检测行）收成一行；检测行随 ver-check.js 退役删除。
            data-build-ts / data-version 两属性保留：device.js 诊断、bg-keep 自检、pwa.js 旧包检测
            仍只读属性（诊断版本号走 data-version 兜底，device.js 两处缓存原生支持）。 -->
-      <div class="splash-ver" id="splash-ver" data-build-ts="1793253632529" data-version="v8.5">
+      <div class="splash-ver" id="splash-ver" data-build-ts="1793723321223" data-version="v8.5">
         <span class="sv-app">Mochi 字卡传讯 已完结停更</span>
       </div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
@@ -14109,7 +14127,7 @@ color: var(--gh-faint);
 <button class="we-btn" id="weekend-fish" title="摸鱼 +1">摸鱼 +<b id="weekend-count">0</b></button>
 </div>
 
-<!-- 第二页功能：两排图标（第一排 音乐/聊天统计/提问记录/寻踪；第二排 花园/此间/同频(注入)/伸手(注入)；
+<!-- 第二页功能：两排图标（第一排 音乐/聊天统计/提问记录/寻踪/睡眠小屋；第二排 花园/此间/同频(注入)/伸手(注入)；
      喝水已移至第三页 p3-grid（p2-features 注入）），整组移到摸鱼组件（周末倒计时）下面 -->
 <div class="app-grid p2-grid" data-app="p2" data-desk-widget="p2apps">
 <div class="app" data-app="music" data-desk-widget="app-music">
@@ -14127,6 +14145,10 @@ color: var(--gh-faint);
 <div class="app" data-app="checkin" data-desk-widget="app-checkin">
 <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/><path d="M12 3a9 9 0 000 18"/></svg></div>
 <div class="app-name">寻踪</div>
+</div>
+<div class="app" data-app="sleep3d" data-desk-widget="app-sleep3d">
+<div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 17.5v-6.1a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2v6.1"/><path d="M3.5 17.5h17M6 17.5v2.2M18 17.5v2.2"/><path d="M7 9.4V7.1a1.1 1.1 0 0 1 1.1-1.1h3.4"/><path d="M17.3 4.1a2.6 2.6 0 1 0 2.4 4.1 3.1 3.1 0 0 1-2.4-4.1z"/></svg></div>
+<div class="app-name">睡眠小屋</div>
 </div>
 <!-- 花园自第三页移入：第二排「花园 此间 同频 伸手」（此间紧随其后为模板静态图标，同频/伸手由 p2-features 追加） -->
 <div class="app" data-app="garden" data-desk-widget="app-garden">
@@ -20471,6 +20493,10 @@ color: var(--gh-faint);
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 14l-3.5 4M12 14l3.5 4M8 14c1.2-2.6 2-4.5 4-7 1.4 1.8 2.2 3.4 3 4.6M8 14c1.4.5 2.7.5 4 0 1.4.5 2.7.5 4 0"/><circle cx="12" cy="7" r=".8" fill="currentColor" stroke="none"/></svg></span>
             <span>飞行棋</span>
           </button>
+          <button class="more-item" id="more-sleep3d" data-mcat="tool" title="睡眠小屋（3D 睡眠房间）">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 17.5v-6.1a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2v6.1"/><path d="M3.5 17.5h17M6 17.5v2.2M18 17.5v2.2"/><path d="M7 9.4V7.1a1.1 1.1 0 0 1 1.1-1.1h3.4"/><path d="M17.3 4.1a2.6 2.6 0 1 0 2.4 4.1 3.1 3.1 0 0 1-2.4-4.1z"/></svg></span>
+            <span>睡眠小屋</span>
+          </button>
           <button class="more-item" id="more-ck" data-mcat="tool" title="寻踪（打开 TA 的日常）">
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/><path d="M12 3a9 9 0 000 18"/></svg></span>
             <span>寻踪</span>
@@ -21016,6 +21042,11 @@ color: var(--gh-faint);
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.5" r="3.2"/><path d="M2.8 19.5c0-3.4 2.8-5.6 6.2-5.6s6.2 2.2 6.2 5.6"/><path d="M16 4.2h4.6V8.8"/><path d="M20.6 4.2l-5.2 5.2"/></svg>
     </div>
   </div>
+  <!-- 睡眠小屋 3D 全屏层：必须在 .phone 内、所有 .page 与 tabbar 之外，才能盖住底部导航；
+       入口见 src/js/sleeproom.js（桌面图标 / 聊天更多功能），返回由 iframe 内按钮 postMessage。 -->
+  <div class="sleeproom-shell" id="sleeproom-shell" hidden>
+    <iframe class="sr-frame" id="sleeproom-frame" title="睡眠小屋 3D"></iframe>
+  </div>
   </div>
 
 <!-- （#477）tabbar 原先位于本注释处＝.phone 闭合之后＝body 直子（跑到右侧的根因）。勿移回此处。 -->
@@ -21061,7 +21092,7 @@ color: var(--gh-faint);
   // v3.5.123：readonly 起手（防 Chrome 密码弹条破坏表单签名）——这里立即解除，
   // 早于所有功能模块，任何设备都不会出现输入框不可用的情况
   (function () { var _ci = document.getElementById('chat-input'); if (_ci) _ci.readOnly = false; })();
-window.__jsErrors = window.__jsErrors || []; window.__mochiLoaded = window.__mochiLoaded || []; window.__mochiErrLoaded = window.__mochiErrLoaded || []; window.__mochiBootAt = Date.now(); window.__mochiJsFiles = ["device.js","splash-opening.js","paper-skin.js","entry-notice.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","mail-postal.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","garden-herbarium.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-core.js","room-iso.js","room.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","pwa.js","cjian.js","feature-hub.js","app-market.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"]; window.__mochiExtFiles = ["splash-opening.js","paper-skin.js","entry-notice.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","mail-postal.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","garden-herbarium.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-core.js","room-iso.js","room.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","cjian.js","feature-hub.js","app-market.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"];
+window.__jsErrors = window.__jsErrors || []; window.__mochiLoaded = window.__mochiLoaded || []; window.__mochiErrLoaded = window.__mochiErrLoaded || []; window.__mochiBootAt = Date.now(); window.__mochiJsFiles = ["device.js","splash-opening.js","paper-skin.js","entry-notice.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","mail-postal.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","garden-herbarium.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-core.js","room-iso.js","room.js","sleeproom.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","pwa.js","cjian.js","feature-hub.js","app-market.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"]; window.__mochiExtFiles = ["splash-opening.js","paper-skin.js","entry-notice.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","mail-postal.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","garden-herbarium.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-core.js","room-iso.js","room.js","sleeproom.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","cjian.js","feature-hub.js","app-market.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"];
 (function () { try {
 (function () {
 try { window.__jsErrors = window.__jsErrors || []; } catch (e0) {}
@@ -24079,6 +24110,7 @@ const FUNC_ITEMS = [
 { n: '统计', app: 'stats', page: 'page-stats', open: true },
 { n: '提问记录', app: 'interact', page: 'page-interact', open: true },
 { n: '寻踪打卡', app: 'checkin', page: 'page-checkin', open: true },   // #1279 图标开的是寻踪页 page-checkin（不是字卡库题库页）。#1403 起删掉 gated 那句：总开关不再拦这一页（关掉后页面照开、页顶写明「已禁用」），留着它＝真出故障时诊断会拿「总开关已关闭」当借口，正是 #1279 要治的那一型凭空原因
+{ n: '睡眠小屋 3D', fn: 'openSleepRoom' },   // 全屏 iframe 房间：容器在 .phone 内、不是 .page，故只测入口函数（T3 的 .page/.ch-back 断言不适用）
 { n: '占卜', app: 'divination', page: 'page-divine', open: true },
 { n: '花园', app: 'garden', page: 'page-garden', open: true },
 { n: '此间', app: 'cjian', page: 'page-cjian', open: true },
@@ -25947,6 +25979,7 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 <script defer src="js/room-core.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('room-core.js')"></script>
 <script defer src="js/room-iso.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('room-iso.js')"></script>
 <script defer src="js/room.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('room.js')"></script>
+<script defer src="js/sleeproom.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('sleeproom.js')"></script>
 <script defer src="js/drift-bottle.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('drift-bottle.js')"></script>
 <script defer src="js/decision.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('decision.js')"></script>
 <script defer src="js/group-decision.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('group-decision.js')"></script>
@@ -25999,4 +26032,4 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 </body>
 </html>
 
-<!-- __MOCHI_EOF__ mvt4wufl -->
+<!-- __MOCHI_EOF__ mw0wjwjr -->
