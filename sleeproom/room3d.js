@@ -81,7 +81,9 @@ const state = {
   contactBucket: -1,
   cuddleBucket: -1,
   sleepBeganAt: 0,
-  userSleepSide: 0
+  userSleepSide: 0,
+  userSleepManual: null,
+  userBedSide: -1
 };
 state.uiTheme = readStored('mochi3d.uiTheme', 'auto');
 state.sleepLog = loadSleepLog();
@@ -434,7 +436,7 @@ function init() {
 
   setTimeout(() => els.hint.classList.add('hide'), 6000);
   window.__room3d = {
-    scene, camera, renderer, controls, state, peopleDefs, figureMap,
+    scene, camera, renderer, controls, state, peopleDefs, figureMap, personTap, userSleepSide,
     get bed() { return bed; },
     get floorY() { return floorY; }
   };
@@ -797,13 +799,25 @@ function contactSide(p) {
   return contactOrder(p) % 2 === 0 ? -1 : 1;
 }
 
+function userBedSign() {
+  return state.userBedSide === 1 ? 1 : -1;
+}
+
+function userBedX() {
+  return state.mode === 'single' ? bed.x + userBedSign() * 0.27 : bed.x;
+}
+
+function contactBedSign() {
+  return -userBedSign();
+}
+
 function contactSleepSide(p) {
-  return state.mode === 'single' ? 1 : contactSide(p);
+  return state.mode === 'single' ? contactBedSign() : contactSide(p);
 }
 
 function cuddleSide(p) {
   let side = state.mode === 'single'
-    ? 1
+    ? contactBedSign()
     : (hash(p.id + ':side') < 0.5 ? -1 : 1);
   const others = peopleList().filter((x) => !x.me && x.id !== p.id && ['sleep', 'cuddle', 'kiss'].includes(x.state));
   const taken = others.map((o) => (o.state === 'sleep'
@@ -814,12 +828,17 @@ function cuddleSide(p) {
 }
 
 function userSleepSide() {
+  // 睡眠钟开启时点我可以手动锁定 -1 左侧 / 0 平躺 / 1 右侧，三种姿态都保留。
+  if (state.userSleepManual !== null) {
+    state.userSleepSide = state.userSleepManual;
+    return state.userSleepSide;
+  }
   const c = peopleList().find((x) => !x.me && (x.state === 'cuddle' || x.state === 'kiss'));
   if (c) state.userSleepSide = cuddleSide(c);
   if (!state.userSleepSide) {
-    state.userSleepSide = state.mode === 'single'
-      ? -1
-      : (hash(dateKey(new Date()) + ':user-side') < 0.5 ? -1 : 1);
+    // 单人也保留左右两种默认：每次开始睡随机落在左侧或右侧（平躺仍由点击切换）。
+    const seed = dateKey(new Date()) + ':' + (state.sleepBeganAt || 0) + ':user-side';
+    state.userSleepSide = hash(seed) < 0.5 ? -1 : 1;
   }
   return state.userSleepSide;
 }
@@ -829,7 +848,7 @@ function sleepSlot(p) {
   if (p.me) {
     const side = state.userPhase === 'sleep' ? userSleepSide() : 0;
     return {
-      x: state.mode === 'single' ? bed.x - 0.27 : bed.x,
+      x: userBedX(),
       y: bed.top + (side ? 0.18 : 0.14) * USER_SCALE,
       z: bed.maxZ - PILLOW_OFFSET + HEAD_LOCAL_Y * USER_SCALE,
       rotX: -Math.PI / 2,
@@ -840,7 +859,7 @@ function sleepSlot(p) {
   }
   const side = contactSleepSide(p);
   if (state.mode === 'single') {
-    return { x: bed.x + 0.27, y: bed.top + 0.18, z: bed.maxZ - PILLOW_OFFSET + HEAD_LOCAL_Y, rotX: -Math.PI / 2, rotY: 0, rotZ: side * 1.35, sideSleep: true };
+    return { x: bed.x + contactBedSign() * 0.27, y: bed.top + 0.18, z: bed.maxZ - PILLOW_OFFSET + HEAD_LOCAL_Y, rotX: -Math.PI / 2, rotY: 0, rotZ: side * 1.35, sideSleep: true };
   }
   const inBed = list.filter((x) => !x.me && ['sleep', 'cuddle', 'kiss'].includes(x.state));
   const sleepers = inBed.filter((x) => x.state === 'sleep');
@@ -860,7 +879,7 @@ function idleSpot(p) {
 }
 
 function bedSitSpot(p) {
-  const side = state.mode === 'single' ? 1 : (p.sitSide || (contactOrder(p) % 2 === 0 ? -1 : 1));
+  const side = state.mode === 'single' ? contactBedSign() : (p.sitSide || (contactOrder(p) % 2 === 0 ? -1 : 1));
   return { x: bed.x + side * 0.62, y: bed.top - 0.82, z: bed.maxZ + 0.06, rotX: 0, rotY: 0, rotZ: 0 };
 }
 
@@ -883,7 +902,7 @@ function cuddleSpot(p, kind) {
 function figureTarget(p, s) {
   if (p.me) {
     if (s === 'sleep') return sleepSlot(p);
-    const ux = state.mode === 'single' ? bed.x - 0.27 : bed.x;
+    const ux = userBedX();
     if (s === 'toBed') return { x: ux, y: floorY, z: bed.maxZ + 0.62, rotX: 0, rotY: Math.PI, rotZ: 0 };
     if (s === 'wakeSit') return { x: ux, y: bed.top + 0.02 - 0.84 * USER_SCALE, z: bed.maxZ + 0.06, rotX: 0, rotY: 0, rotZ: 0 };
     if (s === 'wakeStand') return { x: ux + 0.52, y: floorY, z: bed.maxZ + 0.55, rotX: 0, rotY: 0.4, rotZ: 0 };
@@ -1136,7 +1155,10 @@ function updateUserPhase() {
     if (settled || t > 3000) next = 'here';
   }
   if (next) {
-    if (next === 'sleep') state.sleepBeganAt = Date.now();
+    if (next === 'sleep') {
+      state.sleepBeganAt = Date.now();
+      if (timerState.sleepRunning) toast('睡着了 · 点我可以换睡姿');
+    }
     setUserPhase(next);
   }
 }
@@ -1417,19 +1439,38 @@ function onPointerUp(e) {
   pointer.y = -(e.clientY / innerHeight) * 2 + 1;
   raycaster.setFromCamera(pointer, camera);
   const hits = raycaster.intersectObjects(scene.children, true);
+  const people = [];
   for (const hit of hits) {
-    let o = hit.object;
+    let o = hit.object, kind = '', id = '';
     while (o) {
-      if (o.userData && o.userData.noteHotspot) return openNotesPage();
-      if (o.userData && o.userData.personId) return personTap(o.userData.personId);
+      if (o.userData && o.userData.noteHotspot) { kind = 'note'; break; }
+      if (o.userData && o.userData.personId) { kind = 'person'; id = o.userData.personId; break; }
       o = o.parent;
     }
+    if (kind === 'note') {
+      if (!people.length) return openNotesPage(); // 便签在更前面；人后面被挡住的便签不抢
+      continue;
+    }
+    if (kind === 'person' && id && people.indexOf(id) < 0) people.push(id);
   }
+  if (!people.length) return;
+  // 睡着并开着睡眠钟时，点到自己（哪怕被抱抱的联系人挡住一部分）优先切换睡姿。
+  if (timerState.sleepRunning && state.userPhase === 'sleep' && people.indexOf('me') >= 0) return personTap('me');
+  return personTap(people[0]);
 }
 
 function personTap(id) {
   const p = personById(id);
   if (!p || !peopleList().includes(p)) return;
+  if (p.me && timerState.sleepRunning && state.userPhase === 'sleep') {
+    const cur = userSleepSide();
+    const next = cur === -1 ? 0 : cur === 0 ? 1 : -1;
+    state.userSleepManual = next;
+    state.userSleepSide = next;
+    const label = next === -1 ? '左侧睡' : next === 1 ? '右侧睡' : '平躺';
+    toast('睡姿：' + label + ' · 再点一下切换');
+    return;
+  }
   toast(p.name + ' · ' + stateLabel(p) + ' · ' + fmt(state.time));
 }
 
@@ -1780,6 +1821,17 @@ function startSleepClock() {
   timerState.sleepRunning = true;
   state.sleepBeganAt = 0;
   state.userSleepSide = 0;
+  state.userSleepManual = null;
+  if (state.mode === 'single') {
+    // 单人：随机睡左/右枕头；如果联系人已经躺上床，自动让到另一侧，不挤联系人。
+    let side = hash('single-bed:' + Date.now()) < 0.5 ? -1 : 1;
+    const c = peopleList().find((p) => !p.me);
+    const fig = c && figureMap.get(c.id);
+    if (fig && fig.root.position.y > bed.top + 0.02) {
+      side = fig.root.position.x >= bed.x ? -1 : 1;
+    }
+    state.userBedSide = side;
+  }
   state.userPhase = 'toBed';
   state.userPhaseAt = Date.now();
   writeStored('mochi3d.sleepTimer.v1', { start: timerState.sleepStart, bed: timerState.sleepBed, date: timerState.sleepDate });
@@ -1787,7 +1839,7 @@ function startSleepClock() {
   closeSheet();
   refreshStates();
   renderClock();
-  toast('开始记录睡眠');
+  toast('开始记录睡眠 · 躺下后点我可以换睡姿');
 }
 
 function stopSleepClock(record) {
