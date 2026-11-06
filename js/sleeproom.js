@@ -39,6 +39,37 @@ return storeGet('lbl-partner') || readName($id('chat-partner-name')) || readName
 function userName() {
 return storeGet('lbl-user') || readName($id('lbl-user'));
 }
+function roomContactName(c) {
+if (!c) return '';
+try {
+var root = window.xyStore && window.xyStore('xy-home-v2');
+var raw = root && root.get('gc-profiles');
+if (raw) {
+var p = JSON.parse(raw);
+var prof = p && p[c.id];
+var gn = prof && String(prof.name || '').trim();
+if (gn) return gn.slice(0, 12);
+}
+} catch (e) {}
+try {
+var s = window.storeForCid ? window.storeForCid(c.id)
+: (window.xyStore ? window.xyStore('xy-home-v2:' + c.id) : null);
+var n = s && (s.get('cs-lbl-partner') || s.get('lbl-partner'));
+n = n && String(n).trim();
+if (n && n !== 'TA') return n.slice(0, 12);
+} catch (e) {}
+return String(c.name || '').trim().slice(0, 12);
+}
+function otherContact() {
+var active = 'default';
+try { if (window.getActiveContact) active = window.getActiveContact() || 'default'; } catch (e) {}
+var list = [];
+try { if (window.getContacts) list = window.getContacts() || []; } catch (e) {}
+for (var i = 0; i < list.length; i++) {
+if (list[i] && list[i].id !== active) return list[i];
+}
+return null;
+}
 function safePx(name) {
 try {
 var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -139,8 +170,12 @@ p.set('embed', '1');
 p.set('mode', 'single');
 var me = userName();
 var ta = partnerName();
+var c2 = otherContact();
+var ta2 = roomContactName(c2);
 if (me) p.set('me', me);
 if (ta) p.set('name', ta);
+p.set('group', c2 ? '1' : '0');
+if (ta2) p.set('name2', ta2);
 var st = safePx('--mochi-safe-top');
 var sb = safePx('--mochi-safe-bottom');
 if (st) p.set('safetop', String(st));

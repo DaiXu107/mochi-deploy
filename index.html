@@ -5832,6 +5832,45 @@ display:flex; align-items:center; gap:4px;
 }
 .feed-act.liked { color:#e05555; }
 .feed-act.faved { color:#d8a23c; }
+.feed-poll { margin-top:10px; display:flex; flex-direction:column; gap:7px; }
+.feed-poll-opt {
+position:relative; overflow:hidden; width:100%;
+display:flex; align-items:center; gap:8px; min-height:36px;
+padding:8px 11px; border-radius:10px; border:1px solid rgba(0,0,0,.1);
+background:rgba(0,0,0,.03); color:var(--ink);
+font-family:inherit; font-size:13px; text-align:left; cursor:pointer;
+-webkit-tap-highlight-color:transparent;
+}
+.feed-poll-fill {
+position:absolute; left:0; top:0; bottom:0; width:0;
+background:rgba(0,0,0,.07); border-radius:9px 0 0 9px;
+transition:width .28s ease; pointer-events:none;
+}
+.feed-poll-label { position:relative; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.feed-poll-num { position:relative; flex-shrink:0; font-size:11px; color:var(--muted); }
+.feed-poll-opt:active { background:rgba(0,0,0,.06); }
+.feed-poll-opt.mine { border-color:var(--ink); }
+.feed-poll-opt.mine .feed-poll-num { color:var(--ink); font-weight:600; }
+.feed-poll-meta { display:flex; justify-content:space-between; gap:10px; font-size:11px; color:var(--muted); line-height:1.5; }
+.feed-poll-voters { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:right; }
+.feed-poll-edit { margin-top:8px; padding:10px; border-radius:10px; background:rgba(0,0,0,.035); }
+.feed-poll-edit[hidden] { display:none; }
+.feed-poll-edit-head { display:flex; justify-content:space-between; gap:10px; font-size:11px; color:var(--muted); margin-bottom:7px; }
+.feed-poll-options { display:flex; flex-direction:column; gap:6px; }
+.feed-poll-row { display:flex; align-items:center; gap:6px; }
+.feed-poll-input {
+flex:1; min-width:0; height:32px; padding:0 10px; border-radius:8px;
+border:1px solid rgba(0,0,0,.1); background:rgba(255,255,255,.86);
+color:var(--ink); font-family:inherit; font-size:13px; outline:none;
+}
+.feed-poll-input:focus { border-color:rgba(0,0,0,.3); }
+.feed-poll-remove {
+width:28px; height:28px; flex-shrink:0; border:none; border-radius:50%;
+background:none; color:var(--muted); font-size:16px; line-height:1; cursor:pointer;
+}
+.feed-poll-remove:active { background:rgba(0,0,0,.06); }
+.feed-poll-add { margin-top:7px; padding:2px 0; border:none; background:none; color:var(--muted); font-size:12px; font-family:inherit; cursor:pointer; }
+.feed-poll-toggle.on { border-color:rgba(0,0,0,.35); background:rgba(0,0,0,.05); }
 .feed-likes {
 font-size:11px; color:var(--ink); background:rgba(0,0,0,.03);
 border-radius:8px; padding:6px 10px; margin-top:8px; line-height:1.5;
@@ -8827,6 +8866,13 @@ html.tablet .tabbar .tab { padding:14px 8px; border-radius:16px; }
 [data-theme="dark"] .mail-write-input { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
 [data-theme="dark"] .mail-tag.new { color:var(--btn-ink); background:var(--btn-bg); border-color:var(--btn-bg); }
 [data-theme="dark"] .feed-post { background:var(--dark-card-92); border-color:var(--dark-border); }
+[data-theme="dark"] .feed-poll-opt { border-color:var(--dark-border-12); background:rgba(255,255,255,.04); }
+[data-theme="dark"] .feed-poll-opt:active { background:rgba(255,255,255,.09); }
+[data-theme="dark"] .feed-poll-fill { background:rgba(255,255,255,.1); }
+[data-theme="dark"] .feed-poll-opt.mine { border-color:var(--ink); }
+[data-theme="dark"] .feed-poll-edit { background:rgba(255,255,255,.05); }
+[data-theme="dark"] .feed-poll-input { background:rgba(255,255,255,.08); border-color:var(--dark-border-12); color:var(--ink); }
+[data-theme="dark"] .feed-poll-remove:active { background:rgba(255,255,255,.1); }
 [data-theme="dark"] .feed-comment { background:var(--dark-hover); }
 [data-theme="dark"] .feed-input,
 [data-theme="dark"] .feed-write-area { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }
@@ -13922,7 +13968,7 @@ color: var(--gh-faint);
            （名称+版号 / 部署时间+实时秒 / 版本检测行）收成一行；检测行随 ver-check.js 退役删除。
            data-build-ts / data-version 两属性保留：device.js 诊断、bg-keep 自检、pwa.js 旧包检测
            仍只读属性（诊断版本号走 data-version 兜底，device.js 两处缓存原生支持）。 -->
-      <div class="splash-ver" id="splash-ver" data-build-ts="1793803045186" data-version="v8.5">
+      <div class="splash-ver" id="splash-ver" data-build-ts="1793937718668" data-version="v8.5">
         <span class="sv-app">Mochi 字卡传讯 已完结停更</span>
       </div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
@@ -18681,8 +18727,19 @@ color: var(--gh-faint);
             <button class="feed-pick-img" id="feed-pick-img">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:5px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>添加图片
             </button>
+            <button class="feed-pick-img feed-poll-toggle" id="feed-poll-toggle" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:5px"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>发起投票
+            </button>
             <span class="feed-preview" id="feed-preview" hidden></span>
             <!-- FIX 2026-09-18 #755：原 #feed-pick-file 静态 input（hidden）已删除，改走统一入口 -->
+          </div>
+          <div class="feed-poll-edit" id="feed-poll-edit" hidden>
+            <div class="feed-poll-edit-head"><span>投票选项</span><span>2–4 个，每个选项一句</span></div>
+            <div class="feed-poll-options" id="feed-poll-options">
+              <div class="feed-poll-row"><input class="feed-poll-input" maxlength="20" placeholder="选项 1"><button class="feed-poll-remove" type="button" title="删除这个选项">×</button></div>
+              <div class="feed-poll-row"><input class="feed-poll-input" maxlength="20" placeholder="选项 2"><button class="feed-poll-remove" type="button" title="删除这个选项">×</button></div>
+            </div>
+            <button class="feed-poll-add" id="feed-poll-add" type="button">＋ 再加一个选项</button>
           </div>
           <div style="font-size:11px;line-height:1.6;color:var(--muted);margin:6px 0 0" id="feed-pick-hint-note">选不了多张或点了没反应，是浏览器 / 所在 App 的限制：换 Chrome / Edge 再试（详见 使用说明第 13 节）</div>
           <button class="ta-add-btn" style="width:100%;margin-top:10px" id="feed-publish">发布</button>
@@ -26032,4 +26089,4 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 </body>
 </html>
 
-<!-- __MOCHI_EOF__ mw280nya -->
+<!-- __MOCHI_EOF__ mw4g76oc -->

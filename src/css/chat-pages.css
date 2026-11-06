@@ -3156,6 +3156,47 @@ body.mail-emoji-mode #emoji-panel { bottom: calc(64px + var(--mochi-safe-bottom,
 }
 .feed-act.liked { color:#e05555; }
 .feed-act.faved { color:#d8a23c; }
+/* ===== 朋友圈投票 ===== */
+.feed-poll { margin-top:10px; display:flex; flex-direction:column; gap:7px; }
+.feed-poll-opt {
+  position:relative; overflow:hidden; width:100%;
+  display:flex; align-items:center; gap:8px; min-height:36px;
+  padding:8px 11px; border-radius:10px; border:1px solid rgba(0,0,0,.1);
+  background:rgba(0,0,0,.03); color:var(--ink);
+  font-family:inherit; font-size:13px; text-align:left; cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.feed-poll-fill {
+  position:absolute; left:0; top:0; bottom:0; width:0;
+  background:rgba(0,0,0,.07); border-radius:9px 0 0 9px;
+  transition:width .28s ease; pointer-events:none;
+}
+.feed-poll-label { position:relative; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.feed-poll-num { position:relative; flex-shrink:0; font-size:11px; color:var(--muted); }
+.feed-poll-opt:active { background:rgba(0,0,0,.06); }
+.feed-poll-opt.mine { border-color:var(--ink); }
+.feed-poll-opt.mine .feed-poll-num { color:var(--ink); font-weight:600; }
+.feed-poll-meta { display:flex; justify-content:space-between; gap:10px; font-size:11px; color:var(--muted); line-height:1.5; }
+.feed-poll-voters { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:right; }
+/* 发布框里的投票编辑区 */
+.feed-poll-edit { margin-top:8px; padding:10px; border-radius:10px; background:rgba(0,0,0,.035); }
+.feed-poll-edit[hidden] { display:none; }
+.feed-poll-edit-head { display:flex; justify-content:space-between; gap:10px; font-size:11px; color:var(--muted); margin-bottom:7px; }
+.feed-poll-options { display:flex; flex-direction:column; gap:6px; }
+.feed-poll-row { display:flex; align-items:center; gap:6px; }
+.feed-poll-input {
+  flex:1; min-width:0; height:32px; padding:0 10px; border-radius:8px;
+  border:1px solid rgba(0,0,0,.1); background:rgba(255,255,255,.86);
+  color:var(--ink); font-family:inherit; font-size:13px; outline:none;
+}
+.feed-poll-input:focus { border-color:rgba(0,0,0,.3); }
+.feed-poll-remove {
+  width:28px; height:28px; flex-shrink:0; border:none; border-radius:50%;
+  background:none; color:var(--muted); font-size:16px; line-height:1; cursor:pointer;
+}
+.feed-poll-remove:active { background:rgba(0,0,0,.06); }
+.feed-poll-add { margin-top:7px; padding:2px 0; border:none; background:none; color:var(--muted); font-size:12px; font-family:inherit; cursor:pointer; }
+.feed-poll-toggle.on { border-color:rgba(0,0,0,.35); background:rgba(0,0,0,.05); }
 .feed-likes {
   font-size:11px; color:var(--ink); background:rgba(0,0,0,.03);
   border-radius:8px; padding:6px 10px; margin-top:8px; line-height:1.5;

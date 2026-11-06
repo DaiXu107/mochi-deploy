@@ -59,8 +59,9 @@ if (embed && embedBack) {
 const forcedTime = parseClock(q.get('time'));
 const startTime = forcedTime == null ? nowMinutes() : forcedTime;
 const triadDemo = q.get('demo') === 'triad';
+const hasGroup = q.get('group') !== '0';
 const state = {
-  mode: (q.get('mode') === 'group' || triadDemo) ? 'group' : 'single',
+  mode: hasGroup && (q.get('mode') === 'group' || triadDemo) ? 'group' : 'single',
   demoTriad: triadDemo,
   time: startTime,
   live: forcedTime == null,
@@ -127,9 +128,12 @@ const peopleDefs = {
 };
 const embedMeName = (q.get('me') || '').trim().slice(0, 12);
 const embedPartnerName = (q.get('name') || '').trim().slice(0, 12);
+const embedPartner2Name = (q.get('name2') || '').trim().slice(0, 12);
 const embedPartnerColor = (q.get('color') || '').trim();
 if (embedMeName) peopleDefs.me.name = embedMeName;
 if (embedPartnerName) peopleDefs.him.name = embedPartnerName;
+if (embedPartner2Name) peopleDefs.xiaoman.name = embedPartner2Name;
+else if (embed) peopleDefs.xiaoman.name = '另一位';
 if (/^#[0-9a-f]{6}$/i.test(embedPartnerColor)) peopleDefs.him.color = embedPartnerColor;
 Object.values(peopleDefs).forEach((p) => {
   p.state = 'idle';
@@ -157,11 +161,6 @@ function dateStamp() {
 function dateKey(d) {
   return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
 }
-function addDays(d, n) {
-  const x = new Date(d);
-  x.setDate(x.getDate() + n);
-  return x;
-}
 function formatDuration(mins) {
   const m = Math.max(0, Math.round(mins));
   return Math.floor(m / 60) + 'h' + pad(m % 60);
@@ -179,17 +178,17 @@ function formatSeconds(total) {
 }
 function loadSleepLog() {
   const saved = readStored('mochi3d.sleepLog.v1', null);
-  if (saved && typeof saved === 'object') return saved;
-  const out = {};
-  const today = new Date();
-  for (let i = 1; i <= 7; i++) {
-    const d = addDays(today, -i);
-    const bed = 22 * 60 + 35 + ((i * 17) % 55);
-    const duration = 430 + ((i * 23) % 75);
-    out[dateKey(d)] = { bed, wake: (bed + duration) % 1440, duration, source: 'seed' };
-  }
-  writeStored('mochi3d.sleepLog.v1', out);
-  return out;
+  if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return {};
+  // 清掉早期原型写进去的 7 天演示数据；真实计时/手记记录保留。
+  let changed = false;
+  Object.keys(saved).forEach((k) => {
+    if (saved[k] && saved[k].source === 'seed') {
+      delete saved[k];
+      changed = true;
+    }
+  });
+  if (changed) writeStored('mochi3d.sleepLog.v1', saved);
+  return saved;
 }
 function saveSleepLog() {
   writeStored('mochi3d.sleepLog.v1', state.sleepLog);
@@ -1475,9 +1474,11 @@ function personTap(id) {
 }
 
 function openMenu() {
-  const modeSeg = '<div class="seg" id="modeSeg">' +
-    '<button data-mode="single" class="' + (state.mode === 'single' ? 'on' : '') + '">单人</button>' +
-    '<button data-mode="group" class="' + (state.mode === 'group' ? 'on' : '') + '">群聊</button></div>';
+  const modeSeg = hasGroup
+    ? '<div class="seg" id="modeSeg">' +
+      '<button data-mode="single" class="' + (state.mode === 'single' ? 'on' : '') + '">单人</button>' +
+      '<button data-mode="group" class="' + (state.mode === 'group' ? 'on' : '') + '">群聊</button></div>'
+    : '';
   const themeSeg = '<div class="setting-label" style="margin-top:14px"><span>界面</span></div>' +
     '<div class="seg" id="themeSeg">' +
     '<button data-theme="auto" class="' + (state.uiTheme === 'auto' ? 'on' : '') + '">自动</button>' +

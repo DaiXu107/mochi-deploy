@@ -268,6 +268,13 @@
 /* v3.11.x：文字跟 --btn-ink（原硬编码 #fff 在默认黑 accent 反转成浅底后白字白底不可见） */
 [data-theme="dark"] .mail-tag.new { color:var(--btn-ink); background:var(--btn-bg); border-color:var(--btn-bg); }
 [data-theme="dark"] .feed-post { background:var(--dark-card-92); border-color:var(--dark-border); }
+[data-theme="dark"] .feed-poll-opt { border-color:var(--dark-border-12); background:rgba(255,255,255,.04); }
+[data-theme="dark"] .feed-poll-opt:active { background:rgba(255,255,255,.09); }
+[data-theme="dark"] .feed-poll-fill { background:rgba(255,255,255,.1); }
+[data-theme="dark"] .feed-poll-opt.mine { border-color:var(--ink); }
+[data-theme="dark"] .feed-poll-edit { background:rgba(255,255,255,.05); }
+[data-theme="dark"] .feed-poll-input { background:rgba(255,255,255,.08); border-color:var(--dark-border-12); color:var(--ink); }
+[data-theme="dark"] .feed-poll-remove:active { background:rgba(255,255,255,.1); }
 [data-theme="dark"] .feed-comment { background:var(--dark-hover); }
 [data-theme="dark"] .feed-input,
 [data-theme="dark"] .feed-write-area { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }

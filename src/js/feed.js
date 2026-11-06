@@ -330,8 +330,26 @@
     const p = (n) => (n < 10 ? '0' + n : '' + n);
     return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + p(d.getHours()) + ':' + p(d.getMinutes());
   }
+  // 朋友圈投票：选项每人一票，votes 存投票人的朋友圈昵称（与 likes 同口径）。
+  // 历史数据可能有同一人重复投进两个选项，这里按「一人一票」去重。
+  function normPoll(poll) {
+    if (!poll || typeof poll !== 'object' || !Array.isArray(poll.options)) return poll;
+    const seen = Object.create(null);
+    poll.options = poll.options.filter(o => o && typeof o === 'object').map((o, i) => {
+      const votes = [];
+      (Array.isArray(o.votes) ? o.votes : []).forEach(v => {
+        const s = String(v == null ? '' : v).trim();
+        if (!s || seen[s]) return;
+        seen[s] = 1;
+        votes.push(s);
+      });
+      return { id: String(o.id || ('o' + (i + 1))), text: String(o.text || '').trim(), votes: votes };
+    });
+    return poll;
+  }
   function normPost(p) {
     if (p.by && !p.role) { p.role = p.by; if (!p.owner) p.owner = 'default'; }
+    if (p.poll) normPoll(p.poll);
     // v3.20.x：评论/回复去重——历史数据（iOS 键盘/重复触发等）可能把同一内容重复入库，
     //   load() 若不合并，评论区每条评论就会显示成两条（两端重复）。按 ts+身份+作者+内容
     //   精确去重，仅折叠完全相同的重复副本；不同评论不受影响。merge 路径已有 deeperList，
@@ -476,6 +494,24 @@
     (a || []).concat(b || []).forEach(s => { if (typeof s === 'string' && !seen[s]) { seen[s] = 1; out.push(s); } });
     return out;
   }
+  // 投票并集：合并 LS / IDB / 剥图快照两侧时按选项 id 认同一格，票数取并集——
+  // 联系人刚投的那一票不会被另一侧旧副本整组盖掉。
+  function unionPoll(a, b) {
+    if (!a && !b) return undefined;
+    const base = Object.assign({}, a || b);
+    const byKey = {}, out = [];
+    [a, b].forEach(poll => {
+      ((poll && poll.options) || []).forEach(o => {
+        if (!o || typeof o !== 'object') return;
+        const k = String(o.id || o.text || '');
+        let prev = byKey[k];
+        if (!prev) { prev = { id: o.id, text: o.text, votes: [] }; byKey[k] = prev; out.push(prev); }
+        (Array.isArray(o.votes) ? o.votes : []).forEach(v => { if (prev.votes.indexOf(v) < 0) prev.votes.push(v); });
+      });
+    });
+    base.options = out;
+    return normPoll(base);
+  }
   // FIX 2026-09-26 #1219 贴纸并集——旧写法没有这一栏的合并：Object.assign 让 ts 较大的一侧
   //   整组盖掉另一侧。剥图快照的 stickers 与权威侧的 stickers 谁新谁赢＝快照那一侧可能带着
   //   上一时刻的三张贴纸把 IDB 里「第四张刚贴的」整组抹掉，反过来也会让快照里被剥空的格子
@@ -515,6 +551,8 @@
     if (!out.taAv && older.taAv) out.taAv = older.taAv;
     out.likes = unionStrArr(older.likes, newer.likes);
     out.comments = deeperList(older.comments, newer.comments);
+    const poll = unionPoll(older.poll, newer.poll);
+    if (poll) out.poll = poll;
     return out;
   }
   // 按 id 合并两个动态列表（同 id 深度合并，见 deepMergePost），按 ts 倒序
@@ -1106,6 +1144,34 @@
   // v3.6.x：老数据兼容——旧版动态把图片/表情包 dataURL 直接拼进正文（含 sticker:/image:
   // 前缀与无前缀两种），与我的发布/新 TA 动态的 imgs 网格显示不一致；这里渲染时把它们
   // 抽出来并入图片网格，保证「联系人发布的图片/表情包 与 我发布的 大小一致」。
+  // 投票区块：选项、票数与百分比、我投了哪一项、已投名单。
+  // 主列表与「全部朋友圈」共用；点选项改票，事件在 bindEvents 里统一委托。
+  function pollHtmlFor(p) {
+    const poll = p.poll;
+    if (!poll || !Array.isArray(poll.options) || poll.options.length < 2) return '';
+    const myName = feedUserName();
+    const mine = poll.options.find(o => Array.isArray(o.votes) && o.votes.indexOf(myName) >= 0) || null;
+    let total = 0;
+    const voters = [], seen = Object.create(null);
+    poll.options.forEach(o => {
+      const votes = Array.isArray(o.votes) ? o.votes : [];
+      total += votes.length;
+      votes.forEach(v => { if (!seen[v]) { seen[v] = 1; voters.push(v); } });
+    });
+    const rows = poll.options.map(o => {
+      const votes = Array.isArray(o.votes) ? o.votes : [];
+      const pct = total ? Math.round(votes.length / total * 100) : 0;
+      return '<button type="button" class="feed-poll-opt' + (mine === o ? ' mine' : '') + '" data-poll="' + attrEsc(p.id) + '" data-opt="' + attrEsc(o.id) + '">' +
+        '<span class="feed-poll-fill" style="width:' + pct + '%"></span>' +
+        '<span class="feed-poll-label">' + esc(o.text) + '</span>' +
+        '<span class="feed-poll-num">' + votes.length + ' 票 · ' + pct + '%</span>' +
+        '</button>';
+    }).join('');
+    const votersLine = voters.length ? '已投：' + voters.join('、') : '还没有人投票';
+    return '<div class="feed-poll">' + rows +
+      '<div class="feed-poll-meta"><span>共 ' + total + ' 人参与 · 可改票</span>' +
+      '<span class="feed-poll-voters">' + esc(votersLine) + '</span></div></div>';
+  }
   function contentHtmlFor(p) {
     let content = String(p.content || '');
     const imgs = (p.imgs && p.imgs.length) ? p.imgs.slice() : (p.img ? [p.img] : []);
@@ -1117,6 +1183,7 @@
     // #1406：正文单独一层（.feed-body）——长信折行只收这一块，配图区与展开按钮不受裁剪
     const clamp = feedLongBody(content);
     let html = '<div class="feed-body' + (clamp ? ' feed-clamp' : '') + '">' + inlineBody(content, (p.role || p.by) === 'me' ? '' : p.owner) + '</div>';
+    if (p.poll) html += pollHtmlFor(p);
     // #845：配图区不再只跟配图走——纯文字动态贴过贴纸时也要画一张空白底纸（.feed-imgs-blank），
     // 否则贴纸存进了数据却没有任何承载层可显示（「那一行没有贴纸按钮」的连带缺陷）。
     const hasStickers = Array.isArray(p.stickers) && p.stickers.length > 0;
@@ -2169,6 +2236,25 @@
       body.classList.toggle('feed-open', !clamped);
       b.textContent = clamped ? '展开全文' : '收起';
     }));
+    // 投票：我只投自己这一票，点别的选项＝改票（一人一票，不代替联系人投票）
+    listEl.querySelectorAll('.feed-poll-opt').forEach(b => b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const pid = b.dataset.poll, oid = b.dataset.opt;
+      const list = load();
+      const p = list.find(x => x.id === pid);
+      if (!p || !p.poll || !Array.isArray(p.poll.options)) return;
+      const nm = feedUserName();
+      let target = null;
+      p.poll.options.forEach(o => {
+        o.votes = (Array.isArray(o.votes) ? o.votes : []).filter(v => v !== nm);
+        if (o.id === oid) target = o;
+      });
+      if (!target) return;
+      target.votes.push(nm);
+      save(list);
+      refreshPostCard(pid, p);
+      toast('已投「' + target.text + '」 · 可改票');
+    }));
     // 点赞：我点赞后 TA 有概率回赞
     listEl.querySelectorAll('.feed-act[data-like]').forEach(b => b.addEventListener('click', () => {
       const list = load();
@@ -2818,7 +2904,9 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
             ? '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" style="width:14px;height:14px"><path d="M12 21s-7.5-4.7-9.3-9A5.3 5.3 0 0112 6.4a5.3 5.3 0 019.3 5.6c-1.8 4.3-9.3 9-9.3 9z"/></svg>'
             : n.type === 'comment'
               ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:14px;height:14px"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>'
-              : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:14px;height:14px"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>';
+              : n.type === 'poll'
+                ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:14px;height:14px"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>'
+                : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:14px;height:14px"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>';
           // v3.11.x：评论类通知带内容首图缩略图——回复的是表情包/图片时直接可见，
           // 不再只显示「[表情包]」占位字（用户反馈"回复了图片但只有两个字不知道是啥"）
           const thumb = noticeThumbOf(n, postsForThumbs);
@@ -3056,10 +3144,76 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
     return ok ? out : raw; // 池未持久＝引用绝不先落库，退回内联原件
   }
   let _feedPubBusy = false;
+  // ===== 投票发布框 =====
+  function pollRowHtml(n) {
+    return '<div class="feed-poll-row"><input class="feed-poll-input" maxlength="20" placeholder="选项 ' + n + '"><button class="feed-poll-remove" type="button" title="删除这个选项">×</button></div>';
+  }
+  function collectPollOptions() {
+    const box = document.getElementById('feed-poll-options');
+    if (!box) return null;
+    const seen = Object.create(null), options = [];
+    // 输入框会被全局 ce-box 转成「可见 contenteditable + 隐藏 ghost input」两层，
+    // 按行取值：可见层优先，取不到再读 ghost input；不能直接扫类名，否则同一行会读两遍。
+    box.querySelectorAll('.feed-poll-row').forEach(row => {
+      const ce = row.querySelector('.ce-box.feed-poll-input');
+      const inp = row.querySelector('input.feed-poll-input');
+      const raw = (ce && String(ce.textContent || '').trim()) || (inp && String(inp.value || '').trim()) || '';
+      const text = raw.replace(/\s+/g, ' ').trim().slice(0, 20);
+      if (!text || seen[text]) return;
+      seen[text] = 1;
+      options.push({ id: 'o' + (options.length + 1), text: text, votes: [] });
+    });
+    return options.length >= 2 ? { options: options, ts: Date.now() } : null;
+  }
+  function resetPollEditor() {
+    const edit = document.getElementById('feed-poll-edit');
+    if (edit) edit.hidden = true;
+    const toggle = document.getElementById('feed-poll-toggle');
+    if (toggle) toggle.classList.remove('on');
+    const box = document.getElementById('feed-poll-options');
+    if (box) box.innerHTML = pollRowHtml(1) + pollRowHtml(2);
+  }
+  // 发布投票后，各联系人各自按概率陆续投票（一人一票，可停留在一个选项上）；
+  // 投完可能再留一句，走各自桌面的字卡库与评论概率。用户那一票始终由用户自己点。
+  function schedulePollVotes(pid) {
+    const base = load().find(x => x.id === pid);
+    if (!base || !base.poll) return;
+    const contacts = (window.getContacts && window.getContacts()) || [{ id: 'default' }];
+    contacts.forEach(ct => {
+      const cid = ct && ct.id ? ct.id : 'default';
+      const name = taFeedNameFor(cid);
+      if (!name) return;
+      if (base.poll.options.some(o => (o.votes || []).indexOf(name) >= 0)) return;
+      if (Math.random() * 100 >= 75) return;
+      const delay = 4000 + Math.random() * 20000;
+      setTimeout(() => {
+        const list = load();
+        const p = list.find(x => x.id === pid);
+        if (!p || !p.poll || !p.poll.options.length) return;
+        const nm = taFeedNameFor(cid);
+        if (!nm || p.poll.options.some(o => (o.votes || []).indexOf(nm) >= 0)) return;
+        const opt = p.poll.options[Math.floor(Math.random() * p.poll.options.length)];
+        opt.votes = Array.isArray(opt.votes) ? opt.votes : [];
+        opt.votes.push(nm);
+        save(list);
+        refreshPostCard(pid);
+        addNotice('poll', pid, nm + ' 投了「' + opt.text + '」', cid);
+      }, delay);
+    });
+  }
   async function publish() {
     const input = document.getElementById('feed-input');
     const content = input ? input.value.trim() : '';
     if (!content && !pickedImgs.length) { toast('写点什么再发布吧'); return; }
+    // 投票：至少两个不一样的选项；正文当作投票问题，不能空着
+    const pollEdit = document.getElementById('feed-poll-edit');
+    const pollOn = !!(pollEdit && !pollEdit.hidden);
+    let poll = null;
+    if (pollOn) {
+      poll = collectPollOptions();
+      if (!poll) { toast('投票至少要有两个不一样的选项'); return; }
+      if (!content) { toast('投票先写一句问题吧'); return; }
+    }
     if (_feedPubBusy) return;
     _feedPubBusy = true;
     const rawImgs = pickedImgs.slice();
@@ -3081,9 +3235,14 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
     //   头像稍大就把主键撑到 >200KB → 只进 IndexedDB 不进 localStorage → Edge 丢 IDB
     //   后纯文字动态也丢（OPPO Reno6 Edge 实现）。去掉后纯文字主键真的 <200KB 能写 LS。
     const post = { id: id, role: 'me', owner: me.owner, authorName: me.authorName, authorAv: '', taName: taName, taAv: '', content: content, imgs: imgsArr, ts: Date.now(), likes: [], comments: [] };
+    if (poll) post.poll = poll;
     list.unshift(post);
     save(list);
     renderVisible();
+    if (poll) {
+      resetPollEditor();
+      schedulePollVotes(id);
+    }
     // v3.7.x 兜底：render 后若列表没出现刚发布的动态（Edge 上 IDB 慢/门槛暂存时序异常），
     //   强制把 list 直接落盘 + 重渲染，确保发布后立刻可见。用户主动发布应立即持久化，
     //   绕过 save 门槛（门槛防的是 maybeAutoPost 等自动 save 覆盖，用户主动发布含完整 list）
@@ -3721,6 +3880,44 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
         if (fi) setTimeout(() => fi.focus(), 60);
         feedPubCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
+    });
+  }
+  // 发起投票：展开/收起选项编辑区；2–4 个选项，删除时至少留两个
+  const pollToggleBtn = document.getElementById('feed-poll-toggle');
+  const pollEditBox = document.getElementById('feed-poll-edit');
+  const pollOptionsBox = document.getElementById('feed-poll-options');
+  const pollAddBtn = document.getElementById('feed-poll-add');
+  if (pollToggleBtn && pollEditBox) {
+    pollToggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      pollEditBox.hidden = !pollEditBox.hidden;
+      pollToggleBtn.classList.toggle('on', !pollEditBox.hidden);
+      if (!pollEditBox.hidden) {
+        const first = pollEditBox.querySelector('.feed-poll-input');
+        if (first) setTimeout(() => first.focus(), 60);
+      }
+    });
+  }
+  if (pollAddBtn && pollOptionsBox) {
+    pollAddBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const n = pollOptionsBox.querySelectorAll('.feed-poll-row').length;
+      if (n >= 4) { toast('最多 4 个选项'); return; }
+      const wrap = document.createElement('div');
+      wrap.innerHTML = pollRowHtml(n + 1);
+      pollOptionsBox.appendChild(wrap.firstElementChild);
+      const last = pollOptionsBox.querySelector('.feed-poll-row:last-child .feed-poll-input');
+      if (last) last.focus();
+    });
+  }
+  if (pollOptionsBox) {
+    pollOptionsBox.addEventListener('click', (e) => {
+      const btn = e.target && e.target.closest ? e.target.closest('.feed-poll-remove') : null;
+      if (!btn) return;
+      e.stopPropagation();
+      if (pollOptionsBox.querySelectorAll('.feed-poll-row').length <= 2) { toast('至少保留两个选项'); return; }
+      const row = btn.closest('.feed-poll-row');
+      if (row) row.remove();
     });
   }
   const pubBtn = document.getElementById('feed-publish');
