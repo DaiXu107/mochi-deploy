@@ -28,8 +28,8 @@ bar:         { cat: '娱乐', desc: '用原料调制饮料并送到聊天', sinc
 cjian:       { cat: '工具', desc: '每位梦角的世界时间与在场状态' },
 divination:  { cat: '娱乐', desc: '塔罗 / 雷诺曼占卜（随群聊模式）' },
 period:      { cat: '记录', desc: '经期预测、症状与体温记录' },
-accounting:  { cat: '记录', desc: '收支分类、预算与账本' },
-'memo-arc':  { cat: '记录', desc: '认识 TA：九个分区与共同记录' },
+accounting:  { cat: '记录', desc: '账房：记账 + 存钱罐，收支分类、预算与心愿目标' },
+'memo-arc':  { cat: '记录', desc: '梦角档案 + 我的档案：认识 TA 与自我说明、IF 世界' },
 'my-arc':    { cat: '记录', desc: '写给 TA 的自我说明与 IF 设定' },
 room:        { cat: '娱乐', desc: '等距 2.5D 双人小屋', since: '2026-10-15' },
 appstore:    { cat: '工具', desc: '应用市场：把移除的图标加回桌面', since: '2026-10-17' },
@@ -40,7 +40,7 @@ eat:         { cat: '工具', desc: '随机抽菜 / 转盘，问问 TA 吃什么
 piggy:       { cat: '工具', desc: '存取与心愿目标，TA 当监督人' },
 pomo:        { cat: '工具', desc: '番茄钟专注计时' },
 memo:        { cat: '工具', desc: '备忘录：随手记下想说的' },
-market:      { cat: '娱乐', desc: '心意市集：挑选礼物送给 TA' },
+market:      { cat: '娱乐', desc: '心意市集 + 心意柜：挑礼物送 TA、收下并保管心意' },
 giftbox:     { cat: '娱乐', desc: '心意柜：收下与保管 TA 的心意' }
 };
 var CAT_ORDER = ['全部', '聊天', '记录', '工具', '娱乐', '互动', '其他'];
@@ -74,6 +74,7 @@ var seen = {}, list = [];
 Array.prototype.forEach.call(document.querySelectorAll('.app[data-app]'), function (app) {
 var k = app.dataset.app;
 if (!k || seen[k]) return;
+if (app.dataset.appMerged === '1') return; // 2026-11-16：成对功能已在主页合并，市场不再单列次级图标
 seen[k] = 1;
 var inPool = !!app.closest('#desk-widget-pool');
 var hid = hidden().indexOf(k) >= 0;

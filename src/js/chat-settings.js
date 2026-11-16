@@ -3509,6 +3509,59 @@
       prevRow = row;
     });
 
+  // 2026-11-16：后台被系统回收后自动重载的落点——默认回主页，也可固定/随机直接进联系人聊天。
+  // 设置存全局根键（跨联系人共用）：chat-resume-mode=off|fixed|random + chat-resume-cid。
+  // 真正跳转在 chat.js 启动时读 __sess-alive（上个会话不是正常收尾＝被系统回收重载）后执行。
+  const resumeChatRow = document.getElementById('cs-resume-chat');
+  if (resumeChatRow) {
+    const RNS = 'xy-home-v2';
+    const rGet = (k) => { try { const s2 = window.xyStore ? window.xyStore(RNS) : null; const v = s2 ? s2.get(k) : localStorage.getItem(RNS + ':' + k); return v == null ? '' : String(v); } catch (e) { return ''; } };
+    const rSet = (k, v) => { try { const s2 = window.xyStore ? window.xyStore(RNS) : null; if (s2) s2.set(k, v); else localStorage.setItem(RNS + ':' + k, v); } catch (e) {} };
+    const rContacts = () => { try { return (window.getContacts && window.getContacts()) || []; } catch (e) { return []; } };
+    const rName = (cid) => { const c = rContacts().find(x => x && x.id === cid); return c ? String(c.name || '联系人') : '联系人'; };
+    const rVal = document.getElementById('cs-resume-chat-val');
+    const refreshResume = () => {
+      if (!rVal) return;
+      const mode = rGet('chat-resume-mode') || 'fixed';
+      if (mode === 'random') rVal.textContent = '随机联系人';
+      else {
+        const cid = rGet('chat-resume-cid') || (window.getActiveContact ? window.getActiveContact() : '');
+        rVal.textContent = '固定：' + rName(cid || 'default');
+      }
+    };
+    refreshResume();
+    document.addEventListener('contact-switched', refreshResume);
+    resumeChatRow.addEventListener('click', () => {
+      if (!window.openModal) return;
+      const mode = rGet('chat-resume-mode') || 'fixed';
+      window.openModal('后台回来直接进聊天', '', (v) => {
+        if (v === 'fixed') {
+          const list = rContacts();
+          if (!list.length) { toast('还没有联系人'); return; }
+          const cur = rGet('chat-resume-cid') || (window.getActiveContact ? window.getActiveContact() : '') || '';
+          window.openModal('选择固定联系人', '', (cid) => {
+            if (!cid) return;
+            rSet('chat-resume-mode', 'fixed'); rSet('chat-resume-cid', cid);
+            refreshResume();
+            toast('后台被回收后，将直接打开「' + rName(cid) + '」的聊天');
+          }, {
+            noInput: true, pillSubmit: true, pill: cur,
+            pills: list.map(c => ({ label: String(c.name || '联系人'), value: c.id }))
+          });
+          return;
+        }
+        rSet('chat-resume-mode', 'random'); refreshResume();
+        toast('后台被回收后，将随机打开一位联系人的聊天');
+      }, {
+        noInput: true, pillSubmit: true, pill: mode,
+        pills: [
+          { label: '固定联系人', value: 'fixed' },
+          { label: '随机联系人', value: 'random' }
+        ]
+      });
+    });
+  }
+
     // v3.26.x #691：颜文字/emoji 点击行为模式（用户直派：「点击后输入聊天输入栏，我自己选择发」
     //   或「直接点击就发送」，在聊天设置里切换）。与上方 hide-tab-* 同口径——全局根键
     //   chat-textcard-direct（contacts.js EXCLUDE 排除迁移，聊天/群聊共用同一面板），

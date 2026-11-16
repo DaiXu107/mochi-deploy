@@ -2785,6 +2785,55 @@ document.addEventListener('contact-switched', syncCat);
 prevRow.parentNode.insertBefore(row, prevRow.nextSibling);
 prevRow = row;
 });
+const resumeChatRow = document.getElementById('cs-resume-chat');
+if (resumeChatRow) {
+const RNS = 'xy-home-v2';
+const rGet = (k) => { try { const s2 = window.xyStore ? window.xyStore(RNS) : null; const v = s2 ? s2.get(k) : localStorage.getItem(RNS + ':' + k); return v == null ? '' : String(v); } catch (e) { return ''; } };
+const rSet = (k, v) => { try { const s2 = window.xyStore ? window.xyStore(RNS) : null; if (s2) s2.set(k, v); else localStorage.setItem(RNS + ':' + k, v); } catch (e) {} };
+const rContacts = () => { try { return (window.getContacts && window.getContacts()) || []; } catch (e) { return []; } };
+const rName = (cid) => { const c = rContacts().find(x => x && x.id === cid); return c ? String(c.name || '联系人') : '联系人'; };
+const rVal = document.getElementById('cs-resume-chat-val');
+const refreshResume = () => {
+if (!rVal) return;
+const mode = rGet('chat-resume-mode') || 'fixed';
+if (mode === 'random') rVal.textContent = '随机联系人';
+else {
+const cid = rGet('chat-resume-cid') || (window.getActiveContact ? window.getActiveContact() : '');
+rVal.textContent = '固定：' + rName(cid || 'default');
+}
+};
+refreshResume();
+document.addEventListener('contact-switched', refreshResume);
+resumeChatRow.addEventListener('click', () => {
+if (!window.openModal) return;
+const mode = rGet('chat-resume-mode') || 'fixed';
+window.openModal('后台回来直接进聊天', '', (v) => {
+if (v === 'fixed') {
+const list = rContacts();
+if (!list.length) { toast('还没有联系人'); return; }
+const cur = rGet('chat-resume-cid') || (window.getActiveContact ? window.getActiveContact() : '') || '';
+window.openModal('选择固定联系人', '', (cid) => {
+if (!cid) return;
+rSet('chat-resume-mode', 'fixed'); rSet('chat-resume-cid', cid);
+refreshResume();
+toast('后台被回收后，将直接打开「' + rName(cid) + '」的聊天');
+}, {
+noInput: true, pillSubmit: true, pill: cur,
+pills: list.map(c => ({ label: String(c.name || '联系人'), value: c.id }))
+});
+return;
+}
+rSet('chat-resume-mode', 'random'); refreshResume();
+toast('后台被回收后，将随机打开一位联系人的聊天');
+}, {
+noInput: true, pillSubmit: true, pill: mode,
+pills: [
+{ label: '固定联系人', value: 'fixed' },
+{ label: '随机联系人', value: 'random' }
+]
+});
+});
+}
 const tcRow = document.createElement('div');
 tcRow.className = 'set-row';
 tcRow.id = 'cs-chat-textcard-direct-row';

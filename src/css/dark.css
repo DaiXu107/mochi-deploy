@@ -124,6 +124,7 @@
 [data-theme="dark"] .chat-send { background:var(--send-bg, var(--btn-bg)); color:var(--send-ink, var(--btn-ink)); }
 [data-theme="dark"] .chat-plus-btn { background:var(--dark-card-92); border-color:var(--dark-border); color:var(--ink); }
 [data-theme="dark"] .more-panel { background:var(--dark-card-97); border-color:var(--dark-border); }
+[data-theme="dark"] .more-page { background:rgba(255,255,255,.06); box-shadow:0 7px 20px rgba(0,0,0,.28); }
 [data-theme="dark"] .more-tab { background:var(--dark-card-92); color:var(--dark-soft); border-color:var(--dark-border); }
 [data-theme="dark"] .more-tab.sel { background:var(--btn-bg); color:var(--btn-ink); border-color:var(--btn-bg); }
 [data-theme="dark"] .more-tab:active { background:var(--dark-hover); }

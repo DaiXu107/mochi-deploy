@@ -4995,3 +4995,23 @@ select.mochi-custom-select-native { display:none; }
 .au-ed-foot { display:flex; align-items:center; justify-content:center; gap:10px; padding-bottom:2px; }
 .au-ed-foot .pong-overlay-btn { min-width:0; flex:1; }
 .au-ed-del { color:#ff8f8f !important; }
+
+/* ===== 主页成对应用合并：页内切换胶囊（app-merge.js） ===== */
+.app-merge-tabs {
+  display: flex; gap: 4px; flex-shrink: 0;
+  margin: 10px 16px 0; padding: 4px;
+  background: rgba(0, 0, 0, .045); border-radius: 14px;
+}
+.app-merge-tabs button {
+  flex: 1; min-width: 0; padding: 8px 6px; border: none; border-radius: 10px;
+  background: transparent; color: var(--muted);
+  font-family: inherit; font-size: 13px; font-weight: 700;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.app-merge-tabs button.on {
+  background: var(--card-bg, #fff); color: var(--ink);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .08);
+}
+[data-theme="dark"] .app-merge-tabs { background: rgba(255, 255, 255, .06); }
+[data-theme="dark"] .app-merge-tabs button.on { background: var(--dark-card, #222); color: var(--ink); box-shadow: none; }

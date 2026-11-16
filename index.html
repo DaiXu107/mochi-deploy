@@ -2106,7 +2106,8 @@ position:absolute; left:18px; right:18px; bottom:calc(96px + var(--mochi-safe-bo
 background:rgba(255,255,255,.97);
 border:1px solid rgba(0,0,0,.1);
 border-radius:20px; box-shadow:0 12px 32px rgba(0,0,0,.1);
-padding:16px;
+padding:16px; display:flex; flex-direction:column;
+max-height:min(64vh, 330px);
 }
 .more-panel[hidden] { display:none; }
 .more-tabs { display:flex; gap:6px; margin-bottom:14px; overflow-x:auto; scrollbar-width:none; }
@@ -2118,7 +2119,27 @@ background:rgba(255,255,255,.92); color:#666; cursor:pointer;
 font-family:inherit; -webkit-tap-highlight-color:transparent;
 }
 .more-tab.sel { background:#111; color:#fff; border-color:#111; }
-.more-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; justify-items:center; }
+.more-grid {
+display:block; flex:0 0 208px;
+height:208px; box-sizing:border-box;
+overflow-y:auto; overscroll-behavior:contain;
+scroll-snap-type:y mandatory; -webkit-overflow-scrolling:touch;
+padding:0;
+scrollbar-width:none; -ms-overflow-style:none;
+}
+.more-grid::-webkit-scrollbar { display:none; width:0; height:0; }
+.more-page {
+box-sizing:border-box; height:208px; width:100%;
+display:grid; grid-template-columns:repeat(4, 1fr); grid-template-rows:repeat(2, 1fr);
+gap:10px 14px; justify-items:center; align-items:start;
+padding:10px 8px; border-radius:18px;
+background:#fff;
+box-shadow:0 7px 20px rgba(0,0,0,.08);
+scroll-snap-align:start; scroll-snap-stop:always;
+}
+.more-page[hidden] { display:none; }
+.more-page--few { display:flex; flex-wrap:wrap; justify-content:center; align-content:center; gap:10px 14px; }
+.more-page--few .more-item { width:64px; }
 .more-grid[hidden] { display:none; }
 .more-item[hidden] { display:none; }
 .more-item {
@@ -7409,6 +7430,24 @@ justify-content:safe center;
 .au-ed-foot { display:flex; align-items:center; justify-content:center; gap:10px; padding-bottom:2px; }
 .au-ed-foot .pong-overlay-btn { min-width:0; flex:1; }
 .au-ed-del { color:#ff8f8f !important; }
+.app-merge-tabs {
+display: flex; gap: 4px; flex-shrink: 0;
+margin: 10px 16px 0; padding: 4px;
+background: rgba(0, 0, 0, .045); border-radius: 14px;
+}
+.app-merge-tabs button {
+flex: 1; min-width: 0; padding: 8px 6px; border: none; border-radius: 10px;
+background: transparent; color: var(--muted);
+font-family: inherit; font-size: 13px; font-weight: 700;
+cursor: pointer; -webkit-tap-highlight-color: transparent;
+white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.app-merge-tabs button.on {
+background: var(--card-bg, #fff); color: var(--ink);
+box-shadow: 0 1px 4px rgba(0, 0, 0, .08);
+}
+[data-theme="dark"] .app-merge-tabs { background: rgba(255, 255, 255, .06); }
+[data-theme="dark"] .app-merge-tabs button.on { background: var(--dark-card, #222); color: var(--ink); box-shadow: none; }
 .msg-gift { align-self: center; width: 100%; display: flex; justify-content: center; margin: 8px 0; }
 .msg-gift-card {
 width: min(260px, 80vw); padding: 22px 18px 14px; border-radius: 20px; box-sizing: border-box;
@@ -8733,6 +8772,7 @@ html.tablet .tabbar .tab { padding:14px 8px; border-radius:16px; }
 [data-theme="dark"] .chat-send { background:var(--send-bg, var(--btn-bg)); color:var(--send-ink, var(--btn-ink)); }
 [data-theme="dark"] .chat-plus-btn { background:var(--dark-card-92); border-color:var(--dark-border); color:var(--ink); }
 [data-theme="dark"] .more-panel { background:var(--dark-card-97); border-color:var(--dark-border); }
+[data-theme="dark"] .more-page { background:rgba(255,255,255,.06); box-shadow:0 7px 20px rgba(0,0,0,.28); }
 [data-theme="dark"] .more-tab { background:var(--dark-card-92); color:var(--dark-soft); border-color:var(--dark-border); }
 [data-theme="dark"] .more-tab.sel { background:var(--btn-bg); color:var(--btn-ink); border-color:var(--btn-bg); }
 [data-theme="dark"] .more-tab:active { background:var(--dark-hover); }
@@ -13968,7 +14008,7 @@ color: var(--gh-faint);
            （名称+版号 / 部署时间+实时秒 / 版本检测行）收成一行；检测行随 ver-check.js 退役删除。
            data-build-ts / data-version 两属性保留：device.js 诊断、bg-keep 自检、pwa.js 旧包检测
            仍只读属性（诊断版本号走 data-version 兜底，device.js 两处缓存原生支持）。 -->
-      <div class="splash-ver" id="splash-ver" data-build-ts="1794831943433" data-version="v8.5">
+      <div class="splash-ver" id="splash-ver" data-build-ts="1794837304321" data-version="v8.5">
         <span class="sv-app">Mochi 字卡传讯 已完结停更</span>
       </div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
@@ -16141,7 +16181,7 @@ color: var(--gh-faint);
           <div class="lic-li">聊天里点击顶部栏联系人的头像可打开【寻踪 TA 的日常】页面</div>
           <div class="lic-li">聊天页面点击顶部栏联系人的昵称，可以让对方立即发送消息</div>
           <div class="lic-li">可搜索聊天记录并跳转到对应位置</div>
-          <div class="lic-li">聊天 + 按钮展开更多功能面板（互动 / 小游戏 / 工具 / TA的提问 四分类）：互动类——邀请TA、通话、拍一拍、红包、心意集市、心意柜、头像和昵称互动、漂流瓶</div>
+          <div class="lic-li">聊天 + 按钮展开更多功能面板（互动 / 小游戏 / 工具 / 他主动 四分类）：互动类——邀请TA、通话、拍一拍、红包、心意集市、心意柜、头像和昵称互动、漂流瓶</div>
           <div class="lic-li">「邀请TA」半框内置【我的邀请】字卡库：预设 + 自定义分组，可存入 / 修改 / 删除邀请字卡，点字卡即可重复发送</div>
           <div class="lic-li">「邀请TA」半框顶部【📜 邀请记录】：查自己发出过的邀请与 TA 的回应（接受 / 拒绝 / 未回应）。<b>今天</b>的直接列出，更早的按日期折成一行、点日期展开，一次只露 5 天、点「加载更多」翻页；「清空记录」只清本桌面的邀请记录，问问TA 的记录不受影响</div>
           <div class="lic-li">小游戏类——猜拳、Pong、贪吃蛇、打砖块、钓鱼、四子棋、扫雷、记忆翻牌、五子棋、连连看、消消乐、拍卖会；工具类——帮我决定、多人决定、问问TA、搜索记录、占卜、寻踪、此间、房间、心情日记</div>
@@ -16690,7 +16730,7 @@ color: var(--gh-faint);
             <summary><span class="lg-num">6</span><span class="lg-name">功能都在哪里</span><span class="lg-count">7</span></summary>
             <div class="lg-body">
               <div class="lic-li">底部导航：<b>桌面 / 字卡库 / 设置</b> 三个主入口。</div>
-              <div class="lic-li">聊天：首页点联系人进入；右上角是<b>聊天设置</b>；输入框旁「+」展开更多功能面板，分 <b>互动 / 小游戏 / 工具 / TA的提问</b> 四类。</div>
+              <div class="lic-li">聊天：首页点联系人进入；右上角是<b>聊天设置</b>；输入框旁「+」展开更多功能面板，分 <b>互动 / 小游戏 / 工具 / 他主动</b> 四类。</div>
               <div class="lic-li"><b>互动</b>类：邀请 TA、通话、拍一拍、红包、心意集市、心意柜、头像和昵称互动、漂流瓶等。</div>
               <div class="lic-li"><b>小游戏</b>类：猜拳、Pong、贪吃蛇、打砖块、钓鱼、四子棋、扫雷、记忆翻牌等；<b>工具</b>类：帮我决定、多人决定、问问 TA、搜索记录、占卜、寻踪、此间、房间、心情日记等。</div>
                <div class="lic-li">桌面图标：日历、信箱、朋友圈、音乐、占卜、花园、房间、漂流瓶、记账、经期、备忘录、纪念等；左右滑动桌面临换页。</div>
@@ -17284,7 +17324,7 @@ color: var(--gh-faint);
             <div class="gs-row"><span>自动弹窗概率</span><div class="stepper" data-k="ckq-popup-prob" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="ckq-popup-prob-val" readonly><button class="stp-max">+</button></div></div>
             <div class="gs-row"><span>查岗冷却（分钟）</span><div class="stepper" data-k="ckq-cool" data-min="0" data-max="240" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="ckq-cool-val" readonly><button class="stp-max">+</button></div></div>
           </div>
-          <div class="gs-sub" style="padding:0 14px 14px">TA 主动找你时按概率来查你的岗：聊天里出现查岗问题卡（单选点击作答、文字题输入作答），作答后 TA 会回应；概率命中时直接弹出回答弹窗。冷却内不重复查岗，需开启「主动发送」，各联系人独立保存。查岗题库可在 字卡库 →「TA的查岗」里逐条开关或自定义添加。想立刻来一次（不看概率与冷却）：聊天 →「更多功能 → TA的提问 → 查岗」</div>
+          <div class="gs-sub" style="padding:0 14px 14px">TA 主动找你时按概率来查你的岗：聊天里出现查岗问题卡（单选点击作答、文字题输入作答），作答后 TA 会回应；概率命中时直接弹出回答弹窗。冷却内不重复查岗，需开启「主动发送」，各联系人独立保存。查岗题库可在 字卡库 →「TA的查岗」里逐条开关或自定义添加。想立刻来一次（不看概率与冷却）：聊天 →「更多功能 → 他主动 → 查岗」</div>
         </div>
         <!-- v3.9.x：其他——联系人主动邀请（猜拳/玩游戏），随 TA 主动找你的消息按概率触发 -->
         <div class="gs-panel" data-rpanel="other" hidden>
@@ -17300,14 +17340,14 @@ color: var(--gh-faint);
             <div class="gs-row"><span>主动分享你的字卡</span><label class="toggle"><input type="checkbox" id="ai-cc-en"><span class="tk"></span></label></div>
             <div class="gs-row"><span>分享字卡概率</span><div class="stepper" data-k="ai-cc-prob" data-min="0" data-max="100" data-step="1"><button class="stp-min">−</button><input class="stp-val" id="ai-cc-prob-val" readonly><button class="stp-max">+</button></div></div>
           </div>
-          <div class="gs-sub" style="padding:0 14px 14px">TA 主动找你的消息会按概率变成猜拳/游戏/贴贴邀请（游戏在 Pong、贪吃蛇中随机；贴贴同意后 TA 会回应一句），自动打开对应半框或回应，不想玩直接关掉即可；仅在你在聊天页时触发，需开启「主动发送」。邀请话术可在 字卡库 →「TA的邀请」里逐句开关或自定义添加；「分享你的字卡」从你在 字卡库 自建的纯文本卡（含公用）里随机抽一张当 TA 的悄悄话，冷却 90 分钟。想立刻要一次：聊天 →「更多功能 → TA的提问 → 邀请（猜拳等随机一种）/ 贴贴（一定是贴贴）」</div>
+          <div class="gs-sub" style="padding:0 14px 14px">TA 主动找你的消息会按概率变成猜拳/游戏/贴贴邀请（游戏在 Pong、贪吃蛇中随机；贴贴同意后 TA 会回应一句），自动打开对应半框或回应，不想玩直接关掉即可；仅在你在聊天页时触发，需开启「主动发送」。邀请话术可在 字卡库 →「TA的邀请」里逐句开关或自定义添加；「分享你的字卡」从你在 字卡库 自建的纯文本卡（含公用）里随机抽一张当 TA 的悄悄话，冷却 90 分钟。想立刻要一次：聊天 →「更多功能 → 他主动 → 邀请（猜拳等随机一种）/ 贴贴（一定是贴贴）」</div>
           <!-- v3.20.x：联系人跨桌面查岗 / 跨桌面来电——其他桌面的联系人按各自概率/冷却主动来查岗、来电 -->
           <div class="gs-title" style="margin-top:6px">联系人跨桌面查岗</div>
           <div class="set-group glass">
             <div class="gs-row"><span>跨桌面查岗概率</span><div class="stepper" data-k="ckq-prob" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="ckq-prob-val2" readonly><button class="stp-max">+</button></div></div>
             <div class="gs-row"><span>查岗冷却（分钟）</span><div class="stepper" data-k="ckq-cool" data-min="0" data-max="240" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="ckq-cool-val2" readonly><button class="stp-max">+</button></div></div>
           </div>
-          <div class="gs-sub" style="padding:0 14px 2px">其他桌面的联系人会按各自概率（默认 2%，可在此逐联系人调整）主动来查你的岗，每个触发后 30 分钟内不重复。全局开关在 设置 →「开启 联系人跨桌面查岗」，回应字卡可在 字卡库 →「联系人跨桌面查岗」里逐张开关。想立刻来一次（不看概率与冷却）：聊天 →「更多功能 → TA的提问 → 跨桌面查岗」</div>
+          <div class="gs-sub" style="padding:0 14px 2px">其他桌面的联系人会按各自概率（默认 2%，可在此逐联系人调整）主动来查你的岗，每个触发后 30 分钟内不重复。全局开关在 设置 →「开启 联系人跨桌面查岗」，回应字卡可在 字卡库 →「联系人跨桌面查岗」里逐张开关。想立刻来一次（不看概率与冷却）：聊天 →「更多功能 → 他主动 → 跨桌面查岗」</div>
           <div class="gs-title" style="margin-top:10px">联系人跨桌面打电话</div>
           <div class="set-group glass">
             <div class="gs-row"><span>跨桌面来电概率</span><div class="stepper" data-k="desk-call-prob" data-min="0" data-max="100" data-step="5"><button class="stp-min">−</button><input class="stp-val" id="desk-call-prob-val" readonly><button class="stp-max">+</button></div></div>
@@ -18023,7 +18063,7 @@ color: var(--gh-faint);
         <span class="ch-back" id="acc-back">
           <svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </span>
-        <span class="ch-name">记账</span>
+        <span class="ch-name">账房</span>
         <span class="acc-cog" id="acc-cog" title="分类管理"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
       </div>
       <div class="acc-scroll">
@@ -20212,7 +20252,7 @@ color: var(--gh-faint);
         <span class="ch-back" id="narc-back">
           <svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </span>
-        <span class="ch-name" id="narc-title">梦角档案</span>
+        <span class="ch-name" id="narc-title">档案</span>
         <span class="ch-settings" id="narc-manage" title="管理梦角">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
         </span>
@@ -20255,7 +20295,7 @@ color: var(--gh-faint);
         <span class="ch-back" id="myarc-back">
           <svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </span>
-        <span class="ch-name" id="myarc-title">我的档案</span>
+        <span class="ch-name" id="myarc-title">档案</span>
       </div>
       <div class="narc-scroll" id="myarc-root"></div>
     </div>
@@ -20429,7 +20469,7 @@ color: var(--gh-faint);
     </div>
 
 <div class="more-panel" id="chat-more-panel" hidden>
-        <!-- v3.15.x：功能增多后改为顶部分类 chips 切换（互动/小游戏/工具/TA的提问）。
+        <!-- v3.15.x：功能增多后改为顶部分类 chips 切换（互动/小游戏/工具/他主动）。
              功能按钮元素与 ID 全部保留（各功能模块按 ID 接线），仅加 data-mcat 由 JS 过滤显示；
              每个功能只归属一个分类、分类间互不重复（v3.16.x 起移除「常用」页签，原常用默认项并入所属分类） -->
         <!-- v3.16.x：群聊页打开更多面板时，@群成员 显示在分类 tabs 行最右（仅群聊有，聊天页隐藏） -->
@@ -20437,7 +20477,7 @@ color: var(--gh-faint);
           <button class="more-tab sel" type="button" data-mcat="chat">互动</button>
           <button class="more-tab" type="button" data-mcat="tool">工具</button>
           <button class="more-tab" type="button" data-mcat="game">小游戏</button>
-          <button class="more-tab" type="button" data-mcat="ask">TA的提问</button>
+          <button class="more-tab" type="button" data-mcat="ask">他主动</button>
           <button class="gc-more-at-top" id="gc-more-at" title="@群成员" hidden>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 006 0v-1a10 10 0 10-20 0v1a10 10 0 0010 10"/></svg>@群成员
           </button>
@@ -20951,6 +20991,15 @@ color: var(--gh-faint);
           <label class="toggle"><input type="checkbox" id="cs-hide-ta-sticker"><span class="tk"></span></label>
         </div>
       </div>
+      <!-- 2026-11-16：后台被系统回收后自动重载的落点——默认回主页，也可固定/随机直接进联系人聊天 -->
+      <div class="gs-title" data-tag="ui">后台回来</div>
+      <div class="set-group glass" data-tag="ui">
+        <div class="set-row" id="cs-resume-chat">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 00-2 2v14a2 2 0 002 2h8a2 2 0 002-2v-3"/><path d="M14 3h7v7"/><path d="M21 3l-8 8"/></svg></div>
+          <div class="txt">被系统回收后直接进聊天<span class="sub">页面在后台被浏览器回收、回来自动重载时，跳过主页直接打开聊天；可固定某位联系人或每次随机。正常打开 / 手动刷新不受影响。</span></div>
+          <div class="val" id="cs-resume-chat-val">回主页</div>
+        </div>
+      </div>
       <!-- v3.29.x：全屏模式行已提到功能页顶部常显（#927），本组留「显示」类显隐开关 -->
       <div class="gs-title" data-tag="ui">边缘防误触 / 悬浮窗</div>
       <div class="set-group glass" data-tag="ui">
@@ -21149,7 +21198,7 @@ color: var(--gh-faint);
   // v3.5.123：readonly 起手（防 Chrome 密码弹条破坏表单签名）——这里立即解除，
   // 早于所有功能模块，任何设备都不会出现输入框不可用的情况
   (function () { var _ci = document.getElementById('chat-input'); if (_ci) _ci.readOnly = false; })();
-window.__jsErrors = window.__jsErrors || []; window.__mochiLoaded = window.__mochiLoaded || []; window.__mochiErrLoaded = window.__mochiErrLoaded || []; window.__mochiBootAt = Date.now(); window.__mochiJsFiles = ["device.js","splash-opening.js","paper-skin.js","entry-notice.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","mail-postal.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","garden-herbarium.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-core.js","room-iso.js","room.js","sleeproom.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","pwa.js","cjian.js","feature-hub.js","app-market.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"]; window.__mochiExtFiles = ["splash-opening.js","paper-skin.js","entry-notice.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","mail-postal.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","garden-herbarium.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-core.js","room-iso.js","room.js","sleeproom.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","cjian.js","feature-hub.js","app-market.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js"];
+window.__jsErrors = window.__jsErrors || []; window.__mochiLoaded = window.__mochiLoaded || []; window.__mochiErrLoaded = window.__mochiErrLoaded || []; window.__mochiBootAt = Date.now(); window.__mochiJsFiles = ["device.js","splash-opening.js","paper-skin.js","entry-notice.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","mail-postal.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","garden-herbarium.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-core.js","room-iso.js","room.js","sleeproom.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","pwa.js","cjian.js","feature-hub.js","app-market.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js","app-merge.js"]; window.__mochiExtFiles = ["splash-opening.js","paper-skin.js","entry-notice.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","mail-postal.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","garden-herbarium.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-core.js","room-iso.js","room.js","sleeproom.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","cjian.js","feature-hub.js","app-market.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js","app-merge.js"];
 (function () { try {
 (function () {
 try { window.__jsErrors = window.__jsErrors || []; } catch (e0) {}
@@ -26067,6 +26116,7 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 <script defer src="js/card-audit.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('card-audit.js')"></script>
 <script defer src="js/storage-guide.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('storage-guide.js')"></script>
 <script defer src="js/mobile-adapt.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('mobile-adapt.js')"></script>
+<script defer src="js/app-merge.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('app-merge.js')"></script>
 <!-- PERF-PLAN 阶段 1：上一行是 ext 外置脚本 defer 注入锚，构建时被整体替换为 35 个外置 js 标签；本行说明必须连同注释符号一起整体留在注释内，勿删。#797 教训：说明若写在注释结尾之外＝变正文裸文本（全页面右侧白色乱码条），其中的标签样本会被浏览器当真开标签，吞掉其后全部尾部 DOM -->
 
   <!-- PWA 安装到桌面按钮（Chrome/Edge 触发 beforeinstallprompt 时显示） -->
@@ -26089,4 +26139,4 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 </body>
 </html>
 
-<!-- __MOCHI_EOF__ mwj8lix5 -->
+<!-- __MOCHI_EOF__ mwjbsfep -->

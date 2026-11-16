@@ -1831,7 +1831,7 @@ function buildMarketPage(host) {
 marketPage = document.createElement('div');
 marketPage.className = 'page'; marketPage.id = 'page-market'; marketPage.hidden = true;
 marketPage.innerHTML =
-'<div class="chat-head"><span class="ch-back" id="market-back">' + BACK_SVG + '</span><span class="ch-name">心意市集</span></div>' +
+'<div class="chat-head"><span class="ch-back" id="market-back">' + BACK_SVG + '</span><span class="ch-name">心意</span></div>' +
 '<div class="market-body">' +
 '<div class="market-hero">' +
 '<div class="market-hero-title">心意市集</div>' +
@@ -1877,7 +1877,7 @@ function buildGiftboxPage(host) {
 giftboxPage = document.createElement('div');
 giftboxPage.className = 'page'; giftboxPage.id = 'page-giftbox'; giftboxPage.hidden = true;
 giftboxPage.innerHTML =
-'<div class="chat-head"><span class="ch-back" id="giftbox-back">' + BACK_SVG + '</span><span class="ch-name">心意柜</span></div>' +
+'<div class="chat-head"><span class="ch-back" id="giftbox-back">' + BACK_SVG + '</span><span class="ch-name">心意</span></div>' +
 '<div class="giftbox-hero">' +
 '<div class="giftbox-hero-title">心意柜</div>' +
 '<div class="giftbox-hero-sub">每一份心意，都值得被珍藏</div>' +

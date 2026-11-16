@@ -15,6 +15,18 @@ if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEd
 } catch (e) {}
 }
 let msgs = [];
+// 2026-11-16：本次启动是不是「页面在后台被系统回收后自动重载」——bg-keep 的通用会话标记
+// 在 visibility hidden 时写 __sess-alive {t, closed:false}，正常关闭/刷新 pagehide 会补 closed:true。
+// 这里在 bg-keep 脚本启动、覆盖标记之前先读一次；只有上个会话非正常收尾才认。
+const chatResumeFromDiscard = (function () {
+  try {
+    const raw = localStorage.getItem('xy-home-v2:__sess-alive');
+    if (!raw) return false;
+    const s = JSON.parse(raw);
+    if (!s || typeof s.t !== 'number' || s.closed) return false;
+    return Date.now() - s.t < 24 * 60 * 60 * 1000;
+  } catch (e) { return false; }
+})();
 const sessionChangedIdx = new Set();
 let chatDbReady = false;
 // FIX 2026-09-15 #526：本会话已确认当前桌面无历史（全新/空库）——进度条不再显示（见 updateChatLoading）
@@ -10325,6 +10337,41 @@ if (editing) return;
 enterChat();
 });
 }
+// 2026-11-16：后台被系统回收后自动重载的落点（聊天设置 → 功能 → 显示 → 后台回来）。
+// 只有 chatResumeFromDiscard=true 才执行；正常打开、手动刷新（pagehide 标了 closed）不受影响。
+let chatResumeTries = 0;
+function chatResumeRoute() {
+if (!chatResumeFromDiscard) return;
+let mode = 'off', cid = '';
+try {
+const rs = window.xyStore ? window.xyStore('xy-home-v2') : null;
+mode = (rs && rs.get('chat-resume-mode')) || 'fixed';
+cid = (rs && rs.get('chat-resume-cid')) || '';
+} catch (e) {}
+if (mode !== 'random') mode = 'fixed';
+let list = [];
+try { list = (window.getContacts && window.getContacts()) || []; } catch (e) {}
+if (!list.length) {
+if (chatResumeTries++ < 4) { try { setTimeout(chatResumeRoute, 1500); } catch (e) {} }
+return;
+}
+// 用户已经自己进了别的页就别抢；开屏/主页不算
+try {
+const home = document.getElementById('page-phone');
+const pages = document.querySelectorAll('.page');
+for (let i = 0; i < pages.length; i++) if (pages[i] !== home && !pages[i].hidden) return;
+} catch (e) {}
+let target = null;
+if (mode === 'fixed') {
+target = list.find(function (c) { return c && c.id === cid; }) ||
+list.find(function (c) { return c && c.id === (window.__activeCid || 'default'); }) ||
+list[0] || null;
+} else target = list[Math.floor(Math.random() * list.length)] || null;
+if (!target) return;
+try { if (target.id !== (window.__activeCid || 'default') && window.setActiveContact) window.setActiveContact(target.id); } catch (e) {}
+try { enterChat(); } catch (e) {}
+}
+try { if (chatResumeFromDiscard) setTimeout(chatResumeRoute, 1200); } catch (e) {}
 const back = document.getElementById('chat-back');
 if (back) {
 back.addEventListener('click', () => {
@@ -10363,6 +10410,27 @@ const MORE_CATS = ['chat', 'game', 'tool', 'ask'];
 // v8.57：群聊模式放行「飞行棋」（群成员邀请对战，flight-chess.js 群聊上下文）。
 let moreGroupMode = false;
 const GROUP_MORE_ITEM_IDS = new Set(['more-decide', 'more-gdecide', 'more-search', 'more-divine', 'more-flight']);
+// 2026-11-16：手机端「更多功能」按两行一张卡片分页——每页 8 个，竖向滑动翻页。
+// 不能删掉隐藏项（各功能模块靠 getElementById 接线），所以只把当前可见项搬进
+// .more-page 卡片，隐藏项留在网格里（display:none，不占布局）。
+const MORE_PAGE_SIZE = 8;
+function moreBuildPages(grid) {
+if (!grid) return;
+if (!grid.__moreItems) grid.__moreItems = Array.from(grid.querySelectorAll('.more-item'));
+{ const oldPages = grid.querySelectorAll('.more-page'); for (let i = 0; i < oldPages.length; i++) oldPages[i].remove(); }
+const items = grid.__moreItems;
+items.forEach(function (it) { grid.appendChild(it); }); // 先按原顺序放回网格，再重新分页
+const shown = items.filter(function (it) { return !it.hidden; });
+for (let i = 0; i < shown.length; i += MORE_PAGE_SIZE) {
+const page = document.createElement('div');
+page.className = 'more-page';
+const end = Math.min(i + MORE_PAGE_SIZE, shown.length);
+if (end - i <= 4) page.classList.add('more-page--few'); // 末页不足半页时居中，不孤零零挂在左上角
+for (let j = i; j < end; j++) page.appendChild(shown[j]);
+grid.appendChild(page);
+}
+grid.scrollTop = 0;
+}
 function applyMoreCat(cat, group) {
 if (group === true || group === false) moreGroupMode = group;
 if (moreGroupMode) cat = 'tool'; // 群聊模式强制锁定「工具」分类
@@ -10372,13 +10440,17 @@ const showTab = !moreGroupMode || t.dataset.mcat === 'tool'; // 群聊模式隐�
 t.hidden = !showTab;
 t.classList.toggle('sel', t.dataset.mcat === cat);
 });
-if (moreGridAsk) moreGridAsk.hidden = cat !== 'ask';
+if (moreGridAsk) {
+moreGridAsk.hidden = cat !== 'ask';
+if (cat === 'ask') moreBuildPages(moreGridAsk);
+}
 if (moreGridFun) {
 moreGridFun.hidden = cat === 'ask';
 moreGridFun.querySelectorAll('.more-item').forEach(it => {
 if (moreGroupMode) it.hidden = !GROUP_MORE_ITEM_IDS.has(it.id); // 群聊模式只显允许的 4 项
-else it.hidden = it.dataset.mcat !== cat || (it.id === 'more-ck' && window.checkinEnabled && !window.checkinEnabled()); // #823 寻踪关闭时收起「更多功能」里的寻踪
+else it.hidden = it.dataset.mcat !== cat || it.id === 'more-gdecide' || (it.id === 'more-ck' && window.checkinEnabled && !window.checkinEnabled()); // 单人聊天不显示「多人决定」（群聊模式仍保留）；#823 寻踪关闭时收起
 });
+moreBuildPages(moreGridFun);
 }
 if (!moreGroupMode) store.set('more-cat', cat);
 }
@@ -10403,6 +10475,9 @@ const tb = document.getElementById('gc-more-at');
 if (tb) tb.hidden = true;
 }
 morePanel.hidden = !morePanel.hidden;
+if (!morePanel.hidden) {
+try { const g = (moreGridAsk && !moreGridAsk.hidden) ? moreGridAsk : moreGridFun; if (g) g.scrollTop = 0; } catch (err) {}
+}
 });
 document.addEventListener('click', (e) => {
 if (!morePanel.hidden && !morePanel.contains(e.target) && e.target !== moreBtn && !moreBtn.contains(e.target)) {

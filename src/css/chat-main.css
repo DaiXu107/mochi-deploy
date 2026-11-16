@@ -682,7 +682,8 @@ html.tablet #page-chat.cs-bg-on > #cs-bg-layer { min-height:100vh; min-height:ma
   background:rgba(255,255,255,.97);
   border:1px solid rgba(0,0,0,.1);
   border-radius:20px; box-shadow:0 12px 32px rgba(0,0,0,.1);
-  padding:16px;
+  padding:16px; display:flex; flex-direction:column;
+  max-height:min(64vh, 330px);
 }
 .more-panel[hidden] { display:none; }
 /* 鏇村鍔熻兘闈㈡澘锛氶《閮ㄥ垎绫诲垏鎹紙v3.15.x锛氬姛鑳藉澶氬悗鐢变袱椤电鏀逛负鍒嗙被 chips
@@ -697,7 +698,31 @@ html.tablet #page-chat.cs-bg-on > #cs-bg-layer { min-height:100vh; min-height:ma
 }
 .more-tab.sel { background:#111; color:#fff; border-color:#111; }
 /* v3.26.x：flex-wrap 会随屏宽自动换行导致不同手机每行 3~4 个不一；改 4 列 grid 固定每行 4 个 */
-.more-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; justify-items:center; }
+/* 2026-11-16：手机端改成「上下翻卡片」——每张卡片两行（8 个功能），
+   多余的功能竖向滑动翻到下一张卡片。原生 scroll-snap 负责吸附与惯性，
+   滚动条完全隐藏，不再露出半截第三行。 */
+.more-grid {
+  display:block; flex:0 0 208px;
+  height:208px; box-sizing:border-box;
+  overflow-y:auto; overscroll-behavior:contain;
+  scroll-snap-type:y mandatory; -webkit-overflow-scrolling:touch;
+  padding:0;
+  scrollbar-width:none; -ms-overflow-style:none;
+}
+.more-grid::-webkit-scrollbar { display:none; width:0; height:0; }
+.more-page {
+  box-sizing:border-box; height:208px; width:100%;
+  display:grid; grid-template-columns:repeat(4, 1fr); grid-template-rows:repeat(2, 1fr);
+  gap:10px 14px; justify-items:center; align-items:start;
+  padding:10px 8px; border-radius:18px;
+  background:#fff;
+  box-shadow:0 7px 20px rgba(0,0,0,.08);
+  scroll-snap-align:start; scroll-snap-stop:always;
+}
+.more-page[hidden] { display:none; }
+/* 末页只剩 1~4 个功能时居中显示，避免孤零零挂在卡片左上角 */
+.more-page--few { display:flex; flex-wrap:wrap; justify-content:center; align-content:center; gap:10px 14px; }
+.more-page--few .more-item { width:64px; }
 .more-grid[hidden] { display:none; }
 /* .more-item 鑷甫 display:flex锛岄渶鏄惧紡鍏滃簳 hidden 灞炴€э紙鍒嗙被杩囨护闈犲畠闅愯棌锛?*/
 .more-item[hidden] { display:none; }
