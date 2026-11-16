@@ -604,7 +604,11 @@ const FIX_SENTINELS = [
   { name: '#646 打开应用入口流程闸门（删掉＝「打开时先进入此间/默认桌面」入口流程失效或重复执行）', file: 'js/contacts.js', needle: 'if (window.__mochiEntryFlowDone) return;' },
   { name: '#646 两个入口键全局根键登记（漏登记＝migrateLegacy 把键迁进 default 并删根键，非默认桌面读不到、开关自己关）', file: 'js/contacts.js', needle: "'entry-cjian-first', 'entry-default-contact'," },
   { name: '#646 启动进入收尾接线入口流程（删掉＝设置里开了「打开时先进入此间/默认桌面」也不生效）', file: 'js/clock.js', needle: 'if (window.mochiContactEntryFlow) window.mochiContactEntryFlow();' },
-  { name: '#646 开屏进入此间默认停在「全部」总览（删掉/chip 文案改掉＝又回到默认的当前桌面视图）', file: 'js/contacts.js', needle: "if (chips[i].textContent === '全部') { chips[i].click(); break; }" },
+  { name: '#646 打开此间直接展示全部联系人（删回仅当前桌面＝多联系人卡片与时间轴被藏）', file: 'js/cjian.js', needle: 'viewCid = ALL; // 不再按桌面分栏' },
+  { name: '2026-11-16 感知此间覆盖全部联系人（删回 scopeCids＝又只感知当前桌面）', file: 'js/cjian.js', needle: "if (!entries.length) { toast('此间还没有梦角，先添加一个吧'); return; }" },
+  { name: '2026-11-16 此间时差/联系人卡上下滑动切换（删 bindPersonSwipe＝只能看第一位联系人）', file: 'js/cjian.js', needle: 'function bindPersonSwipe(elx)' },
+  { name: '2026-11-16 此间详情页去掉重复返回按钮（回流＝详情内又出现第二枚返回）', file: 'index.html', needle: 'id="cj-detail-back"', absent: true },
+  { name: '2026-11-16 此间详情时间轴竖向节点样式（删 cj-d-dot＝回到纯白行列表）', file: 'js/cjian.js', needle: "'cj-d-dot'" },
   { name: '#646 开屏此间点【去找TA】直接进桌面、不弹选择页（删掉/改判据＝点【去找TA】后仍多余弹出选择桌面页，用户反馈要再点一次）', file: 'js/contacts.js', needle: 'if (chat && !chat.hidden) return;' },
   { name: '#646 默认桌面开启时代替并禁用「先进入此间/显示联系人列表」（删掉＝入口选择仍会抢在默认桌面前，用户要求默认桌面开启时联动功能被取代）', file: 'js/contacts.js', needle: 'if (cbC) cbC.disabled = hasDef;' },
   { name: '#646 打开时显示联系人列表（删掉＝设置里开了「打开时显示联系人列表」也不弹列表）', file: 'js/contacts.js', needle: "if (entryShowListOn()) openContactPicker({ mode: 'entry', sub: '选一个联系人桌面进入吧。' });" },
@@ -926,8 +930,7 @@ const FIX_SENTINELS = [
   { name: '#409 此间串桌修复·标记键全局豁免（EXCLUDE 登记，防 migrateLegacy 搬进 default 删根键致救回逻辑每刷重跑）', file: 'js/contacts.js', needle: "'cjian-belong-v2',\n" },
   { name: '#514 此间梦角归属自愈·自愈函数就位（多桌面「名字串桌」存量救济：错放梦角按名字搬回同名桌面）', file: 'js/cjian.js', needle: 'function healBelonging()' },
   { name: '#514 此间梦角归属自愈·产品函数暴露（回归脚本直接断言产品函数而非复刻实现）', file: 'js/cjian.js', needle: 'window.cjianHealBelonging = healBelonging;' },
-  { name: '#514 此间梦角归属自愈·打开此间时自愈+搬空后重新播种（同一拍，避免中间态被渲染）', file: 'js/cjian.js', needle: 'try { healBelonging(); seedIfEmpty(curCid()); } catch (e) {}' },
-  { name: '#514 此间梦角归属自愈·切分组时自愈（防别的桌面的梦角挂在本分组下，即用户报的症状）', file: 'js/cjian.js', needle: 'try { healBelonging(); } catch (e) {}' },
+  { name: '#514 此间梦角归属自愈·打开此间时为所有联系人补齐本尊（只种当前桌面＝另一位联系人没有卡片、也不进时间轴）', file: 'js/cjian.js', needle: 'try { healBelonging(); contacts().forEach(ct => seedIfEmpty(ct.id)); } catch (e) {}' },
   { name: '#514 此间梦角归属自愈·本尊标记（播种梦角带 own，名字漂移时按本桌有效昵称对齐）', file: 'js/cjian.js', needle: "offsetMin: 0, cid: cid, own: 1 })" },
   { name: '#514 此间梦角归属自愈·手动标记（用户手动添加/改名的梦角带 manual，永不自动搬——#409 顾虑的正面解法）', file: 'js/cjian.js', needle: 'c.manual = 1;' },
   { name: '桌面美化·全局字体快捷入口（复用聊天设置 cs-font 键，applyDeskCsFont 注入同款 @font-face，两边互通）', file: 'js/personalize.js', needle: 'applyDeskCsFont' },
@@ -1356,6 +1359,9 @@ const FIX_SENTINELS = [
   { name: '#132 花园悄悄话概率接 dcf-garden（改回 Math.random()<0.4 硬编码即回归）', file: 'js/garden.js', needle: "if (Math.random() * 100 < _gP) {" },
   { name: '#132 查岗回应概率接 dcf-deskcheck（改回 Math.random()*100<50 硬编码即回归）', file: 'js/chat.js', needle: 'Math.random() * 100 < _dkP' },
   { name: '#132 房间字卡门控接 dcf-room（删 sayLine 门控行即回归）', file: 'js/room.js', needle: "window.dcfGet('room')" },
+  { name: '2026-11-16 此间顶部时差与「对方当前时间」同源（删回时辰大字＝上方时差与下方卡片两套时间打架）', file: 'js/cjian.js', needle: 'const ta = taTimeOf(cid);' },
+  { name: '2026-11-16 此间时差按抽取时刻定格（删回 now＝时差随页面停留不断拉大）', file: 'js/cjian.js', needle: 'const sampled = new Date(typeof ta.last' },
+  { name: '2026-11-16 此间移除「对方当前时间」重复卡片（回流＝与下方梦角卡重复）', file: 'js/cjian.js', needle: 'cj-ta-time-card', absent: true },
   { name: '#132 此间字卡门控接 dcf-cjian（删 cjLine 门控行即回归）', file: 'js/cjian.js', needle: "window.dcfGet('cjian')" },
   { name: '#611 梦角档案管理·入口提醒（档案页管理弹窗顶部「梦角会跟着桌面联系人自动创建」，删这句即回归）', file: 'js/cjian.js', needle: "'梦角会跟着桌面联系人自动创建，一般不用手动添加'" },
   { name: '#611 梦角档案管理·arc 不带时辰（档案页添加梦角不弹时辰浮层、提示改指此间；改回「下一步还能限定 TA 常在的时辰区间」即回归）', file: 'js/cjian.js', needle: "'选一个时间偏移（想限定 TA 常在的时辰，去「此间」设）'" },
@@ -2010,7 +2016,8 @@ const FIX_SENTINELS = [
   { name: '2026-11-16 后台回收后落点设置（聊天设置→功能→显示）', file: 'index.html', needle: 'id="cs-resume-chat"' },
   { name: '2026-11-16 后台回收后自动进聊天路由', file: 'js/chat.js', needle: 'function chatResumeRoute()' },
   { name: '2026-11-16 主页成对应用合并（删则存钱罐/我的档案/心意柜重新散落在桌面）', file: 'js/app-merge.js', needle: "sec.dataset.appMerged = '1';" },
-  { name: '2026-11-16 应用于市场跳过已合并次级图标（删则市场重新单列存钱罐/我的档案/心意柜）', file: 'js/app-market.js', needle: "if (app.dataset.appMerged === '1') return;" },
+  { name: '2026-11-16 合并次级图标不被 applyHiddenIcons 复位（删则手机回填/切桌面后「我的档案」重新出现）', file: 'js/personalize.js', needle: "if (app.dataset.appMerged === '1' || key === 'piggy' || key === 'my-arc' || key === 'giftbox') {" },
+  { name: '2026-11-16 应用于市场跳过已合并次级图标（删则市场重新单列存钱罐/我的档案/心意柜）', file: 'js/app-market.js', needle: "if (app.dataset.appMerged === '1' || k === 'piggy' || k === 'my-arc' || k === 'giftbox') return;" },
   { name: '#722h 备份「仅聊天记录」收块键（删则分块后备份缺聊天历史＝备份完整性破坏）', file: 'js/data-backup.js', needle: 'const CHAT_KEY_RE = /(?:^|:)(?:chat-msgs|chat-blk-idx|chat-blk-[0-9]+)$/;' },
   { name: '#722i 块格式备份组装回整包（删则块备份无法导回聊天记录）', file: 'js/data-backup.js', needle: "if (!/:chat-blk-idx$/.test(k)) return;" },
   { name: '#722j 导入写整包时清目标桌面旧块键（删则残留 blk-idx 遮蔽刚导入的整包）', file: 'js/data-backup.js', needle: "k.indexOf(key + ':chat-blk-') === 0" },
@@ -2324,7 +2331,7 @@ const FIX_SENTINELS = [
 //      tools/verify-dark-audit.mjs 135 步全量审计实测 60 处真问题，修复后 0；本批 src 随 140950a 上车，此处补登记哨兵）====
 { name: '#486 深色开关选中态滑块改深色（选中轨道是浅色 var(--ink)，滑块仍 #f0f0f0＝白滑块白轨道看不出开没开）', file: 'css/dark.css', needle: '[data-theme="dark"] .toggle input:checked + .tk::before { background:#111111; }' },
 { name: '#486 字卡库左菜单 .chat-item .av 白色图标块改深（chat-pages 硬编码 rgba(255,255,255,.92) 白块+浅描边图标＝白块看不见图标）', file: 'css/dark.css', needle: '[data-theme="dark"] .chat-item .av { background:#2a2a2a; border-color:var(--dark-border); }' },
-{ name: '#486 此间分组芯片选中态补浅底（原覆盖只改字色没改底色＝深底深字）', file: 'css/dark.css', needle: '[data-theme="dark"] .cj-gchip.on { background:var(--ink,#f0f0f0); border-color:var(--ink,#f0f0f0); color:#111; }' },
+  { name: '2026-11-16 此间不再按桌面分栏（回流＝深色分组芯片样式重新出现）', file: 'css/dark.css', needle: '.cj-gchip.on', absent: true },
 { name: '#486 备忘提醒快捷片深底亮字（memo.css 白蒙底+--ink-soft 灰字＝灰底灰字）', file: 'css/dark.css', needle: '[data-theme="dark"] .memo-rc { background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.15); color:#bbbbbb; }' },
 { name: '#486 拍一拍存入按钮深底（chat-main.css 白底+var(--ink) 浅字＝白底浅字）', file: 'css/dark.css', needle: '[data-theme="dark"] .poke-input-save { background:var(--dark-card); border-color:var(--dark-border-12); color:var(--ink); }' },
 { name: '#486 桌面签到心形徽章深字（--widget-heart 浅圆底+硬编码白心形）', file: 'css/dark.css', needle: '[data-theme="dark"] .ck-heart { color:#111111; }' },
@@ -3111,7 +3118,7 @@ const FIX_SENTINELS = [
   //   用户原话：「此间的【全部】应该放在第一个，目前是放在末尾，不好查看啊」。
   //   针写成「全部 chip + 其后的 contacts 循环」两行相邻（minifyJs 保行边界）；
   //   顺序被换回末尾时这两行不再相邻＝必红。只写 `chip('全部', ALL);` 拦不住顺序。
-  { name: '#615 此间「全部」chip 排在 contacts 循环之前（换回末尾＝这两行相邻关系消失，报障复发）', file: 'js/cjian.js', needle: "chip('全部', ALL);\ncontacts().forEach(ct => chip(contactName(ct.id), ct.id));" },
+  { name: '2026-11-16 此间不再按桌面分栏（回流＝顶部全部/联系人 chips 重新出现）', file: 'js/cjian.js', needle: "chip('全部', ALL);", absent: true },
   // ===== #618（2026-09-16）自检页「批量修复」按 hidden 显隐失效 =====
   //   根因：`.storage-clear{display:block}` 是作者样式，盖过 UA `[hidden]{display:none}`，
   //   `#card-audit-apply` 的 hidden 永远无效 → 未进批量模式「应用所选」也常驻可见，
@@ -4134,7 +4141,7 @@ const FIX_SENTINELS = [
   { name: '#889a 单聊抽屉栏位位置滑杆提示（删＝用户又不知道顶栏/输入栏可以拖着挪位，知情提示回流）', file: 'js/chat-settings.js', needle: "mkNote('这两条位置滑杆拖着就能" },
   { name: '#889b 群聊抽屉栏位位置滑杆提示（删＝群聊版同款知情提示回流）', file: 'js/group-chat.js', needle: '拖着就能把栏位上下挪位' },
   /* ==== 2026-09-20 #902 TA在身边/此间概率与触发节奏写进界面（用户直派「概率和触发时间要写清楚」；纯文案，恢复自本批） ==== */
-  { name: '#902a 此间页概率/节奏说明锚（删＝感知概率、状态流动间隔、突然靠近概率重新变成黑盒）', file: 'template.html', needle: 'cj-rate-note' },
+  { name: '#902a 此间页不再显示概率/节奏长说明（回流＝灰字长段重新出现）', file: 'template.html', needle: 'cj-rate-note', absent: true },
   { name: '#902b 位置面板换位间隔与概率说明锚（删＝TA 自动换位 2~6 小时/70% 陪伴卡的说明回流黑盒）', file: 'js/p2-features.js', needle: '70% 是陪伴卡' },
   /* ==== 2026-09-20 #904 听歌邀请「同意后小框消失也没播放」（红米 K80 Chrome PWA 实报；接受链路静默死亡出口封堵） ==== */
   { name: '#904a 接受邀请前清残留来电 hold（删＝stale callHoldPending 让 startPlayback 静默 return＝点了同意没声没提示，小框被 hold 藏起不回来）', file: 'js/music-player.js', needle: 'callHoldPlaying = false; callHoldPending = false; // #904a' },

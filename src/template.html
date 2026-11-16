@@ -819,7 +819,7 @@
 <div class="app-name">梦角档案</div>
 </div>
 <!-- v3.16.x：我的档案（认识自己；与梦角档案互为镜像）桌面第三页入口，紧邻梦角档案右侧 -->
-<div class="app" data-app="my-arc" data-desk-widget="app-my-arc">
+<div class="app" data-app="my-arc" data-app-merged="1" data-desk-widget="app-my-arc">
 <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.5h5L10 4.5h9a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-12z"/><circle cx="12" cy="9.5" r="1.9"/><path d="M8.4 15.6c.6-1.6 2-2.4 3.6-2.4s3 .8 3.6 2.4"/></svg></div>
 <div class="app-name">我的档案</div>
 </div>
@@ -6602,8 +6602,8 @@
         </span>
       </div>
       <div class="gs-scroll cj-scroll" id="cj-main">
-        <div class="cj-hero">
-          <div class="cj-hero-sub">此刻，你与TA之间。</div>
+        <div class="cj-hero" id="cj-hero">
+          <div class="cj-hero-sub">此刻，你与TA之间 时差</div>
           <div class="cj-hero-time" id="cj-hero-time">—</div>
           <div class="cj-hero-range" id="cj-hero-range"></div>
         </div>
@@ -6615,14 +6615,11 @@
         </div>
         <button class="cj-perceive" id="cj-perceive" type="button">感知此间</button>
         <div class="cj-perceive-result" id="cj-perceive-result" hidden></div>
-        <!-- #902：感知/状态流动/突然靠近的真实概率与触发节奏写进页面（用户反馈「概率和触发时间要写清楚」） -->
-        <div class="cj-today-note" id="cj-rate-note">概率与节奏：感知能对上的机会——很近 95%／可能在附近 75%／在远处 40%／离开中 25%／感知不到 12%，每次感知最多改变一位梦角（15 分钟内不会再次改变）；状态自然流动——在场状态每 20～45 分钟、在做的事每 8～25 分钟重抽一次；「……好像有什么靠近了。」是低概率小惊喜——每 30 秒检查一次，某位梦角状态超过 2 小时没变时约 0.3% 概率触发（全局至少间隔 20 分钟），触发后 90% 变「可能在附近」、10% 变「很近」，只改状态、不会发消息。</div>
         <div class="cj-today-title">今日</div>
         <div class="cj-today-note">每次打开，TA们会重新选择今天可能的样子。</div>
         <div id="cj-today"></div>
       </div>
       <div class="gs-scroll cj-scroll" id="cj-detail" hidden>
-        <button class="cj-detail-back" id="cj-detail-back" type="button">‹ 返回</button>
         <div id="cj-detail-body"></div>
       </div>
     </div>

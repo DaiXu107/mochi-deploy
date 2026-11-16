@@ -1294,12 +1294,7 @@
       window.__cjianFrom = '';
       window.openCjian();
       showCjianHint();
-      // 开屏进入此间时默认停在「全部」总览（openCjian 内部默认回到当前桌面，这里点选「全部」chip 切过去；
-      // 不侵入 cjian.js——setView(ALL) 只改视图、不持久化、不影响之后从桌面正常进入）
-      const chips = document.querySelectorAll('#cj-groups .cj-gchip');
-      for (let i = 0; i < chips.length; i++) {
-        if (chips[i].textContent === '全部') { chips[i].click(); break; }
-      }
+      // 此间已取消桌面分栏：openCjian 直接展示全部联系人的卡片与时间轴，不再需要点「全部」chip。
     } catch (e) {
       try { obs.disconnect(); } catch (e2) {}
       removeCjianHint();

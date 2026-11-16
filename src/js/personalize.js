@@ -2200,6 +2200,13 @@ try {
     const ckOff = typeof window.checkinDeskOff === 'function' && window.checkinDeskOff();
     document.querySelectorAll('.app').forEach(app => {
       const key = app.dataset.app;
+      // 主页成对功能合并后的次级图标：任何一次 applyHiddenIcons 都不能把它复位显示回来
+      //（手机端回填/切桌面/退出装修都会跑本函数，曾把已经收起的「我的档案」重新露出来）。
+      // 同时按 key 兜底：piggy/my-arc/giftbox 是动态模块建的，偶尔会晚于 app-merge 的标记。
+      if (app.dataset.appMerged === '1' || key === 'piggy' || key === 'my-arc' || key === 'giftbox') {
+        app.style.display = 'none';
+        return;
+      }
       if (hidden.indexOf(key) >= 0 || (ckOff && key === 'checkin')) app.style.display = 'none';
       else app.style.display = '';
     });

@@ -74,7 +74,7 @@ var seen = {}, list = [];
 Array.prototype.forEach.call(document.querySelectorAll('.app[data-app]'), function (app) {
 var k = app.dataset.app;
 if (!k || seen[k]) return;
-if (app.dataset.appMerged === '1') return; // 2026-11-16：成对功能已在主页合并，市场不再单列次级图标
+if (app.dataset.appMerged === '1' || k === 'piggy' || k === 'my-arc' || k === 'giftbox') return; // 2026-11-16：成对功能已在主页合并，市场不再单列次级图标
 seen[k] = 1;
 var inPool = !!app.closest('#desk-widget-pool');
 var hid = hidden().indexOf(k) >= 0;

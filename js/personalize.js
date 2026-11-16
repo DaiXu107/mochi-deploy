@@ -1636,6 +1636,10 @@ const hidden = getHiddenIcons();
 const ckOff = typeof window.checkinDeskOff === 'function' && window.checkinDeskOff();
 document.querySelectorAll('.app').forEach(app => {
 const key = app.dataset.app;
+if (app.dataset.appMerged === '1' || key === 'piggy' || key === 'my-arc' || key === 'giftbox') {
+app.style.display = 'none';
+return;
+}
 if (hidden.indexOf(key) >= 0 || (ckOff && key === 'checkin')) app.style.display = 'none';
 else app.style.display = '';
 });

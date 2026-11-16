@@ -827,10 +827,6 @@ try {
 window.__cjianFrom = '';
 window.openCjian();
 showCjianHint();
-const chips = document.querySelectorAll('#cj-groups .cj-gchip');
-for (let i = 0; i < chips.length; i++) {
-if (chips[i].textContent === '全部') { chips[i].click(); break; }
-}
 } catch (e) {
 try { obs.disconnect(); } catch (e2) {}
 removeCjianHint();

@@ -176,18 +176,6 @@ const d = new Date();
 d.setHours(Math.floor(wm / 60), wm % 60, 0, 0);
 return d.getTime();
 }
-function offsetLabel(off) {
-if (!off) return '与现实同步';
-if (off % 60 === 0) return off > 0 ? ('比现实快' + (off / 60) + '小时') : ('比现实慢' + (-off / 60) + '小时');
-return '独立时间流';
-}
-function worldTagLabel(c) {
-if (Array.isArray(c && c.slots) && c.slots.length) {
-const sd = slotLabel(c.slots);
-return c.offsetMin ? (sd + ' · ' + offsetLabel(c.offsetMin)) : sd;
-}
-return offsetLabel(c.offsetMin);
-}
 window.cjianWorldMinuteOf = worldMinuteOf;
 window.cjianWorldNowFor = worldNowFor;
 window.cjianShichenAt = shichenAt;
@@ -206,6 +194,13 @@ rest:    { label: '休息', desc: 'TA正在休息' },
 sleep:   { label: '睡着', desc: 'TA那边已经入睡' },
 unknown: { label: '未知', desc: '暂时不知道TA在做什么' }
 };
+const PRESENCE_TONE = { near: 'rose', nearby: 'amber', far: 'blue', unfelt: 'slate', gone: 'slate' };
+const ACTIVITY_TONE = { free: 'green', busy: 'amber', rushed: 'rose', rest: 'violet', sleep: 'violet', unknown: 'slate' };
+function tagEl(label, tone, title) {
+const t = el('span', 'cj-tag cj-tone-' + (tone || 'slate'), label);
+if (title) t.title = title;
+return t;
+}
 function loadRoster(cid) {
 try {
 const s = storeOf(cid);
@@ -432,7 +427,7 @@ const s = storeOf(cid);
 if (!s || s.get(SEED_KEY)) return;
 const list = loadRoster(cid);
 if (list.length) { s.set(SEED_KEY, '1'); return; }
-const name = effNick(cid);
+const name = effNick(cid) || contactName(cid);
 list.push({ id: makeId(), name: name || 'TA', offsetMin: 0, cid: cid, own: 1 });
 saveRoster(list, cid);
 s.set(SEED_KEY, '1');
@@ -671,6 +666,16 @@ loadRoster(ct.id).forEach(c => out.push({ c: c, cid: ct.id }));
 });
 return out;
 }
+function contactEntries() {
+const out = [];
+contacts().forEach(ct => {
+const roster = loadRoster(ct.id);
+if (!roster.length) return;
+const c = roster.find(x => x && x.own) || roster[0];
+if (c) out.push({ c: c, cid: ct.id });
+});
+return out;
+}
 function scopeEntries() {
 const s = scopeCids();
 return flatEntries().filter(en => s.indexOf(en.cid) >= 0);
@@ -693,10 +698,7 @@ if (p === 'gone') return 25;
 return 12; // unfelt
 }
 window.cjianPerceive = function () {
-const entries = [];
-scopeCids().forEach(cid => {
-loadRoster(cid).forEach(c => entries.push({ c: c, cid: cid }));
-});
+const entries = contactEntries();
 if (!entries.length) { toast('此间还没有梦角，先添加一个吧'); return; }
 if (Date.now() < perceiveCooldownUntil) return;
 perceiveCooldownUntil = Date.now() + 4000;
@@ -761,7 +763,7 @@ return '感知不到';
 let todayCacheMap = {};
 function scopeKey() { return viewCid === ALL ? ALL : (viewCid || curCid()); }
 function rollTodayForecast() {
-const entries = flatEntries().filter(en => scopeCids().indexOf(en.cid) >= 0);
+const entries = contactEntries();
 const d = new Date();
 const curIdx = shichenAt(d.getHours());
 const cache = [];
@@ -784,7 +786,7 @@ if (!box) return;
 box.innerHTML = '';
 const rows = todayCacheMap[scopeKey()];
 if (!rows) return;
-const entries = flatEntries().filter(en => scopeCids().indexOf(en.cid) >= 0);
+const entries = contactEntries();
 if (!entries.length) return;
 const now = Date.now();
 const states = {};
@@ -886,96 +888,109 @@ saveTaTime(cid, t);
 }
 return t;
 }
-function renderTaTime() {
-const listEl = document.getElementById('cj-list');
-if (!listEl) return;
-let card = document.getElementById('cj-ta-time');
-if (!card) {
-card = el('div', 'cj-ta-time-card');
-card.id = 'cj-ta-time';
-listEl.parentNode.insertBefore(card, listEl);
+let peopleIndex = 0;
+function renderHeroEmpty() {
+const h1 = document.getElementById('cj-hero-time');
+const h2 = document.getElementById('cj-hero-range');
+const now = new Date();
+if (h1) {
+h1.textContent = '';
+h1.appendChild(el('span', 'cj-hero-diff-value', '—'));
 }
-card.innerHTML = '';
-card.appendChild(el('div', 'cj-ta-time-title', '对方当前时间'));
-card.appendChild(el('div', 'cj-ta-time-hint', 'TA 自己随机抽的当地时刻 · 每隔 1-8 小时重新抽'));
-const cidList = viewCid === ALL ? contacts().map(function (ct) { return ct.id; }) : [(viewCid || curCid())];
-cidList.forEach(function (cid) {
-const t = taTimeOf(cid);
-const row = el('div', 'cj-ta-time-item');
-const left = el('div', 'cj-ta-time-left');
-left.appendChild(el('span', 'cj-ta-time-sh', 'TA'));
-const nameCol = el('span', 'cj-ta-time-namecol');
-nameCol.appendChild(el('span', 'cj-ta-time-name', contactName(cid)));
-nameCol.appendChild(el('span', 'cj-ta-time-slot', taSlotLabel(cid, t)));
-left.appendChild(nameCol);
-row.appendChild(left);
-const right = el('div', 'cj-ta-time-right');
-right.appendChild(el('span', 'cj-ta-time-hhmm', pad(t.hh) + ':' + pad(t.mm)));
-right.appendChild(el('span', 'cj-ta-time-shi', SHICHEN[shichenAt(t.hh)] + '时'));
-row.appendChild(right);
-card.appendChild(row);
+if (h2) h2.textContent = '还没有梦角 · 你这边 ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+}
+function renderHeroFor(en) {
+const h1 = document.getElementById('cj-hero-time');
+const h2 = document.getElementById('cj-hero-range');
+if (!h1) return;
+h1.textContent = '';
+const cid = en.cid;
+const ta = taTimeOf(cid);
+const sampled = new Date(typeof ta.last === 'number' && !isNaN(ta.last) ? ta.last : Date.now());
+const realMin = sampled.getHours() * 60 + sampled.getMinutes();
+const realHHMM = pad(sampled.getHours()) + ':' + pad(sampled.getMinutes());
+const taMin = ta.hh * 60 + ta.mm;
+let diff = taMin - realMin;
+if (diff > 720) diff -= 1440;
+if (diff <= -720) diff += 1440;
+const absMin = Math.abs(diff);
+const hPart = Math.floor(absMin / 60);
+const mPart = absMin % 60;
+h1.appendChild(el('span', 'cj-hero-diff-value', hPart + ':' + pad(mPart)));
+if (h2) {
+const nh = contactName(cid);
+const worldHHMM = pad(ta.hh) + ':' + pad(ta.mm);
+const dir = absMin === 0 ? '你们此刻同步' : (diff > 0 ? nh + '比你快' : nh + '比你慢');
+h2.textContent = dir + ' · ' + nh + '那边 ' + worldHHMM + ' · 你这边 ' + realHHMM;
+}
+}
+function animatePersonSwap() {
+['cj-hero', 'cj-list'].forEach(function (id) {
+const elx = document.getElementById(id);
+if (!elx) return;
+elx.classList.remove('cj-swap');
+void elx.offsetWidth;
+elx.classList.add('cj-swap');
+setTimeout(function () { try { elx.classList.remove('cj-swap'); } catch (e) {} }, 260);
 });
 }
-function taSlotLabel(cid, t) {
-if (t && t.half && t.range) return t.half + ' ' + t.range;
-const c0 = loadRoster(cid)[0];
-if (c0) {
-const info = halfRangeOf(worldMinuteOf(c0));
-return info.half + ' ' + info.range;
+function switchPerson(delta) {
+const entries = contactEntries();
+if (entries.length < 2) return false;
+const next = Math.max(0, Math.min(entries.length - 1, peopleIndex + delta));
+if (next === peopleIndex) return false;
+peopleIndex = next;
+renderPeople();
+animatePersonSwap();
+return true;
 }
-return '全天随机';
+function renderPeople() {
+const listEl = document.getElementById('cj-list');
+const empty = document.getElementById('cj-empty');
+if (!listEl) return;
+if (window.mochiDataPending && window.mochiDataPending()) {
+if (empty) empty.hidden = true;
+listEl.innerHTML = window.mochiLoadingHtml('梦角名单');
+return;
+}
+const entries = contactEntries();
+if (!entries.length) {
+peopleIndex = 0;
+listEl.innerHTML = '';
+if (empty) empty.hidden = false;
+renderHeroEmpty();
+return;
+}
+if (empty) empty.hidden = true;
+peopleIndex = Math.max(0, Math.min(entries.length - 1, peopleIndex));
+const en = entries[peopleIndex];
+renderHeroFor(en);
+const st = loadState(en.cid);
+listEl.innerHTML = '';
+listEl.appendChild(cardEl(en.c, en.cid, ensureState(en.c, st, Date.now()), contactName(en.cid)));
 }
 function taTimePoll() {
 try {
 const page = document.getElementById('page-cjian');
-if (page && !page.hidden) renderTaTime();
+if (!page || page.hidden) return;
+let changed = false;
+contactEntries().forEach(function (en) {
+const store = storeOf(en.cid);
+const before = store ? store.get('cjian-ta-time') : null;
+taTimeOf(en.cid);
+const after = store ? store.get('cjian-ta-time') : null;
+if (before !== after) changed = true;
+});
+if (changed) renderPeople();
 } catch (e) {}
 }
 try { setInterval(taTimePoll, 60000); } catch (e) {}
-function renderHero() {
-const t = timeInfo(Date.now());
-const h1 = document.getElementById('cj-hero-time');
-const h2 = document.getElementById('cj-hero-range');
-if (h1) h1.textContent = t.half;
-if (h2) h2.textContent = t.range + ' · 现实此刻 ' + t.hhmm;
-}
-function renderGroupBar() {
-const main = document.getElementById('cj-main');
-if (!main) return;
-let bar = document.getElementById('cj-groups');
-if (!bar) {
-bar = el('div', 'cj-groups');
-bar.id = 'cj-groups';
-main.insertBefore(bar, main.firstChild);
-}
-bar.innerHTML = '';
-function chip(label, val) {
-const b = el('button', 'cj-gchip' + (viewCid === val ? ' on' : ''), label);
-b.type = 'button';
-b.addEventListener('click', e => {
-e.stopPropagation();
-setView(val);
-});
-bar.appendChild(b);
-}
-chip('全部', ALL);
-contacts().forEach(ct => chip(contactName(ct.id), ct.id));
-}
-function setView(v) {
-if (viewCid === v) return;
-viewCid = v;
-try { healBelonging(); } catch (e) {} // FIX #514：切分组前先纠正错放归属（防别的桌面的梦角挂在本分组下）
-if (viewCid !== ALL) seedIfEmpty(viewCid);
-window.renderCjian(false);
-const main = document.getElementById('cj-main');
-if (main) main.scrollTop = 0;
-}
-function cardEl(c, cid, s) {
+function cardEl(c, cid, s, displayName) {
 const t = timeInfo(worldNowFor(c));
 const card = el('div', 'cj-card');
 card.setAttribute('data-id', c.id);
 const head = el('div', 'cj-card-head');
-head.appendChild(el('span', 'cj-card-name', c.name));
+head.appendChild(el('span', 'cj-card-name', displayName || c.name));
 head.appendChild(el('span', 'cj-card-hint', '查看TA的一天 ›'));
 card.appendChild(head);
 const timeRow = el('div', 'cj-card-time');
@@ -983,12 +998,8 @@ timeRow.appendChild(el('span', 'cj-card-half', t.half));
 timeRow.appendChild(el('span', 'cj-card-range', t.range));
 card.appendChild(timeRow);
 const tags = el('div', 'cj-card-tags');
-const pTag = el('span', 'cj-tag cj-tag-p', PRESENCE[s.p].label);
-pTag.title = PRESENCE[s.p].desc;
-const aTag = el('span', 'cj-tag cj-tag-a', ACTIVITY[s.a].label);
-aTag.title = ACTIVITY[s.a].desc;
-tags.appendChild(pTag);
-tags.appendChild(aTag);
+tags.appendChild(tagEl(PRESENCE[s.p].label, PRESENCE_TONE[s.p], PRESENCE[s.p].desc));
+tags.appendChild(tagEl(ACTIVITY[s.a].label, ACTIVITY_TONE[s.a], ACTIVITY[s.a].desc));
 card.appendChild(tags);
 if (s.a === 'sleep') card.appendChild(el('div', 'cj-card-note', 'TA那边似乎已经睡了。'));
 if (s.a === 'rest') card.appendChild(el('div', 'cj-card-note', 'TA正在休息。'));
@@ -1004,44 +1015,6 @@ else toast('聊天页未就绪');
 card.appendChild(goBtn);
 card.addEventListener('click', () => window.cjianOpenDetail(c.id, cid));
 return card;
-}
-function renderList() {
-const listEl = document.getElementById('cj-list');
-if (!listEl) return;
-listEl.innerHTML = '';
-const empty = document.getElementById('cj-empty');
-if (window.mochiDataPending && window.mochiDataPending()) {
-if (empty) empty.hidden = true;
-listEl.innerHTML = window.mochiLoadingHtml('梦角名单');
-return;
-}
-const now = Date.now();
-if (viewCid === ALL) {
-if (empty) empty.hidden = true;
-let any = false;
-contacts().forEach(ct => {
-const roster = loadRoster(ct.id);
-const head = el('div', 'cj-group-head');
-head.appendChild(el('span', null, contactName(ct.id)));
-head.appendChild(el('span', 'cj-group-count', roster.length + '位'));
-listEl.appendChild(head);
-if (!roster.length) {
-listEl.appendChild(el('div', 'cj-group-empty', '这个桌面还没有梦角。'));
-return;
-}
-any = true;
-const st = loadState(ct.id);
-roster.forEach(c => listEl.appendChild(cardEl(c, ct.id, ensureState(c, st, now))));
-});
-if (!any) listEl.appendChild(el('div', 'cj-all-tip', '各个桌面还没有梦角。'));
-return;
-}
-const cid = viewCid || curCid();
-const roster = loadRoster(cid);
-if (empty) empty.hidden = roster.length > 0;
-if (!roster.length) return;
-const st = loadState(cid);
-roster.forEach(c => listEl.appendChild(cardEl(c, cid, ensureState(c, st, now))));
 }
 let detailId = '', detailCid = '';
 window.cjianOpenDetail = function (id, cid) {
@@ -1073,31 +1046,25 @@ const now = Date.now();
 const st = loadState(detailCid);
 const s = ensureState(c, st, now);
 const t = timeInfo(worldNowFor(c));
-body.appendChild(el('div', 'cj-d-name', c.name));
-body.appendChild(el('div', 'cj-d-offset', worldTagLabel(c)));
-body.appendChild(el('div', 'cj-d-src', '来自「' + contactName(detailCid) + '」的此间'));
 const timeBig = el('div', 'cj-d-time');
 timeBig.appendChild(el('span', 'cj-d-half', t.half));
 body.appendChild(timeBig);
 body.appendChild(el('div', 'cj-d-range', t.range + ' · 世界时间 ' + t.hhmm));
 if (c.offsetMin) body.appendChild(el('div', 'cj-d-real', '现实此刻 ' + timeInfo(Date.now()).hhmm));
 const tags = el('div', 'cj-card-tags');
-const pTag = el('span', 'cj-tag cj-tag-p', PRESENCE[s.p].label);
-pTag.title = PRESENCE[s.p].desc;
-const aTag = el('span', 'cj-tag cj-tag-a', ACTIVITY[s.a].label);
-aTag.title = ACTIVITY[s.a].desc;
-tags.appendChild(pTag);
-tags.appendChild(aTag);
+tags.appendChild(tagEl(PRESENCE[s.p].label, PRESENCE_TONE[s.p], PRESENCE[s.p].desc));
+tags.appendChild(tagEl(ACTIVITY[s.a].label, ACTIVITY_TONE[s.a], ACTIVITY[s.a].desc));
 body.appendChild(tags);
 if (s.a === 'sleep') body.appendChild(el('div', 'cj-d-note', 'TA那边似乎已经睡了。'));
 if (s.a === 'rest') body.appendChild(el('div', 'cj-d-note', 'TA正在休息。'));
 if (Array.isArray(c.slots) && c.slots.length) body.appendChild(el('div', 'cj-d-note', '常在 ' + slotLabel(c.slots) + ' 出现 · 世界时间只在这些时辰里随机'));
-body.appendChild(el('div', 'cj-d-today-title', 'TA的今日'));
+body.appendChild(el('div', 'cj-d-today-title', contactName(detailCid) + '的今日'));
 const traj = el('div', 'cj-d-today');
 for (let k = 0; k < 12; k++) {
 const idx = (t.idx + k) % 12;
 const row = el('div', 'cj-d-row');
 row.appendChild(el('span', 'cj-d-row-name', SHICHEN[idx] + '时'));
+row.appendChild(el('span', 'cj-d-dot'));
 let pr, ac;
 if (k === 0) { pr = s.p; ac = s.a; }
 else {
@@ -1108,11 +1075,12 @@ const wh = (Array.isArray(c.slots) && c.slots.length)
 pr = rollPresence(wh, false);
 ac = rollActivity(wh);
 }
+row.dataset.tone = ACTIVITY_TONE[ac] || 'slate';
+if (k === 0) row.classList.add('now');
 row.appendChild(el('span', 'cj-d-row-p', trajectoryPhrase(pr, ac)));
 traj.appendChild(row);
 }
 body.appendChild(traj);
-body.appendChild(el('div', 'cj-d-foot', '这不是TA的日程表，只是TA可能的样子。'));
 let entries = scopeEntries();
 if (!entries.some(en => en.c.id === detailId)) entries = flatEntries();
 const pos = entries.findIndex(en => en.c.id === detailId);
@@ -1136,25 +1104,13 @@ jump(entries[(pos + 1) % entries.length]);
 nav.appendChild(nextB);
 body.appendChild(nav);
 }
-const goBtn = el('button', 'cj-go', '去找TA');
-goBtn.type = 'button';
-goBtn.addEventListener('click', (e) => {
-e.stopPropagation();
-try { if (detailCid !== curCid() && window.setActiveContact) window.setActiveContact(detailCid); } catch (err) {}
-if (window.enterChat) window.enterChat();
-else toast('聊天页未就绪');
-});
-body.appendChild(goBtn);
 }
 window.renderCjian = function (forceForecast) {
 try { if (viewCid !== ALL && !contacts().some(ct => ct.id === viewCid)) viewCid = curCid(); } catch (e) {} // 视图兜底
 if (forceForecast) todayCacheMap = {}; // 每次打开此间：TA们重新选择今天的可能样子
 try { if (!todayCacheMap[scopeKey()]) rollTodayForecast(); } catch (e) {}
 try { refreshStates(); } catch (e) {}
-try { renderHero(); } catch (e) {}
-try { renderGroupBar(); } catch (e) {}
-try { renderTaTime(); } catch (e) {}
-try { renderList(); } catch (e) {}
+try { renderPeople(); } catch (e) {}
 try { renderToday(true); } catch (e) {}
 try { if (detailId) renderDetail(); } catch (e) {}
 };
@@ -1164,9 +1120,12 @@ if (!page) return;
 document.querySelectorAll('.page').forEach(p => p.hidden = true);
 page.hidden = false;
 try { if (window.cjianNoteOpen) window.cjianNoteOpen(); } catch (e) {}
-viewCid = curCid(); // 每次打开回到当前桌面
-try { healBelonging(); seedIfEmpty(curCid()); } catch (e) {}
+viewCid = ALL; // 不再按桌面分栏：一次展示全部联系人的卡片与时间轴
+peopleIndex = 0;
+try { const ppl = document.getElementById('cj-people'); if (ppl) ppl.scrollTop = 0; } catch (e) {}
+try { healBelonging(); contacts().forEach(ct => seedIfEmpty(ct.id)); } catch (e) {}
 window.renderCjian(true);
+try { const ppl = document.getElementById('cj-people'); if (ppl) ppl.scrollTop = 0; } catch (e) {}
 };
 window.closeCjian = function () {
 const page = document.getElementById('page-cjian');
@@ -1200,7 +1159,7 @@ window.cjianManage = function (opts) {
 if (!window.openModal) return;
 const arcMode = !!(opts && opts.arc);
 const ACTIONS = arcMode ? ACTION_PILLS_ARC : ACTION_PILLS;
-let mCid = (viewCid === ALL) ? '' : (viewCid || curCid());
+let mCid = contacts().length === 1 ? contacts()[0].id : ''; // 只有一个联系人时不用先选桌面
 let phase = mCid ? 'action' : 'pickGroup', pendingName = '', pendingOffset = 0, renameTarget = null;
 const ctl = window.openModal('梦角管理', '', function (v) {
 if (!v) return;
@@ -1414,7 +1373,7 @@ try { rehomeMisfiled(); } catch (e) {}
 try { fixBelonging(); } catch (e) {}
 if (!reMigrated) {
 reMigrated = true;
-try { seedIfEmpty(curCid()); if (viewCid !== ALL && viewCid !== curCid()) seedIfEmpty(viewCid); } catch (e) {}
+try { contacts().forEach(ct => seedIfEmpty(ct.id)); } catch (e) {}
 try { window.renderCjian(false); } catch (e) {}
 }
 });
@@ -1440,19 +1399,42 @@ if (pageVisible()) window.renderCjian(false);
 document.addEventListener('visibilitychange', function () {
 if (!document.hidden && pageVisible()) window.renderCjian(false);
 });
-const scroller = document.getElementById('cj-main');
-if (scroller) {
-let stickTick = false;
-scroller.addEventListener('scroll', function () {
-if (stickTick) return;
-stickTick = true;
-requestAnimationFrame(function () {
-stickTick = false;
-const barEl = document.getElementById('cj-groups');
-if (barEl) barEl.classList.toggle('stuck', scroller.scrollTop > 4);
-});
+function bindPersonSwipe(elx) {
+if (!elx) return;
+let sy = 0, sx = 0, tracking = false, wheelLock = 0;
+elx.addEventListener('touchstart', function (e) {
+if (e.touches.length !== 1 || contactEntries().length < 2) return;
+const t = e.touches[0];
+sy = t.clientY; sx = t.clientX; tracking = true;
 }, { passive: true });
+elx.addEventListener('touchmove', function (e) {
+if (!tracking || e.touches.length !== 1) return;
+const t = e.touches[0];
+if (Math.abs(t.clientY - sy) > 10 && Math.abs(t.clientY - sy) > Math.abs(t.clientX - sx)) {
+try { e.preventDefault(); } catch (err) {}
 }
+}, { passive: false });
+elx.addEventListener('touchend', function (e) {
+if (!tracking) return;
+tracking = false;
+const t = e.changedTouches[0];
+if (!t) return;
+const dy = t.clientY - sy, dx = t.clientX - sx;
+if (Math.abs(dy) > 36 && Math.abs(dy) > Math.abs(dx) * 1.1) {
+const moved = switchPerson(dy < 0 ? 1 : -1);
+if (moved) { try { e.preventDefault(); } catch (err) {} }
+}
+}, { passive: false });
+elx.addEventListener('wheel', function (e) {
+if (Math.abs(e.deltaY) < 6 || contactEntries().length < 2) return;
+const now = Date.now();
+if (now < wheelLock) return;
+const moved = switchPerson(e.deltaY > 0 ? 1 : -1);
+if (moved) { wheelLock = now + 320; try { e.preventDefault(); } catch (err) {} }
+}, { passive: false });
+}
+bindPersonSwipe(document.getElementById('cj-hero'));
+bindPersonSwipe(document.getElementById('cj-list'));
 const backBtn = document.getElementById('cj-back');
 if (backBtn) {
 backBtn.addEventListener('click', function (e) {
@@ -1475,11 +1457,6 @@ if (phonePage) phonePage.hidden = false;
 window.__cjianFrom = '';
 });
 }
-const detailBack = document.getElementById('cj-detail-back');
-if (detailBack) detailBack.addEventListener('click', function (e) {
-e.stopPropagation();
-window.cjianCloseDetail();
-});
 const manageBtn = document.getElementById('cj-manage-btn');
 if (manageBtn) manageBtn.addEventListener('click', function (e) {
 e.stopPropagation();

@@ -74,8 +74,13 @@
     if (pending) setTimeout(run, 350);
   }
 
-  // 各模块的动态页面/图标可能晚于本文件创建：先等一拍，再补两次迟到的重试。
+  // 各模块的动态页面/图标可能晚于本文件创建：先等一拍，再补几次迟到的重试。
   setTimeout(run, 300);
   setTimeout(run, 1500);
   setTimeout(run, 4000);
+  // 手机端回填、切联系人、退出装修后，personalize 会重建/复位桌面图标——
+  // 这些时机都重新跑一次，避免次级图标又被露出来。
+  ['mochi-restore-done', 'contact-switched', 'decor-exited', 'group-chat-mode-changed'].forEach(function (ev) {
+    document.addEventListener(ev, function () { setTimeout(run, 80); });
+  });
 })();

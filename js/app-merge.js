@@ -71,6 +71,9 @@ if (pending) setTimeout(run, 350);
 setTimeout(run, 300);
 setTimeout(run, 1500);
 setTimeout(run, 4000);
+['mochi-restore-done', 'contact-switched', 'decor-exited', 'group-chat-mode-changed'].forEach(function (ev) {
+document.addEventListener(ev, function () { setTimeout(run, 80); });
+});
 })();
 if (window.__mochiLoaded) window.__mochiLoaded.push("app-merge.js");
 } catch (__e) { if (window.__mochiErrLoaded) window.__mochiErrLoaded.push("app-merge.js"); try { console.error("[JS] app-merge.js", __e && __e.message || __e); } catch (x) {} if (window.__jsErrors) window.__jsErrors.push("[app-merge.js] " + String(__e && __e.message || __e)); } })();

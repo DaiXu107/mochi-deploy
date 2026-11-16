@@ -1054,7 +1054,12 @@
 [data-theme="dark"] .cj-hero-sub { color:#b9b6b0; }
 [data-theme="dark"] .cj-hero-range { color:#9a978f; }
 [data-theme="dark"] .cj-card-range { color:#9a978f; }
-[data-theme="dark"] .cj-tag-a { background:var(--dark-hover); color:#bfbfbf; border-color:var(--dark-border-12); }
+[data-theme="dark"] .cj-tone-rose   { --tag-bg:rgba(190,90,85,.2); --tag-ink:#f0aaa4; --tag-bd:rgba(220,120,110,.32); }
+[data-theme="dark"] .cj-tone-amber  { --tag-bg:rgba(190,140,50,.2); --tag-ink:#e8c27c; --tag-bd:rgba(220,170,80,.3); }
+[data-theme="dark"] .cj-tone-blue   { --tag-bg:rgba(90,120,170,.22); --tag-ink:#a9c0e0; --tag-bd:rgba(120,150,200,.32); }
+[data-theme="dark"] .cj-tone-green  { --tag-bg:rgba(70,130,95,.22); --tag-ink:#9fd0b5; --tag-bd:rgba(100,160,125,.3); }
+[data-theme="dark"] .cj-tone-violet { --tag-bg:rgba(120,100,170,.22); --tag-ink:#c3b4e2; --tag-bd:rgba(150,130,200,.3); }
+[data-theme="dark"] .cj-tone-slate  { --tag-bg:rgba(120,130,140,.2); --tag-ink:#bcc4ca; --tag-bd:rgba(150,160,170,.28); }
 [data-theme="dark"] .cj-card-note { color:#9a978f; }
 [data-theme="dark"] .cj-empty { background:var(--dark-card); border-color:rgba(255,255,255,.16); color:#9a978f; }
 [data-theme="dark"] .cj-empty-sub { color:#7d7d7d; }
@@ -1066,26 +1071,29 @@
 [data-theme="dark"] .cj-today-chars { color:#c9c6c0; }
 [data-theme="dark"] .cj-today-mute { color:rgba(255,255,255,.35); }
 [data-theme="dark"] .cj-card-hint { color:#8a8a8a; }
-[data-theme="dark"] .cj-ta-time-hint { color:#8a8a8a; }
-[data-theme="dark"] .cj-ta-time-item + .cj-ta-time-item { border-top-color:rgba(255,255,255,.07); }
-[data-theme="dark"] .cj-ta-time-sh { color:#7d7d7d; }
-[data-theme="dark"] .cj-ta-time-slot { color:#8a8a8a; }
-[data-theme="dark"] .cj-ta-time-shi { color:#9a978f; }
-[data-theme="dark"] .cj-detail-back { background:var(--dark-card); border-color:var(--dark-border-12); color:#eaeaea; }
 [data-theme="dark"] .cj-d-range { color:#9a978f; }
+[data-theme="dark"] .cj-d-today {
+  --note-bg: #24211c;
+  background:
+    linear-gradient(90deg, rgba(210,170,110,.07) 0 4px, transparent 4px),
+    repeating-linear-gradient(0deg, transparent 0 26px, rgba(255,255,255,.055) 26px 27px),
+    linear-gradient(180deg, #2a2620 0%, #211d18 100%);
+  border-color: rgba(200,160,110,.18);
+  box-shadow: 0 2px 0 rgba(0,0,0,.2), 0 10px 22px rgba(0,0,0,.28), inset 0 0 0 3px rgba(255,255,255,.02);
+}
+[data-theme="dark"] .cj-d-today::after { background: repeating-linear-gradient(90deg, rgba(255,255,255,.06) 0 5px, rgba(255,255,255,0) 5px 11px), rgba(160,130,80,.42); border-color: rgba(255,255,255,.08); }
+[data-theme="dark"] .cj-d-row-name { color:#b9b0a2; }
+[data-theme="dark"] .cj-d-row-p { color:#e8e1d5; }
+[data-theme="dark"] .cj-d-today::before { background:linear-gradient(180deg,rgba(220,180,120,.28),rgba(220,180,120,.05)); }
+[data-theme="dark"] .cj-d-dot { box-shadow:0 0 0 3px #22222a; }
+[data-theme="dark"] .cj-d-row[data-tone="rose"]   { --row-dot:#d9938e; }
+[data-theme="dark"] .cj-d-row[data-tone="amber"]  { --row-dot:#d6b276; }
+[data-theme="dark"] .cj-d-row[data-tone="blue"]   { --row-dot:#93abc9; }
+[data-theme="dark"] .cj-d-row[data-tone="green"]  { --row-dot:#88b79e; }
+[data-theme="dark"] .cj-d-row[data-tone="violet"] { --row-dot:#ac9ac9; }
+[data-theme="dark"] .cj-d-row[data-tone="slate"]  { --row-dot:#a5b0b6; }
 [data-theme="dark"] .cj-d-real { color:#8a8a8a; }
 [data-theme="dark"] .cj-d-note { color:#9a978f; }
-[data-theme="dark"] .cj-d-row { border-bottom-color:rgba(255,255,255,.07); }
-[data-theme="dark"] .cj-d-row-p { color:#c9c6c0; }
-[data-theme="dark"] .cj-d-foot { color:#8a8a8a; }
-[data-theme="dark"] .cj-groups.stuck { background:#22222a; border-bottom-color:rgba(255,255,255,.08); box-shadow:0 4px 14px rgba(0,0,0,.4); }
-[data-theme="dark"] .cj-gchip { background:var(--dark-hover); border-color:var(--dark-border-12); color:#aaa; }
-/* v3.26.x #484：选中态原只改字色没改底色 → 深底(#3a3a3c)深字(#111)看不清；
-   补浅底（与全局「深色下选中=浅底深字」约定一致） */
-[data-theme="dark"] .cj-gchip.on { background:var(--ink,#f0f0f0); border-color:var(--ink,#f0f0f0); color:#111; }
-[data-theme="dark"] .cj-group-empty { color:#8a8a8a; }
-[data-theme="dark"] .cj-all-tip { color:#9a978f; }
-[data-theme="dark"] .cj-d-src { color:#9a978f; }
 [data-theme="dark"] .cj-d-nav-btn { background:var(--dark-card); border-color:var(--dark-border-12); color:#eaeaea; }
 [data-theme="dark"] .cj-d-nav-pos { color:#8a8a8a; }
 
