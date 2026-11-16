@@ -2017,6 +2017,8 @@ const FIX_SENTINELS = [
   { name: '2026-11-16 后台回收后自动进聊天路由', file: 'js/chat.js', needle: 'function chatResumeRoute()' },
   { name: '2026-11-16 主页成对应用合并（删则存钱罐/我的档案/心意柜重新散落在桌面）', file: 'js/app-merge.js', needle: "sec.dataset.appMerged = '1';" },
   { name: '2026-11-16 合并次级图标不被 applyHiddenIcons 复位（删则手机回填/切桌面后「我的档案」重新出现）', file: 'js/personalize.js', needle: "if (app.dataset.appMerged === '1' || key === 'piggy' || key === 'my-arc' || key === 'giftbox') {" },
+  { name: '2026-11-16 长按更多功能方块切换样式（删长按绑定＝没有切换入口）', file: 'js/chat.js', needle: "morePanel.addEventListener('pointerdown'" },
+  { name: '2026-11-16 更多功能纯图标样式（删 body.more-style-plain＝切换无效）', file: 'css/chat-main.css', needle: 'body.more-style-plain .more-item .mi-ico' },
   { name: '2026-11-16 应用于市场跳过已合并次级图标（删则市场重新单列存钱罐/我的档案/心意柜）', file: 'js/app-market.js', needle: "if (app.dataset.appMerged === '1' || k === 'piggy' || k === 'my-arc' || k === 'giftbox') return;" },
   { name: '#722h 备份「仅聊天记录」收块键（删则分块后备份缺聊天历史＝备份完整性破坏）', file: 'js/data-backup.js', needle: 'const CHAT_KEY_RE = /(?:^|:)(?:chat-msgs|chat-blk-idx|chat-blk-[0-9]+)$/;' },
   { name: '#722i 块格式备份组装回整包（删则块备份无法导回聊天记录）', file: 'js/data-backup.js', needle: "if (!/:chat-blk-idx$/.test(k)) return;" },

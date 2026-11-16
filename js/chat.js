@@ -7833,6 +7833,70 @@ if (!moreGroupMode) store.set('more-cat', cat);
 window.applyMoreCat = applyMoreCat;
 window.setMoreGroupMode = (on) => { moreGroupMode = !!on; applyMoreCat('tool', !!on); };
 document.querySelectorAll('#more-tabs .more-tab').forEach(t => t.addEventListener('click', (e) => { e.stopPropagation(); applyMoreCat(t.dataset.mcat); }));
+const MORE_ICON_STYLE_KEY = 'mochi-more-icon-style';
+function readMoreIconStyle() {
+try { return localStorage.getItem(MORE_ICON_STYLE_KEY) === 'plain' ? 'plain' : 'tile'; } catch (e) { return 'tile'; }
+}
+function applyMoreIconStyle() {
+const style = readMoreIconStyle();
+try { document.body.classList.toggle('more-style-plain', style === 'plain'); } catch (e) {}
+}
+applyMoreIconStyle();
+(function bindMoreIconStyleLongPress() {
+let timer = 0, sx = 0, sy = 0, suppressClick = false, pointerSeen = false;
+function cancel() { if (timer) { clearTimeout(timer); timer = 0; } }
+function begin(el, x, y) {
+if (!el || !el.closest || !el.closest('.more-item')) return;
+sx = x; sy = y;
+cancel();
+timer = setTimeout(function () {
+timer = 0;
+const next = readMoreIconStyle() === 'plain' ? 'tile' : 'plain';
+try { localStorage.setItem(MORE_ICON_STYLE_KEY, next); } catch (err) {}
+applyMoreIconStyle();
+suppressClick = true;
+setTimeout(function () { suppressClick = false; }, 900);
+if (navigator.vibrate) { try { navigator.vibrate(10); } catch (err) {} }
+toast(next === 'plain' ? '更多功能：纯图标样式' : '更多功能：小方块样式');
+}, 550);
+}
+function move(x, y) {
+if (!timer) return;
+if (Math.abs(x - sx) > 12 || Math.abs(y - sy) > 12) cancel();
+}
+morePanel.addEventListener('pointerdown', function (e) {
+pointerSeen = true;
+if (e.pointerType === 'mouse' && e.button !== 0) return;
+begin(e.target, e.clientX, e.clientY);
+});
+morePanel.addEventListener('pointermove', function (e) { move(e.clientX, e.clientY); }, { passive: true });
+['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) {
+morePanel.addEventListener(ev, cancel, { passive: true });
+});
+morePanel.addEventListener('touchstart', function (e) {
+if (pointerSeen || e.touches.length !== 1) return;
+const t = e.touches[0];
+begin(e.target, t.clientX, t.clientY);
+}, { passive: true });
+morePanel.addEventListener('touchmove', function (e) {
+if (e.touches.length !== 1) return;
+const t = e.touches[0];
+move(t.clientX, t.clientY);
+}, { passive: true });
+['touchend', 'touchcancel'].forEach(function (ev) {
+morePanel.addEventListener(ev, cancel, { passive: true });
+});
+document.addEventListener('click', function (e) {
+if (!suppressClick) return;
+suppressClick = false;
+e.preventDefault();
+e.stopPropagation();
+e.stopImmediatePropagation();
+}, true);
+morePanel.addEventListener('contextmenu', function (e) {
+if (e.target.closest('.more-item')) e.preventDefault();
+});
+})();
 moreBtn.addEventListener('click', (e) => {
 e.stopPropagation();
 if (morePanel.hidden) {

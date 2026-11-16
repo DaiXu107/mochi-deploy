@@ -2102,15 +2102,15 @@ box-shadow:0 1px 4px rgba(0,0,0,.1);
 .msg-poke.mail-notice > span:first-child { text-decoration:underline dashed rgba(0,0,0,.25); text-underline-offset:3px; }
 .msg-poke.mail-notice:active { background:rgba(0,0,0,.08); }
 .more-panel {
-position:absolute; left:18px; right:18px; bottom:calc(96px + var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px))); z-index:60;
+position:absolute; left:18px; right:18px; bottom:calc(74px + var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px))); z-index:60;
 background:rgba(255,255,255,.97);
 border:1px solid rgba(0,0,0,.1);
 border-radius:20px; box-shadow:0 12px 32px rgba(0,0,0,.1);
-padding:16px; display:flex; flex-direction:column;
+padding:14px; display:flex; flex-direction:column;
 max-height:min(64vh, 330px);
 }
 .more-panel[hidden] { display:none; }
-.more-tabs { display:flex; gap:6px; margin-bottom:14px; overflow-x:auto; scrollbar-width:none; }
+.more-tabs { display:flex; gap:6px; margin-bottom:10px; overflow-x:auto; scrollbar-width:none; }
 .more-tabs::-webkit-scrollbar { display:none; }
 .more-tab {
 flex:0 0 auto; padding:7px 13px; font-size:12px; font-weight:700;
@@ -2120,8 +2120,8 @@ font-family:inherit; -webkit-tap-highlight-color:transparent;
 }
 .more-tab.sel { background:#111; color:#fff; border-color:#111; }
 .more-grid {
-display:block; flex:0 0 208px;
-height:208px; box-sizing:border-box;
+display:block; flex:0 0 196px;
+height:196px; box-sizing:border-box;
 overflow-y:auto; overscroll-behavior:contain;
 scroll-snap-type:y mandatory; -webkit-overflow-scrolling:touch;
 padding:0;
@@ -2129,12 +2129,11 @@ scrollbar-width:none; -ms-overflow-style:none;
 }
 .more-grid::-webkit-scrollbar { display:none; width:0; height:0; }
 .more-page {
-box-sizing:border-box; height:208px; width:100%;
+box-sizing:border-box; height:196px; width:100%;
 display:grid; grid-template-columns:repeat(4, 1fr); grid-template-rows:repeat(2, 1fr);
 gap:10px 14px; justify-items:center; align-items:start;
-padding:10px 8px; border-radius:18px;
-background:#fff;
-box-shadow:0 7px 20px rgba(0,0,0,.08);
+padding:6px 8px;
+background:transparent; border-radius:0; box-shadow:none;
 scroll-snap-align:start; scroll-snap-stop:always;
 }
 .more-page[hidden] { display:none; }
@@ -2146,6 +2145,7 @@ scroll-snap-align:start; scroll-snap-stop:always;
 width:100%; max-width:64px; display:flex; flex-direction:column; align-items:center; gap:7px;
 background:transparent; border:none; cursor:pointer; font-family:inherit;
 color:var(--ink); -webkit-tap-highlight-color:transparent;
+-webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
 }
 .more-item .mi-ico {
 width:50px; height:50px; border-radius:16px;
@@ -2162,6 +2162,12 @@ box-shadow:0 1px 3px rgba(0,0,0,.06);
 }
 .more-item svg { width:22px; height:22px; }
 .more-item span { font-size:11px; }
+body.more-style-plain .more-item .mi-ico {
+width:38px; height:38px; border-radius:0;
+background:transparent; border:none; box-shadow:none;
+}
+body.more-style-plain .more-item .mi-ico svg { width:24px; height:24px; }
+body.more-style-plain .more-item:active .mi-ico { transform:scale(.94); opacity:.75; box-shadow:none; }
 #chat-call-panel .poke-card-scroll { min-height:0; max-height:none; }
 .call-panel-status {
 text-align:center; font-size:13px; font-weight:600; color:var(--ink);
@@ -8755,7 +8761,7 @@ html.tablet .tabbar .tab { padding:14px 8px; border-radius:16px; }
 [data-theme="dark"] .chat-send { background:var(--send-bg, var(--btn-bg)); color:var(--send-ink, var(--btn-ink)); }
 [data-theme="dark"] .chat-plus-btn { background:var(--dark-card-92); border-color:var(--dark-border); color:var(--ink); }
 [data-theme="dark"] .more-panel { background:var(--dark-card-97); border-color:var(--dark-border); }
-[data-theme="dark"] .more-page { background:rgba(255,255,255,.06); box-shadow:0 7px 20px rgba(0,0,0,.28); }
+[data-theme="dark"] .more-page { background:transparent; box-shadow:none; }
 [data-theme="dark"] .more-tab { background:var(--dark-card-92); color:var(--dark-soft); border-color:var(--dark-border); }
 [data-theme="dark"] .more-tab.sel { background:var(--btn-bg); color:var(--btn-ink); border-color:var(--btn-bg); }
 [data-theme="dark"] .more-tab:active { background:var(--dark-hover); }
@@ -14001,7 +14007,7 @@ color: var(--gh-faint);
            （名称+版号 / 部署时间+实时秒 / 版本检测行）收成一行；检测行随 ver-check.js 退役删除。
            data-build-ts / data-version 两属性保留：device.js 诊断、bg-keep 自检、pwa.js 旧包检测
            仍只读属性（诊断版本号走 data-version 兜底，device.js 两处缓存原生支持）。 -->
-      <div class="splash-ver" id="splash-ver" data-build-ts="1794841486302" data-version="v8.5">
+      <div class="splash-ver" id="splash-ver" data-build-ts="1794843107585" data-version="v8.5">
         <span class="sv-app">Mochi 字卡传讯 已完结停更</span>
       </div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
@@ -26129,4 +26135,4 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 </body>
 </html>
 
-<!-- __MOCHI_EOF__ mwjea28u -->
+<!-- __MOCHI_EOF__ mwjf8t8h -->

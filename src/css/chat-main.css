@@ -678,17 +678,17 @@ html.tablet #page-chat.cs-bg-on > #cs-bg-layer { min-height:100vh; min-height:ma
    v3.5.110锛歜ottom 鍔?safe-area锛屽叏闈㈠睆鍏ㄥ睆妯″紡涓嬩笌杈撳叆鏍忓悓姝ヤ笂绉伙紝涓嶉敊浣?   v3.10.x锛歠ixed 鈫?absolute鈥斺€斿畨鍗?resizes-visual 涓嬮敭鐩樺彧缂?visualViewport锛?   fixed 闈㈡澘閿氬畾鍏ㄩ珮 layout viewport 涓嶅姩锛沘bsolute 閿氬畾 .phone/#page-chat锛?   閿洏寮瑰嚭鏃跺鍣ㄨ syncAndroidKb 鏀剁缉銆侀潰鏉胯窡鐫€鍋滈潬杈撳叆鏍忎笂鏂癸紙鍚﹀垯鎵撳紑鍗?   鑷姩鑱氱劍鐨勫崐妗嗕細鏁翠綋鎺夊埌鍗囪捣鍚庣殑杈撳叆鏍忎笅鏂?閿洏鍚庨潰锛夈€傛墜鏈虹 .phone
    婊″睆鏃朵袱鑰呭嚑浣曠瓑浠凤紱妗岄潰瀹藉睆鏈氨鐢辨枃鏈?@media 鏀?absolute锛屾澶勭粺涓€銆?*/
 .more-panel {
-  position:absolute; left:18px; right:18px; bottom:calc(96px + var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px))); z-index:60;
+  position:absolute; left:18px; right:18px; bottom:calc(74px + var(--mochi-safe-bottom,env(safe-area-inset-bottom,0px))); z-index:60;
   background:rgba(255,255,255,.97);
   border:1px solid rgba(0,0,0,.1);
   border-radius:20px; box-shadow:0 12px 32px rgba(0,0,0,.1);
-  padding:16px; display:flex; flex-direction:column;
+  padding:14px; display:flex; flex-direction:column;
   max-height:min(64vh, 330px);
 }
 .more-panel[hidden] { display:none; }
 /* 鏇村鍔熻兘闈㈡澘锛氶《閮ㄥ垎绫诲垏鎹紙v3.15.x锛氬姛鑳藉澶氬悗鐢变袱椤电鏀逛负鍒嗙被 chips
    甯哥敤/浜掑姩/灏忔父鎴?宸ュ叿/TA鐨勬彁闂紱绐勫睆鏀句笉涓嬫椂妯悜婊氬姩锛?*/
-.more-tabs { display:flex; gap:6px; margin-bottom:14px; overflow-x:auto; scrollbar-width:none; }
+.more-tabs { display:flex; gap:6px; margin-bottom:10px; overflow-x:auto; scrollbar-width:none; }
 .more-tabs::-webkit-scrollbar { display:none; }
 .more-tab {
   flex:0 0 auto; padding:7px 13px; font-size:12px; font-weight:700;
@@ -702,8 +702,8 @@ html.tablet #page-chat.cs-bg-on > #cs-bg-layer { min-height:100vh; min-height:ma
    多余的功能竖向滑动翻到下一张卡片。原生 scroll-snap 负责吸附与惯性，
    滚动条完全隐藏，不再露出半截第三行。 */
 .more-grid {
-  display:block; flex:0 0 208px;
-  height:208px; box-sizing:border-box;
+  display:block; flex:0 0 196px;
+  height:196px; box-sizing:border-box;
   overflow-y:auto; overscroll-behavior:contain;
   scroll-snap-type:y mandatory; -webkit-overflow-scrolling:touch;
   padding:0;
@@ -711,12 +711,11 @@ html.tablet #page-chat.cs-bg-on > #cs-bg-layer { min-height:100vh; min-height:ma
 }
 .more-grid::-webkit-scrollbar { display:none; width:0; height:0; }
 .more-page {
-  box-sizing:border-box; height:208px; width:100%;
+  box-sizing:border-box; height:196px; width:100%;
   display:grid; grid-template-columns:repeat(4, 1fr); grid-template-rows:repeat(2, 1fr);
   gap:10px 14px; justify-items:center; align-items:start;
-  padding:10px 8px; border-radius:18px;
-  background:#fff;
-  box-shadow:0 7px 20px rgba(0,0,0,.08);
+  padding:6px 8px;
+  background:transparent; border-radius:0; box-shadow:none;
   scroll-snap-align:start; scroll-snap-stop:always;
 }
 .more-page[hidden] { display:none; }
@@ -730,6 +729,7 @@ html.tablet #page-chat.cs-bg-on > #cs-bg-layer { min-height:100vh; min-height:ma
   width:100%; max-width:64px; display:flex; flex-direction:column; align-items:center; gap:7px;
   background:transparent; border:none; cursor:pointer; font-family:inherit;
   color:var(--ink); -webkit-tap-highlight-color:transparent;
+  -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
 }
 .more-item .mi-ico {
   width:50px; height:50px; border-radius:16px;
@@ -746,6 +746,13 @@ html.tablet #page-chat.cs-bg-on > #cs-bg-layer { min-height:100vh; min-height:ma
 }
 .more-item svg { width:22px; height:22px; }
 .more-item span { font-size:11px; }
+/* 装修模式「功能样式：纯图标」：去掉每个功能的白色圆角底与光影 */
+body.more-style-plain .more-item .mi-ico {
+  width:38px; height:38px; border-radius:0;
+  background:transparent; border:none; box-shadow:none;
+}
+body.more-style-plain .more-item .mi-ico svg { width:24px; height:24px; }
+body.more-style-plain .more-item:active .mi-ico { transform:scale(.94); opacity:.75; box-shadow:none; }
 
 /* 閫氳瘽鍗婃锛堝鐢?.poke-card 瀹瑰櫒锛夛細鐘舵€佽 + 鎷ㄦ墦/鎸傛柇澶ф寜閽?*/
 #chat-call-panel .poke-card-scroll { min-height:0; max-height:none; }
