@@ -2133,23 +2133,27 @@
         const row = document.createElement('div');
         row.className = 'mg-row';
         row.dataset.gidx = String(gi);
-        const builtin = (BUILTIN[cur] || []).some(b => b[0] === gname);
+        // FIX 2026-11-16：管理列表里的 groups 只含用户自建分组（内置卡已在 stripBuiltins
+        // 里剔除，内置分组本身从不写进 groups）。原实现按分组名是否撞上 BUILTIN 名字来决定
+        // 显示「内置」——用户把自建分组叫「开心 / 日常 / 常用」这类名字时，重命名/删除按钮
+        // 会突然消失，看起来就是「分组不能重命名」。自建分组一律可重命名、可删除。
         row.innerHTML = '<button class="mg-handle" aria-label="拖动排序">' + handleSvg + '</button>' +
           '<span class="mg-name">' + esc(gname) + '</span><span class="mg-count">' + arr.length + ' 张</span>' +
-          (builtin ? '<span class="mg-tag">内置</span>' : '<button class="mg-rn" aria-label="重命名">' + editSvg + '</button><button class="mg-del">✕</button>');
+          '<button class="mg-rn" aria-label="重命名">' + editSvg + '</button><button class="mg-del">✕</button>';
         attachGroupRowDrag(row, gi);
-        if (!builtin) {
+        {
           const rnBtn = row.querySelector('.mg-rn');
           if (rnBtn) rnBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             if (window.openModal) {
               window.openModal('重命名分组', gname, (v) => {
                 const name = String(v == null ? '' : v).trim();
-                if (!name) return;
-                if (name === gname) return;
+                if (!name) { toast('分组名不能为空'); return; }
+                if (name === gname) { toast('分组名没有变化'); return; }
                 if (((groups || {})[cur] || []).some(g => g[0] === name)) { toast('分组「' + name + '」已存在'); return; }
-                const g = groups[cur][gi];
-                if (!g) return;
+                // 按名字找当前分组，不依赖打开弹窗时的下标（弹窗期间新建/拖动/删除过分组也不会改错对象）
+                const g = ((groups || {})[cur] || []).find(x => Array.isArray(x) && x[0] === gname);
+                if (!g) { toast('这个分组已经不在了，刷新后再试'); return; }
                 const oldName = g[0];
                 g[0] = name;
                 if (curGroup === oldName) curGroup = name;

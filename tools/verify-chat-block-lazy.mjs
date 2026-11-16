@@ -42,7 +42,7 @@ chk('A2 旧格式大历史后台分块迁移', chatSrc.includes('if (!chatBlkIdx
 chk('A3 账本守卫分块感知（热片基准）', chatSrc.includes('if (chatBlkIdx && typeof chatHotBaseN === '));
 chk('A4 getChatMsgs 永远全量', chatSrc.includes('return chatColdHead.length ? chatColdHead.concat(msgs) : msgs; }'));
 chk('A5 上滑边界 rebase', chatSrc.includes('if (chatColdHead.length) { chatRebaseCold(); loadOlderIncremental(); return; }'));
-chk('A6 头块水合失败不前移', chatSrc.includes('if (!Array.isArray(v)) { chatColdHydrating = false; return; } // #722 读失败'));
+chk('A6 头块水合失败不前移', chatSrc.includes('if (!Array.isArray(v)) { chatColdHydrating = false; chatColdWantAll = false; flushWaiters(); return; } // #722 读失败'));
 chk('A7 备份「仅聊天记录」收块键', backupSrc.includes('chat-blk-idx|chat-blk-[0-9]+'));
 chk('A8 备份导入组装回整包 + 写整包清旧块键', backupSrc.includes("if (!/:chat-blk-idx$/.test(k)) return;") && backupSrc.includes("k.indexOf(key + ':chat-blk-') === 0"));
 chk('A9 尾部重写不切片（防热片被 headN 切空）', !chatSrc.includes('const tailArr = arr.slice(headN);'));
@@ -210,16 +210,19 @@ const j2 = r2 ? JSON.parse(r2) : {};
 const dbg = await evalJs('JSON.stringify(window.__blkDbg||{})');
 chk('B2 分块热读生效：热片渲染完整、进度条收起（绝对耗时为负载敏感项：4× 节流+宿主忙时单块读可超时重试一次，故上限放到 30s；真实收益随历史体积放大）', j2.readyMs >= 0 && j2.readyMs < 30000 && j2.msgs >= 100 && j2.barGone === true, r2 + ' DBG=' + dbg);
 
-// ---- B3 getChatMsgs 永远全量 ----
-// 全量契约=开聊后后台水合数秒内可达（消费方都是用户点开的页面，时序足够）
-let fullN = -1;
-for (var fb = 0; fb < 30; fb++) {
+// ---- B3 全量历史按需取回（2026-11-16：开聊天不再自动读全部冷块） ----
+// B3a 开聊后只应拿到热片（冷块留在磁盘）；B3b 显式调用 chatEnsureFullHistory 后才全量。
+let fullN = await evalJs("(window.getChatMsgs ? window.getChatMsgs().length : -1)");
+const autoLoadedAll = await evalJs("(window.chatHistoryLoadedAll ? window.chatHistoryLoadedAll() : true)");
+chk('B3a 开聊天不自动读全部冷块（热片口径即可开聊）', fullN < TOTAL || autoLoadedAll, 'n=' + fullN + ' all=' + autoLoadedAll);
+await evalJs("new Promise(function(res){ if (window.chatEnsureFullHistory) window.chatEnsureFullHistory(function(){ res(true); }); else res(false); })");
+for (var fb = 0; fb < 20; fb++) {
   fullN = await evalJs("(window.getChatMsgs ? window.getChatMsgs().length : -1)");
   if (fullN >= TOTAL) break;
-  await sleep(1000);
+  await sleep(500);
 }
 const dbg2 = await evalJs('JSON.stringify(window.__blkDbg||{})');
-chk('B3 getChatMsgs 水合完成后返回全量条数（统计/导出零改动依赖此语义；宿主忙时水合推进更慢）', fullN >= TOTAL, 'n=' + fullN + ' DBG=' + dbg2);
+chk('B3b chatEnsureFullHistory 按需取回后返回全量条数（搜索/导出/统计打开时触发）', fullN >= TOTAL, 'n=' + fullN + ' DBG=' + dbg2);
 
 // ---- B4 上滑到热片顶部：rebase 后更早历史可见 ----
 await evalJs(`(async function(){

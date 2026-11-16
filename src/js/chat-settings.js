@@ -2511,37 +2511,47 @@
   if (csExport) {
     csExport.addEventListener('click', () => {
       if (!window.chatExportMsgs && !window.getChatMsgs) { toast('聊天记录暂不可用'); return; }
-      toast('正在导出，请稍候…');
-      try {
-        if (window.chatFlushSave) window.chatFlushSave();
-        // v3.26.x：getChatMsgs 取引用免 slice 复制 950MB（slice 会使堆翻倍 OOM）
-        const arr = window.getChatMsgs ? window.getChatMsgs() : window.chatExportMsgs();
-        const n = Array.isArray(arr) ? arr.length : 0;
-        if (!n) { toast('没有聊天记录可导出'); return; }
-        // v3.26.x：流式构建 JSON——每条消息单独 stringify 放进 Blob 数组拼接，
-        // 避免单次 JSON.stringify 整包超 V8 字符串长度上限（~512MB）报 Invalid string length
-        const parts = ['{"app":"mochi-zika-chat","version":"1.0","exportTime":"' + new Date().toISOString() + '","msgs":['];
-        for (let i = 0; i < n; i++) {
-          if (i) parts.push(',');
-          parts.push(JSON.stringify(arr[i]));
+      // 2026-11-16：聊天页默认只载近期热片，导出前先把剩余冷块按需取全，
+      // 否则导出的只有最近一段（旧行为靠开聊天后自动水合，大库进聊天会白读全部历史）。
+      const doExport = () => {
+        toast('正在导出，请稍候…');
+        try {
+          if (window.chatFlushSave) window.chatFlushSave();
+          // v3.26.x：getChatMsgs 取引用免 slice 复制 950MB（slice 会使堆翻倍 OOM）
+          const arr = window.getChatMsgs ? window.getChatMsgs() : window.chatExportMsgs();
+          const n = Array.isArray(arr) ? arr.length : 0;
+          if (!n) { toast('没有聊天记录可导出'); return; }
+          // v3.26.x：流式构建 JSON——每条消息单独 stringify 放进 Blob 数组拼接，
+          // 避免单次 JSON.stringify 整包超 V8 字符串长度上限（~512MB）报 Invalid string length
+          const parts = ['{"app":"mochi-zika-chat","version":"1.0","exportTime":"' + new Date().toISOString() + '","msgs":['];
+          for (let i = 0; i < n; i++) {
+            if (i) parts.push(',');
+            parts.push(JSON.stringify(arr[i]));
+          }
+          parts.push(']}');
+          const blob = new Blob(parts, { type: 'application/json;charset=utf-8' });
+          // FIX 2026-09-30 #1488：走统一 Blob 三级导出链（系统分享面板→保存框→确认后下载）——
+          // 原裸 a[download] 在 iPhone 主屏安装（standalone 无下载管理器）与 #758 壳浏览器家族
+          // 静默无反应＝聊天记录导不出去（#172 修聊天美化导出时的同族症状，本处当时漏改）。
+          // 流式 parts 构建【原样保留】（整包 stringify 会顶 V8 字符串上限＝当初分段的全部
+          // 理由），只换落盘通道；统一链不可用时保留裸腿兜底。
+          if (window.mochiExportBlob) { window.mochiExportBlob(blob, '聊天记录_' + new Date().toISOString().slice(0, 10) + '.json', '聊天记录数据'); return; }
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = '聊天记录_' + new Date().toISOString().slice(0, 10) + '.json';
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+          toast('已导出 ' + n + ' 条聊天记录');
+        } catch (e) {
+          toast('导出失败：' + (e && e.message || '未知错误'));
         }
-        parts.push(']}');
-        const blob = new Blob(parts, { type: 'application/json;charset=utf-8' });
-        // FIX 2026-09-30 #1488：走统一 Blob 三级导出链（系统分享面板→保存框→确认后下载）——
-        // 原裸 a[download] 在 iPhone 主屏安装（standalone 无下载管理器）与 #758 壳浏览器家族
-        // 静默无反应＝聊天记录导不出去（#172 修聊天美化导出时的同族症状，本处当时漏改）。
-        // 流式 parts 构建【原样保留】（整包 stringify 会顶 V8 字符串上限＝当初分段的全部
-        // 理由），只换落盘通道；统一链不可用时保留裸腿兜底。
-        if (window.mochiExportBlob) { window.mochiExportBlob(blob, '聊天记录_' + new Date().toISOString().slice(0, 10) + '.json', '聊天记录数据'); return; }
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = '聊天记录_' + new Date().toISOString().slice(0, 10) + '.json';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-        toast('已导出 ' + n + ' 条聊天记录');
-      } catch (e) {
-        toast('导出失败：' + (e && e.message || '未知错误'));
+      };
+      if (window.chatEnsureFullHistory && window.chatHistoryLoadedAll && !window.chatHistoryLoadedAll()) {
+        toast('正在读取全部聊天记录，请稍候…');
+        window.chatEnsureFullHistory(doExport);
+      } else {
+        doExport();
       }
     });
   }

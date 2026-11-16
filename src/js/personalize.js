@@ -402,10 +402,20 @@ try {
       return null;
     }
     function readModalVal(el) {
-      try { const v = el.value; if (v != null && String(v).length) return String(v); } catch (e) {}
+      // FIX 2026-11-16：可见 ce-box 是用户真正看到并编辑的内容，优先读它。
+      // 旧写法先读 el.value：重命名类弹窗预填了旧值，安卓上 CE 代理偶发没把新输入同步回
+      // ghost input 时，读到的仍是旧名字，回调里「名字没变」守卫静默 return＝用户所见
+      // 「分组不能重命名」。box 不可见（如单行/多行切换后隐藏）时才回退原生值。
       const box = ceBoxOf(el);
-      if (box) { try { const t = (box.innerText !== undefined ? box.innerText : box.textContent) || ''; if (t.length) return t; } catch (e) {} }
-      try { return el.value || ''; } catch (e) { return ''; }
+      if (box) {
+        try {
+          const rects = box.getClientRects();
+          if (rects && rects.length && getComputedStyle(box).visibility !== 'hidden') {
+            return (box.innerText !== undefined ? box.innerText : box.textContent) || '';
+          }
+        } catch (e) {}
+      }
+      try { return el.value == null ? '' : String(el.value); } catch (e) { return ''; }
     }
     let cb = null;
     // FIX 2026-09-27 #1342o：记住「此刻这一组胶囊」——#1342p 那道「确定＝真·可点选图层」要按

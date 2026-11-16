@@ -592,7 +592,18 @@
         '<div class="tc-li-line">' + name + ' 当天打工：+' + (x.ta || 0) + '</div>';
     }, window.renderWorkHistory, totalHtml);
   };
+  let recordsFullReq = false;
   function render() {
+    // 2026-11-16：关心/红包/查岗这几栏要从聊天记录回溯旧条目；聊天页默认只载近期热片，
+    // 只有打开这几栏时才按需把旧块取全（工作/摸鱼/通话等自有数组的栏不为此读全量历史）。
+    const needsChatHistory = htab === 'care' || htab === 'ck' || htab === 'xck' || htab === 'coinrp';
+    if (needsChatHistory && window.chatEnsureFullHistory && window.chatHistoryLoadedAll && !window.chatHistoryLoadedAll() && !recordsFullReq) {
+      recordsFullReq = true;
+      window.chatEnsureFullHistory(function () {
+        recordsFullReq = false;
+        try { render(); } catch (e) {}
+      });
+    }
     // 只渲染当前 tab 面板（避免隐藏面板无谓渲染）
     const showOnly = htab;
     // 每日打工值记录

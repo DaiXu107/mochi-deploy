@@ -165,6 +165,23 @@ function chatArchPurge(prefix) {
 try { if (window.idbDelete) window.idbDelete(prefix + ':' + CHAT_ARCH_KEY); } catch (e) {}
 try { localStorage.removeItem(prefix + ':' + CHAT_ARCH_KEY); } catch (e) {}
 }
+function chatColdTailOnly(arr) {
+if (!chatRebased && chatColdMergedN > 0 && Array.isArray(arr)) return arr.slice(chatColdMergedN);
+return arr;
+}
+function chatColdTouched(idx) {
+if (chatRebased || chatColdMergedN <= 0) return false;
+if (!(typeof idx === 'number' && idx >= 0 && idx < chatColdMergedN)) return false;
+try {
+if (window.chatEnsureFullHistory) {
+window.chatEnsureFullHistory(function () {
+try { if (!chatRebased && chatColdHead.length) chatRebaseCold(); } catch (e) {}
+try { saveMsgs(); } catch (e) {}
+});
+}
+} catch (e) {}
+return true;
+}
 function persistChatHistory(prefix, arr, forceFull) {
 try {
 if (!window.idbSet) return;
@@ -180,7 +197,7 @@ return;
 }
 }
 if (!chatRebased) {
-chatBlkRewriteTail(prefix, arr); // 热片对齐尾部块重写（头部冷块不在内存也不需要；未 rebase 时内存绝不是全量，绝不能走整组重写=丢头部）
+chatBlkRewriteTail(prefix, chatColdTailOnly(arr)); // 只重写尾部热片；已并入的旧块留在头部块里，绝不整组重写
 return;
 }
 chatBlkWriteFull(prefix, arr); // 内存全量（rebase 后/导入）：整组重分块
@@ -211,10 +228,11 @@ let chatBlkWriting = false;      // 分块写单飞闸（并发请求合并，�
 let chatBlkPending = null;       // 写期间到达的最新全量（收尾后补写）
 let chatHotFrom = 0;             // 热片覆盖的块下标起点（尾部重写时保留其前的头块）
 let chatColdHead = [];           // 已取回未并入 msgs 的头部消息（时间正序）
-let chatColdFrom = 0;            // 尚未取回的头块下标
+let chatColdFrom = -1;           // 下一个要取回的头块下标（从热片前一块往回走；-1=取完）
 let chatColdDone = true;         // 头块是否已全部取回
 let chatColdHydrating = false;
-let chatRebased = false;         // 冷头是否已并入 msgs（此后内存=全量）
+let chatRebased = false;         // 冷头是否已**全部**并入 msgs（true=内存全量）
+let chatColdMergedN = 0;         // 已并入 msgs 头部的冷块条数（保存时只重写它之后的尾部）
 let chatHotBaseN = 0;            // 热片装载时的条数（#722 分块格式下账本守卫的比对基准）
 const chatHotCache = {};
 const CHAT_HOT_CACHE_TTL = 10 * 60 * 1000;
@@ -251,7 +269,7 @@ if (!live[k.slice(prefix.length + 1)]) delete chatHotCache[k]; // #954：死块�
 }
 function chatBlkResetState() {
 chatBlkIdx = null; chatBlkTotal = 0; chatHotFrom = 0; chatHotBaseN = 0;
-chatColdHead = []; chatColdFrom = 0; chatColdDone = true; chatColdHydrating = false; chatRebased = false;
+chatColdHead = []; chatColdFrom = -1; chatColdDone = true; chatColdHydrating = false; chatRebased = false; chatColdMergedN = 0;
 }
 function chatBlkSplit(arr) {
 const out = [];
@@ -291,7 +309,7 @@ chatHotCacheSet(prefix + ':chat-blk-idx', idxStrW); // #954w
 chatHotCacheSyncLive(prefix, blocks); // #954w 死块缓存随写清除
 chatBlkIdx = idx; chatBlkTotal = arr.length;
 chatHotFrom = Math.max(0, blocks.length - 1);
-chatColdHead = []; chatColdFrom = 0; chatColdDone = true; chatRebased = false;
+chatColdHead = []; chatColdFrom = -1; chatColdDone = true; chatRebased = false; chatColdMergedN = 0;
 chatArchPurge(prefix);
 chatArchSetBaseline(prefix, arr);
 try { if (window.idbDelete) window.idbDelete(prefix + ':chat-msgs'); } catch (e) {}
@@ -375,7 +393,8 @@ hotKeys.unshift(idx.blocks[b].k); hotN += idx.blocks[b].n || 0;
 chatHotFrom = idx.blocks.length - hotKeys.length;
 chatHotBaseN = hotN; // #722：账本守卫基准=热片条数（内存此后=热片+新增）
 const headN = Math.max(0, (idx.total || hotN) - hotN);
-chatColdHead = []; chatColdFrom = 0; chatColdDone = headN === 0; chatColdHydrating = false; chatRebased = false;
+const _wasFull = chatRebased && Array.isArray(msgs) && msgs.length > hotN;
+chatColdHead = []; chatColdFrom = _wasFull ? -1 : chatHotFrom - 1; chatColdDone = _wasFull ? true : (headN === 0); chatColdHydrating = false; chatRebased = _wasFull; chatColdMergedN = _wasFull ? msgs.length : 0;
 let p = Promise.resolve();
 const parts = [];
 hotKeys.forEach(function (k, ki) {
@@ -404,30 +423,44 @@ if (miss || !hot.length) return null; // 块读失败 → 回到旧读路径语�
 return hot;
 }).catch(function () { return null; });
 }
-function chatColdEnsureHydrated() {
-if (chatColdDone || chatColdHydrating || !chatBlkIdx || chatRebased || !window.idbGet) return;
+let chatColdWaiters = [];
+let chatColdWantAll = false;
+function chatColdEnsureHydrated(all, done) {
+if (typeof all === 'function') { done = all; all = false; }
+if (all) chatColdWantAll = true;
+if (typeof done === 'function') chatColdWaiters.push(done);
+const flushWaiters = function () {
+const ws = chatColdWaiters; chatColdWaiters = [];
+ws.forEach(function (fn) { try { fn(); } catch (e) {} });
+};
+if (chatColdDone || chatRebased || !chatBlkIdx || !window.idbGet) { chatColdHydrating = false; chatColdWantAll = false; flushWaiters(); return; }
+if (chatColdHydrating) return; // 已在取：wantAll 标记生效，本轮会继续取
 chatColdHydrating = true;
 const myPrefix = window.activePrefix();
 const step = function () {
-if (window.activePrefix() !== myPrefix || !chatBlkIdx || chatRebased) { chatColdHydrating = false; return; }
-if (chatColdFrom >= chatHotFrom) { chatColdDone = true; chatColdHydrating = false; return; }
+if (window.activePrefix() !== myPrefix || !chatBlkIdx || chatRebased) { chatColdHydrating = false; chatColdWantAll = false; flushWaiters(); return; }
+if (chatColdFrom < 0) { chatColdDone = true; chatColdHydrating = false; chatColdWantAll = false; flushWaiters(); return; }
 const blk = chatBlkIdx.blocks[chatColdFrom];
 window.idbGet(myPrefix + ':' + blk.k).then(function (v) {
-if (window.activePrefix() !== myPrefix) { chatColdHydrating = false; return; }
-if (!Array.isArray(v)) { chatColdHydrating = false; return; } // #722 读失败：下标不前移，留待下次触发重试同块
-chatColdHead = v.concat(chatColdHead); // 头块按时间正序前插
-chatColdFrom++;
-setTimeout(step, 30);
-}).catch(function () { chatColdHydrating = false; });
+if (window.activePrefix() !== myPrefix) { chatColdHydrating = false; chatColdWantAll = false; flushWaiters(); return; }
+if (!Array.isArray(v)) { chatColdHydrating = false; chatColdWantAll = false; flushWaiters(); return; } // #722 读失败：下标不前移，留待下次触发重试同块
+chatColdHead = v.concat(chatColdHead); // 头块按时间正序前插（从热片前一块往回取）
+chatColdFrom--;
+if (chatColdFrom < 0) chatColdDone = true;
+if (chatColdWantAll && !chatColdDone) { setTimeout(step, 30); return; }
+chatColdHydrating = false; chatColdWantAll = false;
+flushWaiters();
+}).catch(function () { chatColdHydrating = false; chatColdWantAll = false; flushWaiters(); });
 };
 step();
 }
 function chatRebaseCold() {
 const n = chatColdHead.length;
-if (!n || chatRebased) return;
+if (!n) return;
 msgs = chatColdHead.concat(msgs);
 chatColdHead = [];
-chatRebased = true;
+chatColdMergedN += n;
+chatRebased = !!chatColdDone;
 renderStart += n; renderEnd += n;
 if (windowRenderedN) windowRenderedN += n;
 if (Array.isArray(windowRenderedLite)) windowRenderedLite = windowRenderedLite.map(function (i2) { return i2 + n; });
@@ -446,7 +479,7 @@ const v = inplaceDrafts[k]; delete inplaceDrafts[k]; inplaceDrafts[String(Number
 } catch (e) {}
 try { if (typeof inplaceFocusIdx === 'number' && inplaceFocusIdx >= 0) inplaceFocusIdx += n; } catch (e) {}
 try { body.querySelectorAll('[data-idx]').forEach(function (el) { el.dataset.idx = String(Number(el.dataset.idx) + n); }); } catch (e) {}
-try { chatArchSetBaseline(window.activePrefix(), msgs); } catch (e) {} // 基准 refs 升级为全量：此后编辑任何消息都能被指纹检出
+if (chatRebased) { try { chatArchSetBaseline(window.activePrefix(), msgs); } catch (e) {} }
 try { syncLastMineText(); } catch (e) {} // #722 自查：lastMineIdx 是 msgs 下标，并入冷头后整体位移——直接重算（引用「我最后一条」的回复不会指错位）
 }
 function chatConsolidate(prefix) {
@@ -588,7 +621,7 @@ function mergeLsSnapshotWith(msgsNow, prefix) {
 try {
 let raw = '';
 try { raw = store.get('chat-msgs') || ''; } catch (e) { raw = ''; }
-if (raw.length > LS_SNAP_LIMIT) { performLsSnapWrite(msgsNow, prefix); return; }
+if (raw.length > LS_SNAP_LIMIT) { performLsSnapWrite(chatColdTailOnly(msgsNow), prefix); return; }
 let old = [];
 try { old = JSON.parse(raw || '[]'); } catch (e) { old = []; }
 if (!Array.isArray(old)) old = [];
@@ -600,11 +633,12 @@ const merged = msgsNow.concat(old.filter(m => {
 if (!m || seen.has(lsMergeSig(m)) || recKindCovers(kinds, m)) return false;
 return !chatRecKeysHit(copied, m);
 })).sort((a, b) => (((a && a.ts) || 0) - ((b && b.ts) || 0)));
-performLsSnapWrite(merged, prefix);
+performLsSnapWrite(chatColdTailOnly(merged), prefix);
 } catch (e) {}
 }
 function writeLsSnapshot(arr, prefix, force) {
 if (!Array.isArray(arr)) return;
+if (arr === msgs) arr = chatColdTailOnly(arr);
 if (force) {
 if (lsSnapTimer) { clearTimeout(lsSnapTimer); lsSnapTimer = null; }
 lsSnapPending = null;
@@ -894,6 +928,16 @@ else if (deskMsgEl && !deskMsgEl.hidden) hideDeskMsg();
 });
 } catch (e) {}
 window.getChatMsgs = function () { return chatColdHead.length ? chatColdHead.concat(msgs) : msgs; }; // #722：冷头未并入时也返回完整历史（浅拼接，统计/导出/补投递等消费方零改动）
+window.chatEnsureFullHistory = function (cb) {
+const done = function () { if (typeof cb === 'function') { try { cb(); } catch (e) {} } };
+try {
+if (!chatBlkIdx || chatRebased || chatColdDone) { done(); return; }
+chatColdEnsureHydrated(true, done);
+} catch (e) { done(); }
+};
+window.chatHistoryLoadedAll = function () {
+try { return !chatBlkIdx || chatRebased || chatColdDone; } catch (e) { return true; }
+};
 try { window.__mochiProf = window.__mochiProf || {}; } catch (e) {}
 function __prof(t) { try { window.__mochiProf[t] = performance.now(); } catch (e) {} }
 const ICON_BELL = '<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v3M4.2 4.2l2.2 2.2M2 12h3M19 12h3M4.2 19.8l2.2-2.2M17.6 17.6l2.2 2.2"/><path d="M12 6a6 6 0 016 6v4h-3v-4a3 3 0 00-6 0v4H6v-4a6 6 0 016-6z"/><path d="M9 20h6"/></svg>';
@@ -1060,6 +1104,7 @@ const dts = (a.ts || 0) - (b.ts || 0);
 if (dts !== 0) continue;
 chatMsgCutMark('g814ts', a); // #814d
 try { if (normRemovedRecs) normRemovedRecs.push(a); } catch (e) {} // FIX #675：被删记录对象留给原位收敛
+if (i < chatColdMergedN) chatColdMergedN = Math.max(0, chatColdMergedN - 1);
 msgs.splice(i, 1); removed++;
 }
 } catch (e) {}
@@ -1311,6 +1356,9 @@ for (let q = 0; q < kk.length; q++) seen.set(kk[q], keep);
 removed++;
 }
 const idx = Array.from(drop).sort((a, b) => a - b);
+let _coldDrop = 0;
+for (let d = 0; d < idx.length; d++) if (idx[d] < chatColdMergedN) _coldDrop++;
+chatColdMergedN = Math.max(0, chatColdMergedN - _coldDrop);
 for (let d = idx.length - 1; d >= 0; d--) msgs.splice(idx[d], 1);
 } catch (e) {}
 return removed;
@@ -1395,6 +1443,7 @@ function () { chatLateClear(key); chatWholeReadSettle(key); return v; });
 }, function (e) { chatLateClear(key); chatWholeReadSettle(key); return undefined; });
 }
 function loadMsgs(forceIdb) {
+if (chatColdMergedN > 0 && !chatRebased) return;
 armReadyFuse();
 if (!chatDbReady) {
 let lsArr = [];
@@ -1653,7 +1702,6 @@ try { if (window.activePrefix() === myPrefix && window.idbSet) persistChatHistor
 }, 0);
 }
 scheduleDeferredNormalization();
-try { setTimeout(chatColdEnsureHydrated, 2500); } catch (e) {}
 try { scheduleMediaPass(12000); } catch (e) {}
 }); // FIX 2026-09-17 #127：增量日志读取回调收口
 } catch (e) { /* 解析失败：不置 chatDbReady，下次进入再重试 */ }
@@ -4032,7 +4080,9 @@ const len = msgs.length;
 if (renderStart <= 0 || renderStart >= len) {
 if (renderStart <= 0 && !chatRebased) {
 if (chatColdHead.length) { chatRebaseCold(); loadOlderIncremental(); return; }
-if (!chatColdDone) chatColdEnsureHydrated();
+if (!chatColdDone) chatColdEnsureHydrated(function () {
+if (chatColdHead.length) { try { chatRebaseCold(); } catch (e) {} try { loadOlderIncremental(); } catch (e) {} }
+});
 }
 if (renderStart <= 0 || renderStart >= len) return;
 }
@@ -6322,6 +6372,7 @@ msgs[idx].retracted = true;
 msgs[idx].orig = b.innerHTML;
 sessionChangedIdx.add(idx); // v3.6.x：标记本会话变更，防 loadMsgs 合并回滚撤回
 chatTailDrop(msgs[idx]); // #180：撤回消息从尾巴日志摘除，防刷新后回放复活
+chatColdTouched(idx); // 旧块里的撤回必须取全后整组重写
 saveMsgs();
 if (msgs[idx].side === 'out') syncLastMineText();
 }
@@ -10164,7 +10215,13 @@ try { _ledN2 = chatLedger[window.activePrefix()] || 0; } catch (e) {}
 const awaitingMore = !chatAuthSettled() || !chatColdDone || _ledN2 > src.length;
 if (awaitingMore && chatSearchRetries < 3) {
 chatSearchRetries++;
-try { chatColdEnsureHydrated(); } catch (e) {}
+try {
+chatColdEnsureHydrated(true, function () {
+if (chatSearchEl && !chatSearchEl.hidden && chatSearchInput && chatSearchInput.value.trim() === q) {
+try { runChatSearch(); } catch (e) {}
+}
+});
+} catch (e) {}
 chatSearchResults.innerHTML = '<div class="chat-search-empty">更早的记录还在取回，取回后自动再搜一次…</div>';
 if (chatSearchRetryT) clearTimeout(chatSearchRetryT);
 chatSearchRetryT = setTimeout(function () {
@@ -10903,7 +10960,7 @@ const qTarget = resolveQuoteTarget(qIdxNow);
 if (qTarget >= 0 && jumpToMsg(qTarget, qTarget < msgs.length && msgs[qTarget] ? msgKeyOf(msgs[qTarget]) : '')) return;
 if (qTarget < 0 && quoteScanOpen() && qRec && !qRec._quoteHunted) {
 try { if (qRec) qRec._quoteHunted = 1; } catch (e) {}
-try { chatColdEnsureHydrated(); } catch (e) {}
+try { chatColdEnsureHydrated(true); } catch (e) {}
 toast('更早的记录还在取回，取回后再点一次');
 return;
 }
@@ -11169,6 +11226,7 @@ rec.parts = (Array.isArray(rec.parts) ? rec.parts.filter(p => p && p.k !== 'text
 rec.parts.push({ k: 'text', v: val });
 syncFavMsgText(orig, val); // v3.7.x：编辑后收藏夹里同一条消息快照同步更新（含 TA 收藏）
 sessionChangedIdx.add(idx); // v3.6.x：标记本会话变更，防 loadMsgs 合并回滚编辑
+chatColdTouched(idx); // 旧块里的编辑必须取全后整组重写
 saveMsgs();
 syncLastMineText(); // v3.6.x：编辑后 TA 引用/收藏不再拿旧文本
 const b = editEl && editEl.querySelector('.msg-bubble');
@@ -11181,6 +11239,7 @@ if (rec && rec.side === 'in' && !rec.special && !rec.rejected) {
 rec.rejected = 'me';
 rec.rejectedAt = Date.now();
 delete rec.taAskUndo;
+chatColdTouched(idx); // 旧块里的拒收必须取全后整组重写
 saveMsgs();
 try { if (activeMsgEl) decorateRejectedMsg(activeMsgEl, rec); } catch (e) {}
 toast('已拒收这条消息');
@@ -11190,8 +11249,10 @@ closeMsgActions();
 } else if (act === 'del') {
 if (activeMsgEl && idx >= 0 && msgs[idx] && msgs[idx].side === 'in') {
 chatTailDrop(msgs[idx]); // FIX 2026-09-05 #185 删除消息同步从尾巴日志摘除，防刷新后 chatTailMerge 回放复活（与撤回同口径）
+if (idx < chatColdMergedN) chatColdMergedN = Math.max(0, chatColdMergedN - 1);
 msgs.splice(idx, 1);
 sessionChangedIdx.clear();
+chatColdTouched(idx); // 旧块里的删除必须取全后整组重写，否则重载后旧消息回来
 saveMsgs();
 renderWindow(true);
 toast('已删除该消息');

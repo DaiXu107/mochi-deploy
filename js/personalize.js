@@ -270,10 +270,16 @@ if (el.parentNode) return el.parentNode.querySelector('.ce-box[data-for="' + (el
 return null;
 }
 function readModalVal(el) {
-try { const v = el.value; if (v != null && String(v).length) return String(v); } catch (e) {}
 const box = ceBoxOf(el);
-if (box) { try { const t = (box.innerText !== undefined ? box.innerText : box.textContent) || ''; if (t.length) return t; } catch (e) {} }
-try { return el.value || ''; } catch (e) { return ''; }
+if (box) {
+try {
+const rects = box.getClientRects();
+if (rects && rects.length && getComputedStyle(box).visibility !== 'hidden') {
+return (box.innerText !== undefined ? box.innerText : box.textContent) || '';
+}
+} catch (e) {}
+}
+try { return el.value == null ? '' : String(el.value); } catch (e) { return ''; }
 }
 let cb = null;
 let pillList = [];

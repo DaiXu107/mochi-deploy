@@ -291,7 +291,17 @@
     ccEl.__ccMine = []; for (const k in mineCount) if (mineCount.hasOwnProperty(k)) ccEl.__ccMine.push({ name: k, count: mineCount[k] });
     ccEl.__ccTa = []; for (const k in taCount) if (taCount.hasOwnProperty(k)) ccEl.__ccTa.push({ name: k, count: taCount[k] });
   }
+  let statsFullReq = false;
   function renderStats() {
+    // 2026-11-16：聊天页默认只载近期热片，统计要全量数据——打开统计页时按需取回旧块，
+    // 取回后再渲染一次（只触发一次；平时聊天不再自动读全部历史）。
+    if (window.chatEnsureFullHistory && window.chatHistoryLoadedAll && !window.chatHistoryLoadedAll() && !statsFullReq) {
+      statsFullReq = true;
+      window.chatEnsureFullHistory(function () {
+        statsFullReq = false;
+        try { renderStats(); } catch (e) {}
+      });
+    }
     renderCcStats();
     let msgs = [];
     try { msgs = (window.getChatMsgs ? window.getChatMsgs() : JSON.parse(store.get('chat-msgs') || '[]')); } catch (e) {}

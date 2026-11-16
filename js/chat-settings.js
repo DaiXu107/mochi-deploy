@@ -1977,6 +1977,7 @@ const csExport = row('cs-export-msgs');
 if (csExport) {
 csExport.addEventListener('click', () => {
 if (!window.chatExportMsgs && !window.getChatMsgs) { toast('聊天记录暂不可用'); return; }
+const doExport = () => {
 toast('正在导出，请稍候…');
 try {
 if (window.chatFlushSave) window.chatFlushSave();
@@ -2000,6 +2001,13 @@ setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 toast('已导出 ' + n + ' 条聊天记录');
 } catch (e) {
 toast('导出失败：' + (e && e.message || '未知错误'));
+}
+};
+if (window.chatEnsureFullHistory && window.chatHistoryLoadedAll && !window.chatHistoryLoadedAll()) {
+toast('正在读取全部聊天记录，请稍候…');
+window.chatEnsureFullHistory(doExport);
+} else {
+doExport();
 }
 });
 }

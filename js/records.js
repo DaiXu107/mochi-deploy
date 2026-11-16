@@ -479,7 +479,16 @@ return '<div class="tc-li-top"><span class="tc-li-q">' + x.date + '</span></div>
 '<div class="tc-li-line">' + name + ' 当天打工：+' + (x.ta || 0) + '</div>';
 }, window.renderWorkHistory, totalHtml);
 };
+let recordsFullReq = false;
 function render() {
+const needsChatHistory = htab === 'care' || htab === 'ck' || htab === 'xck' || htab === 'coinrp';
+if (needsChatHistory && window.chatEnsureFullHistory && window.chatHistoryLoadedAll && !window.chatHistoryLoadedAll() && !recordsFullReq) {
+recordsFullReq = true;
+window.chatEnsureFullHistory(function () {
+recordsFullReq = false;
+try { render(); } catch (e) {}
+});
+}
 const showOnly = htab;
 if (showOnly === 'work') {
 window.renderWorkHistory();

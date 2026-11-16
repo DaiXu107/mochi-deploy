@@ -264,7 +264,15 @@ ccTextRankSection('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="c
 ccEl.__ccMine = []; for (const k in mineCount) if (mineCount.hasOwnProperty(k)) ccEl.__ccMine.push({ name: k, count: mineCount[k] });
 ccEl.__ccTa = []; for (const k in taCount) if (taCount.hasOwnProperty(k)) ccEl.__ccTa.push({ name: k, count: taCount[k] });
 }
+let statsFullReq = false;
 function renderStats() {
+if (window.chatEnsureFullHistory && window.chatHistoryLoadedAll && !window.chatHistoryLoadedAll() && !statsFullReq) {
+statsFullReq = true;
+window.chatEnsureFullHistory(function () {
+statsFullReq = false;
+try { renderStats(); } catch (e) {}
+});
+}
 renderCcStats();
 let msgs = [];
 try { msgs = (window.getChatMsgs ? window.getChatMsgs() : JSON.parse(store.get('chat-msgs') || '[]')); } catch (e) {}

@@ -1622,23 +1622,22 @@ grps.forEach(([gname, arr], gi) => {
 const row = document.createElement('div');
 row.className = 'mg-row';
 row.dataset.gidx = String(gi);
-const builtin = (BUILTIN[cur] || []).some(b => b[0] === gname);
 row.innerHTML = '<button class="mg-handle" aria-label="拖动排序">' + handleSvg + '</button>' +
 '<span class="mg-name">' + esc(gname) + '</span><span class="mg-count">' + arr.length + ' 张</span>' +
-(builtin ? '<span class="mg-tag">内置</span>' : '<button class="mg-rn" aria-label="重命名">' + editSvg + '</button><button class="mg-del">✕</button>');
+'<button class="mg-rn" aria-label="重命名">' + editSvg + '</button><button class="mg-del">✕</button>';
 attachGroupRowDrag(row, gi);
-if (!builtin) {
+{
 const rnBtn = row.querySelector('.mg-rn');
 if (rnBtn) rnBtn.addEventListener('click', (e) => {
 e.stopPropagation();
 if (window.openModal) {
 window.openModal('重命名分组', gname, (v) => {
 const name = String(v == null ? '' : v).trim();
-if (!name) return;
-if (name === gname) return;
+if (!name) { toast('分组名不能为空'); return; }
+if (name === gname) { toast('分组名没有变化'); return; }
 if (((groups || {})[cur] || []).some(g => g[0] === name)) { toast('分组「' + name + '」已存在'); return; }
-const g = groups[cur][gi];
-if (!g) return;
+const g = ((groups || {})[cur] || []).find(x => Array.isArray(x) && x[0] === gname);
+if (!g) { toast('这个分组已经不在了，刷新后再试'); return; }
 const oldName = g[0];
 g[0] = name;
 if (curGroup === oldName) curGroup = name;
