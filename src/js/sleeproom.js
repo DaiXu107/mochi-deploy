@@ -160,6 +160,28 @@
     });
   }
 
+  // 2026-11-17：睡眠日历数据的「权威副本」放在主应用的数据层（xyStore → localStorage + IndexedDB）。
+  // 原因：睡眠小屋跑在同源 iframe 里，早前只写 iframe 自己的 localStorage；部分手机/浏览器会给
+  // iframe 单独一份存储（或在清理时先清掉不在应用命名空间里的裸键），表现为「日历记录每天被清掉」。
+  // 现在 iframe 通过这两个函数读写主应用的 xy-home-v2:sleeproom-log，页面里再保留一份兜底。
+  var SLEEP_LOG_KEY = 'sleeproom-log';
+  window.mochiSleepRoomLog = {
+    get: function () {
+      try {
+        var s = window.xyStore && window.xyStore('xy-home-v2');
+        var v = s ? s.get(SLEEP_LOG_KEY) : null;
+        return v == null ? '' : String(v);
+      } catch (e) { return ''; }
+    },
+    set: function (raw) {
+      try {
+        var s = window.xyStore && window.xyStore('xy-home-v2');
+        if (s && typeof raw === 'string' && raw) s.set(SLEEP_LOG_KEY, raw);
+        return true;
+      } catch (e) { return false; }
+    }
+  };
+
   function sleepRoomCards() {
     var cid = 'default';
     try { if (window.getActiveContact) cid = window.getActiveContact() || 'default'; } catch (e) {}

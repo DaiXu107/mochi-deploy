@@ -145,6 +145,23 @@ out.push({ t: text, g: groupName, scope: scope });
 });
 });
 }
+var SLEEP_LOG_KEY = 'sleeproom-log';
+window.mochiSleepRoomLog = {
+get: function () {
+try {
+var s = window.xyStore && window.xyStore('xy-home-v2');
+var v = s ? s.get(SLEEP_LOG_KEY) : null;
+return v == null ? '' : String(v);
+} catch (e) { return ''; }
+},
+set: function (raw) {
+try {
+var s = window.xyStore && window.xyStore('xy-home-v2');
+if (s && typeof raw === 'string' && raw) s.set(SLEEP_LOG_KEY, raw);
+return true;
+} catch (e) { return false; }
+}
+};
 function sleepRoomCards() {
 var cid = 'default';
 try { if (window.getActiveContact) cid = window.getActiveContact() || 'default'; } catch (e) {}

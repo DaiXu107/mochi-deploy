@@ -15,6 +15,8 @@ const CLIMB_SPEED = 1.0;
 const NOTE_COLORS = ['#fbfbfa', '#f0f0ee', '#e6e6e3', '#f7f7f5', '#ebebe8'];
 const NOTE_ROTS = ['-1.6deg', '1.2deg', '-0.8deg', '1.8deg', '-1.1deg'];
 const WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+// 睡眠日历在页面 localStorage 里的键（主应用侧副本见 parent.mochiSleepRoomLog）
+var SLEEP_LOG_KEY = 'mochi3d.sleepLog.v1';
 
 const $ = (s) => document.querySelector(s);
 const els = {
@@ -176,22 +178,79 @@ function formatSeconds(total) {
   const sec = s % 60;
   return (h ? pad(h) + ':' : '') + pad(m) + ':' + pad(sec);
 }
+// 2026-11-17：睡眠日历存两份——主应用数据层（xy-home-v2:sleeproom-log，localStorage + IndexedDB，
+// 会被整包备份带走）与页面自己的 localStorage。读取时两份合并，写入时先读最新再合并着写：
+// 任何一份（或内存里那份）落后都不会把别的日期的记录顶掉。
+function parentLogBridge() {
+  try {
+    if (window.parent && window.parent !== window && typeof window.parent.mochiSleepRoomLog === 'object') return window.parent.mochiSleepRoomLog;
+  } catch (e) {}
+  return null;
+}
+function parseLog(raw) {
+  if (!raw || typeof raw !== 'string') return null;
+  try {
+    const v = JSON.parse(raw);
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
+    return v;
+  } catch (e) { return null; }
+}
+function readLogSources() {
+  const out = [];
+  const bridge = parentLogBridge();
+  if (bridge && typeof bridge.get === 'function') {
+    try { const v = parseLog(bridge.get()); if (v) out.push(v); } catch (e) {}
+  }
+  try { const v = parseLog(localStorage.getItem(SLEEP_LOG_KEY)); if (v) out.push(v); } catch (e) {}
+  return out;
+}
+function mergeLogs(list) {
+  const merged = {};
+  list.forEach((obj) => { if (obj) Object.keys(obj).forEach((k) => { merged[k] = obj[k]; }); });
+  return merged;
+}
+function persistLog(log) {
+  const raw = JSON.stringify(log);
+  writeStored(SLEEP_LOG_KEY, log);
+  const bridge = parentLogBridge();
+  if (bridge && typeof bridge.set === 'function') { try { bridge.set(raw); } catch (e) {} }
+}
 function loadSleepLog() {
-  const saved = readStored('mochi3d.sleepLog.v1', null);
-  if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return {};
+  const merged = mergeLogs(readLogSources());
   // 清掉早期原型写进去的 7 天演示数据；真实计时/手记记录保留。
   let changed = false;
-  Object.keys(saved).forEach((k) => {
-    if (saved[k] && saved[k].source === 'seed') {
-      delete saved[k];
+  Object.keys(merged).forEach((k) => {
+    if (merged[k] && merged[k].source === 'seed') {
+      delete merged[k];
       changed = true;
     }
   });
-  if (changed) writeStored('mochi3d.sleepLog.v1', saved);
-  return saved;
+  if (changed || Object.keys(merged).length) persistLog(merged);
+  return merged;
+}
+// 本会话里用户明确删掉的日期：合并时不能被旧副本又带回来（否则「删除」按钮失效）。
+const removedSleepKeys = new Set();
+function buildMergedLog() {
+  const merged = mergeLogs(readLogSources());
+  removedSleepKeys.forEach((k) => { delete merged[k]; });
+  Object.keys(state.sleepLog || {}).forEach((k) => { merged[k] = state.sleepLog[k]; });
+  return merged;
 }
 function saveSleepLog() {
-  writeStored('mochi3d.sleepLog.v1', state.sleepLog);
+  // 写前先读最新两份，再把内存里的合并进去——绝不用一份可能过期的内存对象覆盖全部历史。
+  const merged = buildMergedLog();
+  state.sleepLog = merged;
+  persistLog(merged);
+}
+function removeSleepRecord(key) {
+  delete state.sleepLog[key];
+  removedSleepKeys.add(key);
+  saveSleepLog();
+}
+function restoreSleepRecord(key, rec) {
+  removedSleepKeys.delete(key);
+  state.sleepLog[key] = rec;
+  saveSleepLog();
 }
 function readStored(key, fallback) {
   try {
@@ -1733,16 +1792,14 @@ function openSleepEditor(key) {
         if (bed == null || wake == null) return toast('时间还没填好');
         const duration = (wake - bed + 1440) % 1440;
         if (duration === 0) return toast('入睡和醒来不能一样');
-        state.sleepLog[key] = { bed, wake, duration, source: 'manual' };
-        saveSleepLog();
+        restoreSleepRecord(key, { bed, wake, duration, source: 'manual' });
         closeSheet();
         openCalendar();
         toast('睡眠记录好了');
       });
       const del = root.querySelector('#sleepDelete');
       if (del) del.addEventListener('click', () => {
-        delete state.sleepLog[key];
-        saveSleepLog();
+        removeSleepRecord(key);
         closeSheet();
         openCalendar();
         toast('记录删掉了');

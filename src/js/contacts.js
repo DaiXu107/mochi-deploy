@@ -25,6 +25,8 @@
     // 2026-11-16：后台被回收后自动重载的落点设置——全局根键（跨联系人共用），
     // 不能被 migrateLegacy 搬进 default 并删根键，否则每次刷新设置就丢。
     'chat-resume-mode', 'chat-resume-cid',
+    // 2026-11-17：睡眠小屋的睡眠日历（主应用侧权威副本）——全局根键，不能被搬进 default。
+    'sleeproom-log',
     // v3.17.x：跨桌面「来消息」全局根键——incoming-requests（申请队列）、
     // desk-checkin-en（桌面查岗全局开关）与 desk-call-en（跨桌面来电全局开关）都存
     // 根命名空间、全桌面通，绝不随联系人隔离，防 migrateLegacy 每次刷新搬进 default

@@ -6,6 +6,7 @@ const EXCLUDE = ['contacts', 'active-contact', 'feed-posts', 'migrated-v1', 'js-
 'age-confirmed', 'storage-guide-shown',
 'ui-style',
 'chat-resume-mode', 'chat-resume-cid',
+'sleeproom-log',
 'incoming-requests', 'desk-checkin-en', 'desk-call-en', 'desk-freq-mode', 'call-hold',
 'night-mode-en',
 'group-chat-msgs',
