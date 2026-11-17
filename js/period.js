@@ -1117,6 +1117,7 @@ try { new Notification(title, { body: body }); } catch (e) {}
 } catch (e) {}
 }
 function checkNotify() {
+try { notifyCfg = loadNotify(); } catch (e) {}
 if (!notifyCfg.enabled) return;
 if (!('Notification' in window) || Notification.permission !== 'granted') return;
 var nowH = new Date().getHours();
@@ -1130,12 +1131,15 @@ notifyCfg.fired = notifyCfg.fired || {};
 var fired = false;
 function said(c) { return !!notifyCfg.fired[today + '_said_' + c]; }
 function markSaid(c) { notifyCfg.fired[today + '_said_' + c] = 1; }
+function warnSaid() { return !!notifyCfg.fired[today + '_said_warn']; }
+function markWarn() { notifyCfg.fired[today + '_said_warn'] = 1; }
 if (st.nextStart && !st.inPeriod && !st.delayed && advHit(diffDays(today, st.nextStart), tier, true)) {
 var d = diffDays(today, st.nextStart);
-if (!said('adv' + d)) {
+if (!said('adv' + d) && !warnSaid()) {
 var txt = d === 0 ? '今天预计是经期开始日' : '距下次经期约 ' + d + ' 天';
 notifyAssist('经期提醒', txt + ' · 注意保暖、备好用品');
 markSaid('adv' + d);
+markWarn();
 fired = true;
 }
 }
@@ -1155,9 +1159,10 @@ dCtx = 'delayDeep'; dTxt = '经期已推迟 ' + delayDays + ' 天，你一向规
 } else if (delayDays >= 5) {
 dCtx = 'delay'; dTxt = '经期已推迟 ' + delayDays + ' 天，如持续异常建议关注';
 }
-if (dTxt && !said(dCtx)) {
+if (dTxt && !said(dCtx) && !warnSaid()) {
 notifyAssist(dTitle, dTxt);
 markSaid(dCtx);
+markWarn();
 fired = true;
 }
 }
@@ -1202,6 +1207,7 @@ if (!advs.length || advs.indexOf(d) < 0) return false;
 return tier === 'free' ? d === advs[0] : true;
 }
 function checkCare() {
+try { notifyCfg = loadNotify(); } catch (e) {}
 if (!notifyCfg.careEnabled) return;
 if (!window.chatAddIn) return;
 var _h = new Date().getHours();
@@ -1233,6 +1239,8 @@ else if (tier === 'free' && delayDays >= 10) { shouldCare = true; ctx = 'delayIr
 }
 if (!shouldCare) return;
 notifyCfg.fired = notifyCfg.fired || {};
+var isWarnKind = kind === 'adv' || kind === 'delay' || kind === 'delayIrr';
+if (isWarnKind && notifyCfg.fired[today + '_said_warn']) return;
 var careKey = today + '_said_' + ctx;
 if (notifyCfg.fired[careKey]) return;
 var baseProb = 75;
@@ -1251,6 +1259,7 @@ else if (kind === 'delay') line = String(line).replace(/\{d\}/g, String(delayDay
 else if (kind === 'delayIrr') line = String(line).replace(/\{d\}/g, String(st.dayOfCycle || 0));
 try { window.chatAddIn(line, { tag: kind === 'sym' ? '症状关心' : (kind === 'in' ? '经期关心' : '经期预警'), nightAllow: true }); } catch (e) {}
 notifyCfg.fired[careKey] = 1;
+if (isWarnKind) notifyCfg.fired[today + '_said_warn'] = 1;
 var cut = addDays(today, -30);
 Object.keys(notifyCfg.fired).forEach(function (k) { if (k < cut) delete notifyCfg.fired[k]; });
 saveNotify(notifyCfg);

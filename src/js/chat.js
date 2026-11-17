@@ -945,6 +945,9 @@ if (rec.type === 'sticker' || rec.type === 'image' || rec.type === 'voice') retu
 if (Array.isArray(rec.parts) && rec.parts.length) return;
 if (typeof rec.text !== 'string' || rec.text.length > CHAT_TAIL_TEXT_MAX) return;
 const entry = { ts: rec.ts || Date.now(), side: rec.side || '', special: rec.special || '', text: rec.text, x: null };
+// 2026-11-17：来信通知的「可点击」标记必须随尾巴日志一起留——旧版只存四字段，
+// 一旦这条通知是靠尾巴日志恢复回来的，mailNotice 丢掉就变成不可点的纯通知。
+if (rec.mailNotice) entry.mn = 1;
 for (let fi = 0; fi < CHAT_TAIL_INTERACT_FIELDS.length; fi++) {
 const k = CHAT_TAIL_INTERACT_FIELDS[fi];
 if (rec[k] !== undefined) { if (!entry.x) entry.x = {}; entry.x[k] = rec[k]; }
@@ -1016,6 +1019,7 @@ if (jt.indexOf('@@m:') === 0 || chatIsInlineDataSrc(jt)) { keep.push(j); continu
 keep.push(j);
 // #337：互动卡条目还原问题/选项字段（旧版日志条目无 x＝照旧只回放四字段）
 const r = { ts: j.ts, side: j.side, special: j.special, text: jt };
+if (j.mn) r.mailNotice = true;
 if (j.x && typeof j.x === 'object') {
 for (const k in j.x) { if (Object.prototype.hasOwnProperty.call(j.x, k)) r[k] = j.x[k]; }
 }
@@ -6385,7 +6389,10 @@ maybeScrollChatBottom(rec.side);
 return m;
 }
 if (rec.special === 'poke' || rec.special === 'ask-msg') {
-m.className = 'msg-poke' + (rec.mailNotice ? ' mail-notice' : '');
+// 2026-11-17：存量来信通知可能丢了 mailNotice 标记（旧尾巴日志只存四字段），
+// 按正文兜底认出「寄信/回信」通知——否则历史里那条会退化成不可点的纯通知。
+const isMailNotice = rec.mailNotice || (typeof rec.text === 'string' && /(给你寄来了一封信|寄来一份本周摸鱼小结|给你回了信|写了一封信)/.test(rec.text));
+m.className = 'msg-poke' + (isMailNotice ? ' mail-notice' : '');
 // FIX 2026-09-16 #616：昵称事件消息（nickKeep）**原样呈现**，不走 pokePersonMap——
 // 那样会把「我把 TA 的昵称换成了「小满」」里的泛指 TA 也回填成新昵称，整句变成
 // 「我把 小满 的昵称换成了「小满」」（自己说自己，用户读不出发生了什么）。
@@ -6394,7 +6401,8 @@ m.className = 'msg-poke' + (rec.mailNotice ? ' mail-notice' : '');
 // {ta}/{me} 与字卡里写死的 TA/ta/他/她 一律按 我的昵称/联系人昵称 回填
 m.innerHTML = '<span>' + (rec.nickKeep ? escTxt(rec.text) : pokeIconHtml(pokePersonMap(rec.text, __taNm, __meNm))) + '</span>' +
 (rec.img ? '<img class="msg-poke-img" src="' + attrEsc(rec.img) + '" alt="新头像">' : '');
-if (rec.mailNotice) {
+if (isMailNotice) {
+m.dataset.mailNotice = '1';
 m.addEventListener('click', () => { if (window.openMailPage) window.openMailPage(); });
 }
 appendMsg(m);

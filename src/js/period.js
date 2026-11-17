@@ -1316,6 +1316,9 @@
     } catch (e) {}
   }
   function checkNotify() {
+    // 2026-11-17：每次判定前重读落盘那份。多开（标签页 + 桌面图标 / 两个窗口）时，
+    // 本页内存里的 fired 可能还是旧副本，各自都以为「今天还没提醒」＝同一天弹好几条。
+    try { notifyCfg = loadNotify(); } catch (e) {}
     if (!notifyCfg.enabled) return;
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
     // FIX #1407②：此前本模块一个 setInterval 都没有（对照 memo-app 4 分钟一掷＋5 分钟到点检查、
@@ -1340,14 +1343,19 @@
     //   调用顺序（关心那发先跑、提醒补位，见文件末尾那两发启动定时器与进页处）。
     function said(c) { return !!notifyCfg.fired[today + '_said_' + c]; }
     function markSaid(c) { notifyCfg.fired[today + '_said_' + c] = 1; }
+    // 2026-11-17：「预警类」（经前提醒 / 推迟 / 超期）每天只发一条，通知与聊天共用这枚名额。
+    // 之前只按 ctx 去重：超期天数变了（delay→delayDeep）、或两路上下文名不同步，就会一天发好几次。
+    function warnSaid() { return !!notifyCfg.fired[today + '_said_warn']; }
+    function markWarn() { notifyCfg.fired[today + '_said_warn'] = 1; }
     // #1407①：`!st.delayed` 这道闸是新边界带来的——连着隔了一整个周期没记时 nextStart 会正好落回
     //   今天（d=0），不加它就会一边屏上写「经期已推迟 28 天」、一边弹出「今天预计是经期开始日」。
     if (st.nextStart && !st.inPeriod && !st.delayed && advHit(diffDays(today, st.nextStart), tier, true)) {
       var d = diffDays(today, st.nextStart);
-      if (!said('adv' + d)) {
+      if (!said('adv' + d) && !warnSaid()) {
         var txt = d === 0 ? '今天预计是经期开始日' : '距下次经期约 ' + d + ' 天';
         notifyAssist('经期提醒', txt + ' · 注意保暖、备好用品');
         markSaid('adv' + d);
+        markWarn();
         fired = true;
       }
     }
@@ -1372,9 +1380,10 @@
       } else if (delayDays >= 5) {
         dCtx = 'delay'; dTxt = '经期已推迟 ' + delayDays + ' 天，如持续异常建议关注';
       }
-      if (dTxt && !said(dCtx)) {
+      if (dTxt && !said(dCtx) && !warnSaid()) {
         notifyAssist(dTitle, dTxt);
         markSaid(dCtx);
+        markWarn();
         fired = true;
       }
     }
@@ -1455,6 +1464,7 @@
     return tier === 'free' ? d === advs[0] : true;
   }
   function checkCare() {
+    try { notifyCfg = loadNotify(); } catch (e) {}
     if (!notifyCfg.careEnabled) return;
     if (!window.chatAddIn) return;
     // v3.42.x #559：深夜静默 23:00–06:00（同 memo-app「备忘提醒」/ p2-features「喝水·吃饭提醒」
@@ -1496,6 +1506,9 @@
     notifyCfg.fired = notifyCfg.fired || {};
     // #1407⑧：当天同语境的名额与通知共用一枚键（原来是 `_care_{ctx}`，通知另有 `_adv/_inperiod/_delay`
     //   三枚，两条路各记各的＝推迟那天既弹通知又发一条同义的关心语）。谁先落地谁占，后来者不发。
+    // 2026-11-17：预警类一天只发一条（与通知共用 today_said_warn 名额）。
+    var isWarnKind = kind === 'adv' || kind === 'delay' || kind === 'delayIrr';
+    if (isWarnKind && notifyCfg.fired[today + '_said_warn']) return;
     var careKey = today + '_said_' + ctx;
     if (notifyCfg.fired[careKey]) return;
     var baseProb = 75;
@@ -1519,6 +1532,7 @@
     // 「经期关心」= 经期中，「经期预警」= 经前预警/推迟（#559 起区分），「症状关心」= 记了症状（#1474）
     try { window.chatAddIn(line, { tag: kind === 'sym' ? '症状关心' : (kind === 'in' ? '经期关心' : '经期预警'), nightAllow: true }); } catch (e) {}
     notifyCfg.fired[careKey] = 1;
+    if (isWarnKind) notifyCfg.fired[today + '_said_warn'] = 1;
     var cut = addDays(today, -30);
     Object.keys(notifyCfg.fired).forEach(function (k) { if (k < cut) delete notifyCfg.fired[k]; });
     saveNotify(notifyCfg);

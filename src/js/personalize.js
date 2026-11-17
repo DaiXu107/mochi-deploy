@@ -2153,7 +2153,37 @@ try {
   // 脏数据），非【模板默认页】的认领胜出（见 ICON_HOME_GRID），并当场把输家数组里的
   // 脏条目清掉落盘——首启自愈，之后数组一致不再有歧义。DOM 里查不到的键（动态注入
   // 图标尚未生成）保留不动，等 mochi-restore-done / contact-switched 的下一轮归位。
+  // 2026-11-17：切到「从没排过图标」的联系人时，网格会保留上一个联系人的排布
+  //（restoreAppIconOrder 只在有 order 数组时重排，没数组＝原样不动）＝用户所见
+  //「不同联系人的桌面图标设置变成一样了」。这里在启动时记下模板默认排布，
+  // 当前联系人一个 order 数组都没有时按默认排布复位。
+  const ICON_DEFAULT_ORDER = {};
+  const ICON_DEFAULT_GRID = {};
+  const captureIconDefaults = () => {
+    document.querySelectorAll('.app-grid').forEach(g => {
+      const gid = g.dataset.app;
+      if (!gid || ICON_DEFAULT_ORDER[gid]) return;
+      const keys = Array.prototype.slice.call(g.querySelectorAll('.app'))
+        .map(a => a.dataset.app).filter(Boolean);
+      if (!keys.length) return;
+      ICON_DEFAULT_ORDER[gid] = keys;
+      keys.forEach(k => { if (!ICON_DEFAULT_GRID[k]) ICON_DEFAULT_GRID[k] = gid; });
+    });
+  };
+  const restoreIconDefaultOrder = (byKey) => {
+    Object.keys(ICON_DEFAULT_ORDER).forEach(gid => {
+      const grid = document.querySelector('.app-grid[data-app="' + gid + '"]');
+      if (!grid) return;
+      ICON_DEFAULT_ORDER[gid].forEach(k => {
+        const node = byKey[k];
+        if (!node) return;
+        if (node.parentNode !== grid) grid.appendChild(node);
+        else grid.appendChild(node);
+      });
+    });
+  };
   const restoreAppIconOrder = () => {
+    captureIconDefaults();
     const allGrids = Array.prototype.slice.call(document.querySelectorAll('.app-grid'));
     const byKey = {};
     allGrids.forEach(g => {
@@ -2165,6 +2195,12 @@ try {
       if (!gid) return;
       try { const v = store.get('app-icon-order-' + gid); if (v) { const p = JSON.parse(v); if (Array.isArray(p)) arrays[gid] = p; } } catch (e) {}
     });
+    // 当前联系人没有任何图标顺序记录＝从未自定义过桌面排布：先复位到模板默认，
+    // 否则会沿用上一个联系人的排布（跨联系人串桌面）。
+    if (!Object.keys(arrays).length) {
+      restoreIconDefaultOrder(byKey);
+      return;
+    }
     const owner = {};
     allGrids.forEach(grid => {
       const gid = grid.dataset.app;

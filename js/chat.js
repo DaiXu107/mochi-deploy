@@ -703,6 +703,7 @@ if (rec.type === 'sticker' || rec.type === 'image' || rec.type === 'voice') retu
 if (Array.isArray(rec.parts) && rec.parts.length) return;
 if (typeof rec.text !== 'string' || rec.text.length > CHAT_TAIL_TEXT_MAX) return;
 const entry = { ts: rec.ts || Date.now(), side: rec.side || '', special: rec.special || '', text: rec.text, x: null };
+if (rec.mailNotice) entry.mn = 1;
 for (let fi = 0; fi < CHAT_TAIL_INTERACT_FIELDS.length; fi++) {
 const k = CHAT_TAIL_INTERACT_FIELDS[fi];
 if (rec[k] !== undefined) { if (!entry.x) entry.x = {}; entry.x[k] = rec[k]; }
@@ -747,6 +748,7 @@ const jt = typeof j.text === 'string' ? j.text : '';
 if (jt.indexOf('@@m:') === 0 || chatIsInlineDataSrc(jt)) { keep.push(j); continue; } // FIX #948 判据大小写/前导空白不敏感（变体存根回放＝乱码气泡）
 keep.push(j);
 const r = { ts: j.ts, side: j.side, special: j.special, text: jt };
+if (j.mn) r.mailNotice = true;
 if (j.x && typeof j.x === 'object') {
 for (const k in j.x) { if (Object.prototype.hasOwnProperty.call(j.x, k)) r[k] = j.x[k]; }
 }
@@ -4679,10 +4681,12 @@ maybeScrollChatBottom(rec.side);
 return m;
 }
 if (rec.special === 'poke' || rec.special === 'ask-msg') {
-m.className = 'msg-poke' + (rec.mailNotice ? ' mail-notice' : '');
+const isMailNotice = rec.mailNotice || (typeof rec.text === 'string' && /(给你寄来了一封信|寄来一份本周摸鱼小结|给你回了信|写了一封信)/.test(rec.text));
+m.className = 'msg-poke' + (isMailNotice ? ' mail-notice' : '');
 m.innerHTML = '<span>' + (rec.nickKeep ? escTxt(rec.text) : pokeIconHtml(pokePersonMap(rec.text, __taNm, __meNm))) + '</span>' +
 (rec.img ? '<img class="msg-poke-img" src="' + attrEsc(rec.img) + '" alt="新头像">' : '');
-if (rec.mailNotice) {
+if (isMailNotice) {
+m.dataset.mailNotice = '1';
 m.addEventListener('click', () => { if (window.openMailPage) window.openMailPage(); });
 }
 appendMsg(m);

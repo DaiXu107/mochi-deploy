@@ -1594,7 +1594,33 @@ TABBAR_PAGES.forEach(pk => store.remove('tab-icon-' + pk));
 restoreTabbarIcons();
 };
 restoreTabbarIcons();
+const ICON_DEFAULT_ORDER = {};
+const ICON_DEFAULT_GRID = {};
+const captureIconDefaults = () => {
+document.querySelectorAll('.app-grid').forEach(g => {
+const gid = g.dataset.app;
+if (!gid || ICON_DEFAULT_ORDER[gid]) return;
+const keys = Array.prototype.slice.call(g.querySelectorAll('.app'))
+.map(a => a.dataset.app).filter(Boolean);
+if (!keys.length) return;
+ICON_DEFAULT_ORDER[gid] = keys;
+keys.forEach(k => { if (!ICON_DEFAULT_GRID[k]) ICON_DEFAULT_GRID[k] = gid; });
+});
+};
+const restoreIconDefaultOrder = (byKey) => {
+Object.keys(ICON_DEFAULT_ORDER).forEach(gid => {
+const grid = document.querySelector('.app-grid[data-app="' + gid + '"]');
+if (!grid) return;
+ICON_DEFAULT_ORDER[gid].forEach(k => {
+const node = byKey[k];
+if (!node) return;
+if (node.parentNode !== grid) grid.appendChild(node);
+else grid.appendChild(node);
+});
+});
+};
 const restoreAppIconOrder = () => {
+captureIconDefaults();
 const allGrids = Array.prototype.slice.call(document.querySelectorAll('.app-grid'));
 const byKey = {};
 allGrids.forEach(g => {
@@ -1606,6 +1632,10 @@ const gid = grid.dataset.app;
 if (!gid) return;
 try { const v = store.get('app-icon-order-' + gid); if (v) { const p = JSON.parse(v); if (Array.isArray(p)) arrays[gid] = p; } } catch (e) {}
 });
+if (!Object.keys(arrays).length) {
+restoreIconDefaultOrder(byKey);
+return;
+}
 const owner = {};
 allGrids.forEach(grid => {
 const gid = grid.dataset.app;

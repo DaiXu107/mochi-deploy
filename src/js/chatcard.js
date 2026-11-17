@@ -2194,9 +2194,28 @@
                 }
                 const storeOk = renameGroupInStore(oldName, name);
                 saveGroups(groups); // 同步内存/缓存/角标；库里已就地改名，不会因合并闸门把旧名留下
+                // 2026-11-17：改名后按库里最新内容重新载入编辑树再画一遍。
+                // 大库/回填未落定时内存里那份可能是旧快照（或 rescueCcOverwrite 正在用
+                // 旧库合并），只改内存对象的话页面上的分组标题会停在旧名字——
+                // 用户所见「存进去了，但视图页面没改名」。读不到（同步读空）就保留内存这份。
+                try {
+                  const fresh = loadGroups();
+                  if (fresh && Object.keys(fresh).some(function (t) {
+                    return (fresh[t] || []).some(function (g2) { return Array.isArray(g2) && g2[0] === name; });
+                  })) groups = fresh;
+                } catch (eR) {}
                 renderGroupsBar();
                 render();
                 renderMgList();
+                // 分块渲染可能有上一批在飞：下一帧再按最新树补画一次（幂等）。
+                try {
+                  requestAnimationFrame(function () {
+                    try { renderGroupsBar(); render(); } catch (e2) {}
+                  });
+                } catch (e3) {}
+                // 极少数情况（大库解析失败/存储忙）没能就地写进：标脏让 flushCcSave 稍后补写，
+                // 不会出现「内存新名、库里永远旧名」。
+                if (!storeOk) { try { ccDirty = true; } catch (e4) {} }
                 toast(storeOk ? '已重命名为「' + name + '」' : '已重命名为「' + name + '」（本机存储暂时没写进，稍后自动补写）');
               });
             }

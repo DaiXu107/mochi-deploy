@@ -1671,9 +1671,21 @@ selected.clear(); newSel.forEach(k => selected.add(k));
 }
 const storeOk = renameGroupInStore(oldName, name);
 saveGroups(groups); // 同步内存/缓存/角标；库里已就地改名，不会因合并闸门把旧名留下
+try {
+const fresh = loadGroups();
+if (fresh && Object.keys(fresh).some(function (t) {
+return (fresh[t] || []).some(function (g2) { return Array.isArray(g2) && g2[0] === name; });
+})) groups = fresh;
+} catch (eR) {}
 renderGroupsBar();
 render();
 renderMgList();
+try {
+requestAnimationFrame(function () {
+try { renderGroupsBar(); render(); } catch (e2) {}
+});
+} catch (e3) {}
+if (!storeOk) { try { ccDirty = true; } catch (e4) {} }
 toast(storeOk ? '已重命名为「' + name + '」' : '已重命名为「' + name + '」（本机存储暂时没写进，稍后自动补写）');
 });
 }
