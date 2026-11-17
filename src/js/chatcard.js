@@ -328,16 +328,22 @@
     Object.keys(BUILTIN).forEach(cat => {
       const gs = groups[cat];
       if (!Array.isArray(gs)) return;
+      // FIX 2026-11-17：只删「因为内置卡被剔除而变空」的分组。
+      // 旧写法过滤掉所有空分组 ⇒ 用户先建分组、后填卡（或正在整理）时，空分组会在
+      // 下一次 loadGroups 被静默删除，表现为「管理分组里改完名字/建好的分组过一会就没了」。
+      const emptiedByStrip = {};
       BUILTIN[cat].forEach(([gname, arr]) => {
         const g = gs.find(x => x[0] === gname);
         if (!g || !Array.isArray(g[1])) return;
         const before = g[1].length;
         g[1] = g[1].filter(c => arr.indexOf(c) < 0);
-        if (g[1].length !== before) changed = true;
+        if (g[1].length !== before) {
+          changed = true;
+          if (!g[1].length) emptiedByStrip[gname] = 1;
+        }
       });
-      // 删掉因此变空的分组
       const before = gs.length;
-      groups[cat] = gs.filter(g => Array.isArray(g[1]) && g[1].length);
+      groups[cat] = gs.filter(g => !(Array.isArray(g) && Array.isArray(g[1]) && !g[1].length && emptiedByStrip[g[0]]));
       if (groups[cat].length !== before) changed = true;
     });
     return changed;
@@ -2025,6 +2031,26 @@
   if (ngBtn) {
     ngBtn.addEventListener('click', openManageGroups);
   }
+  // 2026-11-17：分组改名走「就地改写权威 JSON」的落盘路径。
+  // saveGroups 在「权威库尚未确认读进内存」（大库/刚开页/hydrate 未落定）时会走
+  // rescueCcOverwrite：它按分组合并，旧名字那份会留在库里，改名看起来「没生效」。
+  // 改名只动一个字符串、不增删任何字卡，这里直接解析当前库 JSON 改名字再写回，
+  // 数据风险为零，也绕开了上面那条针对「整包覆盖」的闸门。
+  function renameGroupInStore(oldName, newName) {
+    try {
+      const raw = curStore().get(curKey());
+      if (!raw) return false;
+      const obj = JSON.parse(raw);
+      const arr = obj && obj[cur];
+      if (!Array.isArray(arr)) return false;
+      const g = arr.find(x => Array.isArray(x) && x[0] === oldName);
+      if (!g) return false;
+      g[0] = newName;
+      curStore().set(curKey(), JSON.stringify(obj));
+      pubInvalidate();
+      return true;
+    } catch (e) { return false; }
+  }
   function openManageGroups() {
     // 创建/复用管理面板
     let mask = document.getElementById('cc-mg-mask');
@@ -2166,11 +2192,12 @@
                   });
                   selected.clear(); newSel.forEach(k => selected.add(k));
                 }
-                saveGroups(groups);
+                const storeOk = renameGroupInStore(oldName, name);
+                saveGroups(groups); // 同步内存/缓存/角标；库里已就地改名，不会因合并闸门把旧名留下
                 renderGroupsBar();
                 render();
                 renderMgList();
-                toast('已重命名为「' + name + '」');
+                toast(storeOk ? '已重命名为「' + name + '」' : '已重命名为「' + name + '」（本机存储暂时没写进，稍后自动补写）');
               });
             }
           });

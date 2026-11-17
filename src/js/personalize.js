@@ -401,21 +401,33 @@ try {
       } catch (e) {}
       return null;
     }
+    let _modalInitVal = ''; // 打开弹窗时预填的原值（改名类弹窗用来判断哪一侧才是用户新输入）
     function readModalVal(el) {
-      // FIX 2026-11-16：可见 ce-box 是用户真正看到并编辑的内容，优先读它。
-      // 旧写法先读 el.value：重命名类弹窗预填了旧值，安卓上 CE 代理偶发没把新输入同步回
-      // ghost input 时，读到的仍是旧名字，回调里「名字没变」守卫静默 return＝用户所见
-      // 「分组不能重命名」。box 不可见（如单行/多行切换后隐藏）时才回退原生值。
+      // FIX 2026-11-16 / 2026-11-17：安卓 ce-box 代理与 ghost input 不一定同步。
+      // 规则：可见 ce-box 与原生 value 谁是「和预填原值不同」的那一侧，就以谁为准；
+      // 两侧都没变时按可见内容返回（业务侧会提示「没有变化」）。
+      // 旧写法只优先 ce-box：某些内核里 ce-box 停在预填旧值、新输入却写进了 value，
+      // 改分组名这类弹窗就永远读回旧名——表现为「按修改键改名，组名不变」。
+      let boxText = null;
       const box = ceBoxOf(el);
       if (box) {
         try {
           const rects = box.getClientRects();
           if (rects && rects.length && getComputedStyle(box).visibility !== 'hidden') {
-            return (box.innerText !== undefined ? box.innerText : box.textContent) || '';
+            boxText = (box.innerText !== undefined ? box.innerText : box.textContent) || '';
           }
         } catch (e) {}
       }
-      try { return el.value == null ? '' : String(el.value); } catch (e) { return ''; }
+      let nativeVal;
+      try { nativeVal = el.value == null ? '' : String(el.value); } catch (e) { nativeVal = ''; }
+      if (boxText != null) {
+        const boxChanged = boxText !== _modalInitVal;
+        const nativeChanged = nativeVal !== _modalInitVal;
+        if (boxChanged && !nativeChanged) return boxText;
+        if (nativeChanged && !boxChanged) return nativeVal;
+        return boxText;
+      }
+      return nativeVal;
     }
     let cb = null;
     // FIX 2026-09-27 #1342o：记住「此刻这一组胶囊」——#1342p 那道「确定＝真·可点选图层」要按
@@ -529,6 +541,7 @@ try {
       }
       input.hidden = noInput || !!opts.textarea;
       input.value = v || '';
+      _modalInitVal = input.value;
       // v3.5.130：maxlength 由调用方控制——模板不再写死 12（编辑消息/备忘会被截断）；
       // 昵称类短输入传 opts.maxlength，编辑消息等不传
       if (opts.maxlength) input.maxLength = opts.maxlength;

@@ -269,17 +269,28 @@ if (el.parentNode) return el.parentNode.querySelector('.ce-box[data-for="' + (el
 } catch (e) {}
 return null;
 }
+let _modalInitVal = ''; // 打开弹窗时预填的原值（改名类弹窗用来判断哪一侧才是用户新输入）
 function readModalVal(el) {
+let boxText = null;
 const box = ceBoxOf(el);
 if (box) {
 try {
 const rects = box.getClientRects();
 if (rects && rects.length && getComputedStyle(box).visibility !== 'hidden') {
-return (box.innerText !== undefined ? box.innerText : box.textContent) || '';
+boxText = (box.innerText !== undefined ? box.innerText : box.textContent) || '';
 }
 } catch (e) {}
 }
-try { return el.value == null ? '' : String(el.value); } catch (e) { return ''; }
+let nativeVal;
+try { nativeVal = el.value == null ? '' : String(el.value); } catch (e) { nativeVal = ''; }
+if (boxText != null) {
+const boxChanged = boxText !== _modalInitVal;
+const nativeChanged = nativeVal !== _modalInitVal;
+if (boxChanged && !nativeChanged) return boxText;
+if (nativeChanged && !boxChanged) return nativeVal;
+return boxText;
+}
+return nativeVal;
 }
 let cb = null;
 let pillList = [];
@@ -356,6 +367,7 @@ staticEl.appendChild(key);
 }
 input.hidden = noInput || !!opts.textarea;
 input.value = v || '';
+_modalInitVal = input.value;
 if (opts.maxlength) input.maxLength = opts.maxlength;
 else input.removeAttribute('maxlength');
 if ('placeholder' in opts) { try { input.placeholder = opts.placeholder || ''; } catch (e) {} }

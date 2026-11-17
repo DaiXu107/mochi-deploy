@@ -218,15 +218,19 @@ let changed = false;
 Object.keys(BUILTIN).forEach(cat => {
 const gs = groups[cat];
 if (!Array.isArray(gs)) return;
+const emptiedByStrip = {};
 BUILTIN[cat].forEach(([gname, arr]) => {
 const g = gs.find(x => x[0] === gname);
 if (!g || !Array.isArray(g[1])) return;
 const before = g[1].length;
 g[1] = g[1].filter(c => arr.indexOf(c) < 0);
-if (g[1].length !== before) changed = true;
+if (g[1].length !== before) {
+changed = true;
+if (!g[1].length) emptiedByStrip[gname] = 1;
+}
 });
 const before = gs.length;
-groups[cat] = gs.filter(g => Array.isArray(g[1]) && g[1].length);
+groups[cat] = gs.filter(g => !(Array.isArray(g) && Array.isArray(g[1]) && !g[1].length && emptiedByStrip[g[0]]));
 if (groups[cat].length !== before) changed = true;
 });
 return changed;
@@ -1517,6 +1521,21 @@ const ngBtn = document.getElementById('cc-new-group');
 if (ngBtn) {
 ngBtn.addEventListener('click', openManageGroups);
 }
+function renameGroupInStore(oldName, newName) {
+try {
+const raw = curStore().get(curKey());
+if (!raw) return false;
+const obj = JSON.parse(raw);
+const arr = obj && obj[cur];
+if (!Array.isArray(arr)) return false;
+const g = arr.find(x => Array.isArray(x) && x[0] === oldName);
+if (!g) return false;
+g[0] = newName;
+curStore().set(curKey(), JSON.stringify(obj));
+pubInvalidate();
+return true;
+} catch (e) { return false; }
+}
 function openManageGroups() {
 let mask = document.getElementById('cc-mg-mask');
 if (!mask) {
@@ -1650,11 +1669,12 @@ else newSel.add(k);
 });
 selected.clear(); newSel.forEach(k => selected.add(k));
 }
-saveGroups(groups);
+const storeOk = renameGroupInStore(oldName, name);
+saveGroups(groups); // 同步内存/缓存/角标；库里已就地改名，不会因合并闸门把旧名留下
 renderGroupsBar();
 render();
 renderMgList();
-toast('已重命名为「' + name + '」');
+toast(storeOk ? '已重命名为「' + name + '」' : '已重命名为「' + name + '」（本机存储暂时没写进，稍后自动补写）');
 });
 }
 });
