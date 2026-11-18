@@ -55,6 +55,18 @@
   var busy = false;
 
   function setStatus(t) { statusEl.textContent = t; }
+  // 某些手机浏览器里 unregister / caches.delete 会长时间不返回；加超时保证一定继续。
+  function timeout(p, ms, fallback) {
+    return Promise.race([p, new Promise(function (resolve) {
+      setTimeout(function () { resolve(fallback); }, ms);
+    })]);
+  }
+  function goLatest() {
+    setStatus('正在打开最新版…');
+    setTimeout(function () {
+      location.replace('./?updated=' + Date.now());
+    }, 400);
+  }
 
   async function update() {
     if (busy) return;
@@ -62,30 +74,36 @@
     goBtn.disabled = true;
     laterBtn.disabled = true;
     setStatus('正在清理旧缓存…');
-    var swOk = true, cacheOk = true;
     try {
       if ('serviceWorker' in navigator) {
-        var regs = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(regs.map(function (r) { return r.unregister(); }));
+        var regs = await timeout(navigator.serviceWorker.getRegistrations(), 2500, []);
+        await timeout(Promise.all(regs.map(function (r) { return r.unregister(); })), 2500, []);
       }
-    } catch (e) { swOk = false; }
+    } catch (e) {}
     try {
       if (window.caches) {
-        var keys = await caches.keys();
-        await Promise.all(keys.map(function (k) { return caches.delete(k); }));
+        var keys = await timeout(caches.keys(), 2500, []);
+        await timeout(Promise.all(keys.map(function (k) { return caches.delete(k); })), 4000, []);
       }
-    } catch (e) { cacheOk = false; }
-    if (!swOk && !cacheOk) {
-      setStatus('自动清理失败，请再点一次；仍不行就换浏览器打开本页。');
+    } catch (e) {}
+    // 再确认一次：服务器当前返回的 index 是否已经是新版（牌阵 UI 的标记）。
+    var fresh = true;
+    try {
+      var res = await timeout(fetch('./index.html?probe=' + Date.now(), { cache: 'no-store' }), 4000, null);
+      if (res && res.ok) {
+        var html = await timeout(res.text(), 3000, '');
+        if (html && html.indexOf('div-spread-select') === -1) fresh = false;
+      }
+    } catch (e) {}
+    if (!fresh) {
+      setStatus('服务器返回的仍是旧版页面，可能是网络缓存。请换 WiFi / 流量再点一次，或等 1 分钟后重试。');
       busy = false;
       goBtn.disabled = false;
       laterBtn.disabled = false;
+      goBtn.textContent = '再试一次';
       return;
     }
-    setStatus('清理完成，正在打开最新版…');
-    setTimeout(function () {
-      location.replace('./?updated=' + Date.now());
-    }, 650);
+    goLatest();
   }
 
   goBtn.addEventListener('click', update);
