@@ -11737,6 +11737,65 @@ const chatDivineBody = document.getElementById('chat-divine-body');
 const chatDivineClose = document.getElementById('chat-divine-close');
 let chatDivineMode = 'tarot';
 let chatDivineCount = 3;
+let chatSpreadId = 'ppf';
+let chatTarotScope = 'full';
+let chatTarotSystem = 'wait';
+function activeChatSpread() {
+  const list = window.__DIV_SPREADS__ || [];
+  let base = window.__divineSpreadById ? window.__divineSpreadById(chatSpreadId) : null;
+  if (!base) base = list[1] || { id: 'ppf', name: '时间之流', count: 3, cw: 26, labels: ['过去', '现在', '未来'], layout: [[22,50],[50,50],[78,50]] };
+  if (base.id === 'custom') {
+    const el = document.getElementById('div-chat-custom-n');
+    const n = Math.max(1, Math.min(12, parseInt((el && el.value) || '5', 10) || 5));
+    const d = window.__divineEnsureCustomDef ? window.__divineEnsureCustomDef(n) : null;
+    return { id: 'custom', name: '自定义牌阵', count: n, cw: n >= 9 ? 14 : (n >= 5 ? 18 : (n <= 3 ? 26 : 20)), labels: d ? d.labels.slice() : Array.from({ length: n }, function (_, i) { return '位置 ' + (i + 1); }), layout: d ? d.positions.slice() : [] };
+  }
+  return base;
+}
+function chatResetDraw() {
+  const db = document.getElementById('div-chat-draw');
+  if (db) db.textContent = '抽牌';
+  const r = document.getElementById('div-chat-result');
+  if (r) r.innerHTML = '<div class="div-result-empty">点击上方按钮开始抽牌</div>';
+}
+function renderChatSpreadUI() {
+  const picker = document.getElementById('div-chat-picker');
+  const sel = document.getElementById('div-chat-spread-select');
+  const deckSel = document.getElementById('div-chat-deck-select');
+  const major = document.getElementById('div-chat-major-only');
+  const cn = document.getElementById('div-chat-custom-n');
+  const counts = document.querySelector('#chat-divine-body .div-counts-wrap');
+  const isTarot = chatDivineMode === 'tarot';
+  if (counts) counts.hidden = chatDivineMode !== 'lenormand';
+  if (picker) picker.hidden = !isTarot;
+  if (!isTarot) return;
+  if (!window.__DIV_SPREADS__) return;
+  if (sel && !sel.dataset.bound) {
+    sel.innerHTML = window.__DIV_SPREADS__.map(function (sp) {
+      return '<option value="' + sp.id + '">' + sp.name + (sp.id === 'custom' ? '' : '（' + sp.count + ' 张）') + '</option>';
+    }).join('');
+    sel.addEventListener('change', function () { chatSpreadId = sel.value; renderChatSpreadUI(); chatResetDraw(); });
+    sel.dataset.bound = '1';
+  }
+  if (sel) sel.value = chatSpreadId;
+  if (deckSel && !deckSel.dataset.bound) {
+    deckSel.addEventListener('change', function () { chatTarotSystem = deckSel.value; if (window.__divineSetTarotSystem) window.__divineSetTarotSystem(chatTarotSystem); chatResetDraw(); });
+    deckSel.dataset.bound = '1';
+  }
+  if (deckSel) deckSel.value = chatTarotSystem;
+  if (major && !major.dataset.bound) {
+    major.addEventListener('change', function () { chatTarotScope = major.checked ? 'major' : 'full'; chatResetDraw(); });
+    major.dataset.bound = '1';
+  }
+  if (major) major.checked = chatTarotScope === 'major';
+  if (cn) {
+    cn.hidden = chatSpreadId !== 'custom';
+    if (!cn.dataset.bound) {
+      cn.dataset.bound = '1';
+      cn.addEventListener('change', function () { chatResetDraw(); });
+    }
+  }
+}
 function openChatDivine() {
 if (!chatDivinePanel) return;
 const pc = document.getElementById('poke-card');
@@ -11749,6 +11808,8 @@ const cs = document.getElementById('chat-search');
 if (cs) cs.hidden = true;
 if (window.closeAvlib) window.closeAvlib();
 chatDivinePanel.hidden = false;
+chatDivinePanel.classList.remove('div-chat-fs');
+const fsBtn0 = document.getElementById('chat-divine-fs'); if (fsBtn0) fsBtn0.textContent = '⛶';
 try {
 const chatAuto = document.getElementById('div-chat-auto-send');
 if (chatAuto) chatAuto.checked = !!(window.divineAutoGet && window.divineAutoGet());
@@ -11758,6 +11819,7 @@ const histList = document.getElementById('div-chat-history');
 if (histList && !histList.hidden && window.divineHistLoad) renderChatHistory();
 } catch (err) {}
 try { if (window.divineRenderTargets) window.divineRenderTargets('div-chat-targets'); } catch (err) {}
+try { renderChatSpreadUI(); } catch (err) {}
 }
 const moreDivine = document.getElementById('more-divine');
 if (moreDivine) {
@@ -11767,13 +11829,32 @@ if (morePanel) morePanel.hidden = true;
 openChatDivine();
 });
 }
-if (chatDivineClose) chatDivineClose.addEventListener('click', (e) => { e.stopPropagation(); chatDivinePanel.hidden = true; });
+if (chatDivineClose) chatDivineClose.addEventListener('click', (e) => {
+e.stopPropagation();
+chatDivinePanel.hidden = true;
+chatDivinePanel.classList.remove('div-chat-fs');
+const fb = document.getElementById('chat-divine-fs'); if (fb) fb.textContent = '⛶';
+});
+const chatDivineFs = document.getElementById('chat-divine-fs');
+if (chatDivineFs) chatDivineFs.addEventListener('click', (e) => {
+e.stopPropagation();
+const on = !chatDivinePanel.classList.contains('div-chat-fs');
+chatDivinePanel.classList.toggle('div-chat-fs', on);
+chatDivineFs.textContent = on ? '⤢' : '⛶';
+});
 if (chatDivineBody) {
 chatDivineBody.querySelectorAll('[data-chatmode]').forEach(b => {
 b.addEventListener('click', (e) => {
 e.stopPropagation();
 chatDivineMode = b.getAttribute('data-chatmode');
 chatDivineBody.querySelectorAll('[data-chatmode]').forEach(x => x.classList.toggle('sel', x === b));
+const mhNums = document.getElementById('div-chat-meihua-nums');
+if (mhNums) mhNums.hidden = chatDivineMode !== 'meihua';
+const cwrap = chatDivineBody.querySelector('.div-counts-wrap');
+if (cwrap) cwrap.hidden = chatDivineMode === 'meihua';
+const lenoSys = document.getElementById('div-chat-leno-sys');
+if (lenoSys) lenoSys.hidden = chatDivineMode !== 'lenormand';
+renderChatSpreadUI();
 if (chatDrawCancel) { try { chatDrawCancel(); } catch (err) {} chatDrawCancel = null; }
 const drawBtn2 = document.getElementById('div-chat-draw');
 if (drawBtn2) drawBtn2.textContent = '抽牌';
@@ -11811,7 +11892,7 @@ return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + p(d.getHours()) + ':'
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 listEl.innerHTML = list.map((h, i) =>
 '<div class="div-chat-hist-item">' +
-'<div class="div-chat-hist-q">' + (h.mode === 'tarot' ? '塔罗' : '雷诺曼') + ' · ' + h.count + ' 张' +
+'<div class="div-chat-hist-q">' + (window.__divineModeLabel__ ? window.__divineModeLabel__(h.mode) : (h.mode === 'tarot' ? '塔罗' : '雷诺曼')) + (h.spread ? ' · ' + h.spread.name : '') + ' · ' + h.count + ' 张' +
 (h.question ? ' · 问：' + esc(h.question) : '') + '</div>' +
 '<div class="div-chat-hist-meta">' + fmt(h.ts) + ' · ' +
 (Array.isArray(h.cards) ? h.cards.map(c => esc((c && c.name) || '') + (c && c.rev ? '(逆)' : '')).join('、') : '') +
@@ -11825,7 +11906,13 @@ e.stopPropagation();
 let cur = [];
 try { cur = (window.divineHistLoad && window.divineHistLoad()) || []; } catch (err) {}
 const h = cur[parseInt(b2.dataset.hi, 10)];
-if (h && Array.isArray(h.cards)) {
+if (h && h.mode === 'meihua' && h.mh) {
+const sr = document.getElementById('div-chat-result');
+if (sr && window.divineRenderMeihua) window.divineRenderMeihua(sr, h.mh, h.question || '', h.summary || '');
+} else if (h && h.mode === 'tarot' && h.spread && window.divineRenderSpreadBoard && window.__divineSpreadById) {
+const sr = document.getElementById('div-chat-result');
+if (sr) window.divineRenderSpreadBoard(sr, h.cards, window.__divineSpreadById(h.spread.id), h.question || '', h.summary || '');
+} else if (h && Array.isArray(h.cards)) {
 const sr = document.getElementById('div-chat-result');
 if (sr) { sr.innerHTML = chatDivineResultHtml(h.cards, h.mode, h.question, h.summary || ''); bindChatCopy(sr, h.cards, h.mode, h.question, h.summary || ''); }
 }
@@ -11845,10 +11932,12 @@ const labels = ((window.__MODE_LABELS__ || {})[mode] || {})[cards.length] || [];
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 let html = '<div class="div-spread">';
 cards.forEach((c, i) => {
+const face = c.img || (window.__divineFaceFor__ ? window.__divineFaceFor__(mode, c.name) : '');
 html += '<div class="div-mini">' +
 (labels[i] ? '<div class="div-mini-tag">' + labels[i] + '</div>' : '') +
-'<div class="div-card-face">' +
-'<div class="div-card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + (icons[c.icon] || '') + '</svg></div>' +
+'<div class="div-card-face' + (face ? ' div-face-img' : '') + '">' +
+(face ? '<div class="div-card-img"><img src="' + esc(face) + '" alt="" loading="lazy" decoding="async"></div>' :
+'<div class="div-card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + (icons[c.icon] || '') + '</svg></div>') +
 '<div class="div-card-name">' + esc(c.name) + (c.rev ? '（逆）' : '') + '</div>' +
 '</div>' +
 '<div class="div-card-meaning">' + esc(c.meaning) + '</div>' +
@@ -11932,26 +12021,60 @@ const question = (document.getElementById('div-chat-question') || {}).value || '
 const snapMode = chatDivineMode, snapCount = chatDivineCount;
 // v3.26.x：快照点击时的占卜对象——流程期间切换对象不影响本次记录归属
 const snapTarget = (window.divineGetTarget && window.divineGetTarget()) || '';
-const deck = snapMode === 'tarot' ? (window.__TAROT__ || []) : (window.__LENO__ || []);
+if (snapMode === 'meihua') {
+const v1 = parseFloat((document.getElementById('div-chat-mh-num1') || {}).value);
+const v2 = parseFloat((document.getElementById('div-chat-mh-num2') || {}).value);
+const mh = window.divineMeihuaBuild ? window.divineMeihuaBuild(isFinite(v1) ? v1 : NaN, isFinite(v2) ? v2 : NaN) : null;
+if (!mh) { r.innerHTML = '<div class="div-result-empty">梅花易数加载中…</div>'; return; }
+divDraw.textContent = '起卦中…';
+r.innerHTML = '<div class="div-result-empty">正在起卦…</div>';
+setTimeout(() => {
+divDraw.textContent = '重新抽牌';
+if (window.divineRenderMeihua) window.divineRenderMeihua(r, mh, question, mh.summary);
+const record = { ts: Date.now(), mode: 'meihua', count: 1, question: question,
+cards: [{ name: mh.name, icon: 'meihua', meaning: mh.summary, detail: mh.summary }], summary: mh.summary, mh: mh };
+if (snapTarget && window.divineTargetName) record.target = window.divineTargetName(snapTarget);
+if (window.divineHistSave && window.divineHistLoad) {
+try { const list = window.divineHistLoad(); if (Array.isArray(list)) { list.unshift(record); window.divineHistSave(list); } } catch (err) {}
+}
+if (window.divineSaveToHomeHistory) { try { window.divineSaveToHomeHistory(record, snapTarget); } catch (err2) {} }
+try { renderChatHistory(); } catch (err) {}
+if (window.divineAutoGet && window.divineAutoGet() && window.divineSendResult) {
+setTimeout(() => { try { window.divineSendResult('meihua', record.cards, mh.summary, question); } catch (err) {} }, 600);
+}
+}, 420);
+return;
+}
+const spread = snapMode === 'tarot' ? activeChatSpread() : null;
+const useCount = spread ? spread.count : snapCount;
+if (snapMode === 'tarot' && window.__divineSetTarotSystem) window.__divineSetTarotSystem(chatTarotSystem);
+const deck = snapMode === 'tarot'
+? (window.__divineTarotDeckFor ? window.__divineTarotDeckFor(chatTarotScope) : (window.__TAROT__ || []).slice())
+: (window.__LENO__ || []);
 if (!window.startDivineDraw || !deck.length) { r.innerHTML = '<div class="div-result-empty">占卜牌库加载中…</div>'; return; }
 divDraw.textContent = '抽牌中…';
 chatDrawCancel = window.startDivineDraw(r, {
 deck: deck,
-count: snapCount,
-labels: ((window.__MODE_LABELS__ || {})[snapMode] || {})[snapCount] || [],
+count: useCount,
+labels: spread ? spread.labels : (((window.__MODE_LABELS__ || {})[snapMode] || {})[snapCount] || []),
 tarot: snapMode === 'tarot',
 onDone: (cards) => {
 chatDrawCancel = null;
 divDraw.textContent = '重新抽牌';
 const summary = (window.divineBuildSummary && window.divineBuildSummary(cards, snapMode, question)) || '';
+if (spread && window.divineRenderSpreadBoard) window.divineRenderSpreadBoard(r, cards, spread, question, summary);
+else {
 r.innerHTML = chatDivineResultHtml(cards, snapMode, question, summary);
 bindChatCopy(r, cards, snapMode, question, summary);
+}
 if (window.divineAutoGet && window.divineAutoGet() && window.divineSendResult) {
-setTimeout(() => { try { window.divineSendResult(snapMode, cards, summary, question); } catch (err) {} }, 600);
+setTimeout(() => { try { window.divineSendResult(snapMode, cards, summary, question, spread ? spread.name : '', spread ? spread.labels : null); } catch (err) {} }, 600);
 }
 if (window.divineHistSave && window.divineHistLoad) {
 try {
-const record = { ts: Date.now(), mode: snapMode, count: snapCount, question: question, cards: cards, summary: summary };
+const record = { ts: Date.now(), mode: snapMode, count: useCount, question: question, cards: cards, summary: summary };
+if (spread) record.spread = { id: spread.id, name: spread.name };
+if (snapMode === 'tarot') record.deckScope = chatTarotScope;
 if (snapTarget && window.divineTargetName) record.target = window.divineTargetName(snapTarget);
 const list = window.divineHistLoad();
 if (!Array.isArray(list)) { if (window.divineHistSave) window.divineHistSave([]); }

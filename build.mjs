@@ -378,6 +378,8 @@ copyFileSync(join(root, 'src', 'opening', 'LICENSE-between-us.txt'), join(root, 
 // 不进 PRECACHE：首次打开由 SW 同源网络优先链按需写入运行时缓存，避免每次安装多下约 3.5MB。
 rmSync(join(root, 'sleeproom'), { recursive: true, force: true });
 cpSync(join(root, 'src', 'sleeproom'), join(root, 'sleeproom'), { recursive: true });
+// 占卜牌面（塔罗 78 / 雷诺曼 36，个人自用公有领域素材）→ 根 assets/divination
+cpSync(join(root, 'src', 'assets', 'divination'), join(root, 'assets', 'divination'), { recursive: true });
 // 纸页风格本地字体（Noto Serif SC 子集，OFL）→ 根 assets/fonts
 mkdirSync(join(root, 'assets', 'fonts'), { recursive: true });
 ['MochiSerif-Regular.woff2', 'OFL-NotoSerifSC.txt'].forEach(f => copyFileSync(join(root, 'src', 'assets', 'fonts', f), join(root, 'assets', 'fonts', f)));
@@ -4457,7 +4459,6 @@ const FIX_SENTINELS = [
 { name: '#936c 粘连数字守卫逐个落点判定（删＝#936b 的判据形同虚设，多落点里只看第一处）', file: 'js/divination.js', needle: 'if (!DIGIT.test(s.charAt(i + v.length))) return true;' },
 { name: '#936d 补零写法折算（删＝宝剑01 不认；整串归零会误把 宝剑100/权杖00 折成有效牌）', file: 'js/divination.js', needle: "s = s.replace(/(\\D)0+([1-9])/, '$1$2');" },
 { name: '#936e 全角数字先折算半角（删＝输入法写出的 宝剑１／１２ 仍不认，\d 不匹配全角）', file: 'js/divination.js', needle: 's = s.replace(/[０-９]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xFF10 + 48));' },
-{ name: '#936f 批量上传说明文案列出数字牌名写法（删＝用户不知道可以这么命名，功能等于没有）', file: 'js/divination.js', needle: '· 数字牌名：<b>宝剑1.png</b>' },
 // #942 「刷新很多次也停在旧版」收口＝index 更新通道弱网 30s 超时即放弃：实测 ~30KB/s 网络（GitHub Pages 国内，vivo/小米现场）传完 1.4~4MB 需 50~130s，install 预缓存/activate 补拉/PRECACHE_NOW（「刷新使用新版」落盘）/导航后台刷新四条通道全部在 30s 处超时失败＝新版永远落不了缓存，点了刷新按钮也重载回旧缓存。修法＝fetchIndexRes 助手在超时/失败后补一发不带超时的 fetch 慢慢传完（SW 内部 fetch 不再被本 SW 拦截＝无死循环，#143 无缓存兜底已验证同形态），成功体照旧过调用方已有的 isCompleteHtml 完整性校验才落缓存；快路径零变化。验证 tools/verify-sw-slow-update.mjs。
 // #942 「刷新很多次也停在旧版」收口＝index 更新通道弱网 30s 超时即放弃：实测 ~30KB/s 网络（GitHub Pages 国内，vivo/小米现场）传完 1.4~4MB 需 50~130s，install 预缓存/activate 补拉/PRECACHE_NOW（「刷新使用新版」落盘）/导航后台刷新四条通道全部在 30s 处超时失败＝新版永远落不了缓存，点了刷新按钮也重载回旧缓存。修法＝fetchIndexRes 助手在超时/失败后补一发不带超时的 fetch 慢慢传完（SW 内部 fetch 不再被本 SW 拦截＝无死循环，#143 无缓存兜底已验证同形态），成功体照旧过调用方已有的 isCompleteHtml 完整性校验才落缓存；快路径零变化。验证 tools/verify-sw-slow-update.mjs。
 { name: '#942a 慢路径助手定义（删＝四条通道回到 30s 即放弃，弱网永远刷不上新版）', file: 'pwa/sw.js', needle: 'function fetchIndexRes(url, ms) {' },
@@ -4830,7 +4831,6 @@ const FIX_SENTINELS = [
   { name: '#997c 聊天「批量发送」面板插入图片行小字（删＝该入口又只剩按钮，用户不知道只能选一张是浏览器的事）', file: 'template.html', needle: 'id="batch-upload-hint">选不了多张或点了没反应' },
   { name: '#997d 头像库「添加头像」小字（删＝头像批量上传入口无浏览器限制说明）', file: 'template.html', needle: 'id="avlib-upload-hint">选不了多张或点了没反应' },
   { name: '#997e 壁纸图库「＋ 上传新图（可多选）」下小字（删＝壁纸批量上传入口无浏览器限制说明）', file: 'js/personalize.js', needle: "bgHint.id = 'phonebg-upload-hint';" },
-  { name: '#997f 塔罗牌面批量上传小字（删＝牌面批量上传入口无浏览器限制说明）', file: 'js/divination.js', needle: 'id="divf-batch-hint"' },
   { name: '#997g 使用说明「功能说明」列全四节长文（删/改回三节＝新章节没进入口说明，用户看不到它）', file: 'js/settings-help.js', needle: '再到四节长文——' },
   { name: '#997h 说明页第 11 节计数与条目数对齐（漂移＝章标题上的条数与实际条数不符；#1370 换锚：本批该节 20→23 条）', file: 'template.html', needle: '手机卡顿怎么办（安卓 / iPhone）</span><span class="lg-count">23</span>' },
   { name: '#997i 头像库小字在「添加头像」按钮上方（挪回按钮下方＝360×640 上落在滚动区折叠线以下，用户看不到）', file: 'template.html', needle: '还没有头像，点击下方按钮添加</div>\n          <div style="font-size:11px;line-height:1.6;color:var(--muted);margin:6px 0 8px" id="avlib-upload-hint">' },
@@ -6583,6 +6583,25 @@ const FIX_SENTINELS = [
   { name: '#1541p 打开同步强制合并各桌面旧值（不 force＝全局标记已落，旧账本/日记永远合不过来）', file: 'js/contacts.js', needle: 'migrateUserSharedKeys(true);' },
   { name: '#1541q 同步开关根键免迁（删＝migrateLegacy 把开关搬进 default，刷新后开关失效）', file: 'js/contacts.js', needle: "if (r.indexOf('user-sync-') === 0) return true;" },
   { name: '#1541r 设置页三个同步开关在位（删＝用户没有入口开启跨联系人同步）', file: 'template.html', needle: 'id="sync-accounting"' },
+  { name: '#1542a 塔罗/雷诺曼内置牌面接线（删＝抽牌只剩线条图标，用户无法看牌面判断）', file: 'js/divination.js', needle: "c.img = 'assets/divination/tarot/'" },
+  { name: '#1542b 梅花易数六十四卦表（删＝东玄起卦只剩空壳）', file: 'js/divination.js', needle: 'const MH_HEX = {' },
+  { name: '#1542c 占卜页全屏键（删＝聊天内占卜仍困在小半框里）', file: 'js/divination.js', needle: "page.classList.toggle('div-fs', on);" },
+  { name: '#1542d 聊天占卜半框全屏键（删＝聊天里占卜还是原来的小窗口）', file: 'js/chat.js', needle: "chatDivinePanel.classList.toggle('div-chat-fs', on);" },
+  { name: '#1542e 梅花易数入口在位（删＝用户看不到新增的东玄方式）', file: 'template.html', needle: 'data-mode="meihua"' },
+  { name: '#1542f 聊天牌面按内置图渲染（删＝聊天半框仍只有图标，看不到塔罗/雷诺曼牌面）', file: 'js/chat.js', needle: 'window.__divineFaceFor__(mode, c.name)' },
+  { name: '#1543a 占卜记录默认收起、从数据管理卡右上角展开（删＝记录又回到抽牌按钮下面占一大块）', file: 'js/divination.js', needle: 'window.divineToggleHistory = function (force) {' },
+  { name: '#1543b 占卜数据卡右上角改名占卜记录（删＝仍显示「全部功能」并跳功能大全）', file: 'js/feature-data.js', needle: "(f.id === 'divination' ? '占卜记录 ›' : '全部功能 ›')" },
+  { name: '#1543c 占卜记录卡默认 hidden（删＝首屏仍露出空白记录卡）', file: 'template.html', needle: 'id="div-history-card"' },
+  { name: '#1544a 塔罗常用牌阵登记（删＝又退回「1/3/7 张」这种笼统说法）', file: 'js/divination.js', needle: 'const TAROT_SPREADS = [' },
+  { name: '#1544b 牌阵桌布与拖动（删＝牌阵只剩列表，不能摆牌/拖动）', file: 'js/divination.js', needle: "el.addEventListener('pointerdown', function (e) {" },
+  { name: '#1544c 抽牌牌堆改上下滚动（删＝又回到左右两行看不全）', file: 'js/divination.js', needle: "pileScroll.className = 'div-pile-scroll'" },
+  { name: '#1544d 大阿卡纳/小阿卡纳牌库筛选（删＝只能全 78 张抽）', file: 'js/divination.js', needle: 'function tarotDeckFor(scope) {' },
+  { name: '#1544e 自定义牌阵张数输入（删＝自定义牌阵没有张数入口）', file: 'template.html', needle: 'id="div-custom-n"' },
+  { name: '#1544f 聊天占卜牌阵选择（删＝聊天里又退回 1/3/7 张）', file: 'js/chat.js', needle: 'function renderChatSpreadUI() {' },
+  { name: '#1545a 牌阵/选牌收纳为两列选项（删＝又变回一排排牌阵按钮、挤满视窗）', file: 'template.html', needle: 'id="div-picker-row"' },
+  { name: '#1545b 牌阵空位显示在选牌行下方、抽牌键上方（删＝选中牌阵后看不到空位）', file: 'template.html', needle: 'id="div-spread-table"' },
+  { name: '#1545c 发送前确认弹窗（删＝点发送直接发到聊天，没有确认）', file: 'js/divination.js', needle: 'function confirmSendToCurrent(cb) {' },
+  { name: '#1545d 取消占卜对象选择（删＝旧的目标联系人又会把结果写到别的桌面）', file: 'js/divination.js', needle: "divineTarget = '';" },
   { name: '#1541h 根键写成功才删旧副本（删＝存储写失败时两边都没了，用户账本/日记整本消失）', file: 'js/contacts.js', needle: 'landed[rel] = !!(root.get(rel) != null);' },
   { name: '#1541i IDB 清单没读全不落迁移标记（删＝只合并了 LS 里那部分就标记完成，IDB-only 的旧数据永远合不过来）', file: 'js/contacts.js', needle: `if (window.__userSharedIdbOk !== false) { try { root.set(USER_SHARED_MARK, '1'); } catch (e) {} }` },
   { name: '#1541j defaultStore 写共享键直接落根（沿旧逻辑＝写 default 再删根键，共享数据又被搬回桌面）', file: 'js/contacts.js', needle: 'if (isUserSharedKey(k)) { window.xyStore(G).set(k, v); return; }' },

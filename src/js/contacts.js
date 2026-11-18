@@ -27,6 +27,8 @@
     'chat-resume-mode', 'chat-resume-cid',
     // 2026-11-17：睡眠小屋的睡眠日历（主应用侧权威副本）——全局根键，不能被搬进 default。
     'sleeproom-log',
+    // 2026-11-18：自定义牌阵的牌位定义（位置/名称）——全局根键，跨联系人共用。
+    'divine-custom-spread',
     // v3.17.x：跨桌面「来消息」全局根键——incoming-requests（申请队列）、
     // desk-checkin-en（桌面查岗全局开关）与 desk-call-en（跨桌面来电全局开关）都存
     // 根命名空间、全桌面通，绝不随联系人隔离，防 migrateLegacy 每次刷新搬进 default

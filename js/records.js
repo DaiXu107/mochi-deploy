@@ -406,7 +406,7 @@ if (!h || !Array.isArray(h.cards) || !window.divineRenderResult) return;
 document.querySelectorAll('.page').forEach(p => p.hidden = true);
 const dp = document.getElementById('page-divine');
 if (dp) dp.hidden = false;
-try { window.divineRenderResult(h.cards, h.mode, h.question || '', h.summary || ''); } catch (e) {}
+try { window.divineRenderResult(h.cards, h.mode, h.question || '', h.summary || '', h.mh || null, h.spread || null); } catch (e) {}
 }));
 }
 function histList(key) { try { return JSON.parse(store.get(key) || '[]'); } catch (e) { return []; } }

@@ -4751,20 +4751,42 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </span>
         <span class="ch-name">占卜</span>
+        <button class="ch-more div-fs-btn" id="div-fs" type="button" title="全屏" aria-label="全屏">⛶</button>
       </div>
       <div class="div-scroll">
         <div class="div-setup">
           <div class="div-modes" id="div-modes">
             <button class="div-mode sel" data-mode="tarot">塔罗</button>
             <button class="div-mode" data-mode="lenormand">雷诺曼</button>
+            <button class="div-mode" data-mode="meihua">梅花易数</button>
           </div>
           <div class="div-modes div-counts" id="div-counts">
             <button class="div-mode sel" data-count="3">3 张</button>
             <button class="div-mode" data-count="1">1 张</button>
             <button class="div-mode" data-count="7">7 张</button>
           </div>
-          <!-- v3.26.x：占卜对象（可选全部桌面联系人，也可不选；选了对象结果存入主页「占卜记录」） -->
-          <div class="div-modes div-targets" id="div-targets"></div>
+          <div class="div-picker-row" id="div-picker-row" hidden>
+            <div class="div-picker-col">
+              <span class="div-picker-label">选牌阵</span>
+              <select class="div-select" id="div-spread-select"></select>
+              <input type="number" class="div-custom-n" id="div-custom-n" min="1" max="12" value="5" inputmode="numeric" hidden>
+            </div>
+            <div class="div-picker-col">
+              <span class="div-picker-label">选体系</span>
+              <select class="div-select" id="div-deck-select">
+                <option value="wait">韦特系</option>
+                <option value="marseille">马赛系</option>
+                <option value="thoth">托特系</option>
+              </select>
+              <label class="div-major-only"><input type="checkbox" id="div-major-only"> 仅大阿卡纳</label>
+            </div>
+          </div>
+          <div class="div-spread-table" id="div-spread-table" hidden></div>
+          <div class="div-meihua-nums" id="div-meihua-nums" hidden>
+            <input type="number" class="div-mh-num" id="div-mh-num1" inputmode="numeric" placeholder="上卦数（可留空）">
+            <input type="number" class="div-mh-num" id="div-mh-num2" inputmode="numeric" placeholder="下卦数（可留空）">
+            <div class="div-mh-hint">留空＝以此刻时间起卦；也可随手写两个数，心诚则灵。</div>
+          </div>
         </div>
 
         <div class="div-card glass">
@@ -4784,7 +4806,7 @@
           <div class="div-result-empty">点击上方按钮开始抽牌</div>
         </div>
 
-        <div class="div-card glass" style="margin-top:14px">
+        <div class="div-card glass div-history-card" id="div-history-card" style="margin-top:14px" hidden>
           <div id="div-history"></div>
         </div>
       </div>
@@ -5652,20 +5674,41 @@
       <div class="poke-card" id="chat-divine-panel" hidden>
         <div class="poke-card-head">
           <span>占卜</span>
+          <button class="poke-card-close div-fs-btn" id="chat-divine-fs" type="button" title="全屏" aria-label="全屏">⛶</button>
           <button class="poke-card-close" id="chat-divine-close">✕</button>
         </div>
         <div class="poke-card-scroll" id="chat-divine-body">
           <div class="div-modes-wrap">
             <span class="div-mode sel" data-chatmode="tarot">塔罗</span>
             <span class="div-mode" data-chatmode="lenormand">雷诺曼</span>
+            <span class="div-mode" data-chatmode="meihua">梅花易数</span>
           </div>
           <div class="div-counts-wrap">
             <span class="div-mode sel" data-chatcount="3">3 张</span>
             <span class="div-mode" data-chatcount="1">1 张</span>
             <span class="div-mode" data-chatcount="7">7 张</span>
           </div>
-          <!-- v3.26.x：占卜对象（聊天页半框，可选全部桌面联系人，也可不选；选了对象结果存入该联系人主页「占卜记录」） -->
-          <div class="div-modes-wrap div-chat-targets" id="div-chat-targets"></div>
+          <div class="div-picker-row div-chat-picker" id="div-chat-picker" hidden>
+            <div class="div-picker-col">
+              <span class="div-picker-label">选牌阵</span>
+              <select class="div-select" id="div-chat-spread-select"></select>
+              <input type="number" class="div-custom-n" id="div-chat-custom-n" min="1" max="12" value="5" inputmode="numeric" hidden>
+            </div>
+            <div class="div-picker-col">
+              <span class="div-picker-label">选体系</span>
+              <select class="div-select" id="div-chat-deck-select">
+                <option value="wait">韦特系</option>
+                <option value="marseille">马赛系</option>
+                <option value="thoth">托特系</option>
+              </select>
+              <label class="div-major-only"><input type="checkbox" id="div-chat-major-only"> 仅大</label>
+            </div>
+          </div>
+          <div class="div-meihua-nums" id="div-chat-meihua-nums" hidden>
+            <input type="number" class="div-mh-num" id="div-chat-mh-num1" inputmode="numeric" placeholder="上卦数（可留空）">
+            <input type="number" class="div-mh-num" id="div-chat-mh-num2" inputmode="numeric" placeholder="下卦数（可留空）">
+            <div class="div-mh-hint">留空＝以此刻时间起卦；也可随手写两个数。</div>
+          </div>
           <div class="dec-inp-wrap"><input type="text" class="tc-input" id="div-chat-question" placeholder="心中默念的问题（可选）" style="margin:8px 0" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"><button class="dec-inp-clear" data-clear="div-chat-question" aria-label="清空" title="清空">✕</button></div>
           <label class="div-switch-row div-chat-switch">
             <span class="div-switch-t">自动发送到聊天</span>

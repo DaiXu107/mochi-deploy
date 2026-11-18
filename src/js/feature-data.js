@@ -845,7 +845,7 @@
     card.setAttribute('data-fbar', f.id);
     card.innerHTML =
       '<div class="fd-fbar-head"><span class="fd-fbar-name">' + esc(f.name) + ' · 数据管理</span>' +
-      '<button class="fd-fbar-go" type="button" data-op="open" data-fid="' + esc(f.id) + '">全部功能 ›</button></div>' +
+      '<button class="fd-fbar-go" type="button" data-op="open" data-fid="' + esc(f.id) + '">' + (f.id === 'divination' ? '占卜记录 ›' : '全部功能 ›') + '</button></div>' +
       '<div class="fd-count" data-fcount="' + esc(f.id) + '">统计中…</div>' +
       '<div class="fd-btns">' +
       '<button class="fd-btn" type="button" data-op="export" data-fid="' + esc(f.id) + '">导出数据</button>' +
@@ -888,7 +888,11 @@
     if (op === 'export') exportFeature(f);
     else if (op === 'import') pickFile(f);
     else if (op === 'clear') clearFeature(f);
-    else if (op === 'open') openPage();
+    else if (op === 'open') {
+      // 占卜页：这个右上角链接不再跳「功能大全」，改为展开/收起占卜记录
+      if (f.id === 'divination' && window.divineToggleHistory) { window.divineToggleHistory(); return; }
+      openPage();
+    }
   }
   function fdCount(f) {
     var el = document.querySelector('[data-fcount="' + f.id + '"]');

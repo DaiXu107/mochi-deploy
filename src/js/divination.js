@@ -91,6 +91,125 @@
     { name: '星币王后', icon: 'queen', pos: '务实滋养，持家有道。', neg: '操劳过度，忽视情感。', detail: '她把日子过成了花园。照顾好现实，也照顾好心情。' },
     { name: '星币国王', icon: 'king', pos: '富足稳健，事业有成。', neg: '守财固执，物欲至上。', detail: '他坐拥丰饶。责任与收获并存，是享受成果的时候。' }
   ];
+  // ===== 2026-11-18：塔罗三大体系（韦特 / 马赛 / 托特）=====
+  // 韦特沿用上面的 TAROT；这里补马赛与托特的牌名、释义、图片索引。
+  // 马赛：0-21 为公有领域 Conver 1760 大牌；22-77 为按马赛 pip 风格生成的数字牌/宫廷牌。
+  // 托特：牌面版权未开放，内置一套简洁的托特风格文字牌面；用户可在牌面图鉴按体系导入自己的套卡。
+  const SYS_RANKS = ['王牌', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
+  const SYS_RANK_THEME = {
+    '王牌': '新的开始、种子与机会', '二': '平衡、选择与相遇', '三': '初步成果、合作与扩展',
+    '四': '稳定、停顿与巩固', '五': '冲突、挑战与调整', '六': '和谐、流动与修复',
+    '七': '评估、等待与策略', '八': '精进、压力与推进', '九': '接近完成、独立与守护',
+    '十': '完成、收获与负担'
+  };
+  const SYS_SUITS = [
+    { cn: '权杖', icon: 'staff', theme: '行动、热情与创造' },
+    { cn: '圣杯', icon: 'cup', theme: '情感、关系与直觉' },
+    { cn: '宝剑', icon: 'sword', theme: '思维、沟通与冲突' },
+    { cn: '星币', icon: 'coin', theme: '现实、工作与资源' }
+  ];
+  const SYS_COURT_THEME = {
+    '侍从': '学习、消息与试探', '骑士': '行动、推进与冒险',
+    '王后': '内在掌握、滋养与包容', '国王': '外在掌控、责任与领导',
+    '王子': '理性的行动与开拓', '公主': '感受的落地与学习'
+  };
+  function sysMinor(suit, ri, courtName, courtIcon) {
+    const isCourt = ri >= 10;
+    const rank = isCourt ? courtName : SYS_RANKS[ri];
+    const name = suit.cn + rank;
+    const theme = isCourt ? SYS_COURT_THEME[courtName] : SYS_RANK_THEME[rank];
+    return {
+      name: name,
+      icon: isCourt ? courtIcon : suit.icon,
+      meaning: suit.theme + ' · ' + theme + '。',
+      detail: suit.theme + '的' + rank + '：' + theme + '。把它放回你的问题里，看看这股能量正在哪里发生。'
+    };
+  }
+  function sysBuildDeck(majors, courts, thoth) {
+    const arr = majors.map(function (m) {
+      return { name: m[0], icon: m[3], meaning: m[1], detail: m[2] };
+    });
+    SYS_SUITS.forEach(function (suit) {
+      for (let i = 0; i < 10; i++) arr.push(sysMinor(suit, i));
+      const ci = thoth ? ['knight', 'queen', 'knight', 'page'] : ['page', 'knight', 'queen', 'king'];
+      courts.forEach(function (cn, j) { arr.push(sysMinor(suit, 10 + j, cn, ci[j])); });
+    });
+    return arr;
+  }
+  const MARSEILLE_MAJORS = [
+    ['愚者', '自由的开始', '带着好奇心出发，不被既定框架束缚。', 'sun'],
+    ['魔术师', '创造与行动', '你手里已经有需要的工具，现在是把想法变成现实的时候。', 'wand'],
+    ['女祭司', '直觉与静默', '答案在表面之下，先安静下来听内心的声音。', 'moon'],
+    ['皇后', '丰饶与滋养', '温柔地照顾自己，也允许美好进入生活。', 'flower'],
+    ['皇帝', '秩序与掌控', '建立边界与规则，用稳定托住局面。', 'crown'],
+    ['教皇', '传统与指引', '向经验与传统请教，或成为别人的引路人。', 'book'],
+    ['恋人', '结合与选择', '重要的关系或选择出现，诚实面对自己的心意。', 'heart'],
+    ['战车', '意志与前进', '方向已定，集中力量向前推进。', 'chariot'],
+    ['正义', '平衡与因果', '看清事实、承担责任，做出公正的决定。', 'scales'],
+    ['隐士', '内省与独处', '给自己一段安静的时间，答案会在独处中浮现。', 'lamp'],
+    ['命运之轮', '循环与转机', '局势正在转动，顺势而为比硬撑更有用。', 'wheel'],
+    ['力量', '温柔的勇气', '真正的力量不是压制，而是耐心与柔韧。', 'lion'],
+    ['倒吊人', '暂停与换位', '换个角度看问题，暂停也是一种前进。', 'hanged'],
+    ['死神', '结束与蜕变', '旧阶段正在结束，放下才能迎来新生。', 'skull'],
+    ['节制', '调和与适度', '把节奏放慢，找到恰到好处的平衡。', 'cup'],
+    ['恶魔', '欲望与束缚', '看清什么在捆住你，然后决定要不要松手。', 'devil'],
+    ['高塔', '崩解与觉醒', '旧结构被打破，真相显现，重建从此刻开始。', 'tower'],
+    ['星星', '希望与疗愈', '保持相信，微光正在带你走出低谷。', 'star'],
+    ['月亮', '潜意识与迷雾', '情绪与幻象交织，先别急着下结论。', 'crescent'],
+    ['太阳', '光明与生命力', '坦荡、喜悦与成功正在靠近。', 'sunny'],
+    ['审判', '觉醒与召唤', '听见内心的召唤，做出真正属于自己的决定。', 'trumpet'],
+    ['世界', '完成与圆满', '一个阶段圆满收束，准备好迎接新的循环。', 'globe']
+  ];
+  const THOTH_MAJORS = [
+    ['愚者', '无限的可能', '一切尚未定型，带着纯粹的勇气跃入未知。', 'sun'],
+    ['魔术师', '意志与创造', '意志集中之处，现实开始成形。', 'wand'],
+    ['女祭司', '直觉与月之智慧', '答案在静默与直觉里，不在喧哗中。', 'moon'],
+    ['皇后', '丰饶与创造', '生命力正在流动，允许自己被滋养。', 'flower'],
+    ['皇帝', '秩序与权威', '建立稳固的结构，承担起主导的责任。', 'crown'],
+    ['教皇', '教导与信念', '在传统与个人信念之间找到自己的位置。', 'book'],
+    ['恋人', '结合与选择', '关系是一面镜子，选择也意味着承担。', 'heart'],
+    ['战车', '意志的推进', '把分散的力量收拢，朝一个方向前进。', 'chariot'],
+    ['调节', '平衡与因果', '每一个行动都有回声，校准你的方向。', 'scales'],
+    ['隐士', '内省与追寻', '向内走，寻找属于自己的光。', 'lamp'],
+    ['命运', '循环与转折', '轮盘转动，抓住变化带来的机会。', 'wheel'],
+    ['欲望', '生命力与热情', '拥抱内在的火焰，让它成为行动的燃料。', 'lion'],
+    ['倒吊人', '逆转与献祭', '换一个角度，放下执着才能看清。', 'hanged'],
+    ['死神', '蜕变与重生', '结束不是终点，而是能量转换的门。', 'skull'],
+    ['艺术', '调和与炼金', '把对立面融合成新的可能。', 'cup'],
+    ['恶魔', '欲望与物质', '看清欲望的力量，别让它反过来控制你。', 'devil'],
+    ['高塔', '崩解与解放', '旧结构崩塌，为真实的自己腾出空间。', 'tower'],
+    ['星星', '希望与灵感', '在静夜里保持信念，灵感会来。', 'star'],
+    ['月亮', '潜意识与幻象', '穿过情绪的迷雾，辨认真正的直觉。', 'crescent'],
+    ['太阳', '生命力与光芒', '大胆站出来，让生命力被看见。', 'sunny'],
+    ['新纪元', '新时代与召唤', '旧时代落幕，新的召唤已经出现。', 'trumpet'],
+    ['宇宙', '完成与整合', '一切经历汇成整体，你已准备好进入下一程。', 'globe']
+  ];
+  const TAROT_MARSEILLE = sysBuildDeck(MARSEILLE_MAJORS, ['侍从', '骑士', '王后', '国王'], false);
+  const TAROT_THOTH = sysBuildDeck(THOTH_MAJORS, ['骑士', '王后', '王子', '公主'], true);
+  TAROT_MARSEILLE.forEach(function (c, i) {
+    c.system = 'marseille';
+    c.img = 'assets/divination/marseille/' + (i < 10 ? '0' + i : '' + i) + '.webp';
+  });
+  TAROT_THOTH.forEach(function (c, i) {
+    c.system = 'thoth';
+    c.img = 'assets/divination/thoth/' + (i < 10 ? '0' + i : '' + i) + '.webp';
+  });
+  TAROT.forEach(function (c) { c.system = 'wait'; });
+  const TAROT_SYSTEMS = {
+    wait: { id: 'wait', name: '韦特系', deck: TAROT, dir: 'assets/divination/tarot/' },
+    marseille: { id: 'marseille', name: '马赛系', deck: TAROT_MARSEILLE, dir: 'assets/divination/marseille/' },
+    thoth: { id: 'thoth', name: '托特系', deck: TAROT_THOTH, dir: 'assets/divination/thoth/' }
+  };
+  let tarotSystem = 'wait';
+  function activeTarotDeck() { return (TAROT_SYSTEMS[tarotSystem] || TAROT_SYSTEMS.wait).deck; }
+  window.__TAROT_SYSTEMS__ = TAROT_SYSTEMS;
+  window.__divineActiveTarotDeck = activeTarotDeck;
+  window.__divineSetTarotSystem = function (sys) {
+    if (TAROT_SYSTEMS[sys]) tarotSystem = sys;
+    try { if (typeof rebuildFaces === 'function') rebuildFaces(); } catch (e) {}
+    return tarotSystem;
+  };
+
   const TAROT_ICONS = {
     sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
     wand: '<path d="M12 2l2 7 7 2-7 2-2 7-2-7-7-2 7-2z"/>',
@@ -167,6 +286,32 @@
     { name: '床', icon: 'bed', meaning: '休息与私密。', detail: '休息与私密，好好休整，睡眠也是疗愈。' },
     { name: '市场', icon: 'market', meaning: '交易与机会。', detail: '交易与机会，新的可能正在酝酿，值得一试。' }
   ];
+  function divineModeLabel(m) {
+    return m === 'tarot' ? '塔罗' : (m === 'lenormand' ? '雷诺曼' : (m === 'meihua' ? '梅花易数' : '占卜'));
+  }
+  window.__divineModeLabel__ = divineModeLabel;
+
+  // 2026-11-18：内置牌面（塔罗 78 张 RWS 公有领域 / 雷诺曼 36 张历史牌）。
+  // 雷诺曼第 37-40 张（灵体/香炉/床/市场）没有历史牌面，继续走图标牌面。
+  TAROT.forEach(function (c, i) {
+    if (i < 78) c.img = 'assets/divination/tarot/' + (i < 10 ? '0' + i : '' + i) + '.webp';
+  });
+  LENO.forEach(function (c, i) {
+    if (i < 36) c.img = 'assets/divination/lenormand/' + (i < 9 ? '0' + (i + 1) : '' + (i + 1)) + '.webp';
+  });
+  function builtinFace(c, m) {
+    if (!c) return '';
+    if (c.img) return c.img;
+    const deck = m === 'lenormand' ? LENO : activeTarotDeck();
+    for (let i = 0; i < deck.length; i++) if (deck[i].name === c.name) return deck[i].img || '';
+    return '';
+  }
+  window.__divineFaceFor__ = function (m, name) {
+    const deck = m === 'lenormand' ? LENO : activeTarotDeck();
+    for (let i = 0; i < deck.length; i++) if (deck[i].name === name) return deck[i].img || '';
+    return '';
+  };
+
   const LENO_ICONS = {
     horse: '<path d="M4 16l3-4 5 0 4-6 3 2-1 4 3 4M7 12l-3 2M4 18h3"/>',
     clover: '<line x1="12" y1="4" x2="12" y2="20"/><circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/><circle cx="12" cy="14" r="3"/>',
@@ -215,8 +360,221 @@
     tarot: { 1: ['运势'], 3: ['过去', '现在', '未来'], 7: ['过去', '现在', '未来', '阻碍', '助力', '态度', '结果'] },
     lenormand: { 1: ['回复'], 3: ['回复 1', '回复 2', '回复 3'], 7: ['回复 1', '回复 2', '回复 3', '回复 4', '回复 5', '回复 6', '回复 7'] }
   };
+  // ===== 2026-11-18：塔罗常用牌阵 =====
+  // 只内置「通用牌阵方法」：位置含义与大致几何布局。坐标是牌中心在桌布上的百分比。
+  const TAROT_SPREADS = [
+    { id: 'single', name: '单张指引', count: 1, cw: 34, labels: ['今日指引'], desc: '一张牌回答当下最需要看见的讯息。', layout: [[50, 50]] },
+    { id: 'ppf', name: '时间之流', count: 3, cw: 26, labels: ['过去', '现在', '未来'], desc: '看事情的来龙去脉与接下来的走向。', layout: [[22, 50], [50, 50], [78, 50]] },
+    { id: 'sar', name: '情况·行动·结果', count: 3, cw: 26, labels: ['现状', '行动', '结果'], desc: '适合具体问题：现在怎样、该怎么做、会走向哪里。', layout: [[22, 50], [50, 50], [78, 50]] },
+    { id: 'mind', name: '身·心·灵', count: 3, cw: 22, labels: ['身', '心', '灵'], desc: '看身体状态、内在情绪与更深层的需要。', layout: [[50, 25], [25, 75], [75, 75]] },
+    { id: 'choice', name: '二选一', count: 5, cw: 23, labels: ['现状', 'A 发展', 'A 结果', 'B 发展', 'B 结果'], desc: '把两条路分开看，比较各自的发展与结果。', layout: [[50, 86], [22, 55], [22, 18], [78, 55], [78, 18]] },
+    { id: 'horse', name: '马蹄牌阵', count: 7, cw: 13, labels: ['过去', '现在', '隐藏', '障碍', '环境', '建议', '结果'], desc: '从过去一路推到结果，适合看一件事的完整脉络。', layout: [[7, 76], [19, 49], [32, 28], [50, 20], [68, 28], [81, 49], [93, 76]] },
+    { id: 'hex', name: '六芒星', count: 7, cw: 15.5, labels: ['问题核心', '过去', '现在', '未来', '对策', '环境', '结果'], desc: '核心、时间线、环境与对策一起看，适合复杂问题。', layout: [[50, 50], [50, 15], [77, 32], [77, 68], [50, 85], [23, 68], [23, 32]] },
+    { id: 'celtic', name: '凯尔特十字', count: 10, cw: 15, labels: ['现状', '挑战', '根基', '过去', '目标', '近未来', '自我', '环境', '希望/恐惧', '结果'], desc: '最完整的经典牌阵：现状、阻碍、根基、目标与最终走向。', layout: [[32, 50], [32, 50, 90], [32, 79], [12, 50], [32, 21], [52, 50], [78, 87], [78, 66], [78, 45], [78, 24]] },
+    { id: 'custom', name: '自定义牌阵', count: 0, cw: 24, labels: [], desc: '自己定张数；抽完在塔罗桌布上自由拖动每张牌。', layout: [] }
+  ];
+  const TAROT_SCOPES = [
+    { id: 'full', name: '全部 78 张' },
+    { id: 'major', name: '仅大阿卡纳 22 张' },
+    { id: 'minor', name: '仅小阿卡纳 56 张' }
+  ];
+  let tarotSpreadId = 'ppf';
+  let tarotScope = 'full';
+  let customDef = null;
+  let customEditMode = false;
+  function loadCustomDef() {
+    if (customDef) return customDef;
+    let d = null;
+    try { d = JSON.parse(gStore.get('divine-custom-spread') || 'null'); } catch (e) { d = null; }
+    customDef = {
+      count: (d && d.count) || 5,
+      positions: (d && Array.isArray(d.positions)) ? d.positions.slice() : [],
+      labels: (d && Array.isArray(d.labels)) ? d.labels.slice() : []
+    };
+    return customDef;
+  }
+  function ensureCustomDef(n) {
+    n = Math.max(1, Math.min(12, n));
+    const d = loadCustomDef();
+    d.count = n;
+    const defs = spreadPositions({ layout: [] }, n);
+    while (d.positions.length < n) d.positions.push(defs[d.positions.length] || [50, 50]);
+    d.positions.length = n;
+    while (d.labels.length < n) d.labels.push('位置 ' + (d.labels.length + 1));
+    d.labels.length = n;
+    return d;
+  }
+  function saveCustomDef() {
+    try { gStore.set('divine-custom-spread', JSON.stringify(loadCustomDef())); } catch (e) {}
+  }
+  function allowCustomFace() { return true; }
+  function tarotDeckFor(scope) {
+    const deck = activeTarotDeck();
+    if (scope === 'major') return deck.slice(0, 22);
+    if (scope === 'minor') return deck.slice(22);
+    return deck.slice();
+  }
+  function spreadById(id) {
+    for (let i = 0; i < TAROT_SPREADS.length; i++) {
+      if (TAROT_SPREADS[i].id !== id) continue;
+      if (id === 'custom' && typeof ensureCustomDef === 'function') {
+        const d = ensureCustomDef(loadCustomDef().count || 5);
+        return Object.assign({}, TAROT_SPREADS[i], { count: d.count, labels: d.labels.slice(), layout: d.positions.slice() });
+      }
+      return TAROT_SPREADS[i];
+    }
+    return TAROT_SPREADS[1];
+  }
+  function customSpreadCount() {
+    const el = document.getElementById('div-custom-n');
+    const n = parseInt((el && el.value) || '5', 10) || 5;
+    return Math.max(1, Math.min(12, n));
+  }
+  function activeTarotSpread() {
+    const s = spreadById(tarotSpreadId);
+    if (s.id !== 'custom') return s;
+    const n = customSpreadCount();
+    const d = ensureCustomDef(n);
+    return { id: 'custom', name: '自定义牌阵', count: n, cw: n >= 9 ? 14 : (n >= 5 ? 18 : (n <= 3 ? 26 : 20)), desc: s.desc, labels: d.labels.slice(), layout: d.positions.slice() };
+  }
+  window.__DIV_SPREADS__ = TAROT_SPREADS;
+  window.__divineEnsureCustomDef = ensureCustomDef;
+  window.__divineSaveCustomDef = saveCustomDef;
+  window.__DIV_TAROT_SCOPES__ = TAROT_SCOPES;
+  window.__divineSpreadById = spreadById;
+  window.__divineTarotDeckFor = tarotDeckFor;
+
+  // ===== 2026-11-18：梅花易数（数字/时间起卦） =====
+  // 八卦先天数：乾1 兑2 离3 震4 巽5 坎6 艮7 坤8；lines 自下而上，1=阳 0=阴。
+  const MH_TRIGRAMS = {
+    1: { n: '乾', s: '☰', nat: '天', el: '金', lines: [1, 1, 1] },
+    2: { n: '兑', s: '☱', nat: '泽', el: '金', lines: [1, 1, 0] },
+    3: { n: '离', s: '☲', nat: '火', el: '火', lines: [1, 0, 1] },
+    4: { n: '震', s: '☳', nat: '雷', el: '木', lines: [1, 0, 0] },
+    5: { n: '巽', s: '☴', nat: '风', el: '木', lines: [0, 1, 1] },
+    6: { n: '坎', s: '☵', nat: '水', el: '水', lines: [0, 1, 0] },
+    7: { n: '艮', s: '☶', nat: '山', el: '土', lines: [0, 0, 1] },
+    8: { n: '坤', s: '☷', nat: '地', el: '土', lines: [0, 0, 0] }
+  };
+  // 上卦-下卦 → 六十四卦名（通行本卦序）
+  const MH_HEX = {
+    '1-1': '乾为天', '8-8': '坤为地', '6-4': '水雷屯', '7-6': '山水蒙', '6-1': '水天需', '1-6': '天水讼',
+    '8-6': '地水师', '6-8': '水地比', '5-1': '风天小畜', '1-2': '天泽履', '8-1': '地天泰', '1-8': '天地否',
+    '1-3': '天火同人', '3-1': '火天大有', '8-7': '地山谦', '4-8': '雷地豫', '2-4': '泽雷随', '7-5': '山风蛊',
+    '8-2': '地泽临', '5-8': '风地观', '3-4': '火雷噬嗑', '7-3': '山火贲', '7-8': '山地剥', '8-4': '地雷复',
+    '1-4': '天雷无妄', '7-1': '山天大畜', '7-4': '山雷颐', '2-5': '泽风大过', '6-6': '坎为水', '3-3': '离为火',
+    '2-7': '泽山咸', '4-5': '雷风恒', '1-7': '天山遁', '4-1': '雷天大壮', '3-8': '火地晋', '8-3': '地火明夷',
+    '5-3': '风火家人', '3-2': '火泽睽', '6-7': '水山蹇', '4-6': '雷水解', '7-2': '山泽损', '5-4': '风雷益',
+    '2-1': '泽天夬', '1-5': '天风姤', '2-8': '泽地萃', '8-5': '地风升', '2-6': '泽水困', '6-5': '水风井',
+    '2-3': '泽火革', '3-5': '火风鼎', '4-4': '震为雷', '7-7': '艮为山', '5-7': '风山渐', '4-2': '雷泽归妹',
+    '4-3': '雷火丰', '3-7': '火山旅', '5-5': '巽为风', '2-2': '兑为泽', '5-6': '风水涣', '6-2': '水泽节',
+    '5-2': '风泽中孚', '4-7': '雷山小过', '6-3': '水火既济', '3-6': '火水未济'
+  };
+  const MH_KEYS = {
+    '乾为天': '刚健进取', '坤为地': '柔顺承载', '水雷屯': '起步多难', '山水蒙': '启蒙求知',
+    '水天需': '等待时机', '天水讼': '争执慎行', '地水师': '纪律行事', '水地比': '亲近合作',
+    '风天小畜': '小有积蓄', '天泽履': '谨慎前行', '地天泰': '通泰顺遂', '天地否': '闭塞守静',
+    '天火同人': '同心协力', '火天大有': '丰收有成', '地山谦': '谦逊得助', '雷地豫': '愉悦筹备',
+    '泽雷随': '顺势跟随', '山风蛊': '整顿积弊', '地泽临': '亲临渐进', '风地观': '观察等待',
+    '火雷噬嗑': '决断除障', '山火贲': '文饰修整', '山地剥': '剥落守本', '地雷复': '一阳来复',
+    '天雷无妄': '真诚不妄', '山天大畜': '厚积待发', '山雷颐': '养正养身', '泽风大过': '非常之时',
+    '坎为水': '险中求稳', '离为火': '光明依附', '泽山咸': '感应相通', '雷风恒': '恒久坚持',
+    '天山遁': '退避保全', '雷天大壮': '壮盛守正', '火地晋': '晋升光明', '地火明夷': '韬光养晦',
+    '风火家人': '家和有序', '火泽睽': '分歧求同', '水山蹇': '艰难绕行', '雷水解': '解困松绑',
+    '山泽损': '减损增益', '风雷益': '增益进取', '泽天夬': '决断果行', '天风姤': '邂逅防微',
+    '泽地萃': '汇聚人气', '地风升': '稳步上升', '泽水困': '困守待变', '水风井': '滋养守常',
+    '泽火革': '变革更新', '火风鼎': '鼎新养贤', '震为雷': '震动警醒', '艮为山': '止静守界',
+    '风山渐': '循序渐进', '雷泽归妹': '顺应有度', '雷火丰': '丰盛防满', '火山旅': '旅途谨慎',
+    '巽为风': '柔顺渗透', '兑为泽': '喜悦沟通', '风水涣': '涣散重聚', '水泽节': '节制有度',
+    '风泽中孚': '诚信感通', '雷山小过': '小过慎行', '水火既济': '已成防变', '火水未济': '未成继续'
+  };
+  const MH_SHENG = { 金: '水', 水: '木', 木: '火', 火: '土', 土: '金' };
+  const MH_KE = { 金: '木', 木: '土', 土: '水', 水: '火', 火: '金' };
+  function mhTrigramByLines(a) {
+    const key = a.join('');
+    for (const k in MH_TRIGRAMS) if (MH_TRIGRAMS[k].lines.join('') === key) return Number(k);
+    return 8;
+  }
+  function mhRelation(ti, yong) {
+    if (ti.el === yong.el) return { label: '体用比和', short: '吉', desc: '同气相求，事情稳步向前。' };
+    if (MH_SHENG[yong.el] === ti.el) return { label: '用生体', short: '大吉', desc: '外来的助力正在靠近，顺势推进就好。' };
+    if (MH_SHENG[ti.el] === yong.el) return { label: '体生用', short: '偏耗', desc: '付出偏多，容易耗神，量力而行。' };
+    if (MH_KE[ti.el] === yong.el) return { label: '体克用', short: '小吉', desc: '你能掌控局面，但需要主动推进。' };
+    return { label: '用克体', short: '偏阻', desc: '外部压力偏大，宜守不宜攻。' };
+  }
+  // n1/n2 留空＝以此刻时间起卦；传入数字则按数字起卦。
+  function buildMeihua(n1, n2) {
+    const now = new Date();
+    const auto = !isFinite(n1) && !isFinite(n2);
+    if (!isFinite(n1)) n1 = (now.getMonth() + 1) * 100 + now.getDate();
+    if (!isFinite(n2)) n2 = now.getHours() * 100 + now.getMinutes();
+    n1 = Math.abs(Math.round(n1)); n2 = Math.abs(Math.round(n2));
+    const upper = ((n1 - 1) % 8 + 8) % 8 + 1;
+    const lower = ((n2 - 1) % 8 + 8) % 8 + 1;
+    const moving = ((n1 + n2 - 1) % 6 + 6) % 6 + 1;
+    const up = MH_TRIGRAMS[upper], low = MH_TRIGRAMS[lower];
+    const lines = low.lines.concat(up.lines);
+    const name = MH_HEX[upper + '-' + lower] || '未知卦';
+    const changed = lines.slice(); changed[moving - 1] = changed[moving - 1] ? 0 : 1;
+    const cu = mhTrigramByLines(changed.slice(3)), cl = mhTrigramByLines(changed.slice(0, 3));
+    const changedName = MH_HEX[cu + '-' + cl] || '';
+    const ti = moving <= 3 ? up : low;
+    const yong = moving <= 3 ? low : up;
+    const rel = mhRelation(ti, yong);
+    const key = MH_KEYS[name] || '';
+    const summary = '本卦「' + name + '」（上' + up.n + '下' + low.n + '），动爻第' + moving + '爻。' +
+      '体卦' + ti.n + '（' + ti.el + '），用卦' + yong.n + '（' + yong.el + '），' + rel.label + ' · ' + rel.short + '。' +
+      (key ? '卦意：' + key + '。' : '') + rel.desc;
+    return {
+      n1: n1, n2: n2, auto: auto, upper: upper, lower: lower, moving: moving,
+      lines: lines, name: name, key: key, changedName: changedName, changedUpper: cu, changedLower: cl,
+      ti: { n: ti.n, el: ti.el }, yong: { n: yong.n, el: yong.el }, rel: rel, summary: summary
+    };
+  }
+  function mhLinesHtml(mh) {
+    let h = '';
+    for (let i = 5; i >= 0; i--) {
+      const yang = mh.lines[i] === 1;
+      const mov = (i + 1) === mh.moving;
+      h += '<div class="mh-line' + (yang ? ' yang' : ' yin') + (mov ? ' moving' : '') + '">' +
+        (yang ? '<i></i>' : '<i></i><i></i>') +
+        (mov ? '<b class="mh-dot">●</b>' : '') + '</div>';
+    }
+    return h;
+  }
+  function meihuaHtml(mh, question, summary) {
+    const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const up = MH_TRIGRAMS[mh.upper], low = MH_TRIGRAMS[mh.lower];
+    let html = '<div class="mh-wrap">' +
+      '<div class="mh-head"><div class="mh-name">' + esc(mh.name) + '</div>' +
+      '<div class="mh-sub">上' + up.n + '（' + up.nat + '）· 下' + low.n + '（' + low.nat + '）· 动爻第 ' + mh.moving + ' 爻' +
+      (mh.auto ? ' · 此刻时间起卦' : ' · 数字起卦') + '</div></div>' +
+      '<div class="mh-lines">' + mhLinesHtml(mh) + '</div>' +
+      '<div class="mh-meta"><span class="mh-chip">体卦 ' + mh.ti.n + ' · ' + mh.ti.el + '</span>' +
+      '<span class="mh-chip">用卦 ' + mh.yong.n + ' · ' + mh.yong.el + '</span>' +
+      '<span class="mh-chip strong">' + mh.rel.label + ' · ' + mh.rel.short + '</span></div>' +
+      '<div class="mh-read">' + esc(summary || mh.summary) + '</div>';
+    if (mh.changedName) html += '<div class="mh-changed">变卦：' + esc(mh.changedName) + '（第 ' + mh.moving + ' 爻变）</div>';
+    html += '</div>';
+    if (question) html += '<div class="div-question-q">问：' + esc(question) + '</div>';
+    html += '<div class="div-result-actions">' +
+      '<button class="div-send-btn" id="div-send-btn">发给 ' + esc(partnerName2() || (window.taWord ? window.taWord() : 'TA')) + '</button>' +
+      '<button class="div-copy-btn" id="div-copy-btn">点击复制文字</button></div>';
+    return html;
+  }
+  function renderMeihuaInto(el, mh, question, summary) {
+    if (!el) return;
+    el.innerHTML = meihuaHtml(mh, question, summary);
+    const sb = el.querySelector('#div-send-btn');
+    if (sb) sb.addEventListener('click', function () { sendToChat('meihua', [{ name: mh.name, meaning: summary || mh.summary }], summary || mh.summary, question); });
+    const cb = el.querySelector('#div-copy-btn');
+    if (cb) cb.addEventListener('click', function () { copyResultText(buildResultText('meihua', [{ name: mh.name, meaning: summary || mh.summary }], summary || mh.summary, question)); });
+  }
+
   // v3.5.53：牌库暴露给聊天页占卜半框复用
-  window.__TAROT__ = TAROT;
+  try {
+    Object.defineProperty(window, '__TAROT__', { get: function () { return activeTarotDeck(); }, configurable: true });
+  } catch (e) { window.__TAROT__ = TAROT; }
   window.__LENO__ = LENO;
   window.__TAROT_ICONS__ = TAROT_ICONS;
   window.__LENO_ICONS__ = LENO_ICONS;
@@ -234,11 +592,73 @@
   const FACE_IDX_KEY = 'divine-faces-idx';
   const LENO36_KEY = 'divine-leno-36';
   const FACE_PREFIX = '@df:';
-  const ORIG_ICON = { tarot: {}, lenormand: {} };
-  TAROT.forEach(c => { ORIG_ICON.tarot[c.name] = c.icon; });
+  // ===== 2026-11-18：塔罗套卡（每个体系可有多套卡面，一次只应用一套） =====
+  const DECK_SETS_KEY = 'divine-deck-sets';
+  const ACTIVE_DECK_KEY = 'divine-active-deck';
+  let deckMeta = null;
+  function loadDeckMeta() {
+    if (deckMeta) return deckMeta;
+    let sets = {}, act = {};
+    try { sets = JSON.parse(gStore.get(DECK_SETS_KEY) || '{}') || {}; } catch (e) { sets = {}; }
+    try { act = JSON.parse(gStore.get(ACTIVE_DECK_KEY) || '{}') || {}; } catch (e) { act = {}; }
+    deckMeta = { sets: {}, active: {} };
+    ['wait', 'marseille', 'thoth'].forEach(function (sys) {
+      const arr = Array.isArray(sets[sys]) ? sets[sys].filter(function (s) { return s && s.id && s.id !== 'builtin'; }) : [];
+      deckMeta.sets[sys] = arr;
+      deckMeta.active[sys] = act[sys] || 'builtin';
+    });
+    // 旧版「塔罗自定义牌面」并入韦特系「我的套卡」
+    let legacy = [];
+    try { legacy = JSON.parse(gStore.get(FACE_IDX_KEY) || '[]'); } catch (e) { legacy = []; }
+    if (Array.isArray(legacy) && legacy.some(function (x) { return x && x.m === 'tarot'; })) {
+      if (!deckMeta.sets.wait.some(function (s) { return s.id === 'my'; })) {
+        deckMeta.sets.wait.push({ id: 'my', name: '我的套卡' });
+      }
+      if (!act.wait) deckMeta.active.wait = 'my';
+    }
+    return deckMeta;
+  }
+  function saveDeckMeta() {
+    try { gStore.set(DECK_SETS_KEY, JSON.stringify(loadDeckMeta().sets)); } catch (e) {}
+    try { gStore.set(ACTIVE_DECK_KEY, JSON.stringify(loadDeckMeta().active)); } catch (e) {}
+  }
+  function deckSetsOf(sys) { return loadDeckMeta().sets[sys] || []; }
+  function activeSetOf(sys) { return loadDeckMeta().active[sys] || 'builtin'; }
+  function setActiveSetOf(sys, setId) { loadDeckMeta().active[sys] = setId || 'builtin'; saveDeckMeta(); }
+  function scopeOf(sys, setId) { return sys + '@' + (setId || 'builtin'); }
+  function activeScopeOf(sys) { return scopeOf(sys, activeSetOf(sys)); }
+  function scopeSystem(scope) { return String(scope || '').split('@')[0]; }
+  function newDeckSet(sys, name) {
+    const meta = loadDeckMeta();
+    const id = 's' + Date.now().toString(36) + Math.floor(Math.random() * 100).toString(36);
+    meta.sets[sys].push({ id: id, name: name || ('套卡 ' + (meta.sets[sys].length + 1)) });
+    meta.active[sys] = id;
+    saveDeckMeta();
+    return id;
+  }
+  function removeDeckSet(sys, setId) {
+    const meta = loadDeckMeta();
+    meta.sets[sys] = meta.sets[sys].filter(function (s) { return s.id !== setId; });
+    if (meta.active[sys] === setId) meta.active[sys] = 'builtin';
+    saveDeckMeta();
+  }
+
+  const ORIG_ICON = { wait: {}, marseille: {}, thoth: {}, lenormand: {} };
+  Object.keys(TAROT_SYSTEMS).forEach(function (sys) { TAROT_SYSTEMS[sys].deck.forEach(function (c) { ORIG_ICON[sys][c.name] = c.icon; }); });
   LENO.forEach(c => { ORIG_ICON.lenormand[c.name] = c.icon; });
-  const faceThb = new Map();   // 'mode|牌名' -> 缩略图 dataURL
-  let facePanelCid = 'tarot';  // 管理面板当前体系
+  const faceThb = new Map();   // 'scope|牌名' -> 缩略图 dataURL（scope = 体系@套卡）
+  let facePanelCid = 'tarot';  // 管理面板页签（tarot / lenormand）
+  let facePanelSystem = 'wait'; // tarot 页签下当前体系
+  // 面板只管「当前体系正在使用的那一套」：切换套卡＝切换应用，牌面管理直接编辑当前套卡。
+  function panelScope() { return facePanelCid === 'lenormand' ? 'lenormand' : activeScopeOf(facePanelSystem); }
+  function normScope(scope) {
+    scope = String(scope || '');
+    if (scope === 'lenormand') return 'lenormand';
+    if (scope === 'wait' || scope === 'marseille' || scope === 'thoth') return activeScopeOf(scope);
+    if (/^(wait|marseille|thoth)@/.test(scope)) return scope;
+    return activeScopeOf('wait');
+  }
+  function legacySys(scope) { return scopeSystem(scope) === 'wait' ? 'tarot' : scopeSystem(scope); }
   let faceTab = 'manage';      // manage | gallery
   let pendingUpload = null;    // { m, n } 待上传的牌
   let facePanelScroll = 0;     // 浮层打开前的占卜页滚动位置（关闭时还原）
@@ -262,11 +682,18 @@
     return { m: s.slice(0, i), n: s.slice(i + 1) };
   }
   function encN(n) { return encodeURIComponent(n); }
-  function fullKey(m, n) { return 'divine-face-' + m + '-' + encN(n); }
-  function thbKey(m, n) { return 'divine-face-thb-' + m + '-' + encN(n); }
-  function iconMapOf(m) { return m === 'tarot' ? TAROT_ICONS : LENO_ICONS; }
+  // 旧版自定义塔罗牌面存在 tarot 前缀下；「韦特@我的套卡」继续沿用旧键，老数据不搬家。
+  function faceStorePrefix(scope) {
+    scope = normScope(scope);
+    if (scope === 'lenormand' || scope === 'wait@my') return legacySys(scope);
+    return scope.replace('@', '~');
+  }
+  function fullKey(scope, n) { return 'divine-face-' + faceStorePrefix(scope) + '-' + encN(n); }
+  function thbKey(scope, n) { return 'divine-face-thb-' + faceStorePrefix(scope) + '-' + encN(n); }
+  function iconMapOf(m) { return scopeSystem(m) === 'lenormand' ? LENO_ICONS : TAROT_ICONS; }
   function cardOf(m, n) {
-    const a = m === 'tarot' ? TAROT : LENO;
+    const sys = scopeSystem(m);
+    const a = sys === 'lenormand' ? LENO : ((TAROT_SYSTEMS[sys] || TAROT_SYSTEMS.wait).deck);
     for (let i = 0; i < a.length; i++) if (a[i].name === n) return a[i];
     return null;
   }
@@ -280,32 +707,63 @@
     return '' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes());
   }
 
-  function loadFaceIdx() {
-    let arr = [];
-    try { arr = JSON.parse(gStore.get(FACE_IDX_KEY) || '[]'); } catch (e) { arr = []; }
-    return Array.isArray(arr) ? arr.filter(x =>
-      x && (x.m === 'tarot' || x.m === 'lenormand') && x.n && cardOf(x.m, x.n)) : [];
+  function rawFaceIdx() {
+    try { const a = JSON.parse(gStore.get(FACE_IDX_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
   }
-  function saveFaceIdx(arr) { try { gStore.set(FACE_IDX_KEY, JSON.stringify(arr)); } catch (e) {} }
+  function loadFaceIdx(scope) {
+    scope = normScope(scope || panelScope());
+    let arr = [];
+    const sys = scopeSystem(scope);
+    if (scope === 'lenormand') {
+      arr = rawFaceIdx().filter(function (x) { return x && x.m === 'lenormand'; })
+        .map(function (x) { return { m: 'lenormand', n: x.n, t: x.t }; });
+    } else if (scope === 'wait@my') {
+      // 旧版「塔罗自定义牌面」＝韦特系的「我的套卡」
+      arr = rawFaceIdx().filter(function (x) { return x && (x.m === 'tarot' || x.m === 'wait'); })
+        .map(function (x) { return { m: 'wait', n: x.n, t: x.t }; });
+    } else {
+      try { arr = JSON.parse(gStore.get('divine-faces-idx-' + scope) || '[]'); } catch (e) { arr = []; }
+      arr = (Array.isArray(arr) ? arr : []).map(function (x) { return { m: sys, n: x.n, t: x.t }; });
+    }
+    return arr.filter(function (x) { return x && x.n && cardOf(sys, x.n); });
+  }
+  function saveFaceIdx(arr, scope) {
+    scope = normScope(scope || panelScope());
+    const sys = scopeSystem(scope);
+    const mine = (arr || []).map(function (x) { return { m: sys, n: x.n, t: x.t }; });
+    if (scope === 'lenormand' || scope === 'wait@my') {
+      const isMine = function (x) {
+        if (!x) return false;
+        return scope === 'lenormand' ? x.m === 'lenormand' : (x.m === 'tarot' || x.m === 'wait');
+      };
+      const other = rawFaceIdx().filter(function (x) { return x && !isMine(x); });
+      const legacyMine = mine.map(function (x) { return { m: scope === 'lenormand' ? 'lenormand' : 'tarot', n: x.n, t: x.t }; });
+      try { gStore.set(FACE_IDX_KEY, JSON.stringify(other.concat(legacyMine))); } catch (e) {}
+    } else {
+      try { gStore.set('divine-faces-idx-' + scope, JSON.stringify(mine)); } catch (e) {}
+    }
+  }
 
   // 把一张自定义牌面应用到牌库（合成键注册进 icon 映射 + 改写牌对象 icon）
-  function applyFace(m, n) {
-    const thb = faceThb.get(m + '|' + n);
-    const c = cardOf(m, n);
+  function applyFace(scope, n) {
+    scope = normScope(scope);
+    const thb = faceThb.get(scope + '|' + n);
+    const c = cardOf(scope, n);
     if (!thb || !c) return;
-    const k = faceKey(m, n);
-    iconMapOf(m)[k] = '<image href="' + thb + '" x="0" y="0" width="24" height="24" preserveAspectRatio="xMidYMid slice"/>';
+    const k = faceKey(scope, n);
+    iconMapOf(scope)[k] = '<image href="' + thb + '" x="0" y="0" width="24" height="24" preserveAspectRatio="xMidYMid slice"/>';
     c.icon = k;
   }
   // 落一张牌面（原图 + 缩略图）并登记索引（单张上传 / 批量上传共用）
-  function storeFaceFromDataUrls(m, n, full, thb) {
-    try { gStore.set(fullKey(m, n), full); } catch (e) {}
-    try { gStore.set(thbKey(m, n), thb); } catch (e) {}
-    const idx = loadFaceIdx();
-    if (!idx.some(x => x.m === m && x.n === n)) idx.push({ m: m, n: n, t: Date.now() });
-    saveFaceIdx(idx);
-    faceThb.set(m + '|' + n, thb);
-    applyFace(m, n);
+  function storeFaceFromDataUrls(scope, n, full, thb) {
+    scope = normScope(scope);
+    try { gStore.set(fullKey(scope, n), full); } catch (e) {}
+    try { gStore.set(thbKey(scope, n), thb); } catch (e) {}
+    const idx = loadFaceIdx(scope);
+    if (!idx.some(x => x.n === n)) idx.push({ m: scopeSystem(scope), n: n, t: Date.now() });
+    saveFaceIdx(idx, scope);
+    faceThb.set(scope + '|' + n, thb);
+    applyFace(scope, n);
   }
   // 按文件名匹配牌（批量上传）：支持「牌名」「牌名+阿拉伯数字（宝剑1）」「塔罗-牌名」「雷诺曼-牌名」「编号」
   //  · 编号：塔罗按 00-77（0 起，与牌库顺序一致），雷诺曼按 1-36/40（1 起）
@@ -355,9 +813,11 @@
       s = s.slice(mp[0].length).trim();
     }
     if (!s) return null;
+    const defSys = TAROT_SYSTEMS[defaultMode] ? defaultMode : tarotSystem;
+    const tarotArr = TAROT_SYSTEMS[defSys].deck;
     const numOf = (num) => {
-      const m = mode || defaultMode || 'tarot';
-      if (m === 'tarot') { const i = oneBased ? num - 1 : num; if (i >= 0 && i < TAROT.length) return { m: 'tarot', n: TAROT[i].name }; }
+      const m = mode || (defaultMode === 'lenormand' ? 'lenormand' : 'tarot');
+      if (m === 'tarot') { const i = oneBased ? num - 1 : num; if (i >= 0 && i < tarotArr.length) return { m: defSys, n: tarotArr[i].name }; }
       else { const i = num - 1; if (i >= 0 && i < LENO.length) return { m: 'lenormand', n: LENO[i].name }; }
       return null;
     };
@@ -370,7 +830,7 @@
     s = s.replace(/(\D)0+([1-9])/, '$1$2');
     if (s) {
       const cands = [];
-      [['tarot', TAROT], ['lenormand', LENO]].forEach(([m, arr]) => {
+      [[defSys, tarotArr], ['lenormand', LENO]].forEach(([m, arr]) => {
         arr.forEach(c => {
           varifyName(c.name).forEach(v => {
             if (!aliasHit(s, v)) return;
@@ -379,10 +839,11 @@
         });
       });
       if (cands.length) {
-        if (mode) { const f = cands.find(x => x.m === mode); if (f) return { m: f.m, n: f.n }; }
+        const wantMode = mode === 'lenormand' ? 'lenormand' : defSys;
+        if (mode) { const f = cands.find(x => x.m === wantMode); if (f) return { m: f.m, n: f.n }; }
         const exacts = cands.filter(x => x.exact);
         const pool = exacts.length ? exacts : cands.sort((a, b) => b.len - a.len);
-        const pref = pool.find(x => x.m === defaultMode);
+        const pref = pool.find(x => x.m === defSys);
         const pick = pref || pool[0];
         return { m: pick.m, n: pick.n };
       }
@@ -390,34 +851,43 @@
     if (lead !== null) return numOf(lead);
     return null;
   }
-  // 按当前索引与缩略图缓存重建全部牌面（删除/导入后调用）
+  // 按当前激活套卡重建全部牌面：先把每张牌还原成内置图，再只应用当前套卡（每体系一次只用一套）
   function rebuildFaces() {
-    const want = {};
-    loadFaceIdx().forEach(x => { if (faceThb.get(x.m + '|' + x.n)) want[x.m + '|' + x.n] = true; });
-    ['tarot', 'lenormand'].forEach(m => {
-      (m === 'tarot' ? TAROT : LENO).forEach(c => {
-        const wk = m + '|' + c.name, k = faceKey(m, c.name);
-        if (want[wk]) { applyFace(m, c.name); return; }
-        if (c.icon === k) c.icon = ORIG_ICON[m][c.name];
-        // 合成键不删除而是改回默认图标：旧占卜记录里存的还是合成键，删掉会渲染空白
-        iconMapOf(m)[k] = iconMapOf(m)[ORIG_ICON[m][c.name]] || '';
+    ['wait', 'marseille', 'thoth', 'lenormand'].forEach(function (sys) {
+      const deck = sys === 'lenormand' ? LENO : TAROT_SYSTEMS[sys].deck;
+      deck.forEach(function (c) { c.icon = ORIG_ICON[sys][c.name]; });
+      const scope = sys === 'lenormand' ? 'lenormand' : activeScopeOf(sys);
+      loadFaceIdx(scope).forEach(function (x) {
+        if (faceThb.get(scope + '|' + x.n)) applyFace(scope, x.n);
       });
     });
   }
+  // 所有可能存过牌面的作用域（各体系的每套卡 + 雷诺曼），用于一次性载入缩略图
+  function allFaceScopes() {
+    const out = ['lenormand'];
+    ['wait', 'marseille', 'thoth'].forEach(function (sys) {
+      deckSetsOf(sys).forEach(function (s) { out.push(scopeOf(sys, s.id)); });
+      if (sys === 'wait') out.push('wait@my');
+    });
+    return out.filter(function (s, i) { return out.indexOf(s) === i; });
+  }
   function loadFaces() {
     faceThb.clear();
-    loadFaceIdx().forEach(x => {
-      let thb = null;
-      try { thb = gStore.get(thbKey(x.m, x.n)); } catch (e) {}
-      if (typeof thb === 'string' && thb) faceThb.set(x.m + '|' + x.n, thb);
+    allFaceScopes().forEach(function (scope) {
+      loadFaceIdx(scope).forEach(function (x) {
+        let thb = null;
+        try { thb = gStore.get(thbKey(scope, x.n)); } catch (e) {}
+        if (typeof thb === 'string' && thb) faceThb.set(scope + '|' + x.n, thb);
+      });
     });
     rebuildFaces();
     try { renderFaceList(); renderFaceGallery(); } catch (e) {}
   }
-  function rmFaceData(m, n) {
-    try { gStore.remove(fullKey(m, n)); } catch (e) {}
-    try { gStore.remove(thbKey(m, n)); } catch (e) {}
-    faceThb.delete(m + '|' + n);
+  function rmFaceData(scope, n) {
+    scope = normScope(scope);
+    try { gStore.remove(fullKey(scope, n)); } catch (e) {}
+    try { gStore.remove(thbKey(scope, n)); } catch (e) {}
+    faceThb.delete(scope + '|' + n);
   }
   // 压缩（失败返回 null）
   // FIX 2026-09-25 #1270：原来「base64 超 8MB 先拒 ＋ 解码后超 2600 万像素再拒」（与 personalize
@@ -477,8 +947,8 @@
     } catch (e) { return 'TA'; }
   }
   function loadDivineTarget() {
-    try { divineTarget = curStore().get('divine-target') || ''; } catch (e) { divineTarget = ''; }
-    if (divineTarget && window.getContacts && !window.getContacts().some(c => c && c.id === divineTarget)) divineTarget = '';
+    // 2026-11-18：不再提供占卜对象选择——从谁聊天进入就属于谁，避免旧记录串到别的桌面
+    divineTarget = '';
   }
   function syncTargets() {
     document.querySelectorAll('[data-dtarget]').forEach(b =>
@@ -537,17 +1007,24 @@
     const p = faceParse(c.icon);
     return !!faceThb.get(p.m + '|' + p.n);
   }
+  function faceClass(c, m) {
+    if (allowCustomFace(m) && faceActive(c)) return ' has-face';
+    if (builtinFace(c, m)) return ' div-face-img';
+    return '';
+  }
   function faceTouch(c, m) {
-    if (faceActive(c)) {
+    if (allowCustomFace(m) && faceActive(c)) {
       const p = faceParse(c.icon);
       const thb = faceThb.get(p.m + '|' + p.n);
       return '<div class="div-card-img"><img src="' + thb + '" alt=""></div>';
     }
+    const bi = builtinFace(c, m);
+    if (bi) return '<div class="div-card-img"><img src="' + bi + '" alt="" loading="lazy" decoding="async"></div>';
     if (isFaceKey(c.icon)) {
       // 图已删/缺图（旧记录）→ 回退该牌默认图标
       const p = faceParse(c.icon);
       const im = iconMapOf(p.m);
-      return '<div class="div-card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + (im[ORIG_ICON[p.m][p.n]] || '') + '</svg></div>';
+      return '<div class="div-card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + (im[ORIG_ICON[scopeSystem(p.m)][p.n]] || '') + '</svg></div>';
     }
     const icons = m === 'tarot' ? TAROT_ICONS : LENO_ICONS;
     return '<div class="div-card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + (icons[c.icon] || '') + '</svg></div>';
@@ -564,8 +1041,72 @@
       b.classList.add('sel');
       mode = b.dataset.mode;
       syncLenoSys();
+      syncModeUI();
       clearResult();
     });
+  }
+  function renderSpreadUI() {
+    const picker = document.getElementById('div-picker-row');
+    const spreadSel = document.getElementById('div-spread-select');
+    const deckSel = document.getElementById('div-deck-select');
+    const major = document.getElementById('div-major-only');
+    const cn = document.getElementById('div-custom-n');
+    const table = document.getElementById('div-spread-table');
+    const isTarot = mode === 'tarot';
+    if (picker) picker.hidden = !isTarot;
+    if (!isTarot) { if (table) { table.hidden = true; table.innerHTML = ''; } return; }
+    if (spreadSel && !spreadSel.dataset.bound) {
+      spreadSel.innerHTML = TAROT_SPREADS.map(function (s) {
+        return '<option value="' + s.id + '">' + s.name + (s.id === 'custom' ? '' : '（' + s.count + ' 张）') + '</option>';
+      }).join('');
+      spreadSel.addEventListener('change', function () {
+        tarotSpreadId = spreadSel.value;
+        renderSpreadUI();
+        clearResult();
+      });
+      spreadSel.dataset.bound = '1';
+    }
+    if (spreadSel) spreadSel.value = tarotSpreadId;
+    if (deckSel && !deckSel.dataset.bound) {
+      deckSel.addEventListener('change', function () {
+        tarotSystem = deckSel.value;
+        if (window.__divineSetTarotSystem) window.__divineSetTarotSystem(tarotSystem);
+        clearResult();
+      });
+      deckSel.dataset.bound = '1';
+    }
+    if (deckSel) deckSel.value = tarotSystem;
+    if (major && !major.dataset.bound) {
+      major.addEventListener('change', function () {
+        tarotScope = major.checked ? 'major' : 'full';
+        clearResult();
+      });
+      major.dataset.bound = '1';
+    }
+    if (major) major.checked = tarotScope === 'major';
+    if (cn) {
+      cn.hidden = tarotSpreadId !== 'custom';
+      if (!cn.dataset.bound) {
+        cn.dataset.bound = '1';
+        cn.addEventListener('change', function () { renderSpreadUI(); clearResult(); });
+      }
+    }
+    const dbtn = document.getElementById('div-draw');
+    if (dbtn && dbtn.dataset.idleHtml && dbtn.textContent.indexOf('抽牌中') === -1 && dbtn.textContent.indexOf('起卦中') === -1) {
+      dbtn.innerHTML = dbtn.dataset.idleHtml;
+    }
+    renderSpreadPreview();
+  }
+  function syncModeUI() {
+    const isMh = mode === 'meihua';
+    if (countsWrap) countsWrap.hidden = isMh || mode === 'tarot';
+    const nums = document.getElementById('div-meihua-nums');
+    if (nums) nums.hidden = !isMh;
+    renderSpreadUI();
+    const btn = document.getElementById('div-draw');
+    if (btn && btn.dataset.idleHtml && btn.textContent.indexOf('抽牌中') === -1) {
+      btn.innerHTML = btn.dataset.idleHtml;
+    }
   }
   if (countsWrap) {
     countsWrap.addEventListener('click', (e) => {
@@ -577,11 +1118,15 @@
       clearResult();
     });
   }
+  syncModeUI();
   function clearResult() {
     // v3.7.x：切换模式/张数时取消进行中的抽牌流程，避免旧流程把结果写进已清空的舞台
     if (window.__divActiveDraw) { try { window.__divActiveDraw(); } catch (e) {} window.__divActiveDraw = null; }
     const r = document.getElementById('div-result');
     if (r) r.innerHTML = '<div class="div-result-empty">点击上方按钮开始抽牌</div>';
+    lastSpreadState = null;
+    if (mode === 'tarot') { try { renderSpreadPreview(); } catch (e) {} }
+    else { const t = document.getElementById('div-spread-table'); if (t) { t.hidden = true; t.innerHTML = ''; } }
   }
 
   // ---- v3.7.x：自动发送开关（每个联系人独立记忆，走动态 store） ----
@@ -661,28 +1206,27 @@
       const drawnRow = document.createElement('div');
       drawnRow.className = 'div-drawn-row';
       stageEl.appendChild(drawnRow);
-      const row1 = document.createElement('div'); row1.className = 'div-card-row';
-      const row2 = document.createElement('div'); row2.className = 'div-card-row';
-      stageEl.appendChild(row1); stageEl.appendChild(row2);
+      const pileScroll = document.createElement('div');
+      pileScroll.className = 'div-pile-scroll';
+      stageEl.appendChild(pileScroll);
       const updateHint = function () {
         if (cancelled) return;
         if (!remaining.length) hint.textContent = '牌库已空';
-        else hint.textContent = '左右滑动牌面 · 点击牌背抽取 · 剩 ' + remaining.length + ' 张 · 已抽 ' + results.length + ' / ' + count + ' 张';
+        else hint.textContent = '上下滑动牌面 · 点击牌背抽取 · 剩 ' + remaining.length + ' 张 · 已抽 ' + results.length + ' / ' + count + ' 张';
       };
       let pileEls = [];   // #1044：与 remaining 平行的牌背元素表（增量移除用）
       const renderGrid = function () {
-        row1.innerHTML = ''; row2.innerHTML = '';
+        pileScroll.innerHTML = '';
         pileEls = [];
         const total = remaining.length;
         if (!total) { updateHint(); return; }
-        const half = Math.ceil(total / 2);
         for (let i = 0; i < total; i++) {
           const el = document.createElement('div');
           el.className = 'div-pile-card';
           // v3.7.x：牌背图形由 CSS ::after 绘制（✦ 星徽），不再用文本子元素
           // #1044：闭包改传元素本身——增量移除后 remaining 会重排，按创建序号找牌必错位
           el.addEventListener('click', function () { pick(el); });
-          (i < half ? row1 : row2).appendChild(el);
+          pileScroll.appendChild(el);
           pileEls.push(el);
         }
         updateHint();
@@ -695,7 +1239,7 @@
         const c = remaining[idx];
         remaining.splice(idx, 1);
         let rev = false, meaning = c.meaning;
-        if (isTarot) { rev = Math.random() > 0.5; meaning = rev ? c.neg : c.pos; }
+        if (isTarot) { rev = Math.random() > 0.5; meaning = (rev ? c.neg : c.pos) || c.meaning || ''; }
         results.push({ name: c.name, icon: c.icon, rev: rev, meaning: meaning, detail: c.detail || '' });
         // #1044 牌堆增量移除：只摘走被抽中的那张，不再整堆重建。老实现每抽一张就把剩余
         // 全部牌背销毁重建（78 张牌阵一记点按≈上百个节点销毁+重建+监听器重挂），低端机
@@ -708,7 +1252,7 @@
         const dc = document.createElement('div');
         dc.className = 'div-drawn-card';
         dc.innerHTML =
-          '<div class="ddc-face' + (faceActive(c) ? ' has-face' : '') + '">' +
+          '<div class="ddc-face' + faceClass(c, isTarot ? 'tarot' : 'lenormand') + '">' +
           faceTouch(c, isTarot ? 'tarot' : 'lenormand') +
           '<div class="ddc-name">' + c.name + '</div>' +
           (isTarot ? '<div class="ddc-pos' + (rev ? ' ddc-down' : ' ddc-up') + '">' + (rev ? '逆位' : '正位') + '</div>' : '') +
@@ -766,6 +1310,7 @@
   // IndexedDB 里的全部历史（历史超 200KB 只存 IDB，恢复完成前 store.get 读到
   // 空数组，直接写会丢历史）。暂存待写，恢复完成后与 IDB 合并去重再写入。
   let histReady = false;
+  let histOpen = false;   // 2026-11-18：记录默认收起，由数据管理卡右上角「占卜记录」打开
   let histPending = null;
   // v3.7.x：暂存记录所属联系人——恢复窗口内 A 抽牌后切到 B，flushPendingHist 须写回 A
   // 而非切换后的 B（原实现用当前 store，A 的牌落到 B + A 丢失）
@@ -859,7 +1404,7 @@
   let histShown = HIST_PAGE;
   function histRowHtml(h, i) {
     return '<div class="div-h-item" data-hi="' + i + '">' +
-      '<div class="div-h-main"><div class="div-h-title">' + (h.mode === 'tarot' ? '塔罗' : '雷诺曼') + ' · ' + h.count + ' 张' +
+      '<div class="div-h-main"><div class="div-h-title">' + divineModeLabel(h.mode) + (h.spread ? ' · ' + h.spread.name : '') + ' · ' + h.count + ' 张' +
       (h.question ? ' · 问：' + String(h.question).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') : '') + '</div>' +
       '<div class="div-h-sub">' + fmtDT(h.ts) + ' · ' + (Array.isArray(h.cards) ? h.cards.map(c => ((c && c.name) || '') + (c && c.rev ? '(逆)' : '')).join('、') : '') + '</div></div>' +
       '<button class="div-h-view" data-hi="' + i + '">查看</button>' +
@@ -874,9 +1419,12 @@
     // v3.27.x：无记录时连同外层白卡一起隐藏——原来 innerHTML 清空后外层 .div-card.glass
     // 仍在（padding 撑出一块空白白框，用户反馈「抽牌按钮下面一个莫名其妙的白色框」）
     const hcard = el.closest ? el.closest('.div-card') : null;
-    if (hcard) hcard.hidden = !list.length;
+    if (hcard) hcard.hidden = !histOpen;
     histShown = Math.min(histShown, HIST_PAGE);   // 重渲（开页/新抽牌/删除）回到第一页，新记录在最上
-    if (!list.length) { el.innerHTML = ''; return; }
+    if (!list.length) {
+      el.innerHTML = histOpen ? '<div class="div-label">占卜记录</div><div class="div-result-empty">还没有占卜记录</div>' : '';
+      return;
+    }
     // FIX 2026-09-27 #1342l：分页上界必须认列表实长。#1049 把历史改成「每页 30 条」时，histShown 的
     // 初值就是 30，而循环只信 histShown 不信 list.length —— 记录少于 30 条的每一台机器都在 i=list.length
     // 那一格取到 undefined，histRowHtml 当场抛 TypeError（iPhone／iOS 16.6 诊断单【最近错误】那条
@@ -903,11 +1451,23 @@
         const view = e.target.closest && e.target.closest('.div-h-view');
         if (view) {
           const h = histLoad()[parseInt(view.dataset.hi, 10)];
-          if (h && Array.isArray(h.cards)) renderDrawResult(h.cards, h.mode, h.question, h.summary);
+          if (h && h.mode === 'meihua' && h.mh) renderMeihuaInto(document.getElementById('div-result'), h.mh, h.question || '', h.summary || '');
+          else if (h && h.mode === 'tarot' && h.spread) renderSpreadBoard(h.cards, spreadById(h.spread.id) || TAROT_SPREADS[1], h.question, h.summary);
+          else if (h && Array.isArray(h.cards)) renderDrawResult(h.cards, h.mode, h.question, h.summary);
         }
       });
     }
   }
+  // 数据管理卡右上角「占卜记录」：展开/收起记录并在展开时滚到记录区
+  window.divineToggleHistory = function (force) {
+    histOpen = typeof force === 'boolean' ? force : !histOpen;
+    renderHistory();
+    if (histOpen) {
+      const card = document.getElementById('div-history-card');
+      if (card) setTimeout(function () { try { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {} }, 60);
+    }
+    return histOpen;
+  };
   function histLoadMore() {
     const el = document.getElementById('div-history');
     if (!el) return;
@@ -927,15 +1487,16 @@
     }
   }
   // 渲染抽牌结果（灰底正方形牌面 + 动画、综合解读、发送按钮）
-  function renderDrawResult(cards, m, question, summary) {
+  function renderDrawResult(cards, m, question, summary, mh) {
     const r = document.getElementById('div-result');
     if (!r) return;
-    const labels = (MODE_LABELS[m] && MODE_LABELS[m][cards.length]) || [];
+    if (m === 'meihua' && mh) { renderMeihuaInto(r, mh, question, summary); return; }
+    const labels = labelsIn || (MODE_LABELS[m] && MODE_LABELS[m][cards.length]) || [];
     let html = '<div class="div-spread">';
     cards.forEach((c, i) => {
       html += '<div class="div-mini' + (cards.length === 1 ? ' div-mini-single' : '') + '" style="animation-delay:' + (i * 120) + 'ms">' +
         (labels[i] ? '<div class="div-mini-tag">' + labels[i] + '</div>' : '') +
-        '<div class="div-card-face' + (faceActive(c) ? ' has-face' : '') + '">' +
+        '<div class="div-card-face' + faceClass(c, m) + '">' +
           faceTouch(c, m) +
           '<div class="div-card-name">' + (c.rev ? c.name + '（逆）' : c.name) + '</div>' +
         '</div>' +
@@ -955,14 +1516,256 @@
     const copyBtn = document.getElementById('div-copy-btn');
     if (copyBtn) copyBtn.addEventListener('click', () => copyResultText(buildResultText(m, cards, summary, question)));
   }
-  function buildResultText(m, cards, summary, question) {
-    const modeTxt = m === 'tarot' ? '塔罗' : '雷诺曼';
-    let text = '占卜 · ' + modeTxt + ' ' + cards.length + ' 张';
+  // ---- 塔罗牌阵桌布：按牌阵坐标摆牌，序号＝抽牌顺序，可拖动 ----
+  function spreadPositions(spread, n) {
+    if (spread.layout && spread.layout.length === n) return spread.layout;
+    const cols = n <= 4 ? n : 4;
+    const rows = Math.ceil(n / cols);
+    const arr = [];
+    for (let i = 0; i < n; i++) {
+      const r = Math.floor(i / cols), c = i % cols;
+      const inRow = Math.min(cols, n - r * cols);
+      const cellW = 100 / cols, offset = (100 - inRow * cellW) / 2;
+      arr.push([offset + (c + 0.5) * cellW, (r + 0.5) * (100 / rows)]);
+    }
+    return arr;
+  }
+  function bindBoardDrag(board, onMoved) {
+    if (!board) return;
+    board.querySelectorAll('.div-board-card').forEach(function (el, idx) {
+      let dragging = false, moved = false, sx = 0, sy = 0;
+      el.addEventListener('pointerdown', function (e) {
+        if (e.button && e.button !== 0) return;
+        dragging = true; moved = false; sx = e.clientX; sy = e.clientY;
+        try { el.setPointerCapture(e.pointerId); } catch (err) {}
+        el.classList.add('dragging');
+        el.style.zIndex = String(60 + idx);
+        e.preventDefault();
+      });
+      el.addEventListener('pointermove', function (e) {
+        if (!dragging) return;
+        if (Math.abs(e.clientX - sx) + Math.abs(e.clientY - sy) > 4) moved = true;
+        const r = board.getBoundingClientRect();
+        if (!r.width || !r.height) return;
+        const x = Math.max(5, Math.min(95, ((e.clientX - r.left) / r.width) * 100));
+        const y = Math.max(5, Math.min(95, ((e.clientY - r.top) / r.height) * 100));
+        el.style.left = x.toFixed(2) + '%';
+        el.style.top = y.toFixed(2) + '%';
+      });
+      function endDrag() {
+        if (!dragging) return;
+        dragging = false;
+        el.classList.remove('dragging');
+        el.style.zIndex = String(idx + 1);
+        if (moved) {
+          el.__dragged = true;
+          setTimeout(function () { el.__dragged = false; }, 0);
+          if (onMoved) { try { onMoved(idx, parseFloat(el.style.left) || 50, parseFloat(el.style.top) || 50); } catch (err) {} }
+        }
+      }
+      el.addEventListener('pointerup', endDrag);
+      el.addEventListener('pointercancel', endDrag);
+      el.addEventListener('lostpointercapture', endDrag);
+    });
+  }
+  // 2026-11-18：单击牌阵里的牌 → 放大看牌面；单击空白处收回。
+  let cardZoomEl = null;
+  function closeCardZoom() {
+    if (cardZoomEl && cardZoomEl.parentNode) cardZoomEl.parentNode.removeChild(cardZoomEl);
+    cardZoomEl = null;
+  }
+  function openCardZoom(c, idx, label) {
+    if (!c) return;
+    closeCardZoom();
+    const ov = document.createElement('div');
+    ov.id = 'div-zoom';
+    ov.className = 'div-zoom';
+    ov.innerHTML = '<div class="div-zoom-card">' +
+      '<div class="div-card-face' + faceClass(c, 'tarot') + '">' + faceTouch(c, 'tarot') +
+      '<div class="div-card-name">' + (c.rev ? c.name + '（逆）' : c.name) + '</div></div>' +
+      '<div class="div-zoom-label"><b>' + (idx + 1) + ' · ' + escHtml(label) + '</b>' +
+      '<span>' + escHtml(c.meaning || '') + '</span></div>' +
+      '</div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', closeCardZoom);
+    const box = ov.querySelector('.div-zoom-card');
+    if (box) box.addEventListener('click', function (e) { e.stopPropagation(); });
+    cardZoomEl = ov;
+  }
+  if (!window.__divCardZoomEsc) {
+    window.__divCardZoomEsc = true;
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && cardZoomEl) closeCardZoom();
+    });
+  }
+  let lastSpreadState = null;
+  function rerenderCustomBoard() {
+    if (lastSpreadState && !lastSpreadState.intoEl) {
+      renderSpreadBoard(lastSpreadState.cards, activeTarotSpread(), lastSpreadState.question, lastSpreadState.summary);
+    } else {
+      renderSpreadPreview();
+    }
+  }
+  function renderSpreadTable(cards, spread, intoEl) {
+    const table = intoEl || document.getElementById('div-spread-table');
+    if (!table) return;
+    table.hidden = false;
+    const n = cards ? cards.length : spread.count;
+    if (!n) { table.innerHTML = ''; table.hidden = true; return; }
+    const pos = spreadPositions(spread, n);
+    const cw = Math.max(10, Math.min(40, spread.cw || 22));
+    const ratio = n <= 1 ? '1/1' : (n <= 4 ? '4/3' : '4/5');
+    let html = '';
+    if (spread.id === 'custom') {
+      html += '<div class="div-board-tip">按住牌位可拖动 · <button type="button" class="div-board-edit' + (customEditMode ? ' on' : '') + '" id="div-custom-edit">' + (customEditMode ? '完成编辑' : '编辑牌位') + '</button></div>';
+    }
+    html += '<div class="div-board div-board-inline" id="div-board" style="aspect-ratio:' + ratio + '">';
+    for (let i = 0; i < n; i++) {
+      const p = pos[i] || [50, 50];
+      const rot = p[2] ? Number(p[2]) : 0;
+      const c = cards ? cards[i] : null;
+      const label = (spread.labels && spread.labels[i]) || (c && c.pos) || ('位置 ' + (i + 1));
+      const cpos = spread.id === 'celtic' ? (i === 0 ? ' data-cpos="lt"' : (i === 1 ? ' data-cpos="rb"' : '')) : '';
+      html += '<div class="div-board-card' + (c ? '' : ' div-board-empty') + '" data-i="' + i + '" data-rot="' + rot + '"' + cpos + ' style="left:' + p[0] + '%;top:' + p[1] + '%;width:' + cw + '%;transform:translate(-50%,-50%) rotate(' + rot + 'deg);z-index:' + (i + 1) + '">' +
+        (c
+          ? '<div class="div-card-face' + faceClass(c, 'tarot') + '">' + faceTouch(c, 'tarot') +
+            '<div class="div-card-name">' + (c.rev ? c.name + '（逆）' : c.name) + '</div></div>'
+          : '<div class="div-slot-face"></div>') +
+        '<span class="div-board-center"><b>' + (i + 1) + '</b><em>' + label + '</em></span>' +
+        '</div>';
+    }
+    html += '</div>';
+    table.innerHTML = html;
+    const board = table.querySelector('#div-board');
+    const isCustom = spread.id === 'custom';
+    if (cards || isCustom) {
+      bindBoardDrag(board, isCustom ? function (idx, x, y) {
+        const d = ensureCustomDef(n);
+        d.positions[idx] = [Number(x.toFixed(2)), Number(y.toFixed(2))];
+        saveCustomDef();
+      } : null);
+    }
+    if (isCustom) {
+      const eb = table.querySelector('#div-custom-edit');
+      if (eb) eb.addEventListener('click', function (e) {
+        e.stopPropagation();
+        customEditMode = !customEditMode;
+        rerenderCustomBoard();
+      });
+      if (customEditMode) {
+        table.querySelectorAll('.div-board-card').forEach(function (el) {
+          el.addEventListener('click', function () {
+            if (el.__dragged) return;
+            const idx = parseInt(el.getAttribute('data-i'), 10) || 0;
+            const d = ensureCustomDef(n);
+            const cur = d.labels[idx] || ('位置 ' + (idx + 1));
+            if (!window.openModal) return;
+            window.openModal('第 ' + (idx + 1) + ' 个牌位的名称', cur, function (v) {
+              const name = String(v || '').trim() || ('位置 ' + (idx + 1));
+              d.labels[idx] = name;
+              saveCustomDef();
+              rerenderCustomBoard();
+            });
+          });
+        });
+      }
+    }
+    // 已抽到牌 → 单击放大；编辑自定义牌位时让位给改名
+    if (cards) {
+      table.querySelectorAll('.div-board-card').forEach(function (el) {
+        if (el.classList.contains('div-board-empty')) return;
+        el.addEventListener('click', function () {
+          if (el.__dragged) return;
+          if (isCustom && customEditMode) return;
+          const idx = parseInt(el.getAttribute('data-i'), 10) || 0;
+          const c = cards[idx];
+          if (!c) return;
+          const lb = (spread.labels && spread.labels[idx]) || c.pos || ('位置 ' + (idx + 1));
+          openCardZoom(c, idx, lb);
+        });
+      });
+    }
+  }
+  function renderSpreadPreview() {
+    const table = document.getElementById('div-spread-table');
+    if (!table) return;
+    if (mode !== 'tarot') { table.hidden = true; table.innerHTML = ''; return; }
+    renderSpreadTable(null, activeTarotSpread());
+  }
+  function renderSpreadBoard(cards, spread, question, summary, intoEl) {
+    const n = cards.length;
+    const labelOf = function (c, i) { return (spread.labels && spread.labels[i]) || c.pos || ('位置 ' + (i + 1)); };
+    let readHtml = '<div class="div-spread-read">';
+    cards.forEach(function (c, i) {
+      readHtml += '<div class="div-read-row"><b>' + (i + 1) + ' · ' + labelOf(c, i) + '</b>' +
+        '<span>' + (c.rev ? c.name + '（逆）' : c.name) + '</span>' +
+        '<em>' + (window.taFit ? window.taFit(c.meaning) : c.meaning) + '</em></div>';
+    });
+    readHtml += '</div>';
+    readHtml += '<div class="div-summary">' + (window.taFit ? window.taFit(summary) : summary) + '</div>';
+    if (question) readHtml += '<div class="div-question-q">问：' + String(question).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>';
+    readHtml += '<div class="div-result-actions">' +
+      '<button class="div-send-btn" id="div-send-btn">发给 ' + (partnerName2() || (window.taWord ? window.taWord() : 'TA')) + '</button>' +
+      '<button class="div-copy-btn" id="div-copy-btn">点击复制文字</button></div>';
+    if (!intoEl) {
+      // 桌面占卜页：牌阵桌布固定在上方（选牌行下方、抽牌键上方），结果区只放逐条解读
+      lastSpreadState = { cards: cards, spread: spread, question: question, summary: summary, intoEl: null };
+      renderSpreadTable(cards, spread);
+      const r = document.getElementById('div-result');
+      if (!r) return;
+      r.innerHTML = readHtml;
+      const sb = r.querySelector('#div-send-btn');
+      if (sb) sb.addEventListener('click', function () { sendToChat('tarot', cards, summary, question, spread.name, spread.labels); });
+      const cb = r.querySelector('#div-copy-btn');
+      if (cb) cb.addEventListener('click', function () { copyResultText(buildResultText('tarot', cards, summary, question, spread.name, spread.labels)); });
+      return;
+    }
+    // 聊天半框等嵌在结果区里的场景：桌布 + 解读一起放进目标容器
+    const pos = spreadPositions(spread, n);
+    const cw = Math.max(10, Math.min(40, spread.cw || 22));
+    let board = '<div class="div-board-tip">' + (spread.id === 'custom' ? '按住牌面可拖动 · 序号是抽牌顺序' : spread.name + ' · 按住牌面可微调位置') + '</div><div class="div-board" id="div-board">';
+    cards.forEach(function (c, i) {
+      const p = pos[i] || [50, 50];
+      const rot = p[2] ? Number(p[2]) : 0;
+      const cpos2 = spread.id === 'celtic' ? (i === 0 ? ' data-cpos="lt"' : (i === 1 ? ' data-cpos="rb"' : '')) : '';
+      board += '<div class="div-board-card" data-i="' + i + '" data-rot="' + rot + '"' + cpos2 + ' style="left:' + p[0] + '%;top:' + p[1] + '%;width:' + cw + '%;transform:translate(-50%,-50%) rotate(' + rot + 'deg);z-index:' + (i + 1) + '">' +
+        '<div class="div-card-face' + faceClass(c, 'tarot') + '">' + faceTouch(c, 'tarot') +
+        '<div class="div-card-name">' + (c.rev ? c.name + '（逆）' : c.name) + '</div></div>' +
+        '<span class="div-board-center"><b>' + (i + 1) + '</b><em>' + labelOf(c, i) + '</em></span></div>';
+    });
+    board += '</div>';
+    intoEl.innerHTML = board + readHtml;
+    bindBoardDrag(intoEl.querySelector('#div-board'));
+    const boardEl = intoEl.querySelector('#div-board');
+    if (boardEl) boardEl.querySelectorAll('.div-board-card').forEach(function (el) {
+      el.addEventListener('click', function () {
+        if (el.__dragged) return;
+        const idx = parseInt(el.getAttribute('data-i'), 10) || 0;
+        const c = cards[idx];
+        if (!c) return;
+        openCardZoom(c, idx, labelOf(c, idx));
+      });
+    });
+    const sb2 = intoEl.querySelector('#div-send-btn');
+    if (sb2) sb2.addEventListener('click', function () { sendToChat('tarot', cards, summary, question, spread.name, spread.labels); });
+    const cb2 = intoEl.querySelector('#div-copy-btn');
+    if (cb2) cb2.addEventListener('click', function () { copyResultText(buildResultText('tarot', cards, summary, question, spread.name, spread.labels)); });
+  }
+
+  function buildResultText(m, cards, summary, question, spreadName, labelsIn) {
+    const modeTxt = divineModeLabel(m);
+    if (m === 'meihua') {
+      let t = '占卜 · 梅花易数';
+      if (question) t += '（问：' + question + '）';
+      t += '\n' + (summary || (cards[0] && cards[0].meaning) || '');
+      return t;
+    }
+    let text = '占卜 · ' + modeTxt + (spreadName ? ' · ' + spreadName : '') + ' ' + cards.length + ' 张';
     if (question) text += '（问：' + question + '）';
     text += '\n';
     const labels = (MODE_LABELS[m] && MODE_LABELS[m][cards.length]) || [];
     cards.forEach((c, i) => {
-      text += (i + 1) + '. ' + (labels[i] || ('位置' + (i + 1))) + ' · ' + c.name + (c.rev ? '（逆）' : '') + '：' + c.meaning + '\n';
+      text += (i + 1) + '. ' + (labels[i] || c.pos || ('位置' + (i + 1))) + ' · ' + c.name + (c.rev ? '（逆）' : '') + '：' + c.meaning + '\n';
     });
     text += '综合：' + String(summary || '').replace(/^综合[:：]/, '');
     return text;
@@ -981,25 +1784,19 @@
     try { document.execCommand('copy'); toast('已复制到剪贴板'); } catch (e) { toast('复制失败，请长按手动复制'); }
     document.body.removeChild(ta);
   }
-  function sendToChat(m, cards, summary, question) {
-    const text = buildResultText(m, cards, summary, question);
-    if (window.chatSendMsg) { window.chatSendMsg(text); toast('已发送给 ' + (partnerName2() || 'TA')); }
-    else toast('请先进入聊天页');
+  function confirmSendToCurrent(cb) {
+    const name = partnerName2() || (window.taWord ? window.taWord() : 'TA');
+    if (window.openModal) {
+      window.openModal('发送给「' + name + '」？', '确认后会直接出现在当前聊天里。', function () { if (cb) cb(); });
+    } else if (cb) cb();
   }
-  function sendToChat(m, cards, summary, question) {
-    const modeTxt = m === 'tarot' ? '塔罗' : '雷诺曼';
-    // v3.7.x：去掉 🔮 emoji，精简排版（聊天渲染已把 \n 转 <br>，多行显示正常）
-    let text = '占卜 · ' + modeTxt + ' ' + cards.length + ' 张';
-    if (question) text += '（问：' + question + '）';
-    text += '\n';
-    cards.forEach((c, i) => {
-      const labels = (MODE_LABELS[m] && MODE_LABELS[m][cards.length]) || [];
-      text += (i + 1) + '. ' + (labels[i] || ('位置' + (i + 1))) + ' · ' + c.name + (c.rev ? '（逆）' : '') + '：' + c.meaning + '\n';
+  function sendToChat(m, cards, summary, question, spreadName, labelsIn) {
+    const text = buildResultText(m, cards, summary, question, spreadName, labelsIn);
+    if (!window.chatSendMsg) { toast('请先进入聊天页'); return; }
+    confirmSendToCurrent(function () {
+      window.chatSendMsg(text);
+      toast('已发送给 ' + (partnerName2() || 'TA'));
     });
-    // 防 summary 自带"综合："前缀时重复
-    text += '综合：' + String(summary || '').replace(/^综合[:：]/, '');
-    if (window.chatSendMsg) { window.chatSendMsg(text); toast('已发送给 ' + (partnerName2() || 'TA')); }
-    else toast('请先进入聊天页');
   }
   function toast(msg) {
     let t = document.getElementById('cc-toast');
@@ -1010,9 +1807,45 @@
     t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
   }
 
+  function runMeihuaDraw() {
+    const r = document.getElementById('div-result');
+    const btn = document.getElementById('div-draw');
+    if (!r) return;
+    const question = ((document.getElementById('div-question') || {}).value || '').trim();
+    const v1 = parseFloat((document.getElementById('div-mh-num1') || {}).value);
+    const v2 = parseFloat((document.getElementById('div-mh-num2') || {}).value);
+    const mh = buildMeihua(isFinite(v1) ? v1 : NaN, isFinite(v2) ? v2 : NaN);
+    if (btn) btn.textContent = '起卦中…';
+    r.innerHTML = '<div class=div-result-empty>正在起卦…</div>';
+    setTimeout(function () {
+      renderMeihuaInto(r, mh, question, mh.summary);
+      if (btn) btn.textContent = '重新抽牌';
+      const snapTarget = divineTarget;
+      const record = {
+        ts: Date.now(), mode: 'meihua', count: 1, question: question,
+        cards: [{ name: mh.name, icon: 'meihua', meaning: mh.summary, detail: mh.summary }],
+        summary: mh.summary, mh: mh
+      };
+      if (snapTarget) record.target = targetName(snapTarget);
+      const list = histLoad();
+      list.unshift(record);
+      histSave(list);
+      renderHistory();
+      try { saveToHome(record, snapTarget); } catch (e) {}
+      if (autoSendGet()) {
+        const myCid = window.__activeCid || 'default';
+        setTimeout(function () {
+          if ((window.__activeCid || 'default') !== myCid) return;
+          sendToChat('meihua', record.cards, mh.summary, question);
+        }, 500);
+      }
+    }, 420);
+  }
+
   // 抽牌（v3.7.x：洗牌动画 → 两行牌面滑动抽取 → 结果）
   const drawBtn = document.getElementById('div-draw');
   const drawBtnIdleHTML = drawBtn ? drawBtn.innerHTML : '';
+  if (drawBtn) drawBtn.dataset.idleHtml = drawBtnIdleHTML;
   if (drawBtn) {
     drawBtn.addEventListener('click', () => {
       const r = document.getElementById('div-result');
@@ -1030,10 +1863,13 @@
       if (window.__divActiveDraw) { try { window.__divActiveDraw(); } catch (e) {} window.__divActiveDraw = null; }
       const question = ((document.getElementById('div-question') || {}).value || '').trim();
       // v3.5.130：快照点击时的模式/张数——流程期间切换设置不再影响本次结果
-      const snapMode = mode, snapCount = count;
-      const deck = snapMode === 'tarot' ? TAROT : lenoDeck();
+      const snapMode = mode;
+      if (snapMode === 'meihua') { runMeihuaDraw(); return; }
+      const spread = snapMode === 'tarot' ? activeTarotSpread() : null;
+      const snapCount = spread ? spread.count : count;
+      const deck = snapMode === 'tarot' ? tarotDeckFor(tarotScope) : lenoDeck();
       if (!deck.length) { r.innerHTML = '<div class="div-result-empty">占卜牌库加载中…</div>'; return; }
-      const labels = (MODE_LABELS[snapMode] && MODE_LABELS[snapMode][snapCount]) || [];
+      const labels = spread ? spread.labels : ((MODE_LABELS[snapMode] && MODE_LABELS[snapMode][snapCount]) || []);
       drawBtn.textContent = '抽牌中…';
       // #1044 取证：「抽一张牌就退出页面」类报障在真机上抓不到 JS 错误（诊断错误环全是
       // 资源噪声）。这里给 page-divine 挂一次性观察：抽牌流程进行中（__divActiveDraw 非空）
@@ -1061,10 +1897,13 @@
           window.__divActiveDraw = null;
           drawBtn.textContent = '重新抽牌';
           const summary = buildSummary(cards, snapMode, question);
-          renderDrawResult(cards, snapMode, question, summary);
+          if (spread) renderSpreadBoard(cards, spread, question, summary);
+          else renderDrawResult(cards, snapMode, question, summary);
           // 保存记录（v3.7.x：每个联系人桌面独立，store 动态绑定当前桌面）
           const snapTarget = divineTarget; // v3.27.x：快照点击时的占卜对象
           const record = { ts: Date.now(), mode: snapMode, count: snapCount, question: question, cards: cards, summary: summary };
+          if (spread) record.spread = { id: spread.id, name: spread.name };
+          if (snapMode === 'tarot') record.deckScope = tarotScope;
           if (snapTarget) record.target = targetName(snapTarget);
           const list = histLoad();
           list.unshift(record);
@@ -1077,7 +1916,7 @@
           // v3.7.x：自动发送开关——开启后抽牌完成自动把结果发到聊天
           if (autoSendGet()) {
             const myCid = window.__activeCid || 'default';
-            setTimeout(() => { if ((window.__activeCid || 'default') !== myCid) return; sendToChat(snapMode, cards, summary, question); }, 500);
+            setTimeout(() => { if ((window.__activeCid || 'default') !== myCid) return; sendToChat(snapMode, cards, summary, question, spread ? spread.name : '', spread ? spread.labels : null); }, 500);
           }
         }
       });
@@ -1097,15 +1936,29 @@
       }
       document.querySelectorAll('.page').forEach(p => p.hidden = true);
       page.hidden = false;
+      page.classList.remove('div-fs');
+      const fsb0 = document.getElementById('div-fs'); if (fsb0) fsb0.textContent = '⛶';
+      histOpen = false;
       renderHistOnOpen();
     });
   }
   const divBack = document.getElementById('div-back');
   if (divBack) {
     divBack.addEventListener('click', () => {
+      if (page) page.classList.remove('div-fs');
+      const fsb = document.getElementById('div-fs'); if (fsb) fsb.textContent = '⛶';
       document.querySelectorAll('.page').forEach(p => p.hidden = true);
       const phonePage = document.getElementById('page-phone');
       if (phonePage) phonePage.hidden = false;
+    });
+  }
+  const divFsBtn = document.getElementById('div-fs');
+  if (divFsBtn && page) {
+    divFsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const on = !page.classList.contains('div-fs');
+      page.classList.toggle('div-fs', on);
+      divFsBtn.textContent = on ? '⤢' : '⛶';
     });
   }
 
@@ -1152,20 +2005,25 @@
       '<div class="divf-tools">' +
         '<button class="divf-batch-btn" id="divf-batch">📂 批量上传（按文件名自动对应牌）</button>' +
         '<button class="divf-batch-btn" id="divf-onebased" style="margin-top:6px">编号从 1 起（塔罗 1–78）：关</button>' +
-        '<div class="divf-hint">按文件名自动对应牌：<br>' +
-          '· 牌名：<b>愚人.png</b>、<b>权杖王牌.jpg</b>（含子串也行，如 塔罗牌-愚人.png）<br>' +
-          '· 数字牌名：<b>宝剑1.png</b>、<b>圣杯10.jpg</b>、<b>权杖A.png</b>（＝宝剑王牌／宝剑一…宝剑十、王牌，1–10 与 A 都认）<br>' +
-          '· 体系前缀：<b>塔罗-愚人.png</b>、<b>雷诺曼-骑士.jpg</b>、<b>tarot-00-魔术师.png</b><br>' +
-          '· 前缀序号：<b>07-战车.png</b><br>' +
-          '· 纯编号：塔罗 <b>00–77</b>、雷诺曼 <b>1–36/40</b>（同名跨体系按当前页签；塔罗编号从 0 起，如你的素材从 1 开始请开下方「编号从 1 起」）<br>' +
-          '未识别的文件会列出来，其余照常导入。</div>' +
-        '<div class="divf-hint" id="divf-batch-hint">选不了多张或点了没反应，是浏览器 / 所在 App 的限制：换 Chrome / Edge 再试（详见 使用说明第 13 节）</div>' +
       '</div>' +
       '<div class="divf-scroll">' +
         '<div data-fpanel-body="manage">' +
           '<div class="divf-modes" id="divf-modes">' +
             '<button class="divf-mode sel" data-fmode="tarot">塔罗 78</button>' +
             '<button class="divf-mode" data-fmode="lenormand">雷诺曼</button>' +
+          '</div>' +
+          '<div class="divf-scope" id="divf-scope">' +
+            '<div class="divf-modes" id="divf-systems">' +
+              '<button class="divf-mode sel" data-fsys="wait">韦特系</button>' +
+              '<button class="divf-mode" data-fsys="marseille">马赛系</button>' +
+              '<button class="divf-mode" data-fsys="thoth">托特系</button>' +
+            '</div>' +
+            '<div class="divf-sets">' +
+              '<select class="divf-set-select" id="divf-set-select"></select>' +
+              '<button class="divf-mini" id="divf-set-new">新建套卡</button>' +
+              '<button class="divf-mini" id="divf-set-del">删除</button>' +
+            '</div>' +
+            '<div class="divf-hint">每个体系一次只应用一套卡面。「内置牌面」使用自带的图；新建套卡后可上传自己的牌面。</div>' +
           '</div>' +
           '<div id="divf-list"></div>' +
         '</div>' +
@@ -1291,19 +2149,38 @@
     if (!pg) return;
     pg.querySelectorAll('.divf-tab').forEach(b => b.classList.toggle('sel', b.dataset.fpanel === faceTab));
     pg.querySelectorAll('[data-fpanel-body]').forEach(b => { b.hidden = b.getAttribute('data-fpanel-body') !== faceTab; });
-    pg.querySelectorAll('.divf-mode').forEach(b => b.classList.toggle('sel', b.dataset.fmode === facePanelCid));
+    pg.querySelectorAll('.divf-mode[data-fmode]').forEach(b => b.classList.toggle('sel', b.dataset.fmode === facePanelCid));
+    pg.querySelectorAll('.divf-mode[data-fsys]').forEach(b => b.classList.toggle('sel', b.dataset.fsys === facePanelSystem));
+    const scopeBox = pg.querySelector('#divf-scope');
+    if (scopeBox) scopeBox.hidden = facePanelCid === 'lenormand';
+    renderSetUI();
+  }
+  function renderSetUI() {
+    const sel = document.getElementById('divf-set-select');
+    if (!sel) return;
+    const sys = facePanelSystem;
+    const active = activeSetOf(sys);
+    let html = '<option value="builtin">内置牌面</option>';
+    deckSetsOf(sys).forEach(function (s) {
+      html += '<option value="' + escHtml(s.id) + '">' + escHtml(s.name) + '</option>';
+    });
+    sel.innerHTML = html;
+    sel.value = active;
+    const del = document.getElementById('divf-set-del');
+    if (del) del.disabled = active === 'builtin';
   }
   function renderFaceList() {
     const el = document.getElementById('divf-list');
     if (!el) return;
-    const m = facePanelCid || 'tarot';
-    const arr = m === 'tarot' ? TAROT : LENO;
-    const imap = iconMapOf(m);
+    const scope = panelScope();
+    const sys = scopeSystem(scope);
+    const arr = sys === 'lenormand' ? LENO : (TAROT_SYSTEMS[sys] || TAROT_SYSTEMS.wait).deck;
+    const imap = iconMapOf(scope);
     el.innerHTML = arr.map(c => {
-      const thb = faceThb.get(m + '|' + c.name) || '';
+      const thb = faceThb.get(scope + '|' + c.name) || '';
       const prev = thb
         ? '<div class="divf-thb"><img src="' + thb + '" alt=""></div>'
-        : '<div class="divf-thb divf-thb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + (imap[ORIG_ICON[m][c.name]] || '') + '</svg></div>';
+        : '<div class="divf-thb divf-thb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + (imap[ORIG_ICON[sys][c.name]] || '') + '</svg></div>';
       return '<div class="divf-row" data-name="' + escHtml(c.name) + '">' + prev +
         '<div class="divf-name">' + escHtml(c.name) + '</div>' +
         '<button class="divf-act divf-up">' + (thb ? '更换' : '上传') + '</button>' +
@@ -1314,17 +2191,19 @@
   function renderFaceGallery() {
     const grid = document.getElementById('divf-grid');
     if (!grid) return;
-    const idx = loadFaceIdx();
+    const scope = panelScope();
+    const sys = scopeSystem(scope);
+    const idx = loadFaceIdx(scope);
     const cnt = document.getElementById('divf-gal-count');
-    if (cnt) cnt.textContent = idx.length ? ('已上传 ' + idx.length + ' 张牌面') : '';
+    if (cnt) cnt.textContent = idx.length ? ('本套卡已上传 ' + idx.length + ' 张牌面') : '';
     grid.innerHTML = idx.length ? idx.map(x => {
-      const thb = faceThb.get(x.m + '|' + x.n) || '';
-      return '<div class="divf-cell" data-m="' + x.m + '" data-name="' + escHtml(x.n) + '">' +
+      const thb = faceThb.get(scope + '|' + x.n) || '';
+      return '<div class="divf-cell" data-scope="' + escHtml(scope) + '" data-name="' + escHtml(x.n) + '">' +
         '<div class="divf-cell-img">' + (thb ? '<img src="' + thb + '" alt="">' : '<span class="divf-missing">图缺失</span>') + '</div>' +
-        '<div class="divf-cell-name">' + escHtml(x.n) + '<span class="divf-cell-mode">' + (x.m === 'tarot' ? '塔罗' : '雷诺曼') + '</span></div>' +
+        '<div class="divf-cell-name">' + escHtml(x.n) + '<span class="divf-cell-mode">' + (sys === 'lenormand' ? '雷诺曼' : (TAROT_SYSTEMS[sys] ? TAROT_SYSTEMS[sys].name : '塔罗')) + '</span></div>' +
         '<div class="divf-cell-acts"><button class="divf-mini divf-cell-up">更换</button><button class="divf-mini divf-cell-del">删除</button></div>' +
         '</div>';
-    }).join('') : ((window.mochiDataPending && window.mochiDataPending()) ? window.mochiLoadingHtml('牌面图') : '<div class="divf-empty">还没有上传牌面。到「牌面管理」给喜欢的牌换张图吧。</div>');
+    }).join('') : ((window.mochiDataPending && window.mochiDataPending()) ? window.mochiLoadingHtml('牌面图') : '<div class="divf-empty">这套卡还没有上传牌面。到「牌面管理」给喜欢的牌换张图吧。</div>');
   }
   // #797：回填完成补渲一次（牌面索引/缩略图在大键里，renderFaceGallery 现读现画幂等）
   if (window.mochiOnDataReady) window.mochiOnDataReady(function () { try { renderFaceGallery(); } catch (e) {} });
@@ -1355,31 +2234,34 @@
       }
     });
   }
-  function deleteFace(m, n) {
+  function deleteFace(scope, n) {
+    scope = normScope(scope);
     window.openModal('删除「' + n + '」的自定义牌面？', '', (v) => {
       if (v !== 'ok') return;
-      rmFaceData(m, n);
-      saveFaceIdx(loadFaceIdx().filter(x => !(x.m === m && x.n === n)));
+      rmFaceData(scope, n);
+      saveFaceIdx(loadFaceIdx(scope).filter(x => x.n !== n), scope);
       rebuildFaces();
       renderFaceList(); renderFaceGallery();
       toast('已删除「' + n + '」的牌面');
     }, { noInput: true, pillSubmit: true, staticText: '删除后恢复为默认牌面。', pills: [{ label: '删除', value: 'ok' }] });
   }
   function clearAllFaces() {
-    const n = loadFaceIdx().length;
-    if (!n) { toast('还没有上传牌面'); return; }
-    window.openModal('清空全部 ' + n + ' 张自定义牌面？（不可恢复）', '', (v) => {
+    const scope = panelScope();
+    const idx = loadFaceIdx(scope);
+    if (!idx.length) { toast('这套卡还没有上传牌面'); return; }
+    window.openModal('清空本套卡的 ' + idx.length + ' 张自定义牌面？（不可恢复）', '', (v) => {
       if (v !== 'ok') return;
-      loadFaceIdx().forEach(x => rmFaceData(x.m, x.n));
-      saveFaceIdx([]);
+      idx.forEach(x => rmFaceData(scope, x.n));
+      saveFaceIdx([], scope);
       rebuildFaces();
       renderFaceList(); renderFaceGallery();
-      toast('已清空全部自定义牌面');
-    }, { noInput: true, pillSubmit: true, staticText: '将删除所有已上传的牌面图片。', pills: [{ label: '清空', value: 'ok' }] });
+      toast('已清空本套卡的牌面');
+    }, { noInput: true, pillSubmit: true, staticText: '只清空当前正在使用的这套卡面，其他套卡不受影响。', pills: [{ label: '清空', value: 'ok' }] });
   }
 
   function buildFaceExport() {
-    const idx = loadFaceIdx();
+    const scope = panelScope();
+    const idx = loadFaceIdx(scope);
     if (!idx.length) return Promise.resolve('');
     const readFull = (k) => {
       const fallback = () => { try { return gStore.get(k) || ''; } catch (e) { return ''; } };
@@ -1388,22 +2270,23 @@
     };
     // 顺序读取（不用 Promise.all）——几十张原图并发 idbGet 会挤在一条连接上，
     // 慢设备上容易触发忙等；导出本就是一次性操作，顺序读更稳。
-    return idx.reduce((p, x) => p.then(faces => readFull(fullKey(x.m, x.n)).then(img => {
+    return idx.reduce((p, x) => p.then(faces => readFull(fullKey(scope, x.n)).then(img => {
       faces.push({
-        m: x.m, n: x.n,
-        img: img || faceThb.get(x.m + '|' + x.n) || '',
-        thb: faceThb.get(x.m + '|' + x.n) || ''
+        m: scopeSystem(scope), scope: scope, n: x.n,
+        img: img || faceThb.get(scope + '|' + x.n) || '',
+        thb: faceThb.get(scope + '|' + x.n) || ''
       });
       return faces;
     })), Promise.resolve([])).then(faces => JSON.stringify({
       v: 1, type: 'mochi-divine-faces', ts: Date.now(),
+      scope: scope,
       leno36: leno36 ? 1 : 0,
       oneBased: faceOneBased ? 1 : 0,
       faces: faces.filter(f => f.img || f.thb)
     }));
   }
   function exportFacesData() {
-    if (!loadFaceIdx().length) { toast('还没有上传牌面'); return; }
+    if (!loadFaceIdx(panelScope()).length) { toast('这套卡还没有上传牌面'); return; }
     toast('正在打包牌面数据…');
     buildFaceExport().then(json => {
       if (!json) { toast('还没有上传牌面'); return; }
@@ -1422,34 +2305,37 @@
 
   function importFacesData(data) {
     if (!data || data.type !== 'mochi-divine-faces' || !Array.isArray(data.faces)) { toast('文件格式不正确，请选择导出的牌面 JSON'); return; }
-    const valid = data.faces.filter(x => x && (x.m === 'tarot' || x.m === 'lenormand') && x.n && cardOf(x.m, x.n) &&
+    const scope = panelScope();
+    const sys = scopeSystem(scope);
+    const valid = data.faces.filter(x => x && x.n && cardOf(sys, x.n) &&
       typeof (x.img || x.thb) === 'string' && (x.img || x.thb));
-    if (!valid.length) { toast('文件里没有可导入的牌面'); return; }
+    if (!valid.length) { toast('文件里没有这套体系认得的牌面'); return; }
     window.openModal('导入 ' + valid.length + ' 张牌面', '', (v) => {
       if (!v) return;
       toast('正在导入 ' + valid.length + ' 张牌面…');
       requestAnimationFrame(() => setTimeout(() => {
-        applyImport(valid, v === 'replace', data.leno36, data.oneBased);
+        applyImport(valid, v === 'replace', data.leno36, data.oneBased, scope);
       }, 0));
-    }, { noInput: true, pillSubmit: true, pill: 'merge', staticText: '「合并」保留现有牌面并覆盖同名；「覆盖」先清空现有牌面再导入。', pills: [{ label: '合并导入', value: 'merge' }, { label: '覆盖导入', value: 'replace' }] });
+    }, { noInput: true, pillSubmit: true, pill: 'merge', staticText: '导入到当前正在使用的这套卡。\n「合并」保留现有牌面并覆盖同名；「覆盖」先清空本套卡再导入。', pills: [{ label: '合并导入', value: 'merge' }, { label: '覆盖导入', value: 'replace' }] });
   }
-  function applyImport(list, replace, l36, oneB) {
-    if (replace) { loadFaceIdx().forEach(x => rmFaceData(x.m, x.n)); }
-    const idx = replace ? [] : loadFaceIdx();
+  function applyImport(list, replace, l36, oneB, scope) {
+    scope = normScope(scope || panelScope());
+    if (replace) { loadFaceIdx(scope).forEach(x => rmFaceData(scope, x.n)); }
+    const idx = replace ? [] : loadFaceIdx(scope);
     const byKey = {};
-    idx.forEach(x => { byKey[x.m + '|' + x.n] = true; });
+    idx.forEach(x => { byKey[scope + '|' + x.n] = true; });
     let ok = 0;
     list.forEach(x => {
       const full = String(x.img || x.thb || '');
       const thb = String(x.thb || x.img || '');
       if (!full || full.length > 8 * 1024 * 1024) return;
-      try { gStore.set(fullKey(x.m, x.n), full); } catch (e) {}
-      try { gStore.set(thbKey(x.m, x.n), thb); } catch (e) {}
-      faceThb.set(x.m + '|' + x.n, thb);
-      if (!byKey[x.m + '|' + x.n]) { idx.push({ m: x.m, n: x.n, t: Date.now() }); byKey[x.m + '|' + x.n] = true; }
+      try { gStore.set(fullKey(scope, x.n), full); } catch (e) {}
+      try { gStore.set(thbKey(scope, x.n), thb); } catch (e) {}
+      faceThb.set(scope + '|' + x.n, thb);
+      if (!byKey[scope + '|' + x.n]) { idx.push({ m: scopeSystem(scope), n: x.n, t: Date.now() }); byKey[scope + '|' + x.n] = true; }
       ok++;
     });
-    saveFaceIdx(idx);
+    saveFaceIdx(idx, scope);
     if (l36 === 0 || l36 === 1) {
       leno36 = l36 === 1;
       try { gStore.set(LENO36_KEY, leno36 ? '1' : '0'); } catch (e) {}
@@ -1470,11 +2356,12 @@
     const list = Array.prototype.slice.call(files || []);
     if (!list.length) return;
     if (!window.mochiImgCompressTo) { toast('图片处理组件没加载上（缓存过旧或离线），请重新打开页面再试'); return; }
-    const defaultMode = facePanelCid || 'tarot';
+    const scope = panelScope();
+    const defaultMode = scopeSystem(scope);
     const oneBased = faceOneBased;
     const skipped = [];
     const doneSet = new Set();
-    const existing = new Set(loadFaceIdx().map(x => x.m + '|' + x.n));
+    const existing = new Set(loadFaceIdx(scope).map(x => scope + '|' + x.n));
     const overwritten = new Set();
     const step = (i) => {
       if (i >= list.length) {
@@ -1498,8 +2385,9 @@
         if (!full) { skipped.push(f.name); step(i + 1); return; }
         compressImg(full, 200, 0.82).then((thb) => {
           if (!thb) { skipped.push(f.name); step(i + 1); return; }
-          storeFaceFromDataUrls(hit.m, hit.n, full, thb);
-          const key = hit.m + '|' + hit.n;
+          const targetScope = hit.m === 'lenormand' ? 'lenormand' : scope;
+          storeFaceFromDataUrls(targetScope, hit.n, full, thb);
+          const key = targetScope + '|' + hit.n;
           if (existing.has(key) || doneSet.has(key)) overwritten.add(key);
           doneSet.add(key);
           step(i + 1);
@@ -1524,20 +2412,74 @@
       facePanelCid = b.dataset.fmode;
       syncFaceTabs();
       renderFaceList();
+      renderFaceGallery();
+    });
+    const systems = pg.querySelector('#divf-systems');
+    if (systems) systems.addEventListener('click', (e) => {
+      const b = e.target.closest('.divf-mode');
+      if (!b || !b.dataset.fsys) return;
+      facePanelSystem = b.dataset.fsys;
+      syncFaceTabs();
+      renderFaceList();
+      renderFaceGallery();
+    });
+    const setSel = pg.querySelector('#divf-set-select');
+    if (setSel) setSel.addEventListener('change', () => {
+      setActiveSetOf(facePanelSystem, setSel.value);
+      rebuildFaces();
+      syncFaceTabs();
+      renderFaceList();
+      renderFaceGallery();
+      toast(setSel.value === 'builtin' ? '已应用内置牌面' : '已切换套卡');
+    });
+    const setNew = pg.querySelector('#divf-set-new');
+    if (setNew) setNew.addEventListener('click', () => {
+      const sys = facePanelSystem;
+      if (!window.openModal) return;
+      window.openModal('新建套卡', '套卡 ' + (deckSetsOf(sys).length + 1), (v) => {
+        const name = String(v || '').trim();
+        if (!name) return;
+        newDeckSet(sys, name);
+        rebuildFaces();
+        syncFaceTabs();
+        renderFaceList();
+        renderFaceGallery();
+        toast('已新建并切换到「' + name + '」，现在可以上传这套卡的牌面');
+      });
+    });
+    const setDel = pg.querySelector('#divf-set-del');
+    if (setDel) setDel.addEventListener('click', () => {
+      const sys = facePanelSystem;
+      const setId = activeSetOf(sys);
+      if (setId === 'builtin') { toast('内置牌面不能删除'); return; }
+      const setObj = deckSetsOf(sys).filter(s => s.id === setId)[0];
+      const name = setObj ? setObj.name : '这套卡';
+      const scope = activeScopeOf(sys);
+      window.openModal('删除套卡「' + name + '」？', '', (v) => {
+        if (v !== 'ok') return;
+        loadFaceIdx(scope).forEach(x => rmFaceData(scope, x.n));
+        removeDeckSet(sys, setId);
+        rebuildFaces();
+        syncFaceTabs();
+        renderFaceList();
+        renderFaceGallery();
+        toast('已删除「' + name + '」');
+      }, { noInput: true, pillSubmit: true, staticText: '这套卡里上传的牌面图片会一起删除，不可恢复。', pills: [{ label: '删除', value: 'ok' }] });
     });
     const list = pg.querySelector('#divf-list');
     if (list) list.addEventListener('click', (e) => {
       const row = e.target.closest('.divf-row');
       if (!row) return;
       const n = row.dataset.name;
-      if (e.target.closest('.divf-del')) deleteFace(facePanelCid, n);
-      else if (e.target.closest('.divf-up')) pickFaceFile(facePanelCid, n);
+      const scope = panelScope();
+      if (e.target.closest('.divf-del')) deleteFace(scope, n);
+      else if (e.target.closest('.divf-up')) pickFaceFile(scope, n);
     });
     const grid = pg.querySelector('#divf-grid');
     if (grid) grid.addEventListener('click', (e) => {
       const cell = e.target.closest('.divf-cell');
       if (!cell) return;
-      const m = cell.dataset.m, n = cell.dataset.name;
+      const m = cell.dataset.scope, n = cell.dataset.name;
       if (e.target.closest('.divf-cell-del')) deleteFace(m, n);
       else if (e.target.closest('.divf-cell-up')) pickFaceFile(m, n);
     });
@@ -1610,11 +2552,20 @@
   window.divineBuildSummary = buildSummary;
   window.divineBuildResultText = buildResultText;
   window.divineCopyResultText = copyResultText;
-  window.divineSendResult = function (m, cards, summary, question) { sendToChat(m, cards, summary, question); };
+  window.divineSendResult = function (m, cards, summary, question, spreadName, labelsIn) { sendToChat(m, cards, summary, question, spreadName, labelsIn); };
   // v3.27.x：主页「占卜记录 → 查看牌面」复用占卜页完整结果渲染（records.js 已负责切页）
-  window.divineRenderResult = function (cards, m, question, summary) {
-    try { renderDrawResult(cards, m, question, summary); } catch (e) {}
+  window.divineRenderResult = function (cards, m, question, summary, mh, spread) {
+    try {
+      if (m === 'tarot' && spread && spread.id) { renderSpreadBoard(cards, spreadById(spread.id) || TAROT_SPREADS[1], question, summary); return; }
+      renderDrawResult(cards, m, question, summary, mh);
+    } catch (e) {}
   };
+  window.divineMeihuaBuild = buildMeihua;
+  window.divineRenderMeihua = renderMeihuaInto;
+  window.divineRenderSpreadBoard = function (el, cards, spread, question, summary) {
+    try { renderSpreadBoard(cards, spread, question, summary, el); } catch (e) {}
+  };
+  window.__MH_TRIGRAMS__ = MH_TRIGRAMS;
   // v3.27.x：牌面数据 API（图鉴页按钮内部用；也便于测试）
   window.divineFaces = {
     exportJSON: buildFaceExport,
