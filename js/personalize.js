@@ -1419,9 +1419,21 @@ const gid = g.dataset.app;
 if (!gid) return;
 g.querySelectorAll('.app').forEach(a => { if (a.dataset.app) ICON_HOME_GRID[a.dataset.app] = gid; });
 });
-document.querySelectorAll('.app .app-ico').forEach(ico => {
-if (!ico.dataset.orig) ico.dataset.orig = ico.innerHTML;
+const captureIcoOrig = (root) => {
+(root || document).querySelectorAll('.app .app-ico').forEach(ico => {
+if (ico.dataset.orig) return;
+if (ico.querySelector('img')) return; // 当前已是自选图＝不能当作默认
+ico.dataset.orig = ico.innerHTML;
 });
+};
+captureIcoOrig();
+try {
+const icoMo = new MutationObserver(function () {
+if (!document.querySelector('.app .app-ico:not([data-orig])')) return;
+captureIcoOrig();
+});
+icoMo.observe(document.getElementById('page-phone') || document.body, { childList: true, subtree: true });
+} catch (eMo) {}
 const applyAppIconOpacity = (app, pct) => {
 const img = app.querySelector('.app-ico img');
 if (!img) return;
@@ -1467,6 +1479,9 @@ const ico = app.querySelector('.app-ico');
 if (saved && saved.length > 500 * 1024) {
 try { if (saved.length > 12 * 1024 * 1024) store.remove('app-icon-' + app.dataset.app); } catch (e) {}
 saved = null;
+}
+if (saved && ico && !ico.dataset.orig && !ico.querySelector('img')) {
+ico.dataset.orig = ico.innerHTML;
 }
 if (saved) {
 if (ico) {
@@ -1689,17 +1704,24 @@ else app.style.display = '';
 applyHiddenIcons();
 try {
 if (window.idbGetAllKeys) {
-const iconPfx = window.activePrefix() + ':';
+const iconPrefix = window.activePrefix(); // 完整命名空间，如 xy-home-v2:default
+const iconPfx = iconPrefix + ':';
+const iconStore = (function () {
+try { return window.xyStore(iconPrefix); } catch (e) { return store; }
+})();
 window.idbGetAllKeys().then(keys => {
 const iconKeys = (keys || []).filter(k => k.indexOf(iconPfx + 'app-icon-') === 0);
 if (!iconKeys.length) return;
 return Promise.all(iconKeys.map(k =>
 window.idbGet(k).then(v => {
 const rel = k.slice(iconPfx.length);
-if (store.get(rel) !== null) return;
-if (v && typeof v === 'string' && v.length > 2) store.set(rel, v);
+if (iconStore.get(rel) !== null) return;
+if (v && typeof v === 'string' && v.length > 2) iconStore.set(rel, v);
 }).catch(function () {})
-)).then(() => { restoreAppIcons(); restoreAppIconOrder(); });
+)).then(() => {
+if (window.activePrefix() !== iconPrefix) return;
+restoreAppIcons(); restoreAppIconOrder();
+});
 }).catch(function () {});
 }
 } catch (e) {}

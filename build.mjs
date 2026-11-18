@@ -1451,11 +1451,11 @@ const FIX_SENTINELS = [
   { name: '#264 诊断「跨桌面来消息体检」行（轮询次数/闸门/档位/下次可掷/近期释放一行直出，删则「开了好久没触发」类报障继续靠口述猜）', file: 'js/device.js', needle: "ip.ticks + ' 次 闸门=' + ip.gate" },
   // ==== v3.32.x #265 桌面图标顺序「退出浏览器后还原初始布局」（小米13+Edge，内核无关）====
   // 根因：启动 IDB 补读块无条件写回，把「LS 比 IDB 新鲜」这条自家优先级反向覆盖了。
-  { name: '#265 IDB 补读只填「现在读不到」的键（LS 有值即跳过；删掉这行守卫=启动补读又无条件覆盖更新鲜的 localStorage，Edge/真我/荣耀/小米等丢弃 fire-and-forget idbSet 的内核上「改完布局退出浏览器就还原」原样回流）', file: 'js/personalize.js', needle: 'if (store.get(rel) !== null) return;' },
-  { name: '#265 补读前缀只取一次 activePrefix（filter 与 slice 共用同一个 iconPfx；改回两次调用=异步期间 correctCidFromIdb 纠正 cid 后，前缀与 slice 长度对不上，会把别的桌面的键名/键值搬进当前桌面，与 #151 同族串桌面）', file: 'js/personalize.js', needle: "const iconPfx = window.activePrefix() + ':';" },
+  { name: '#265 IDB 补读只填「现在读不到」的键（LS 有值即跳过；删掉这行守卫=启动补读又无条件覆盖更新鲜的 localStorage，Edge/真我/荣耀/小米等丢弃 fire-and-forget idbSet 的内核上「改完布局退出浏览器就还原」原样回流）', file: 'js/personalize.js', needle: 'if (iconStore.get(rel) !== null) return;' },
+  { name: '#265 补读前缀只取一次 activePrefix，且写回落到采集时的固定命名空间（改回动态 store＝异步期间切联系人会把 A 的图标写进 B）', file: 'js/personalize.js', needle: "const iconPfx = iconPrefix + ':';" },
   { name: '#265 mochi-restore-done 后重排图标顺序（导入/恢复回填完成时按权威值再排一次；删掉=备份导入后桌面仍是默认布局，直到下次重启才生效）', file: 'js/personalize.js', needle: 'try { restoreAppIconOrder(); } catch (e) {}' },
   { name: '#265 切换联系人时重排图标顺序（app-icon-order-<grid> 是 per-cid 键；漏监听=切桌面后仍显示上一个联系人的排序，与 hidden-icons 的 #151 处理成对）', file: 'js/personalize.js', needle: "document.addEventListener('contact-switched', restoreAppIconOrder);" },
-  { name: '#265 补读完成后图标图片与顺序一起重绘（Promise.all 落地同调两个 restore；只留 restoreAppIcons=补读到的顺序永远等不到重排，本次修复的核心断言 T1/T2 回流）', file: 'js/personalize.js', needle: 'restoreAppIcons(); restoreAppIconOrder(); }' },
+  { name: '#265 补读完成后图标图片与顺序一起重绘，且只对采集时的联系人落地（删前缀闸门＝补读期间切桌面会把 A 的图标写进 B）', file: 'js/personalize.js', needle: 'if (window.activePrefix() !== iconPrefix) return;' },
   // ==== v3.32.x #266 字卡库列表页兜底取回 IIFE「漏调用括号」死代码（iOS13+Chrome/Edge 等「导入字卡过一段时间就没了，刷新就消失」，多机型同族）====
   // 根因：f143621 把本段结尾 `})();` 改成 `});` —— 语法合法、node --check 过、文本锚点也在，
   // 但整段 IIFE 变永不执行的死代码。iOS 启动回填被后台杀连接打断后，内存/LS 两路读空、只剩
@@ -2027,6 +2027,12 @@ const FIX_SENTINELS = [
   { name: '2026-11-17 来信通知标记随尾巴日志保留（删则靠尾巴日志恢复的通知退化成不可点的纯通知）', file: 'js/chat.js', needle: 'if (rec.mailNotice) entry.mn = 1;' },
   { name: '2026-11-17 尾巴日志回放恢复来信通知标记（删则回放后同样丢可点击性）', file: 'js/chat.js', needle: 'if (j.mn) r.mailNotice = true;' },
   { name: '2026-11-17 存量来信通知按正文兜底可点击（删则历史里丢了标记的通知仍不可点）', file: 'js/chat.js', needle: 'const isMailNotice = rec.mailNotice ||' },
+  { name: '2026-11-18 经期判定前重读记录（删则另一标签页刚登记「今天开始」后，本页仍按旧记录发迟到提醒）', file: 'js/period.js', needle: 'try { recs = loadRecs(); cfg = loadCfg(); } catch (e) {}' },
+  { name: '2026-11-18 今天已有经期记录时绝不发推迟提醒（删则 status 缓存过期时迟到警告仍会发）', file: 'js/period.js', needle: 'var recCoversToday = false;' },
+  { name: '2026-11-18 长按切换图标样式不再被 pointercancel 取消（删则安卓长按弹系统菜单前的那一发 pointercancel 会把计时器清掉＝长按失效）', file: 'js/chat.js', needle: "['pointerup', 'pointerleave'].forEach(function (ev) {" },
+  { name: '2026-11-18 长按触发系统菜单时也执行切换（删则部分内核长按只弹菜单、等不到计时器）', file: 'js/chat.js', needle: 'if (timer) { clearTimeout(timer); timer = 0; doToggle(); }' },
+  { name: '2026-11-18 运行时注入图标补记默认 SVG 基线（删则一个联系人换的自选图会串到别的联系人）', file: 'js/personalize.js', needle: 'const captureIcoOrig = (root) => {' },
+  { name: '2026-11-18 图标 IDB 补读落到采集时的联系人（删动态 store＝补读期间切桌面会把 A 的自选图标写进 B）', file: 'js/personalize.js', needle: 'const iconPrefix = window.activePrefix(); // 完整命名空间' },
   { name: '2026-11-17 弹窗读值按「哪一侧变了」取值（删则 ce-box 停在旧值、新输入在 input 时改名读回旧名）', file: 'js/personalize.js', needle: 'if (nativeChanged && !boxChanged) return nativeVal;' },
   { name: '2026-11-17 经期预警每天只发一条（删 _said_warn＝超期/推迟按不同 ctx 一天发好几次）', file: 'js/period.js', needle: "today + '_said_warn'" },
   { name: '2026-11-17 经期判定前重读落盘名额（多开/多处触发时内存副本过期＝同一天重复提醒）', file: 'js/period.js', needle: 'try { notifyCfg = loadNotify(); } catch (e) {}' },
@@ -5763,7 +5769,7 @@ const FIX_SENTINELS = [
   { name: '#1358g 信箱同一把尺：这一轮同步层交不出主键＝读数残缺（删＝#1195e 放掉副本后点进去只见「还没有收到信」）', file: 'js/mail.js', needle: "if (raw === null && !cid && cs.awaitingBigKey && cs.awaitingBigKey(KEY)) {" },
   { name: '#1358h 残缺期空态不许陈述「还没有收到信」（退回只问 mailAuthOk＝库里 20 封时当面说谎，用户据此以为数据没了）', file: 'js/mail.js', needle: "function mailEmptyIsLie() { if (mailSyncCold) return true;" },
   { name: '#1358i 残缺读数没有整包写回资格（删＝冷读那一发里最正常的一发寄信把库里 20 封顶成 1 封＝真的没了）', file: 'js/mail.js', needle: "mailPending = mergeLists(mailPending || [], list || []);" },
-  { name: '#1358j 数据层那三句问话从 activeStore/defaultStore 门面也转出（门面只转 get/set/remove＝走门面的消费方够不到这把尺，信箱冷读那一发照旧说谎）', file: 'js/contacts.js', needle: "awaitingBigKey: (k) => { const d = dyn(); return !!(d.awaitingBigKey && d.awaitingBigKey(k)); }," },
+  { name: '#1358j 数据层那三句问话从 activeStore/defaultStore 门面也转出（门面只转 get/set/remove＝走门面的消费方够不到这把尺，信箱冷读那一发照旧说谎；用户共享键走 targetOf 路由）', file: 'js/contacts.js', needle: "awaitingBigKey: (k) => { const d = targetOf(k); return !!(d.awaitingBigKey && d.awaitingBigKey(k)); }," },
 
   // ==== 2026-09-28 #1353 心情日记「只能记录对方三天心情／第四天把之前的清空」＋「日历上也不显示TA的心情」
   // （vivo X200s／Edge 152、华为 nova12 活力版／Edge，均附「其他设备型号也有出现」「不要覆盖式修补」）====
@@ -6567,6 +6573,22 @@ const FIX_SENTINELS = [
   { name: '#1538b 二线兜底同口径禁猜（删＝X5/旧夸克族二线仍盲猜）', file: 'js/mobile-adapt.js', needle: 'var _realH2 = 0;' },
   { name: '#1539a 收口先清空再量（删＝#1537 把清空整行替换成量底边 ⇒ Chrome 收键盘后 489px 内联高停留 1s＝不能秒收＋输入栏一行消失；恢复清空为第一步、清完量渲染底边超视口才钉）', file: 'js/mobile-adapt.js', needle: "_aPhone.style.height = ''; // #1539：清空必须先做" },
   { name: '#1540a 开新会话即拆收口封锁窗（删＝关了马上再开时，钉高被上一轮 1.2s 墙拦住＝输入栏被键盘盖住一秒才弹上来＝用户实报「打开键盘时输入栏消失一秒」）', file: 'js/mobile-adapt.js', needle: '_aHoldSuppressUntil = 0; _aPhone.style.alignSelf' },
+  { name: '#1541a 用户本人数据按「键」路由到根命名空间（喝水/吃饭/摸鱼等始终共享；可选同步组按开关）', file: 'js/contacts.js', needle: "const targetOf = (k) => (isUserSharedKey(k) ? root() : dyn());" },
+  { name: '#1541b TA 专属的 water-ta-mark 不并入用户共享（删＝TA 的喝水提醒标记串到别的联系人）', file: 'js/contacts.js', needle: "if (key.indexOf('water-ta-') === 0) return false;" },
+  { name: '#1541c 旧数据合并按内容并集（删＝只挑一份＝各联系人分别记过的账目/花草丢一半）', file: 'js/contacts.js', needle: "merged = JSON.stringify(mergeAny(a, b));" },
+  { name: '#1541d 喝水/吃饭/心情等读写走 activeStore（改回 storeFor(当前 cid)＝绕过共享路由，迁移后读空、写回旧桌面）', file: 'js/p2-features.js', needle: "function curStore() { try { return window.activeStore(); } catch (e) { return null; } }" },
+  { name: '#1541g 共享迁移标记免迁（删＝根标记被 migrateLegacy 搬进 default 删根键，每次启动重扫重合并）', file: 'js/contacts.js', needle: "if (r === 'user-shared-migrated-v2') return true;" },
+  { name: '#1541n 账本/备忘/心情同步开关各自独立（删＝只能三类一起同步，用户不能只同步账本）', file: 'js/contacts.js', needle: "const SYNC_GROUPS = {" },
+  { name: '#1541o 关闭同步先复制给每个联系人再清根键（直接关开关＝所有联系人的数据一起变空）', file: 'js/contacts.js', needle: "try { window.xyStore(G).set('user-sync-' + group, '0'); } catch (e) {}" },
+  { name: '#1541p 打开同步强制合并各桌面旧值（不 force＝全局标记已落，旧账本/日记永远合不过来）', file: 'js/contacts.js', needle: 'migrateUserSharedKeys(true);' },
+  { name: '#1541q 同步开关根键免迁（删＝migrateLegacy 把开关搬进 default，刷新后开关失效）', file: 'js/contacts.js', needle: "if (r.indexOf('user-sync-') === 0) return true;" },
+  { name: '#1541r 设置页三个同步开关在位（删＝用户没有入口开启跨联系人同步）', file: 'template.html', needle: 'id="sync-accounting"' },
+  { name: '#1541h 根键写成功才删旧副本（删＝存储写失败时两边都没了，用户账本/日记整本消失）', file: 'js/contacts.js', needle: 'landed[rel] = !!(root.get(rel) != null);' },
+  { name: '#1541i IDB 清单没读全不落迁移标记（删＝只合并了 LS 里那部分就标记完成，IDB-only 的旧数据永远合不过来）', file: 'js/contacts.js', needle: `if (window.__userSharedIdbOk !== false) { try { root.set(USER_SHARED_MARK, '1'); } catch (e) {} }` },
+  { name: '#1541j defaultStore 写共享键直接落根（沿旧逻辑＝写 default 再删根键，共享数据又被搬回桌面）', file: 'js/contacts.js', needle: 'if (isUserSharedKey(k)) { window.xyStore(G).set(k, v); return; }' },
+  { name: '#1541k 功能数据导入把共享键统一落根（删＝旧备份里的 <cid>:账本/日记恢复后仍读不到）', file: 'js/feature-data.js', needle: 'if (window.isUserSharedKey && window.isUserSharedKey(info.suffix)) return { ns: G, suffix: info.suffix };' },
+  { name: '#1541l 每日备忘/心情的 IDB 镜像也落根（删＝LS 配额满时切联系人读不到那份大值）', file: 'js/p2-features.js', needle: "window.idbSet(idbPrefixFor('memo') + ':memo', val)" },
+  { name: '#1541m 心情日记镜像键随共享路由（删＝读写仍停在 <cid>:mood-diary，迁移后整本读空）', file: 'js/mood-diary.js', needle: "function libKey() { return ((window.isUserSharedKey && window.isUserSharedKey(KEY)) ? 'xy-home-v2' : window.activePrefix()) + ':' + KEY; }" },
 ];
 try {
   const built = CHECK_SENTINELS ? '' : readFileSync(join(root, 'index.html'), 'utf8');

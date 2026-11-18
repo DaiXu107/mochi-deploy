@@ -52,7 +52,7 @@ res: [/^ta-ask$/, /^ta-survey$/, /^ta-choose$/, /^ta-curious$/, /^ta-roast$/, /^
 { id: 'requests', name: '跨桌面查岗 / 来电开关', group: '聊天与社交', scope: 'both',
 desc: '跨桌面查岗开关与频率、跨桌面来电、夜间静默模式、待处理请求',
 res: [/^incoming-requests$/, /^desk-checkin-en$/, /^desk-call-en$/, /^desk-freq-mode$/, /^desk-msg-en$/, /^night-mode-en$/] },
-{ id: 'calendar', name: '日历与每日留言', group: '桌面功能', scope: 'desk', page: 'page-calendar',
+{ id: 'calendar', name: '日历与每日留言', group: '桌面功能', scope: 'both', page: 'page-calendar',
 desc: '每日留言、心情与语录历史、恋爱开始日、首次使用日、日历标注',
 res: [/^cal-/, /^memo-(?!app)/, /^mood-history$/, /^quote-history$/, /^today-mood-/, /^first-use-date$/, /^love-start$/, /^memo$/, /^today-mood$/] },
 { id: 'records', name: '纪念与统计', group: '桌面功能', scope: 'desk', page: 'page-home',
@@ -73,7 +73,7 @@ res: [/^tongpin-/] },
 { id: 'shenshou', name: '伸手', group: '桌面功能', scope: 'desk', page: 'page-shenshou',
 desc: '伸手次数、上次伸手时间与字卡',
 res: [/^shenshou-/] },
-{ id: 'water', name: '喝水', group: '桌面功能', scope: 'desk', page: 'page-water',
+{ id: 'water', name: '喝水', group: '桌面功能', scope: 'both', page: 'page-water',
 desc: '喝水目标与历史、连续天数、提醒语',
 res: [/^water-/] },
 { id: 'eat', name: '吃什么', group: '桌面功能', scope: 'desk', page: 'page-eat',
@@ -112,7 +112,7 @@ res: [/^memo-app-/] },
 { id: 'period', name: '经期记录', group: '桌面功能', scope: 'both', page: 'page-period',
 desc: '经期记录与预测、每日状态、关心语与提醒设置',
 res: [/^period-/] },
-{ id: 'accounting', name: '记账', group: '桌面功能', scope: 'desk', page: 'page-accounting',
+{ id: 'accounting', name: '记账', group: '桌面功能', scope: 'both', page: 'page-accounting',
 desc: '账目记录、分类、预算与心意币记录',
 res: [/^accounting-/, /^acc-remind/, /^records-coin/] },
 { id: 'gift', name: '礼物与集市', group: '桌面功能', scope: 'both', page: 'page-market',
@@ -124,7 +124,7 @@ res: [/^decision-/, /^dec-/] },
 { id: 'gdec', name: '群抉择', group: '桌面功能', scope: 'global',
 desc: '群抉择历史、成员与设置（全局，所有桌面共用）',
 res: [/^gdec-/] },
-{ id: 'mood', name: '心情日记', group: '桌面功能', scope: 'desk', page: 'page-mood',
+{ id: 'mood', name: '心情日记', group: '桌面功能', scope: 'both', page: 'page-mood',
 desc: '心情日记条目与记录',
 res: [/^mood-diary$/] },
 { id: 'games', name: '小游戏', group: '桌面功能', scope: 'both',
@@ -415,6 +415,7 @@ function targetOf(f, srcKey, cid) {
 var info = parseKey(srcKey);
 if (!info) return null;
 if (info.suffix.indexOf(MEDIA_PREFIX) === 0) return { ns: G, suffix: info.suffix };
+if (window.isUserSharedKey && window.isUserSharedKey(info.suffix)) return { ns: G, suffix: info.suffix };
 if (f.scope === 'global' || (f.scope === 'both' && info.cid === null)) return { ns: sharedNsOf(f), suffix: info.suffix };
 return { ns: G + ':' + cid, suffix: info.suffix };
 }

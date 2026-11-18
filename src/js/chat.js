@@ -10480,20 +10480,20 @@ applyMoreIconStyle();
 (function bindMoreIconStyleLongPress() {
 let timer = 0, sx = 0, sy = 0, suppressClick = false, pointerSeen = false;
 function cancel() { if (timer) { clearTimeout(timer); timer = 0; } }
+function doToggle() {
+  const next = readMoreIconStyle() === 'plain' ? 'tile' : 'plain';
+  try { localStorage.setItem(MORE_ICON_STYLE_KEY, next); } catch (err) {}
+  applyMoreIconStyle();
+  suppressClick = true;
+  setTimeout(function () { suppressClick = false; }, 900);
+  if (navigator.vibrate) { try { navigator.vibrate(10); } catch (err) {} }
+  toast(next === 'plain' ? '更多功能：纯图标样式' : '更多功能：小方块样式');
+}
 function begin(el, x, y) {
   if (!el || !el.closest || !el.closest('.more-item')) return;
   sx = x; sy = y;
   cancel();
-  timer = setTimeout(function () {
-    timer = 0;
-    const next = readMoreIconStyle() === 'plain' ? 'tile' : 'plain';
-    try { localStorage.setItem(MORE_ICON_STYLE_KEY, next); } catch (err) {}
-    applyMoreIconStyle();
-    suppressClick = true;
-    setTimeout(function () { suppressClick = false; }, 900);
-    if (navigator.vibrate) { try { navigator.vibrate(10); } catch (err) {} }
-    toast(next === 'plain' ? '更多功能：纯图标样式' : '更多功能：小方块样式');
-  }, 550);
+  timer = setTimeout(function () { timer = 0; doToggle(); }, 550);
 }
 function move(x, y) {
   if (!timer) return;
@@ -10505,7 +10505,10 @@ morePanel.addEventListener('pointerdown', function (e) {
   begin(e.target, e.clientX, e.clientY);
 });
 morePanel.addEventListener('pointermove', function (e) { move(e.clientX, e.clientY); }, { passive: true });
-['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) {
+// 2026-11-18：pointercancel 不再取消长按——安卓长按时系统弹「选择/菜单」会先发
+// pointercancel，旧写法在这里把计时器清掉，长按就永远不触发（真机才复现）。
+// 手指真正移动由 pointermove/touchmove 的 12px 阈值取消，滚动不会误触发。
+['pointerup', 'pointerleave'].forEach(function (ev) {
   morePanel.addEventListener(ev, cancel, { passive: true });
 });
 // Pointer Events 被 WebView/旧内核吞掉时用 touch 兜底；真机正常时 pointerSeen=true，不会重复触发。
@@ -10532,7 +10535,11 @@ document.addEventListener('click', function (e) {
   e.stopImmediatePropagation();
 }, true);
 morePanel.addEventListener('contextmenu', function (e) {
-  if (e.target.closest('.more-item')) e.preventDefault();
+  if (!e.target.closest('.more-item')) return;
+  e.preventDefault();
+  // 长按弹出系统菜单（安卓/iOS 长按的必经动作）＝最可靠的长按信号：
+  // 计时器还没到点就由这里补触发一次，手指稍早抬起也能切换成功。
+  if (timer) { clearTimeout(timer); timer = 0; doToggle(); }
 });
 })();
 moreBtn.addEventListener('click', (e) => {

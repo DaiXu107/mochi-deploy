@@ -41,7 +41,7 @@ function loadAll() {
 try { const p = normPkg(JSON.parse(store().get(KEY) || 'null')); if (p) return p; } catch (e) {}
 return { d: {}, days: {} };
 }
-function libKey() { return window.activePrefix() + ':' + KEY; }
+function libKey() { return ((window.isUserSharedKey && window.isUserSharedKey(KEY)) ? 'xy-home-v2' : window.activePrefix()) + ':' + KEY; }
 function parseLib(raw) {
 if (typeof raw !== 'string' || !raw) return null;
 try { return normPkg(JSON.parse(raw)); } catch (e) { return null; }

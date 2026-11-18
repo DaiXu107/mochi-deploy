@@ -61,7 +61,8 @@
   //   「只能记录三天心情，第四天会把之前的清空只剩第四天」。无头实测（纯产物、同一把尺）：库里 6 天＋LS 一份
   //   落后两天的旧包 → 点一次保存 → 库里剩 3 天，中间那几天永久消失，toast 照旧谎报「记下啦」。
   //   判据只取一个当场事实：库里那一格现在有什么。零机型／零 UA 分支。
-  function libKey() { return window.activePrefix() + ':' + KEY; }
+  // 2026-11-18：心情日记是我的数据，跨联系人共用——IDB/LS 镜像键同样落根命名空间。
+  function libKey() { return ((window.isUserSharedKey && window.isUserSharedKey(KEY)) ? 'xy-home-v2' : window.activePrefix()) + ':' + KEY; }
   function parseLib(raw) {
     if (typeof raw !== 'string' || !raw) return null;
     try { return normPkg(JSON.parse(raw)); } catch (e) { return null; }

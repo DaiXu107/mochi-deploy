@@ -7,21 +7,24 @@
   const uid = window.activePrefix();
   const store = window.activeStore();
   // 备忘/心情历史：localStorage + IndexedDB 双写；启动时从 IDB 回填缺失键（导入/清空后不丢记录）
+  // 2026-11-18：用户本人数据跨联系人共用——显式 IDB 镜像也按共享键落根命名空间，
+  // 否则切联系人后按 activePrefix() 找不到那份大值。
+  function idbPrefixFor(k) { return (window.isUserSharedKey && window.isUserSharedKey(k)) ? 'xy-home-v2' : window.activePrefix(); }
   function pushHist(key, text) {
     try {
       const list = JSON.parse(store.get(key) || '[]');
       list.unshift({ text: text, ts: Date.now() });
       if (list.length > 200) list.length = 200;
       store.set(key, JSON.stringify(list));
-      try { if (window.idbSet) window.idbSet(window.activePrefix() + ':' + key, JSON.stringify(list)); } catch (e) {}
+      try { if (window.idbSet) window.idbSet(idbPrefixFor(key) + ':' + key, JSON.stringify(list)); } catch (e) {}
     } catch (e) {}
   }
   function restoreHist(key) {
     try {
       if (window.idbGet && !store.get(key)) {
-        const myPrefix = window.activePrefix();
+        const myPrefix = idbPrefixFor(key);
         window.idbGet(myPrefix + ':' + key).then(v => {
-          if (window.activePrefix() !== myPrefix) return;
+          if (myPrefix !== 'xy-home-v2' && window.activePrefix() !== myPrefix) return;
           if (!v) return;
           try { store.set(key, typeof v === 'string' ? v : JSON.stringify(v)); } catch (e) {}
         });
@@ -1551,7 +1554,7 @@ if (ckRefresh) {
         if (legacy) {
           const ds = dayStr(new Date());
           store.set(curKey + '-' + ds, legacy);
-          try { if (window.idbSet) window.idbSet(window.activePrefix() + ':' + curKey + '-' + ds, legacy); } catch (e) {}
+          try { if (window.idbSet) window.idbSet(idbPrefixFor(curKey + '-' + ds) + ':' + curKey + '-' + ds, legacy); } catch (e) {}
           return legacy;
         }
       }
@@ -1567,11 +1570,11 @@ if (ckRefresh) {
           const val = (v || '').trim();
           if (val) {
             memoEl.textContent = val; store.set('memo', val); pushHist('memo-history', val);
-            try { if (window.idbSet) window.idbSet(window.activePrefix() + ':memo', val); } catch (e) {}
+            try { if (window.idbSet) window.idbSet(idbPrefixFor('memo') + ':memo', val); } catch (e) {}
             // v3.7.x：补写按日期快照，供本周日常点击其他日期查看当日备忘（桌面显示也读它）
             const ds = dayStr(new Date());
             store.set('memo-' + ds, val);
-            try { if (window.idbSet) window.idbSet(window.activePrefix() + ':memo-' + ds, val); } catch (e) {}
+            try { if (window.idbSet) window.idbSet(idbPrefixFor('memo-' + ds) + ':memo-' + ds, val); } catch (e) {}
           }
         });
       }
@@ -1587,11 +1590,11 @@ if (ckRefresh) {
           const val = (v || '').trim();
           if (val) {
             moodEl.textContent = val; store.set('today-mood', val); pushHist('mood-history', val);
-            try { if (window.idbSet) window.idbSet(window.activePrefix() + ':today-mood', val); } catch (e) {}
+            try { if (window.idbSet) window.idbSet(idbPrefixFor('today-mood') + ':today-mood', val); } catch (e) {}
             // v3.7.x：补写按日期快照，供本周日常点击其他日期查看当日心情（桌面显示也读它）
             const ds = dayStr(new Date());
             store.set('today-mood-' + ds, val);
-            try { if (window.idbSet) window.idbSet(window.activePrefix() + ':today-mood-' + ds, val); } catch (e) {}
+            try { if (window.idbSet) window.idbSet(idbPrefixFor('today-mood-' + ds) + ':today-mood-' + ds, val); } catch (e) {}
           }
         }, { pills: moods.map(m => ({ label: m, value: m })), pill: todayMoodText() || '' });
       }
@@ -2526,7 +2529,10 @@ if (ckRefresh) {
 // 同频：TA 此刻状态（字卡拼）+ 敲三下暗号（跨世界弱连接，甜蜜安稳，不往危机写）。
 // 伸手：长按伸手，有概率摸到（震动+暖光+悄悄话字卡），有概率什么都没有——贴合"偶尔能感觉到"。
 (function () {
-  function curStore() { try { return window.storeFor(window.__activeCid || 'default'); } catch (e) { return null; } }
+  // 2026-11-18：改走 activeStore——它按「键」动态路由：喝水/吃饭/心情等用户本人数据
+  // 落根命名空间（跨联系人一份），同频/伸手等关系数据仍落当前联系人桌面。
+  // 仍用 storeFor(当前 cid) 会让这两组键绕过共享路由，迁移后读空、写回旧桌面。
+  function curStore() { try { return window.activeStore(); } catch (e) { return null; } }
   function vibrate(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {} }
   function editingNow() { return Array.from(document.querySelectorAll('.app-grid')).some(g => g.classList.contains('editing')); }
   // v3.13.x：系统预设字卡池读取（字卡库「花园/同频/伸手/喝水/存钱罐」tab 同源）；

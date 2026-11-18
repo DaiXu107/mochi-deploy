@@ -14007,7 +14007,7 @@ color: var(--gh-faint);
            （名称+版号 / 部署时间+实时秒 / 版本检测行）收成一行；检测行随 ver-check.js 退役删除。
            data-build-ts / data-version 两属性保留：device.js 诊断、bg-keep 自检、pwa.js 旧包检测
            仍只读属性（诊断版本号走 data-version 兜底，device.js 两处缓存原生支持）。 -->
-      <div class="splash-ver" id="splash-ver" data-build-ts="1794898639548" data-version="v8.6">
+      <div class="splash-ver" id="splash-ver" data-build-ts="1794995987970" data-version="v8.6">
         <span class="sv-app">Mochi 字卡传讯 已完结停更</span>
       </div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
@@ -15226,6 +15226,25 @@ color: var(--gh-faint);
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/><circle cx="9" cy="11" r="1.2" fill="#111111"/><circle cx="13" cy="11" r="1.2" fill="#111111"/><circle cx="17" cy="11" r="1.2" fill="#111111"/></svg></div>
           <div class="txt">开启群聊</div>
           <label class="toggle"><input type="checkbox" id="sf-group-chat"><span class="tk"></span></label>
+        </div>
+      </div>
+      <!-- 2026-11-18：账本 / 每日备忘 / 心情日记默认各联系人独立，可单独开启跨联系人同步。
+           contacts.js 负责读写开关并做数据合并/分发。 -->
+      <div class="set-group glass" id="user-sync-group">
+        <div class="set-row" id="row-sync-accounting">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 016.5 3H20v18H6.5A2.5 2.5 0 014 18.5z"/><path d="M4 18.5A2.5 2.5 0 016.5 16H20"/></svg></div>
+          <div class="txt">账本跨联系人同步<span class="sub">默认各联系人独立记账；开启后自动合并各联系人的账目，共用同一本账</span></div>
+          <label class="toggle"><input type="checkbox" id="sync-accounting"><span class="tk"></span></label>
+        </div>
+        <div class="set-row" id="row-sync-memo">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l5 5v13H6z"/><path d="M15 3v5h5"/><path d="M9 12h6M9 16h6"/></svg></div>
+          <div class="txt">每日备忘跨联系人同步<span class="sub">默认只记在当前联系人的桌面；开启时以当前联系人的内容为准，之后共用</span></div>
+          <label class="toggle"><input type="checkbox" id="sync-memo"><span class="tk"></span></label>
+        </div>
+        <div class="set-row" id="row-sync-mood">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4 4 0 007 0"/><circle cx="9" cy="9.5" r="1" fill="#111111"/><circle cx="15" cy="9.5" r="1" fill="#111111"/></svg></div>
+          <div class="txt">心情日记跨联系人同步<span class="sub">默认各联系人独立；开启后合并各天记录，同一天以当前联系人的为准</span></div>
+          <label class="toggle"><input type="checkbox" id="sync-mood"><span class="tk"></span></label>
         </div>
       </div>
       <!-- #646：打开应用时的入口行为（默认均关闭）——「打开时先进入此间」+「打开时显示联系人列表」+「默认进入的桌面」（contacts.js 接线） -->
@@ -26135,4 +26154,4 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 </body>
 </html>
 
-<!-- __MOCHI_EOF__ mwkcb1z0 -->
+<!-- __MOCHI_EOF__ mwly9khu -->

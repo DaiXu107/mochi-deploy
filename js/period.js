@@ -924,6 +924,12 @@ if (today >= r.start && today <= end) { toast('当前已在经期中'); return; 
 recs.push({ id: newId(), start: today, end: null });
 recs = normalize(recs);
 saveRecs(recs);
+try {
+notifyCfg = loadNotify();
+notifyCfg.fired = notifyCfg.fired || {};
+notifyCfg.fired[today + '_said_warn'] = 1;
+saveNotify(notifyCfg);
+} catch (eW) {}
 toast('已记录经期开始');
 render();
 checkNotify();
@@ -1118,6 +1124,7 @@ try { new Notification(title, { body: body }); } catch (e) {}
 }
 function checkNotify() {
 try { notifyCfg = loadNotify(); } catch (e) {}
+try { recs = loadRecs(); cfg = loadCfg(); } catch (e) {}
 if (!notifyCfg.enabled) return;
 if (!('Notification' in window) || Notification.permission !== 'granted') return;
 var nowH = new Date().getHours();
@@ -1148,7 +1155,17 @@ notifyAssist('经期提醒', '经期第 ' + st.dayOfCycle + ' 天 · 注意保�
 markSaid('inPeriod');
 fired = true;
 }
-if (st.phase === 'safe' && /推迟/.test(st.title)) {
+var recCoversToday = false;
+try {
+var _todayK = today;
+for (var _ri = 0; _ri < recs.length; _ri++) {
+var _r = recs[_ri];
+if (!_r || !_r.start) continue;
+var _end = _r.end || addDays(_r.start, cfg.periodLen - 1);
+if (_todayK >= _r.start && _todayK <= _end) { recCoversToday = true; break; }
+}
+} catch (eR) {}
+if (!recCoversToday && st.phase === 'safe' && /推迟/.test(st.title)) {
 var m = st.title.match(/推迟 (\d+) 天/);
 var delayDays = m ? parseInt(m[1], 10) : 0;
 var dTitle = '经期延迟提醒', dTxt = '', dCtx = '';
@@ -1208,6 +1225,7 @@ return tier === 'free' ? d === advs[0] : true;
 }
 function checkCare() {
 try { notifyCfg = loadNotify(); } catch (e) {}
+try { recs = loadRecs(); cfg = loadCfg(); } catch (e) {}
 if (!notifyCfg.careEnabled) return;
 if (!window.chatAddIn) return;
 var _h = new Date().getHours();
@@ -1231,7 +1249,16 @@ var d = diffDays(today, st.nextStart);
 if (advHit(d, tier, false)) { shouldCare = true; ctx = 'adv' + d; kind = 'adv'; }
 }
 var delayDays = 0;
-if (!shouldCare && st.phase === 'safe' && /推迟/.test(st.title)) {
+var _recCoversToday = false;
+try {
+for (var _ci = 0; _ci < recs.length; _ci++) {
+var _cr = recs[_ci];
+if (!_cr || !_cr.start) continue;
+var _ce = _cr.end || addDays(_cr.start, cfg.periodLen - 1);
+if (today >= _cr.start && today <= _ce) { _recCoversToday = true; break; }
+}
+} catch (eC) {}
+if (!shouldCare && !_recCoversToday && st.phase === 'safe' && /推迟/.test(st.title)) {
 var m = st.title.match(/推迟 (\d+) 天/);
 delayDays = m ? parseInt(m[1], 10) : 0;
 if (tier === 'rule' && delayDays >= 5) { shouldCare = true; ctx = delayDays >= 10 ? 'delayDeep' : 'delay'; kind = 'delay'; }

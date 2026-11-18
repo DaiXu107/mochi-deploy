@@ -237,6 +237,76 @@
     // 「确认一次永久记住」自上线起就被每次启动吃掉（用户每次开屏都要重新勾选）。#1475 起该键
     // 存「时间戳＋声明版本」JSON（改版自动重确认），是同意举证链的本体，必须留在根命名空间。
     'age-confirmed'];
+  // ===== 2026-11-18：用户本人数据跨联系人共用 =====
+  // 1）「身体/习惯」类（喝水、摸鱼/工作累计）在所有联系人桌面只有一份；
+  // 2）账本、每日备忘、心情日记默认仍按联系人隔离，用户在设置里单独开「同步」后才共用；
+  // 3）花园、占卜历史、昵称头像/头像库属于联系人自己的东西，始终隔离，不参与共享。
+  // activeStore() 按「键」路由到根命名空间 xy-home-v2:<key>，启动时把散落在
+  // 各 <cid>: 命名空间里的旧值合并过去。
+  const USER_SHARED_EXACT = new Set([
+    // 喝水（我的目标/记录/自定义提醒）
+    'water-today', 'water-goal', 'water-history', 'water-size', 'water-msgs',
+    // 我的摸鱼 / 工作累计
+    'fish-total', 'fish-day-add', 'fish-day-log', 'fish-combo-best',
+    'work-total', 'work-day-add', 'weekend-fish'
+  ]);
+  const USER_SHARED_PREFIX = [
+    'water-', 'fish-caught-me:'
+  ];
+  // 带日期的按天键必须精确到日期形态：day-fish-/day-work- 前缀会误伤
+  // TA 的 day-fish-ta-/day-work-ta-（TA 的数值属于这段关系）。
+  const USER_SHARED_PATTERNS = [
+    /^day-fish-(?!ta-)\d{4}-\d{2}-\d{2}$/,
+    /^day-work-(?!ta-)\d{4}-\d{2}-\d{2}$/
+  ];
+  // 可选同步的三组：默认关（各联系人独立），开关写在根键 user-sync-<组>。
+  const SYNC_GROUPS = {
+    accounting: {
+      keys: ['accounting-records', 'accounting-categories', 'accounting-budget'],
+      patterns: []
+    },
+    memo: {
+      keys: ['memo', 'memo-history'],
+      patterns: [/^memo-\d{4}-\d{2}-\d{2}$/]
+    },
+    mood: {
+      keys: ['mood-diary', 'today-mood', 'mood-history'],
+      patterns: [/^today-mood-/]
+    }
+  };
+  const SYNC_GROUP_NAMES = { accounting: '账本', memo: '每日备忘', mood: '心情日记' };
+  function syncGroupOfKey(key) {
+    for (const g in SYNC_GROUPS) {
+      const cfg = SYNC_GROUPS[g];
+      if (cfg.keys.indexOf(key) >= 0) return g;
+      for (let i = 0; i < cfg.patterns.length; i++) if (cfg.patterns[i].test(key)) return g;
+    }
+    return '';
+  }
+  function syncEnabled(group) {
+    try {
+      if (!window.xyStore) return false;
+      return window.xyStore(G).get('user-sync-' + group) === '1';
+    } catch (e) { return false; }
+  }
+  function isUserSharedKey(k) {
+    const key = String(k || '');
+    if (!key) return false;
+    if (key.indexOf('water-ta-') === 0) return false;
+    if (USER_SHARED_EXACT.has(key)) return true;
+    for (let p = 0; p < USER_SHARED_PATTERNS.length; p++) {
+      if (USER_SHARED_PATTERNS[p].test(key)) return true;
+    }
+    for (let i = 0; i < USER_SHARED_PREFIX.length; i++) {
+      if (key.indexOf(USER_SHARED_PREFIX[i]) === 0) return true;
+    }
+    const g = syncGroupOfKey(key);
+    return !!(g && syncEnabled(g));
+  }
+  window.isUserSharedKey = isUserSharedKey;
+  window.mochiSyncGroupOfKey = syncGroupOfKey;
+  window.mochiSyncEnabled = syncEnabled;
+
   function isExcluded(k) {
     const r = k.slice(G.length + 1);
     // #233：__ 前缀＝系统键（idb.js 根命名空间专用：__wr-journal 写日志＝LS 回滚自愈
@@ -245,6 +315,12 @@
     // 每刷新清空、大键/脏键索引反复丢失，LS 回滚家族（#82/#88/#226/#229）自愈被持续削弱。
     if (r.indexOf('__') === 0) return true;
     if (EXCLUDE.indexOf(r) >= 0) return true;
+    // 2026-11-18：用户本人数据（我的账本/日记/花园/喝水/吃饭/昵称头像…）是根命名空间
+    // 全局键，migrateLegacy 绝不能把它们搬进 default 桌面。
+    if (isUserSharedKey(r)) return true;
+    // 共享数据迁移标记 / 同步开关同样是根键：被当旧业务键搬进 default 后失效。
+    if (r === 'user-shared-migrated-v2') return true;
+    if (r.indexOf('user-sync-') === 0) return true;
     // #1541：每日首开已读标记 splash-seen:<日期>——键名带日期后缀，EXCLUDE 精确名单盖不住，
     // 按前缀挡迁移（clock.js 每日写当日新键，昨天的自然过期，无需回收）。
     if (r.indexOf('splash-seen:') === 0) return true;
@@ -301,11 +377,253 @@
   // 当前激活命名空间前缀（动态读取，切换后新调用即生效）
   window.activePrefix = function () { return G + ':' + (window.__activeCid || 'default'); };
 
+  // ===== 2026-11-18：把散落在各联系人命名空间里的「用户本人数据」合并到根命名空间 =====
+  // 旧版本这些键写在 xy-home-v2:<cid>: 下（每个联系人各一份）。现在 activeStore() 已把它们
+  // 路由到根键，这里把已有数据一次性搬过去：同一键取「内容最长」的那份（旧包完整度最高），
+  // 写进根键后再删各 <cid>: 副本。只跑一次（根键标记），失败不写标记、下次重试。
+  const USER_SHARED_MARK = 'user-shared-migrated-v2';
+  function migrateUserSharedKeys(force) {
+    try {
+      const root = window.xyStore(G);
+      if (!root) return;
+      if (!force && root.get(USER_SHARED_MARK) === '1') return;
+      if (window.__userSharedMigrating) return;
+      window.__userSharedMigrating = true;
+      window.__userSharedIdbOk = true; // IDB 清单没读全时不落「已迁移」标记，下次启动重试
+      const cids = new Set(['default']);
+      try { (window.getContacts ? window.getContacts() : []).forEach(function (c) { if (c && c.id) cids.add(c.id); }); } catch (e) {}
+      const vals = {}; // rel -> [{ cid, raw }]
+      const add = (cid, rel, val) => {
+        if (typeof val !== 'string' || !val.length) return;
+        if (!vals[rel]) vals[rel] = [];
+        vals[rel].push({ cid: cid, raw: val });
+      };
+      // 深度合并：数组按 id 合并、对象键并集、数字取大、字符串取更长
+      const mergeAny = (a, b) => {
+        if (a == null) return b;
+        if (b == null) return a;
+        if (Array.isArray(a) && Array.isArray(b)) {
+          const out = a.slice();
+          b.forEach(function (item) {
+            const id = item && typeof item === 'object' ? item.id : null;
+            if (id != null) {
+              const hit = out.find(function (x) { return x && typeof x === 'object' && x.id === id; });
+              if (hit) {
+                Object.keys(item).forEach(function (k2) {
+                  if (hit[k2] === undefined || hit[k2] === null || hit[k2] === '') hit[k2] = item[k2];
+                  else if (typeof hit[k2] === 'object' && typeof item[k2] === 'object') hit[k2] = mergeAny(hit[k2], item[k2]);
+                });
+                return;
+              }
+            }
+            const sig = JSON.stringify(item);
+            if (!out.some(function (x) { return JSON.stringify(x) === sig; })) out.push(item);
+          });
+          return out;
+        }
+        if (a && b && typeof a === 'object' && typeof b === 'object') {
+          const out = {};
+          Object.keys(a).forEach(function (k2) { out[k2] = a[k2]; });
+          Object.keys(b).forEach(function (k2) {
+            if (out[k2] === undefined) out[k2] = b[k2];
+            else if (typeof out[k2] === 'number' && typeof b[k2] === 'number') out[k2] = Math.max(out[k2], b[k2]);
+            else if (out[k2] && b[k2] && typeof out[k2] === 'object' && typeof b[k2] === 'object') out[k2] = mergeAny(out[k2], b[k2]);
+            else if (typeof out[k2] === 'string' && typeof b[k2] === 'string') { if (b[k2].length >= out[k2].length) out[k2] = b[k2]; }
+          });
+          return out;
+        }
+        if (typeof a === 'number' && typeof b === 'number') return Math.max(a, b);
+        if (typeof a === 'string' && typeof b === 'string') return b.length >= a.length ? b : a;
+        return b;
+      };
+      const scanLocal = () => {
+        for (let i = 0; i < localStorage.length; i++) {
+          const full = localStorage.key(i);
+          if (!full || full.indexOf(G + ':') !== 0) continue;
+          const rest = full.slice(G.length + 1);
+          const m = rest.match(/^([^:]+):(.+)$/);
+          if (!m) continue;
+          const cid = m[1], rel = m[2];
+          if (!cids.has(cid)) continue;
+          if (!isUserSharedKey(rel)) continue;
+          try { add(cid, rel, localStorage.getItem(full)); } catch (e) {}
+        }
+      };
+      const finish = () => {
+        const landed = {};
+        try {
+          Object.keys(vals).forEach(function (rel) {
+            let curRaw = null;
+            try { curRaw = root.get(rel); } catch (e) {}
+            let merged = null;
+            if (curRaw) merged = curRaw;
+            // 同一天两条不同内容（备忘/心情）没法真正「相加」——以当前联系人这份为准，
+            // 所以把当前联系人的值排在最后合并（字符串平局取后一份）。
+            const activeCid = window.__activeCid || 'default';
+            const list = vals[rel].slice().sort(function (x, y) {
+              return (x.cid === activeCid ? 1 : 0) - (y.cid === activeCid ? 1 : 0);
+            });
+            list.forEach(function (item) {
+              const raw = item.raw;
+              if (merged === raw) return;
+              if (!merged) { merged = raw; return; }
+              try {
+                const a = JSON.parse(merged), b = JSON.parse(raw);
+                merged = JSON.stringify(mergeAny(a, b));
+              } catch (e) {
+                if (typeof raw === 'string' && typeof merged === 'string' && raw.length >= merged.length) merged = raw;
+              }
+            });
+            try {
+              if (merged != null) root.set(rel, merged);
+              // 只有根键真读得回来才删旧副本——写失败还照删＝两边都没了。
+              landed[rel] = !!(root.get(rel) != null);
+            } catch (e2) { landed[rel] = false; }
+          });
+          // 根键写好后清掉各联系人命名空间里的副本（值已全部并入）
+          Object.keys(vals).forEach(function (rel) {
+            if (!landed[rel]) return;
+            cids.forEach(function (cid) {
+              if (cid === 'default') return;
+              try { window.xyStore(G + ':' + cid).remove(rel); } catch (e) {}
+            });
+            try { window.xyStore(G + ':default').remove(rel); } catch (e) {}
+          });
+          if (window.__userSharedIdbOk !== false) { try { root.set(USER_SHARED_MARK, '1'); } catch (e) {} }
+        } catch (e) {
+          window.__userSharedMigrating = false;
+          return;
+        }
+        window.__userSharedMigrating = false;
+        try { document.dispatchEvent(new CustomEvent('user-shared-migrated')); } catch (e) {}
+      };
+      scanLocal();
+      if (window.idbGetAllKeys && window.idbGet) {
+        window.idbGetAllKeys().then(function (keys) {
+          if (!Array.isArray(keys)) window.__userSharedIdbOk = false;
+          const jobs = [];
+          (keys || []).forEach(function (full) {
+            if (typeof full !== 'string' || full.indexOf(G + ':') !== 0) return;
+            const rest = full.slice(G.length + 1);
+            const m = rest.match(/^([^:]+):(.+)$/);
+            if (!m) return;
+            const cid = m[1], rel = m[2];
+            if (!cids.has(cid)) return;
+            if (!isUserSharedKey(rel)) return;
+            jobs.push(window.idbGet(full).then(function (v) { if (typeof v === 'string') add(cid, rel, v); }).catch(function () {}));
+          });
+          Promise.all(jobs).then(finish).catch(finish);
+        }).catch(function () { window.__userSharedIdbOk = false; finish(); });
+      } else finish();
+    } catch (e) {
+      window.__userSharedMigrating = false;
+    }
+  }
+  window.migrateUserSharedKeys = migrateUserSharedKeys;
+
+  // 用户本人数据合并迁移：等 IndexedDB 回填完成再跑（否则会把「还没回填」当没有，标记提前落地）
+  function scheduleUserSharedMigrate() {
+    try {
+      if (window.__mochiDataReady) { setTimeout(migrateUserSharedKeys, 800); return; }
+      document.addEventListener('mochi-restore-done', function () { setTimeout(migrateUserSharedKeys, 800); }, { once: true });
+      setTimeout(migrateUserSharedKeys, 8000); // 兜底（事件丢失/导入后未派发）
+    } catch (e) {}
+  }
+  scheduleUserSharedMigrate();
+
+  // ===== 账本 / 每日备忘 / 心情日记：可选的跨联系人同步 =====
+  function syncGroupMatches(group, rel) {
+    const cfg = SYNC_GROUPS[group];
+    if (!cfg) return false;
+    if (cfg.keys.indexOf(rel) >= 0) return true;
+    for (let i = 0; i < cfg.patterns.length; i++) if (cfg.patterns[i].test(rel)) return true;
+    return false;
+  }
+  // 收集根命名空间里属于该组的键值（LS + IDB 两处都看，兼容大键只进 IDB 的情况）
+  function collectRootGroupVals(group, cb) {
+    const out = {};
+    const pref = G + ':';
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const full = localStorage.key(i);
+        if (!full || full.indexOf(pref) !== 0) continue;
+        const rel = full.slice(pref.length);
+        if (rel.indexOf(':') >= 0) continue; // <cid>:<key> 不是根键
+        if (!syncGroupMatches(group, rel)) continue;
+        try { const v = localStorage.getItem(full); if (typeof v === 'string') out[rel] = v; } catch (e) {}
+      }
+    } catch (e) {}
+    if (!window.idbGetAllKeys || !window.idbGet) { cb(out); return; }
+    window.idbGetAllKeys().then(function (keys) {
+      const jobs = [];
+      (keys || []).forEach(function (full) {
+        if (typeof full !== 'string' || full.indexOf(pref) !== 0) return;
+        const rel = full.slice(pref.length);
+        if (rel.indexOf(':') >= 0 || out[rel] != null) return;
+        if (!syncGroupMatches(group, rel)) return;
+        jobs.push(window.idbGet(full).then(function (v) {
+          if (typeof v === 'string') out[rel] = v;
+        }).catch(function () {}));
+      });
+      Promise.all(jobs).then(function () { cb(out); }).catch(function () { cb(out); });
+    }).catch(function () { cb(out); });
+  }
+  // 关闭同步：把共享那份复制给每个联系人（各自一份），再清掉根键、关开关——
+  // 不能直接关开关，否则各联系人桌面会一起「变空」。
+  function disableSyncGroup(group, cb) {
+    collectRootGroupVals(group, function (vals) {
+      const rels = Object.keys(vals);
+      const cids = ['default'];
+      try { (window.getContacts ? window.getContacts() : []).forEach(function (c) { if (c && c.id && cids.indexOf(c.id) < 0) cids.push(c.id); }); } catch (e) {}
+      rels.forEach(function (rel) {
+        cids.forEach(function (cid) {
+          try { window.xyStore(G + ':' + cid).set(rel, vals[rel]); } catch (e) {}
+        });
+      });
+      try { window.xyStore(G).set('user-sync-' + group, '0'); } catch (e) {}
+      rels.forEach(function (rel) { try { window.xyStore(G).remove(rel); } catch (e) {} });
+      if (cb) { try { cb(); } catch (e) {} }
+    });
+  }
+  // 开关入口：on=true 先开开关再合并各桌面旧值到根键；on=false 先分发再关。
+  window.mochiSetSyncGroup = function (group, on) {
+    if (!SYNC_GROUPS[group]) return false;
+    if (on) {
+      try { window.xyStore(G).set('user-sync-' + group, '1'); } catch (e) {}
+      migrateUserSharedKeys(true);
+      setTimeout(function () { migrateUserSharedKeys(true); }, 1600); // 上一轮迁移在跑时的补跑
+    } else {
+      disableSyncGroup(group);
+    }
+    return true;
+  };
+  function bindUserSyncToggles() {
+    Object.keys(SYNC_GROUPS).forEach(function (group) {
+      const el = document.getElementById('sync-' + group);
+      if (!el) return;
+      function syncUI() {
+        try { el.checked = window.xyStore(G).get('user-sync-' + group) === '1'; } catch (e) { el.checked = false; }
+      }
+      syncUI();
+      el.addEventListener('change', function () {
+        window.mochiSetSyncGroup(group, !!el.checked);
+      });
+    });
+  }
+  try {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindUserSyncToggles, { once: true });
+    else bindUserSyncToggles();
+  } catch (e) {}
+
   // 默认联系人专属存储：优先读 default 命名空间，回退读旧版顶层键（兼容未迁移老数据）
   function defaultStore() {
     const ns = G + ':default';
     return {
       get(k) {
+        // 2026-11-18：用户本人数据只有根键一份，不再落 default 命名空间。
+        if (isUserSharedKey(k)) {
+          try { const rv = window.xyStore(G).get(k); if (rv !== null) return rv; } catch (e) {}
+        }
         let v = null;
         try { v = window.xyStore(ns).get(k); } catch (e) {}
         if (v !== null) return v;
@@ -313,6 +631,8 @@
         return v;
       },
       set(k, v) {
+        // 共享键直接写根命名空间——沿用旧逻辑会「写 default 再删根键」，等于把共享数据搬回桌面。
+        if (isUserSharedKey(k)) { window.xyStore(G).set(k, v); return; }
         window.xyStore(ns).set(k, v);
         // 写入后彻底清掉旧顶层键（含内存缓存）——否则 get 回退路径会读到残留旧值
         try { window.xyStore(G).remove(k); } catch (e) {}
@@ -353,6 +673,11 @@
         try { if (cb) cb(); } catch (e3) {}
       },
       remove(k) {
+        if (isUserSharedKey(k)) {
+          try { window.xyStore(G).remove(k); } catch (e) {}
+          try { window.xyStore(ns).remove(k); } catch (e2) {} // 清升级前的旧桌面副本
+          return;
+        }
         window.xyStore(ns).remove(k);
         // 旧顶层键同样彻底清（memoryCache + LS + IDB 三处）——
         // 只删 LS/IDB 会漏 memoryCache，get 回退读到残留旧值（如「恢复默认」后颜色又回来）
@@ -373,17 +698,36 @@
       const cid = window.__activeCid || 'default';
       return cid === 'default' ? defaultStore() : window.xyStore(G + ':' + cid);
     };
+    const root = function () { return window.xyStore(G); };
+    const targetOf = (k) => (isUserSharedKey(k) ? root() : dyn());
     return {
-      get: (k) => dyn().get(k),
-      set: (k, v) => dyn().set(k, v),
-      remove: (k) => dyn().remove(k),
+      get: (k) => {
+        // 2026-11-18：用户本人数据走根命名空间。迁移前的旧值仍在各联系人的命名空间里，
+        // 根键读空时回退读当前桌面那份，保证升级当次就能看到旧数据（迁移任务随后合并）。
+        if (isUserSharedKey(k)) {
+          let v = null;
+          try { v = root().get(k); } catch (e) {}
+          if (v === null || v === undefined) { try { return dyn().get(k); } catch (e2) { return null; } }
+          return v;
+        }
+        return dyn().get(k);
+      },
+      set: (k, v) => targetOf(k).set(k, v),
+      remove: (k) => {
+        if (isUserSharedKey(k)) {
+          try { root().remove(k); } catch (e) {}
+          try { dyn().remove(k); } catch (e2) {} // 顺带清掉旧命名空间残留
+          return;
+        }
+        dyn().remove(k);
+      },
       // FIX 2026-09-28 #1358j：那三句问话一并从门面转出（dyn() 动态绑定当前桌面，与 get/set 同规格）——
       //   缺了它们，各页顶上的 store 就够不到数据层那把「这一格读空而库里本该有」的尺。
       //   够不到的那一页不许被当成「库里没有」：回调照叫一次，让调用方按自己那条链正常画。
-      awaitingBigKey: (k) => { const d = dyn(); return !!(d.awaitingBigKey && d.awaitingBigKey(k)); },
-      requestBigKey: (k) => { const d = dyn(); try { if (d.requestBigKey) d.requestBigKey(k); } catch (e) {} },
+      awaitingBigKey: (k) => { const d = targetOf(k); return !!(d.awaitingBigKey && d.awaitingBigKey(k)); },
+      requestBigKey: (k) => { const d = targetOf(k); try { if (d.requestBigKey) d.requestBigKey(k); } catch (e) {} },
       whenBigKeyBack: (k, cb) => {
-        const d = dyn();
+        const d = targetOf(k);
         if (d.whenBigKeyBack) { d.whenBigKeyBack(k, cb); return; }
         try { if (cb) cb(); } catch (e2) {}
       }

@@ -1924,9 +1924,25 @@ try {
     g.querySelectorAll('.app').forEach(a => { if (a.dataset.app) ICON_HOME_GRID[a.dataset.app] = gid; });
   });
   // 给每个图标存一份原始 SVG，清除时还原
-  document.querySelectorAll('.app .app-ico').forEach(ico => {
-    if (!ico.dataset.orig) ico.dataset.orig = ico.innerHTML;
-  });
+  const captureIcoOrig = (root) => {
+    (root || document).querySelectorAll('.app .app-ico').forEach(ico => {
+      if (ico.dataset.orig) return;
+      if (ico.querySelector('img')) return; // 当前已是自选图＝不能当作默认
+      ico.dataset.orig = ico.innerHTML;
+    });
+  };
+  captureIcoOrig();
+  // 2026-11-18：同频/伸手/喝水/心意市集等图标是运行时注入的，脚本加载时还不在 DOM，
+  // 没有基线 ⇒ 一个联系人换了自选图后，切到别的联系人（该键没有自选图）时
+  // restoreAppIcons 无处可还原，只能继续显示上一桌面的图＝「图标串桌面」。
+  // 监听新增图标，在它们还是默认 SVG 时补记基线。
+  try {
+    const icoMo = new MutationObserver(function () {
+      if (!document.querySelector('.app .app-ico:not([data-orig])')) return;
+      captureIcoOrig();
+    });
+    icoMo.observe(document.getElementById('page-phone') || document.body, { childList: true, subtree: true });
+  } catch (eMo) {}
   // v3.27.x：自定义图标图片透明度——仅对上传的 <img> 生效（默认 SVG 图标不受影响），
   // 与小组件透明度同款 0~100 百分比，存 app-icon-opacity-<key>（per-cid），100 不存
   const applyAppIconOpacity = (app, pct) => {
@@ -1995,6 +2011,10 @@ try {
       if (saved && saved.length > 500 * 1024) {
         try { if (saved.length > 12 * 1024 * 1024) store.remove('app-icon-' + app.dataset.app); } catch (e) {}
         saved = null;
+      }
+      if (saved && ico && !ico.dataset.orig && !ico.querySelector('img')) {
+        // 兜底：应用自选图之前先把当前默认 SVG 记成基线，之后切到没图的那位才能还原
+        ico.dataset.orig = ico.innerHTML;
       }
       if (saved) {
         // FIX 2026-09-07 #249 切桌面卡死：恒等跳过——图标没换不重建 img。切换联系人
@@ -2278,7 +2298,16 @@ try {
   // 在 filter 与 slice 之间换桌面，把别人的图标值写进当前桌面。
   try {
     if (window.idbGetAllKeys) {
-      const iconPfx = window.activePrefix() + ':';
+      const iconPrefix = window.activePrefix(); // 完整命名空间，如 xy-home-v2:default
+      const iconPfx = iconPrefix + ':';
+      // 2026-11-18：写回必须落到「采集时那个联系人」的固定存储。
+      // 旧写法用动态 store：IDB 读取是异步的，用户在读回完成前切了联系人，
+      // 捡到的 A 桌面图标图会被 store.set 写进 B 桌面（B 没有该键 → 正好命中「只补空」），
+      // 于是 B 也显示 A 的自选图标＝「不同联系人图标串了」。这是最近几次更新后启动更慢、
+      // 这个窗口更容易被撞上的原因，不是新功能本身的问题。
+      const iconStore = (function () {
+        try { return window.xyStore(iconPrefix); } catch (e) { return store; }
+      })();
       window.idbGetAllKeys().then(keys => {
         const iconKeys = (keys || []).filter(k => k.indexOf(iconPfx + 'app-icon-') === 0);
         if (!iconKeys.length) return;
@@ -2286,10 +2315,14 @@ try {
           window.idbGet(k).then(v => {
             const rel = k.slice(iconPfx.length);
             // 只填「现在读不到」的键（大图键 >200KB 不进 LS 属正常补读场景）
-            if (store.get(rel) !== null) return;
-            if (v && typeof v === 'string' && v.length > 2) store.set(rel, v);
+            if (iconStore.get(rel) !== null) return;
+            if (v && typeof v === 'string' && v.length > 2) iconStore.set(rel, v);
           }).catch(function () {})
-        )).then(() => { restoreAppIcons(); restoreAppIconOrder(); });
+        )).then(() => {
+          // 只有仍停在这个联系人时才重绘；已切走的别用这一发去动当前桌面
+          if (window.activePrefix() !== iconPrefix) return;
+          restoreAppIcons(); restoreAppIconOrder();
+        });
       }).catch(function () {});
     }
   } catch (e) {}

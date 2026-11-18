@@ -1755,6 +1755,25 @@
           <label class="toggle"><input type="checkbox" id="sf-group-chat"><span class="tk"></span></label>
         </div>
       </div>
+      <!-- 2026-11-18：账本 / 每日备忘 / 心情日记默认各联系人独立，可单独开启跨联系人同步。
+           contacts.js 负责读写开关并做数据合并/分发。 -->
+      <div class="set-group glass" id="user-sync-group">
+        <div class="set-row" id="row-sync-accounting">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 016.5 3H20v18H6.5A2.5 2.5 0 014 18.5z"/><path d="M4 18.5A2.5 2.5 0 016.5 16H20"/></svg></div>
+          <div class="txt">账本跨联系人同步<span class="sub">默认各联系人独立记账；开启后自动合并各联系人的账目，共用同一本账</span></div>
+          <label class="toggle"><input type="checkbox" id="sync-accounting"><span class="tk"></span></label>
+        </div>
+        <div class="set-row" id="row-sync-memo">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l5 5v13H6z"/><path d="M15 3v5h5"/><path d="M9 12h6M9 16h6"/></svg></div>
+          <div class="txt">每日备忘跨联系人同步<span class="sub">默认只记在当前联系人的桌面；开启时以当前联系人的内容为准，之后共用</span></div>
+          <label class="toggle"><input type="checkbox" id="sync-memo"><span class="tk"></span></label>
+        </div>
+        <div class="set-row" id="row-sync-mood">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4 4 0 007 0"/><circle cx="9" cy="9.5" r="1" fill="#111111"/><circle cx="15" cy="9.5" r="1" fill="#111111"/></svg></div>
+          <div class="txt">心情日记跨联系人同步<span class="sub">默认各联系人独立；开启后合并各天记录，同一天以当前联系人的为准</span></div>
+          <label class="toggle"><input type="checkbox" id="sync-mood"><span class="tk"></span></label>
+        </div>
+      </div>
       <!-- #646：打开应用时的入口行为（默认均关闭）——「打开时先进入此间」+「打开时显示联系人列表」+「默认进入的桌面」（contacts.js 接线） -->
       <div class="set-group glass">
         <div class="set-row" id="row-entry-cjian-first">

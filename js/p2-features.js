@@ -2,21 +2,22 @@
 (function () {
 const uid = window.activePrefix();
 const store = window.activeStore();
+function idbPrefixFor(k) { return (window.isUserSharedKey && window.isUserSharedKey(k)) ? 'xy-home-v2' : window.activePrefix(); }
 function pushHist(key, text) {
 try {
 const list = JSON.parse(store.get(key) || '[]');
 list.unshift({ text: text, ts: Date.now() });
 if (list.length > 200) list.length = 200;
 store.set(key, JSON.stringify(list));
-try { if (window.idbSet) window.idbSet(window.activePrefix() + ':' + key, JSON.stringify(list)); } catch (e) {}
+try { if (window.idbSet) window.idbSet(idbPrefixFor(key) + ':' + key, JSON.stringify(list)); } catch (e) {}
 } catch (e) {}
 }
 function restoreHist(key) {
 try {
 if (window.idbGet && !store.get(key)) {
-const myPrefix = window.activePrefix();
+const myPrefix = idbPrefixFor(key);
 window.idbGet(myPrefix + ':' + key).then(v => {
-if (window.activePrefix() !== myPrefix) return;
+if (myPrefix !== 'xy-home-v2' && window.activePrefix() !== myPrefix) return;
 if (!v) return;
 try { store.set(key, typeof v === 'string' ? v : JSON.stringify(v)); } catch (e) {}
 });
@@ -1327,7 +1328,7 @@ const legacy = store.get(curKey);
 if (legacy) {
 const ds = dayStr(new Date());
 store.set(curKey + '-' + ds, legacy);
-try { if (window.idbSet) window.idbSet(window.activePrefix() + ':' + curKey + '-' + ds, legacy); } catch (e) {}
+try { if (window.idbSet) window.idbSet(idbPrefixFor(curKey + '-' + ds) + ':' + curKey + '-' + ds, legacy); } catch (e) {}
 return legacy;
 }
 }
@@ -1343,10 +1344,10 @@ window.openModal('今日备忘', memoEl.textContent === '点这里记一句话' 
 const val = (v || '').trim();
 if (val) {
 memoEl.textContent = val; store.set('memo', val); pushHist('memo-history', val);
-try { if (window.idbSet) window.idbSet(window.activePrefix() + ':memo', val); } catch (e) {}
+try { if (window.idbSet) window.idbSet(idbPrefixFor('memo') + ':memo', val); } catch (e) {}
 const ds = dayStr(new Date());
 store.set('memo-' + ds, val);
-try { if (window.idbSet) window.idbSet(window.activePrefix() + ':memo-' + ds, val); } catch (e) {}
+try { if (window.idbSet) window.idbSet(idbPrefixFor('memo-' + ds) + ':memo-' + ds, val); } catch (e) {}
 }
 });
 }
@@ -1362,10 +1363,10 @@ window.openModal('今天的心情', '', (v) => {
 const val = (v || '').trim();
 if (val) {
 moodEl.textContent = val; store.set('today-mood', val); pushHist('mood-history', val);
-try { if (window.idbSet) window.idbSet(window.activePrefix() + ':today-mood', val); } catch (e) {}
+try { if (window.idbSet) window.idbSet(idbPrefixFor('today-mood') + ':today-mood', val); } catch (e) {}
 const ds = dayStr(new Date());
 store.set('today-mood-' + ds, val);
-try { if (window.idbSet) window.idbSet(window.activePrefix() + ':today-mood-' + ds, val); } catch (e) {}
+try { if (window.idbSet) window.idbSet(idbPrefixFor('today-mood-' + ds) + ':today-mood-' + ds, val); } catch (e) {}
 }
 }, { pills: moods.map(m => ({ label: m, value: m })), pill: todayMoodText() || '' });
 }
@@ -2132,7 +2133,7 @@ if (cb) cb(card);
 };
 })();
 (function () {
-function curStore() { try { return window.storeFor(window.__activeCid || 'default'); } catch (e) { return null; } }
+function curStore() { try { return window.activeStore(); } catch (e) { return null; } }
 function vibrate(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {} }
 function editingNow() { return Array.from(document.querySelectorAll('.app-grid')).some(g => g.classList.contains('editing')); }
 function libPool(cat, group, fallback) {

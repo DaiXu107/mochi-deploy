@@ -57,10 +57,71 @@ const EXCLUDE = ['contacts', 'active-contact', 'feed-posts', 'migrated-v1', 'js-
 'ver-retry',
 'fhub-freq', 'fhub-seen',
 'age-confirmed'];
+const USER_SHARED_EXACT = new Set([
+'water-today', 'water-goal', 'water-history', 'water-size', 'water-msgs',
+'fish-total', 'fish-day-add', 'fish-day-log', 'fish-combo-best',
+'work-total', 'work-day-add', 'weekend-fish'
+]);
+const USER_SHARED_PREFIX = [
+'water-', 'fish-caught-me:'
+];
+const USER_SHARED_PATTERNS = [
+/^day-fish-(?!ta-)\d{4}-\d{2}-\d{2}$/,
+/^day-work-(?!ta-)\d{4}-\d{2}-\d{2}$/
+];
+const SYNC_GROUPS = {
+accounting: {
+keys: ['accounting-records', 'accounting-categories', 'accounting-budget'],
+patterns: []
+},
+memo: {
+keys: ['memo', 'memo-history'],
+patterns: [/^memo-\d{4}-\d{2}-\d{2}$/]
+},
+mood: {
+keys: ['mood-diary', 'today-mood', 'mood-history'],
+patterns: [/^today-mood-/]
+}
+};
+const SYNC_GROUP_NAMES = { accounting: '账本', memo: '每日备忘', mood: '心情日记' };
+function syncGroupOfKey(key) {
+for (const g in SYNC_GROUPS) {
+const cfg = SYNC_GROUPS[g];
+if (cfg.keys.indexOf(key) >= 0) return g;
+for (let i = 0; i < cfg.patterns.length; i++) if (cfg.patterns[i].test(key)) return g;
+}
+return '';
+}
+function syncEnabled(group) {
+try {
+if (!window.xyStore) return false;
+return window.xyStore(G).get('user-sync-' + group) === '1';
+} catch (e) { return false; }
+}
+function isUserSharedKey(k) {
+const key = String(k || '');
+if (!key) return false;
+if (key.indexOf('water-ta-') === 0) return false;
+if (USER_SHARED_EXACT.has(key)) return true;
+for (let p = 0; p < USER_SHARED_PATTERNS.length; p++) {
+if (USER_SHARED_PATTERNS[p].test(key)) return true;
+}
+for (let i = 0; i < USER_SHARED_PREFIX.length; i++) {
+if (key.indexOf(USER_SHARED_PREFIX[i]) === 0) return true;
+}
+const g = syncGroupOfKey(key);
+return !!(g && syncEnabled(g));
+}
+window.isUserSharedKey = isUserSharedKey;
+window.mochiSyncGroupOfKey = syncGroupOfKey;
+window.mochiSyncEnabled = syncEnabled;
 function isExcluded(k) {
 const r = k.slice(G.length + 1);
 if (r.indexOf('__') === 0) return true;
 if (EXCLUDE.indexOf(r) >= 0) return true;
+if (isUserSharedKey(r)) return true;
+if (r === 'user-shared-migrated-v2') return true;
+if (r.indexOf('user-sync-') === 0) return true;
 if (r.indexOf('splash-seen:') === 0) return true;
 if (r.indexOf('reply-gc-') === 0) return true;
 if (r.indexOf('music-file:') === 0) return true;
@@ -85,10 +146,233 @@ if (a) _cid = a;
 } catch (e) {}
 window.__activeCid = _cid;
 window.activePrefix = function () { return G + ':' + (window.__activeCid || 'default'); };
+const USER_SHARED_MARK = 'user-shared-migrated-v2';
+function migrateUserSharedKeys(force) {
+try {
+const root = window.xyStore(G);
+if (!root) return;
+if (!force && root.get(USER_SHARED_MARK) === '1') return;
+if (window.__userSharedMigrating) return;
+window.__userSharedMigrating = true;
+window.__userSharedIdbOk = true; // IDB 清单没读全时不落「已迁移」标记，下次启动重试
+const cids = new Set(['default']);
+try { (window.getContacts ? window.getContacts() : []).forEach(function (c) { if (c && c.id) cids.add(c.id); }); } catch (e) {}
+const vals = {}; // rel -> [{ cid, raw }]
+const add = (cid, rel, val) => {
+if (typeof val !== 'string' || !val.length) return;
+if (!vals[rel]) vals[rel] = [];
+vals[rel].push({ cid: cid, raw: val });
+};
+const mergeAny = (a, b) => {
+if (a == null) return b;
+if (b == null) return a;
+if (Array.isArray(a) && Array.isArray(b)) {
+const out = a.slice();
+b.forEach(function (item) {
+const id = item && typeof item === 'object' ? item.id : null;
+if (id != null) {
+const hit = out.find(function (x) { return x && typeof x === 'object' && x.id === id; });
+if (hit) {
+Object.keys(item).forEach(function (k2) {
+if (hit[k2] === undefined || hit[k2] === null || hit[k2] === '') hit[k2] = item[k2];
+else if (typeof hit[k2] === 'object' && typeof item[k2] === 'object') hit[k2] = mergeAny(hit[k2], item[k2]);
+});
+return;
+}
+}
+const sig = JSON.stringify(item);
+if (!out.some(function (x) { return JSON.stringify(x) === sig; })) out.push(item);
+});
+return out;
+}
+if (a && b && typeof a === 'object' && typeof b === 'object') {
+const out = {};
+Object.keys(a).forEach(function (k2) { out[k2] = a[k2]; });
+Object.keys(b).forEach(function (k2) {
+if (out[k2] === undefined) out[k2] = b[k2];
+else if (typeof out[k2] === 'number' && typeof b[k2] === 'number') out[k2] = Math.max(out[k2], b[k2]);
+else if (out[k2] && b[k2] && typeof out[k2] === 'object' && typeof b[k2] === 'object') out[k2] = mergeAny(out[k2], b[k2]);
+else if (typeof out[k2] === 'string' && typeof b[k2] === 'string') { if (b[k2].length >= out[k2].length) out[k2] = b[k2]; }
+});
+return out;
+}
+if (typeof a === 'number' && typeof b === 'number') return Math.max(a, b);
+if (typeof a === 'string' && typeof b === 'string') return b.length >= a.length ? b : a;
+return b;
+};
+const scanLocal = () => {
+for (let i = 0; i < localStorage.length; i++) {
+const full = localStorage.key(i);
+if (!full || full.indexOf(G + ':') !== 0) continue;
+const rest = full.slice(G.length + 1);
+const m = rest.match(/^([^:]+):(.+)$/);
+if (!m) continue;
+const cid = m[1], rel = m[2];
+if (!cids.has(cid)) continue;
+if (!isUserSharedKey(rel)) continue;
+try { add(cid, rel, localStorage.getItem(full)); } catch (e) {}
+}
+};
+const finish = () => {
+const landed = {};
+try {
+Object.keys(vals).forEach(function (rel) {
+let curRaw = null;
+try { curRaw = root.get(rel); } catch (e) {}
+let merged = null;
+if (curRaw) merged = curRaw;
+const activeCid = window.__activeCid || 'default';
+const list = vals[rel].slice().sort(function (x, y) {
+return (x.cid === activeCid ? 1 : 0) - (y.cid === activeCid ? 1 : 0);
+});
+list.forEach(function (item) {
+const raw = item.raw;
+if (merged === raw) return;
+if (!merged) { merged = raw; return; }
+try {
+const a = JSON.parse(merged), b = JSON.parse(raw);
+merged = JSON.stringify(mergeAny(a, b));
+} catch (e) {
+if (typeof raw === 'string' && typeof merged === 'string' && raw.length >= merged.length) merged = raw;
+}
+});
+try {
+if (merged != null) root.set(rel, merged);
+landed[rel] = !!(root.get(rel) != null);
+} catch (e2) { landed[rel] = false; }
+});
+Object.keys(vals).forEach(function (rel) {
+if (!landed[rel]) return;
+cids.forEach(function (cid) {
+if (cid === 'default') return;
+try { window.xyStore(G + ':' + cid).remove(rel); } catch (e) {}
+});
+try { window.xyStore(G + ':default').remove(rel); } catch (e) {}
+});
+if (window.__userSharedIdbOk !== false) { try { root.set(USER_SHARED_MARK, '1'); } catch (e) {} }
+} catch (e) {
+window.__userSharedMigrating = false;
+return;
+}
+window.__userSharedMigrating = false;
+try { document.dispatchEvent(new CustomEvent('user-shared-migrated')); } catch (e) {}
+};
+scanLocal();
+if (window.idbGetAllKeys && window.idbGet) {
+window.idbGetAllKeys().then(function (keys) {
+if (!Array.isArray(keys)) window.__userSharedIdbOk = false;
+const jobs = [];
+(keys || []).forEach(function (full) {
+if (typeof full !== 'string' || full.indexOf(G + ':') !== 0) return;
+const rest = full.slice(G.length + 1);
+const m = rest.match(/^([^:]+):(.+)$/);
+if (!m) return;
+const cid = m[1], rel = m[2];
+if (!cids.has(cid)) return;
+if (!isUserSharedKey(rel)) return;
+jobs.push(window.idbGet(full).then(function (v) { if (typeof v === 'string') add(cid, rel, v); }).catch(function () {}));
+});
+Promise.all(jobs).then(finish).catch(finish);
+}).catch(function () { window.__userSharedIdbOk = false; finish(); });
+} else finish();
+} catch (e) {
+window.__userSharedMigrating = false;
+}
+}
+window.migrateUserSharedKeys = migrateUserSharedKeys;
+function scheduleUserSharedMigrate() {
+try {
+if (window.__mochiDataReady) { setTimeout(migrateUserSharedKeys, 800); return; }
+document.addEventListener('mochi-restore-done', function () { setTimeout(migrateUserSharedKeys, 800); }, { once: true });
+setTimeout(migrateUserSharedKeys, 8000); // 兜底（事件丢失/导入后未派发）
+} catch (e) {}
+}
+scheduleUserSharedMigrate();
+function syncGroupMatches(group, rel) {
+const cfg = SYNC_GROUPS[group];
+if (!cfg) return false;
+if (cfg.keys.indexOf(rel) >= 0) return true;
+for (let i = 0; i < cfg.patterns.length; i++) if (cfg.patterns[i].test(rel)) return true;
+return false;
+}
+function collectRootGroupVals(group, cb) {
+const out = {};
+const pref = G + ':';
+try {
+for (let i = 0; i < localStorage.length; i++) {
+const full = localStorage.key(i);
+if (!full || full.indexOf(pref) !== 0) continue;
+const rel = full.slice(pref.length);
+if (rel.indexOf(':') >= 0) continue; // <cid>:<key> 不是根键
+if (!syncGroupMatches(group, rel)) continue;
+try { const v = localStorage.getItem(full); if (typeof v === 'string') out[rel] = v; } catch (e) {}
+}
+} catch (e) {}
+if (!window.idbGetAllKeys || !window.idbGet) { cb(out); return; }
+window.idbGetAllKeys().then(function (keys) {
+const jobs = [];
+(keys || []).forEach(function (full) {
+if (typeof full !== 'string' || full.indexOf(pref) !== 0) return;
+const rel = full.slice(pref.length);
+if (rel.indexOf(':') >= 0 || out[rel] != null) return;
+if (!syncGroupMatches(group, rel)) return;
+jobs.push(window.idbGet(full).then(function (v) {
+if (typeof v === 'string') out[rel] = v;
+}).catch(function () {}));
+});
+Promise.all(jobs).then(function () { cb(out); }).catch(function () { cb(out); });
+}).catch(function () { cb(out); });
+}
+function disableSyncGroup(group, cb) {
+collectRootGroupVals(group, function (vals) {
+const rels = Object.keys(vals);
+const cids = ['default'];
+try { (window.getContacts ? window.getContacts() : []).forEach(function (c) { if (c && c.id && cids.indexOf(c.id) < 0) cids.push(c.id); }); } catch (e) {}
+rels.forEach(function (rel) {
+cids.forEach(function (cid) {
+try { window.xyStore(G + ':' + cid).set(rel, vals[rel]); } catch (e) {}
+});
+});
+try { window.xyStore(G).set('user-sync-' + group, '0'); } catch (e) {}
+rels.forEach(function (rel) { try { window.xyStore(G).remove(rel); } catch (e) {} });
+if (cb) { try { cb(); } catch (e) {} }
+});
+}
+window.mochiSetSyncGroup = function (group, on) {
+if (!SYNC_GROUPS[group]) return false;
+if (on) {
+try { window.xyStore(G).set('user-sync-' + group, '1'); } catch (e) {}
+migrateUserSharedKeys(true);
+setTimeout(function () { migrateUserSharedKeys(true); }, 1600); // 上一轮迁移在跑时的补跑
+} else {
+disableSyncGroup(group);
+}
+return true;
+};
+function bindUserSyncToggles() {
+Object.keys(SYNC_GROUPS).forEach(function (group) {
+const el = document.getElementById('sync-' + group);
+if (!el) return;
+function syncUI() {
+try { el.checked = window.xyStore(G).get('user-sync-' + group) === '1'; } catch (e) { el.checked = false; }
+}
+syncUI();
+el.addEventListener('change', function () {
+window.mochiSetSyncGroup(group, !!el.checked);
+});
+});
+}
+try {
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindUserSyncToggles, { once: true });
+else bindUserSyncToggles();
+} catch (e) {}
 function defaultStore() {
 const ns = G + ':default';
 return {
 get(k) {
+if (isUserSharedKey(k)) {
+try { const rv = window.xyStore(G).get(k); if (rv !== null) return rv; } catch (e) {}
+}
 let v = null;
 try { v = window.xyStore(ns).get(k); } catch (e) {}
 if (v !== null) return v;
@@ -96,6 +380,7 @@ try { v = window.xyStore(G).get(k); } catch (e) {}
 return v;
 },
 set(k, v) {
+if (isUserSharedKey(k)) { window.xyStore(G).set(k, v); return; }
 window.xyStore(ns).set(k, v);
 try { window.xyStore(G).remove(k); } catch (e) {}
 },
@@ -117,6 +402,11 @@ try { const r = window.xyStore(G); if (r && r.whenBigKeyBack) { r.whenBigKeyBack
 try { if (cb) cb(); } catch (e3) {}
 },
 remove(k) {
+if (isUserSharedKey(k)) {
+try { window.xyStore(G).remove(k); } catch (e) {}
+try { window.xyStore(ns).remove(k); } catch (e2) {} // 清升级前的旧桌面副本
+return;
+}
 window.xyStore(ns).remove(k);
 try { window.xyStore(G).remove(k); } catch (e) {}
 }
@@ -127,14 +417,31 @@ const dyn = function () {
 const cid = window.__activeCid || 'default';
 return cid === 'default' ? defaultStore() : window.xyStore(G + ':' + cid);
 };
+const root = function () { return window.xyStore(G); };
+const targetOf = (k) => (isUserSharedKey(k) ? root() : dyn());
 return {
-get: (k) => dyn().get(k),
-set: (k, v) => dyn().set(k, v),
-remove: (k) => dyn().remove(k),
-awaitingBigKey: (k) => { const d = dyn(); return !!(d.awaitingBigKey && d.awaitingBigKey(k)); },
-requestBigKey: (k) => { const d = dyn(); try { if (d.requestBigKey) d.requestBigKey(k); } catch (e) {} },
+get: (k) => {
+if (isUserSharedKey(k)) {
+let v = null;
+try { v = root().get(k); } catch (e) {}
+if (v === null || v === undefined) { try { return dyn().get(k); } catch (e2) { return null; } }
+return v;
+}
+return dyn().get(k);
+},
+set: (k, v) => targetOf(k).set(k, v),
+remove: (k) => {
+if (isUserSharedKey(k)) {
+try { root().remove(k); } catch (e) {}
+try { dyn().remove(k); } catch (e2) {} // 顺带清掉旧命名空间残留
+return;
+}
+dyn().remove(k);
+},
+awaitingBigKey: (k) => { const d = targetOf(k); return !!(d.awaitingBigKey && d.awaitingBigKey(k)); },
+requestBigKey: (k) => { const d = targetOf(k); try { if (d.requestBigKey) d.requestBigKey(k); } catch (e) {} },
 whenBigKeyBack: (k, cb) => {
-const d = dyn();
+const d = targetOf(k);
 if (d.whenBigKeyBack) { d.whenBigKeyBack(k, cb); return; }
 try { if (cb) cb(); } catch (e2) {}
 }

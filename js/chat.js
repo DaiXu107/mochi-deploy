@@ -7849,12 +7849,7 @@ applyMoreIconStyle();
 (function bindMoreIconStyleLongPress() {
 let timer = 0, sx = 0, sy = 0, suppressClick = false, pointerSeen = false;
 function cancel() { if (timer) { clearTimeout(timer); timer = 0; } }
-function begin(el, x, y) {
-if (!el || !el.closest || !el.closest('.more-item')) return;
-sx = x; sy = y;
-cancel();
-timer = setTimeout(function () {
-timer = 0;
+function doToggle() {
 const next = readMoreIconStyle() === 'plain' ? 'tile' : 'plain';
 try { localStorage.setItem(MORE_ICON_STYLE_KEY, next); } catch (err) {}
 applyMoreIconStyle();
@@ -7862,7 +7857,12 @@ suppressClick = true;
 setTimeout(function () { suppressClick = false; }, 900);
 if (navigator.vibrate) { try { navigator.vibrate(10); } catch (err) {} }
 toast(next === 'plain' ? '更多功能：纯图标样式' : '更多功能：小方块样式');
-}, 550);
+}
+function begin(el, x, y) {
+if (!el || !el.closest || !el.closest('.more-item')) return;
+sx = x; sy = y;
+cancel();
+timer = setTimeout(function () { timer = 0; doToggle(); }, 550);
 }
 function move(x, y) {
 if (!timer) return;
@@ -7874,7 +7874,7 @@ if (e.pointerType === 'mouse' && e.button !== 0) return;
 begin(e.target, e.clientX, e.clientY);
 });
 morePanel.addEventListener('pointermove', function (e) { move(e.clientX, e.clientY); }, { passive: true });
-['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) {
+['pointerup', 'pointerleave'].forEach(function (ev) {
 morePanel.addEventListener(ev, cancel, { passive: true });
 });
 morePanel.addEventListener('touchstart', function (e) {
@@ -7898,7 +7898,9 @@ e.stopPropagation();
 e.stopImmediatePropagation();
 }, true);
 morePanel.addEventListener('contextmenu', function (e) {
-if (e.target.closest('.more-item')) e.preventDefault();
+if (!e.target.closest('.more-item')) return;
+e.preventDefault();
+if (timer) { clearTimeout(timer); timer = 0; doToggle(); }
 });
 })();
 moreBtn.addEventListener('click', (e) => {
