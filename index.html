@@ -4390,13 +4390,15 @@ position:absolute; inset:0; z-index:30; display:flex; flex-direction:column;
 background:linear-gradient(168deg, var(--bg-a, #fff) 0%, var(--bg-b, #f2f2f2) 100%);
 }
 .divf-page[hidden] { display:none; }
-.div-chat-facesbar { margin:0 0 8px; }
+.div-chat-facesbar { display:flex; justify-content:flex-end; margin:0 0 8px; }
 .div-chat-faces-btn {
-width:100%; border:1px solid rgba(0,0,0,.12); border-radius:11px; padding:9px 0;
-background:rgba(255,255,255,.92); color:var(--ink); font-size:13px; font-weight:600;
+width:32px; height:32px; padding:0; border:none; border-radius:50%;
+background:rgba(0,0,0,.05); color:var(--ink);
+display:flex; align-items:center; justify-content:center;
 cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
 }
-.div-chat-faces-btn:active { opacity:.8; }
+.div-chat-faces-btn svg { width:17px; height:17px; }
+.div-chat-faces-btn:active { opacity:.7; }
 .div-card-img { width:100%; height:100%; }
 .div-card-img img { width:100%; height:100%; object-fit:cover; display:block; }
 .div-card-face.has-face { padding:0; overflow:hidden; position:relative; }
@@ -7450,19 +7452,6 @@ box-shadow: 0 1px 4px rgba(0, 0, 0, .08);
 [data-theme="dark"] .app-merge-tabs { background: rgba(255, 255, 255, .06); }
 [data-theme="dark"] .app-merge-tabs button.on { background: var(--dark-card, #222); color: var(--ink); box-shadow: none; }
 .div-fs-btn { font-size:20px; line-height:1; }
-#page-divine.div-fs {
-position:fixed !important; inset:0; z-index:9998; height:100vh;
-background:linear-gradient(168deg, var(--bg-a, #fff) 0%, var(--bg-b, #f2f2f2) 100%);
-overflow:hidden; display:flex; flex-direction:column;
-}
-@supports (height:100dvh) { #page-divine.div-fs { height:min(var(--mochi-ios-h,100dvh),100dvh); } }
-#page-divine.div-fs .div-scroll { flex:1; overflow-y:auto; padding:0 20px max(18px, env(safe-area-inset-bottom,0px)); }
-#page-divine.div-fs .div-setup { max-width:720px; margin:0 auto 14px; width:100%; }
-#page-divine.div-fs .div-card, #page-divine.div-fs .div-draw,
-#page-divine.div-fs .div-result, #page-divine.div-fs > .div-scroll > .div-card { max-width:720px; margin-left:auto; margin-right:auto; }
-#page-divine.div-fs .div-card-row { max-height:38vh; }
-#page-divine.div-fs .div-mini { max-width:150px; }
-#page-divine.div-fs .div-card-face { max-width:150px; margin:0 auto; }
 .div-card-face.div-face-img { aspect-ratio:2/3; padding:0; overflow:hidden; position:relative; background:#1c1c1c; }
 .div-card-face.div-face-img .div-card-img { position:absolute; inset:0; }
 .div-card-face.div-face-img .div-card-img img { width:100%; height:100%; object-fit:cover; display:block; }
@@ -14407,7 +14396,7 @@ color: var(--gh-faint);
            （名称+版号 / 部署时间+实时秒 / 版本检测行）收成一行；检测行随 ver-check.js 退役删除。
            data-build-ts / data-version 两属性保留：device.js 诊断、bg-keep 自检、pwa.js 旧包检测
            仍只读属性（诊断版本号走 data-version 兜底，device.js 两处缓存原生支持）。 -->
-      <div class="splash-ver" id="splash-ver" data-build-ts="1795009136232" data-version="v8.6">
+      <div class="splash-ver" id="splash-ver" data-build-ts="1795011049435" data-version="v8.6">
         <span class="sv-app">Mochi 字卡传讯 已完结停更</span>
       </div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
@@ -18624,7 +18613,6 @@ color: var(--gh-faint);
           <svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </span>
         <span class="ch-name">占卜</span>
-        <button class="ch-more div-fs-btn" id="div-fs" type="button" title="全屏" aria-label="全屏">⛶</button>
       </div>
       <div class="div-scroll">
         <div class="div-setup">
@@ -18632,11 +18620,6 @@ color: var(--gh-faint);
             <button class="div-mode sel" data-mode="tarot">塔罗</button>
             <button class="div-mode" data-mode="lenormand">雷诺曼</button>
             <button class="div-mode" data-mode="meihua">梅花易数</button>
-          </div>
-          <div class="div-modes div-counts" id="div-counts">
-            <button class="div-mode sel" data-count="3">3 张</button>
-            <button class="div-mode" data-count="1">1 张</button>
-            <button class="div-mode" data-count="7">7 张</button>
           </div>
           <div class="div-picker-row" id="div-picker-row" hidden>
             <div class="div-picker-col">
@@ -19547,19 +19530,16 @@ color: var(--gh-faint);
       <div class="poke-card" id="chat-divine-panel" hidden>
         <div class="poke-card-head">
           <span>占卜</span>
-          <button class="poke-card-close div-fs-btn" id="chat-divine-fs" type="button" title="全屏" aria-label="全屏">⛶</button>
-          <button class="poke-card-close" id="chat-divine-close">✕</button>
+          <span class="poke-card-head-actions">
+            <button class="poke-card-close div-fs-btn" id="chat-divine-fs" type="button" title="全屏" aria-label="全屏">⛶</button>
+            <button class="poke-card-close" id="chat-divine-close">✕</button>
+          </span>
         </div>
         <div class="poke-card-scroll" id="chat-divine-body">
           <div class="div-modes-wrap">
             <span class="div-mode sel" data-chatmode="tarot">塔罗</span>
             <span class="div-mode" data-chatmode="lenormand">雷诺曼</span>
             <span class="div-mode" data-chatmode="meihua">梅花易数</span>
-          </div>
-          <div class="div-counts-wrap">
-            <span class="div-mode sel" data-chatcount="3">3 张</span>
-            <span class="div-mode" data-chatcount="1">1 张</span>
-            <span class="div-mode" data-chatcount="7">7 张</span>
           </div>
           <div class="div-picker-row div-chat-picker" id="div-chat-picker" hidden>
             <div class="div-picker-col">
@@ -19574,7 +19554,7 @@ color: var(--gh-faint);
                 <option value="marseille">马赛系</option>
                 <option value="thoth">托特系</option>
               </select>
-              <label class="div-major-only"><input type="checkbox" id="div-chat-major-only"> 仅大</label>
+              <label class="div-major-only"><input type="checkbox" id="div-chat-major-only"> 仅大阿卡纳</label>
             </div>
           </div>
           <div class="div-meihua-nums" id="div-chat-meihua-nums" hidden>
@@ -26597,4 +26577,4 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 </body>
 </html>
 
-<!-- __MOCHI_EOF__ mwm63drc -->
+<!-- __MOCHI_EOF__ mwm78dzv -->

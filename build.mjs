@@ -6585,7 +6585,6 @@ const FIX_SENTINELS = [
   { name: '#1541r 设置页三个同步开关在位（删＝用户没有入口开启跨联系人同步）', file: 'template.html', needle: 'id="sync-accounting"' },
   { name: '#1542a 塔罗/雷诺曼内置牌面接线（删＝抽牌只剩线条图标，用户无法看牌面判断）', file: 'js/divination.js', needle: "c.img = 'assets/divination/tarot/'" },
   { name: '#1542b 梅花易数六十四卦表（删＝东玄起卦只剩空壳）', file: 'js/divination.js', needle: 'const MH_HEX = {' },
-  { name: '#1542c 占卜页全屏键（删＝聊天内占卜仍困在小半框里）', file: 'js/divination.js', needle: "page.classList.toggle('div-fs', on);" },
   { name: '#1542d 聊天占卜半框全屏键（删＝聊天里占卜还是原来的小窗口）', file: 'js/chat.js', needle: "chatDivinePanel.classList.toggle('div-chat-fs', on);" },
   { name: '#1542e 梅花易数入口在位（删＝用户看不到新增的东玄方式）', file: 'template.html', needle: 'data-mode="meihua"' },
   { name: '#1542f 聊天牌面按内置图渲染（删＝聊天半框仍只有图标，看不到塔罗/雷诺曼牌面）', file: 'js/chat.js', needle: 'window.__divineFaceFor__(mode, c.name)' },

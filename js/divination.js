@@ -946,7 +946,6 @@ const icons = m === 'tarot' ? TAROT_ICONS : LENO_ICONS;
 return '<div class="div-card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + (icons[c.icon] || '') + '</svg></div>';
 }
 const modesWrap = document.getElementById('div-modes');
-const countsWrap = document.getElementById('div-counts');
 if (modesWrap) {
 modesWrap.addEventListener('click', (e) => {
 const b = e.target.closest('.div-mode');
@@ -1013,7 +1012,6 @@ renderSpreadPreview();
 }
 function syncModeUI() {
 const isMh = mode === 'meihua';
-if (countsWrap) countsWrap.hidden = isMh || mode === 'tarot';
 const nums = document.getElementById('div-meihua-nums');
 if (nums) nums.hidden = !isMh;
 renderSpreadUI();
@@ -1021,16 +1019,6 @@ const btn = document.getElementById('div-draw');
 if (btn && btn.dataset.idleHtml && btn.textContent.indexOf('抽牌中') === -1) {
 btn.innerHTML = btn.dataset.idleHtml;
 }
-}
-if (countsWrap) {
-countsWrap.addEventListener('click', (e) => {
-const b = e.target.closest('.div-mode');
-if (!b) return;
-countsWrap.querySelectorAll('.div-mode').forEach(x => x.classList.remove('sel'));
-b.classList.add('sel');
-count = Number(b.dataset.count);
-clearResult();
-});
 }
 syncModeUI();
 function clearResult() {
@@ -1775,29 +1763,20 @@ return;
 }
 document.querySelectorAll('.page').forEach(p => p.hidden = true);
 page.hidden = false;
-page.classList.remove('div-fs');
-const fsb0 = document.getElementById('div-fs'); if (fsb0) fsb0.textContent = '⛶';
+window.__divineFromChat = false;
 histOpen = false;
 renderHistOnOpen();
+try { syncModeUI(); renderSpreadUI(); renderSpreadPreview(); } catch (e) {}
 });
 }
 const divBack = document.getElementById('div-back');
 if (divBack) {
 divBack.addEventListener('click', () => {
-if (page) page.classList.remove('div-fs');
-const fsb = document.getElementById('div-fs'); if (fsb) fsb.textContent = '⛶';
 document.querySelectorAll('.page').forEach(p => p.hidden = true);
-const phonePage = document.getElementById('page-phone');
-if (phonePage) phonePage.hidden = false;
-});
-}
-const divFsBtn = document.getElementById('div-fs');
-if (divFsBtn && page) {
-divFsBtn.addEventListener('click', (e) => {
-e.stopPropagation();
-const on = !page.classList.contains('div-fs');
-page.classList.toggle('div-fs', on);
-divFsBtn.textContent = on ? '⤢' : '⛶';
+const backToChat = !!window.__divineFromChat;
+window.__divineFromChat = false;
+const target = document.getElementById(backToChat ? 'page-chat' : 'page-phone');
+if (target) target.hidden = false;
 });
 }
 function renderHistOnOpen() {
@@ -1926,7 +1905,9 @@ syncLenoSys();
 });
 const bar = document.createElement('div');
 bar.className = 'div-chat-facesbar';
-bar.innerHTML = '<button type="button" class="div-chat-faces-btn" id="div-chat-faces-btn">🖼 牌面图鉴</button>';
+bar.innerHTML = '<button type="button" class="div-chat-faces-btn" id="div-chat-faces-btn" title="牌面图鉴" aria-label="牌面图鉴">' +
+'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>' +
+'</button>';
 const targets = body.querySelector('#div-chat-targets');
 if (targets && targets.parentNode === body) targets.insertAdjacentElement('afterend', bar);
 else body.insertBefore(bar, body.firstChild);
@@ -1934,11 +1915,23 @@ const fb = bar.querySelector('#div-chat-faces-btn');
 if (fb) fb.addEventListener('click', (e) => { e.stopPropagation(); openFacePanelFromAnywhere(); });
 body.querySelectorAll('[data-chatmode]').forEach(b => b.addEventListener('click', () => setTimeout(syncLenoSys, 0)));
 }
+window.divineOpenPageFromChat = function () {
+const d = document.getElementById('page-divine');
+if (!d) return;
+document.querySelectorAll('.page').forEach(p => p.hidden = true);
+d.hidden = false;
+window.__divineFromChat = true;
+histOpen = false;
+try { renderHistOnOpen(); } catch (e) {}
+try { syncModeUI(); renderSpreadUI(); renderSpreadPreview(); } catch (e) {}
+try { d.scrollTop = 0; } catch (e) {}
+};
 function openFacePanelFromAnywhere() {
 const d = document.getElementById('page-divine');
 if (d) {
 document.querySelectorAll('.page').forEach(p => p.hidden = true);
 d.hidden = false;
+try { syncModeUI(); renderSpreadUI(); renderSpreadPreview(); } catch (e) {}
 }
 openFacePanel();
 }

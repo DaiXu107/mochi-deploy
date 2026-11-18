@@ -4751,7 +4751,6 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </span>
         <span class="ch-name">占卜</span>
-        <button class="ch-more div-fs-btn" id="div-fs" type="button" title="全屏" aria-label="全屏">⛶</button>
       </div>
       <div class="div-scroll">
         <div class="div-setup">
@@ -4759,11 +4758,6 @@
             <button class="div-mode sel" data-mode="tarot">塔罗</button>
             <button class="div-mode" data-mode="lenormand">雷诺曼</button>
             <button class="div-mode" data-mode="meihua">梅花易数</button>
-          </div>
-          <div class="div-modes div-counts" id="div-counts">
-            <button class="div-mode sel" data-count="3">3 张</button>
-            <button class="div-mode" data-count="1">1 张</button>
-            <button class="div-mode" data-count="7">7 张</button>
           </div>
           <div class="div-picker-row" id="div-picker-row" hidden>
             <div class="div-picker-col">
@@ -5674,19 +5668,16 @@
       <div class="poke-card" id="chat-divine-panel" hidden>
         <div class="poke-card-head">
           <span>占卜</span>
-          <button class="poke-card-close div-fs-btn" id="chat-divine-fs" type="button" title="全屏" aria-label="全屏">⛶</button>
-          <button class="poke-card-close" id="chat-divine-close">✕</button>
+          <span class="poke-card-head-actions">
+            <button class="poke-card-close div-fs-btn" id="chat-divine-fs" type="button" title="全屏" aria-label="全屏">⛶</button>
+            <button class="poke-card-close" id="chat-divine-close">✕</button>
+          </span>
         </div>
         <div class="poke-card-scroll" id="chat-divine-body">
           <div class="div-modes-wrap">
             <span class="div-mode sel" data-chatmode="tarot">塔罗</span>
             <span class="div-mode" data-chatmode="lenormand">雷诺曼</span>
             <span class="div-mode" data-chatmode="meihua">梅花易数</span>
-          </div>
-          <div class="div-counts-wrap">
-            <span class="div-mode sel" data-chatcount="3">3 张</span>
-            <span class="div-mode" data-chatcount="1">1 张</span>
-            <span class="div-mode" data-chatcount="7">7 张</span>
           </div>
           <div class="div-picker-row div-chat-picker" id="div-chat-picker" hidden>
             <div class="div-picker-col">
@@ -5701,7 +5692,7 @@
                 <option value="marseille">马赛系</option>
                 <option value="thoth">托特系</option>
               </select>
-              <label class="div-major-only"><input type="checkbox" id="div-chat-major-only"> 仅大</label>
+              <label class="div-major-only"><input type="checkbox" id="div-chat-major-only"> 仅大阿卡纳</label>
             </div>
           </div>
           <div class="div-meihua-nums" id="div-chat-meihua-nums" hidden>

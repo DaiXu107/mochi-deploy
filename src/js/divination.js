@@ -1030,9 +1030,8 @@
     return '<div class="div-card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + (icons[c.icon] || '') + '</svg></div>';
   }
 
-  // 模式/张数切换
+  // 模式切换（张数由牌阵决定；雷诺曼固定 3 张）
   const modesWrap = document.getElementById('div-modes');
-  const countsWrap = document.getElementById('div-counts');
   if (modesWrap) {
     modesWrap.addEventListener('click', (e) => {
       const b = e.target.closest('.div-mode');
@@ -1099,7 +1098,6 @@
   }
   function syncModeUI() {
     const isMh = mode === 'meihua';
-    if (countsWrap) countsWrap.hidden = isMh || mode === 'tarot';
     const nums = document.getElementById('div-meihua-nums');
     if (nums) nums.hidden = !isMh;
     renderSpreadUI();
@@ -1107,16 +1105,6 @@
     if (btn && btn.dataset.idleHtml && btn.textContent.indexOf('抽牌中') === -1) {
       btn.innerHTML = btn.dataset.idleHtml;
     }
-  }
-  if (countsWrap) {
-    countsWrap.addEventListener('click', (e) => {
-      const b = e.target.closest('.div-mode');
-      if (!b) return;
-      countsWrap.querySelectorAll('.div-mode').forEach(x => x.classList.remove('sel'));
-      b.classList.add('sel');
-      count = Number(b.dataset.count);
-      clearResult();
-    });
   }
   syncModeUI();
   function clearResult() {
@@ -1936,32 +1924,22 @@
       }
       document.querySelectorAll('.page').forEach(p => p.hidden = true);
       page.hidden = false;
-      page.classList.remove('div-fs');
-      const fsb0 = document.getElementById('div-fs'); if (fsb0) fsb0.textContent = '⛶';
+      window.__divineFromChat = false;
       histOpen = false;
       renderHistOnOpen();
+      try { syncModeUI(); renderSpreadUI(); renderSpreadPreview(); } catch (e) {}
     });
   }
   const divBack = document.getElementById('div-back');
   if (divBack) {
     divBack.addEventListener('click', () => {
-      if (page) page.classList.remove('div-fs');
-      const fsb = document.getElementById('div-fs'); if (fsb) fsb.textContent = '⛶';
       document.querySelectorAll('.page').forEach(p => p.hidden = true);
-      const phonePage = document.getElementById('page-phone');
-      if (phonePage) phonePage.hidden = false;
+      const backToChat = !!window.__divineFromChat;
+      window.__divineFromChat = false;
+      const target = document.getElementById(backToChat ? 'page-chat' : 'page-phone');
+      if (target) target.hidden = false;
     });
   }
-  const divFsBtn = document.getElementById('div-fs');
-  if (divFsBtn && page) {
-    divFsBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const on = !page.classList.contains('div-fs');
-      page.classList.toggle('div-fs', on);
-      divFsBtn.textContent = on ? '⤢' : '⛶';
-    });
-  }
-
   // ---- v3.7.x：打开占卜页即渲染历史（原实现只在抽牌后渲染，历史区空白看不到记录）；
   // 多桌面：切换联系人后重新渲染，记录随当前桌面独立展示 ----
   function renderHistOnOpen() {
@@ -2108,7 +2086,9 @@
     });
     const bar = document.createElement('div');
     bar.className = 'div-chat-facesbar';
-    bar.innerHTML = '<button type="button" class="div-chat-faces-btn" id="div-chat-faces-btn">🖼 牌面图鉴</button>';
+    bar.innerHTML = '<button type="button" class="div-chat-faces-btn" id="div-chat-faces-btn" title="牌面图鉴" aria-label="牌面图鉴">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>' +
+      '</button>';
     const targets = body.querySelector('#div-chat-targets');
     if (targets && targets.parentNode === body) targets.insertAdjacentElement('afterend', bar);
     else body.insertBefore(bar, body.firstChild);
@@ -2117,12 +2097,25 @@
     // chat.js 自己的模式切换处理器会改 sel，这里追加监听以便同步 36/40 行显隐
     body.querySelectorAll('[data-chatmode]').forEach(b => b.addEventListener('click', () => setTimeout(syncLenoSys, 0)));
   }
+  // 从聊天进入占卜：统一用独立占卜页（不再用聊天半框那套相似但不同的界面）
+  window.divineOpenPageFromChat = function () {
+    const d = document.getElementById('page-divine');
+    if (!d) return;
+    document.querySelectorAll('.page').forEach(p => p.hidden = true);
+    d.hidden = false;
+    window.__divineFromChat = true;
+    histOpen = false;
+    try { renderHistOnOpen(); } catch (e) {}
+    try { syncModeUI(); renderSpreadUI(); renderSpreadPreview(); } catch (e) {}
+    try { d.scrollTop = 0; } catch (e) {}
+  };
   // 从聊天半框进入：先切到占卜页再打开图鉴浮层
   function openFacePanelFromAnywhere() {
     const d = document.getElementById('page-divine');
     if (d) {
       document.querySelectorAll('.page').forEach(p => p.hidden = true);
       d.hidden = false;
+      try { syncModeUI(); renderSpreadUI(); renderSpreadPreview(); } catch (e) {}
     }
     openFacePanel();
   }

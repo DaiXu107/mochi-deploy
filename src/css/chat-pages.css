@@ -1457,13 +1457,15 @@
 }
 .divf-page[hidden] { display:none; }
 /* 聊天页占卜半框里的「牌面图鉴」入口 + 36/40 行 */
-.div-chat-facesbar { margin:0 0 8px; }
+.div-chat-facesbar { display:flex; justify-content:flex-end; margin:0 0 8px; }
 .div-chat-faces-btn {
-  width:100%; border:1px solid rgba(0,0,0,.12); border-radius:11px; padding:9px 0;
-  background:rgba(255,255,255,.92); color:var(--ink); font-size:13px; font-weight:600;
+  width:32px; height:32px; padding:0; border:none; border-radius:50%;
+  background:rgba(0,0,0,.05); color:var(--ink);
+  display:flex; align-items:center; justify-content:center;
   cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
 }
-.div-chat-faces-btn:active { opacity:.8; }
+.div-chat-faces-btn svg { width:17px; height:17px; }
+.div-chat-faces-btn:active { opacity:.7; }
 /* 自定义牌面：图片铺满牌面（方形小牌 + 已抽竖牌两处；聊天半框走 svg <image> 路径不受影响） */
 .div-card-img { width:100%; height:100%; }
 .div-card-img img { width:100%; height:100%; object-fit:cover; display:block; }
@@ -5009,21 +5011,8 @@ select.mochi-custom-select-native { display:none; }
 [data-theme="dark"] .app-merge-tabs { background: rgba(255, 255, 255, .06); }
 [data-theme="dark"] .app-merge-tabs button.on { background: var(--dark-card, #222); color: var(--ink); box-shadow: none; }
 
-/* ===== 2026-11-18：占卜牌面 / 全屏 / 梅花易数 ===== */
+/* ===== 2026-11-18：占卜牌面 / 梅花易数 ===== */
 .div-fs-btn { font-size:20px; line-height:1; }
-#page-divine.div-fs {
-  position:fixed !important; inset:0; z-index:9998; height:100vh;
-  background:linear-gradient(168deg, var(--bg-a, #fff) 0%, var(--bg-b, #f2f2f2) 100%);
-  overflow:hidden; display:flex; flex-direction:column;
-}
-@supports (height:100dvh) { #page-divine.div-fs { height:min(var(--mochi-ios-h,100dvh),100dvh); } }
-#page-divine.div-fs .div-scroll { flex:1; overflow-y:auto; padding:0 20px max(18px, env(safe-area-inset-bottom,0px)); }
-#page-divine.div-fs .div-setup { max-width:720px; margin:0 auto 14px; width:100%; }
-#page-divine.div-fs .div-card, #page-divine.div-fs .div-draw,
-#page-divine.div-fs .div-result, #page-divine.div-fs > .div-scroll > .div-card { max-width:720px; margin-left:auto; margin-right:auto; }
-#page-divine.div-fs .div-card-row { max-height:38vh; }
-#page-divine.div-fs .div-mini { max-width:150px; }
-#page-divine.div-fs .div-card-face { max-width:150px; margin:0 auto; }
 
 /* 内置牌面：真实卡牌比例（2:3），图片铺满 */
 .div-card-face.div-face-img { aspect-ratio:2/3; padding:0; overflow:hidden; position:relative; background:#1c1c1c; }

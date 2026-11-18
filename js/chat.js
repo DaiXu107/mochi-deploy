@@ -9098,6 +9098,7 @@ if (moreDivine) {
 moreDivine.addEventListener('click', (e) => {
 e.stopPropagation();
 if (morePanel) morePanel.hidden = true;
+if (window.divineOpenPageFromChat) { window.divineOpenPageFromChat(); return; }
 openChatDivine();
 });
 }
@@ -9122,23 +9123,9 @@ chatDivineMode = b.getAttribute('data-chatmode');
 chatDivineBody.querySelectorAll('[data-chatmode]').forEach(x => x.classList.toggle('sel', x === b));
 const mhNums = document.getElementById('div-chat-meihua-nums');
 if (mhNums) mhNums.hidden = chatDivineMode !== 'meihua';
-const cwrap = chatDivineBody.querySelector('.div-counts-wrap');
-if (cwrap) cwrap.hidden = chatDivineMode === 'meihua';
 const lenoSys = document.getElementById('div-chat-leno-sys');
 if (lenoSys) lenoSys.hidden = chatDivineMode !== 'lenormand';
 renderChatSpreadUI();
-if (chatDrawCancel) { try { chatDrawCancel(); } catch (err) {} chatDrawCancel = null; }
-const drawBtn2 = document.getElementById('div-chat-draw');
-if (drawBtn2) drawBtn2.textContent = '抽牌';
-const r = document.getElementById('div-chat-result');
-if (r) r.innerHTML = '<div class="div-result-empty">点击上方按钮开始抽牌</div>';
-});
-});
-chatDivineBody.querySelectorAll('[data-chatcount]').forEach(b => {
-b.addEventListener('click', (e) => {
-e.stopPropagation();
-chatDivineCount = Number(b.getAttribute('data-chatcount'));
-chatDivineBody.querySelectorAll('[data-chatcount]').forEach(x => x.classList.toggle('sel', x === b));
 if (chatDrawCancel) { try { chatDrawCancel(); } catch (err) {} chatDrawCancel = null; }
 const drawBtn2 = document.getElementById('div-chat-draw');
 if (drawBtn2) drawBtn2.textContent = '抽牌';
