@@ -13,7 +13,8 @@
 var PAIRS = [
 { key: 'money', primary: 'accounting', secondary: 'piggy', primaryName: '账房', primaryLabel: '记账', secondaryLabel: '存钱罐', primaryPage: 'page-accounting', secondaryPage: 'page-piggy' },
 { key: 'arc', primary: 'memo-arc', secondary: 'my-arc', primaryName: '档案', primaryLabel: '梦角档案', secondaryLabel: '我的档案', primaryPage: 'page-memo-arc', secondaryPage: 'page-my-arc' },
-{ key: 'gift', primary: 'market', secondary: 'giftbox', primaryName: '心意', primaryLabel: '心意市集', secondaryLabel: '心意柜', primaryPage: 'page-market', secondaryPage: 'page-giftbox' }
+{ key: 'gift', primary: 'market', secondary: 'giftbox', primaryName: '心意', primaryLabel: '心意市集', secondaryLabel: '心意柜', primaryPage: 'page-market', secondaryPage: 'page-giftbox' },
+{ key: 'sense', primary: 'tongpin', secondary: 'shenshou', primaryName: '同频', primaryLabel: '同频', secondaryLabel: '伸手', primaryPage: 'page-tongpin', secondaryPage: 'page-shenshou' }
 ];
 var refs = {};
 var barSeq = 0;
