@@ -1039,6 +1039,21 @@ return 0;
 // 处理会用内存/LS 有损快照覆盖 IDB = 聊天记录丢失。authLoadedPrefix=本会话已成功
 // 读过权威的命名空间（空记录落盘守卫用）；读取失败走有界自动重试。
 let authLoadedPrefix = null;
+// ===== 二改：多联系人隔离骨架（防「A 的操作掉到 B」）=====
+// deskNow/deskSame：异步交互（弹窗、延时定时器）开始前拍一张桌面快照，回调里比对；
+// chatGate：这一桌的聊天数据真的就绪了没（数据层回填 + 本桌权威已载）。
+// 自动互动（主动发送补掷/提问弹出/提醒进聊天）一律先问它——「加载成功后再互动」。
+window.mochiDeskNow = function () { try { return window.__activeCid || 'default'; } catch (e) { return 'default'; } };
+window.mochiDeskSame = function (cid) { return String(cid || 'default') === String(window.mochiDeskNow()); };
+window.mochiChatGate = function () {
+  try {
+    if (document.visibilityState === 'hidden') return false;
+    if (!window.__mochiDataReady) return false;
+    if (!chatDbReady) return false;
+    if (String(authLoadedPrefix || '') !== String(window.activePrefix() || '')) return false;
+    return true;
+  } catch (e) { return false; }
+};
 let idbRetryTimer = null;
 let idbRetryCount = 0;
 const IDB_RETRY_MAX = 6;
@@ -7693,20 +7708,28 @@ patchChangedInPlace(idxs, from);
 // FIX 2026-09-18 #775c：加 slot 形参（'ta' 默认＝联系人，'me'＝我的昵称），两套 hist/swept
 // 各走各的；#775b：聊天页当前不可见时不再只是「等下次重进」——除整窗重渲外还作废同窗补丁
 // 凭据（windowRenderedNicks 随渲染更新），下次进聊天必然按新昵称重画。
-window.chatSysNickChanged = function (oldName, slot) {
+window.chatSysNickChanged = function (oldName, slot, cid) {
 try {
 if (typeof oldName !== 'string' || !oldName) return;
+// 2026-11-22：桌面隔离。旧写法用动态 store + 当前 msgs——弹窗开着的时候切了联系人，
+// 回调就会把 B 的昵称清扫到 A 的记录上（用户实报「B 对用户的昵称更换出现在 A 的聊天区」）。
+// 非当前桌面：只往该桌面自己的 hist 记账（该桌面下次 loadMsgs 惰性补扫），不碰屏上 msgs/DOM。
+const deskCid = String(cid || window.mochiDeskNow());
+const onDesk = deskCid === window.mochiDeskNow();
+const st = onDesk ? store : (window.storeFor ? window.storeFor(deskCid) : null);
+if (!st) return;
 const S = sysNickSlot(slot);
-const cur = S.cur();
-const hist = sysNickHistGet(store, slot);
+const cur = onDesk ? S.cur() : '';
+const hist = sysNickHistGet(st, slot);
 if (hist.indexOf(oldName) < 0) hist.push(oldName);
-if (hist.indexOf(cur) < 0) hist.push(cur);
-store.set(S.histKey, JSON.stringify(hist));
-if (oldName === cur) { store.set(S.sweptKey, String(hist.length)); return; }
+if (cur && hist.indexOf(cur) < 0) hist.push(cur);
+st.set(S.histKey, JSON.stringify(hist));
+if (!onDesk) return; // 别的桌面：记账到此为止
+if (oldName === cur) { st.set(S.sweptKey, String(hist.length)); return; }
 // 权威未就绪（开屏极早期）：只记 hist 不动 msgs、不推进 swept——否则清扫后的文本
 // 与 IDB 权威里的原文本签名不同，finalize 合并会当成两条重复记录；交给补扫。
 if (!chatDbReady) return;
-store.set(S.sweptKey, String(hist.length));
+st.set(S.sweptKey, String(hist.length));
 // 改名后无论清扫是否有改动都要重渲染：系统消息显示走占位符→当前名替换，有改动时旧名
 // 已换成占位符、无改动（连续改名）时旧渲染缓存的名字已过期——不重渲染 DOM 会停留在旧名
 if (sysNickSweepMsgs(msgs, oldName, slot)) saveMsgs();
@@ -10350,13 +10373,22 @@ enterChat();
 let chatResumeTries = 0;
 function chatResumeRoute() {
 if (!chatResumeFromDiscard) return;
+// 2026-11-22：先等「数据层真就绪」再动手——旧实现固定 1200ms 抢跑，回填还没到就切桌面进聊天，
+// 屏上先出现别人的/空的窗口，随后权威到达才重画＝用户所见「糊了一下、内容和人对不上」。
+if (!window.__mochiDataReady) {
+if (chatResumeTries++ < 60) { try { setTimeout(chatResumeRoute, 800); } catch (e) {} }
+return;
+}
 let mode = 'off', cid = '';
 try {
 const rs = window.xyStore ? window.xyStore('xy-home-v2') : null;
-mode = (rs && rs.get('chat-resume-mode')) || 'fixed';
+mode = (rs && rs.get('chat-resume-mode')) || 'off';
 cid = (rs && rs.get('chat-resume-cid')) || '';
 } catch (e) {}
-if (mode !== 'random') mode = 'fixed';
+// 2026-11-22：mode 默认改 'off'（回主页、不自动进聊天）——旧实现 `|| 'fixed'` 把「没设过」
+// 当成固定进聊天，后台回收重载后经常突然切到某个联系人，用户读作「回来后人/内容全错位」。
+// 只有用户显式选过 fixed/random 才自动进入。
+if (mode !== 'random' && mode !== 'fixed') return;
 let list = [];
 try { list = (window.getContacts && window.getContacts()) || []; } catch (e) {}
 if (!list.length) {
@@ -10377,6 +10409,9 @@ list[0] || null;
 } else target = list[Math.floor(Math.random() * list.length)] || null;
 if (!target) return;
 try { if (target.id !== (window.__activeCid || 'default') && window.setActiveContact) window.setActiveContact(target.id); } catch (e) {}
+// 2026-11-22：只有真的切到目标桌面才进页——切不过去（目标不在名册/被拦）时
+// 进页会把「当前那个人的聊天窗」当成恢复目标画出来，就是用户报的错位。
+if (String(window.__activeCid || 'default') !== String(target.id)) return;
 try { enterChat(); } catch (e) {}
 }
 try { if (chatResumeFromDiscard) setTimeout(chatResumeRoute, 1200); } catch (e) {}
