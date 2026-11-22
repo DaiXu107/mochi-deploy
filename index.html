@@ -7903,6 +7903,12 @@ font-size:15px; background:rgba(17,17,17,.045); }
 .rec-arw { flex:none; width:12px; height:12px; opacity:.24; color:var(--ink,#111); }
 .rec-empty { text-align:center; padding:60px 20px; font-size:13px; color:var(--muted,#9b98a6); line-height:1.8; }
 .rec-empty span { font-size:11px; color:var(--hint-ink,#b0adba); }
+.bam-wrap { display:flex; flex-direction:column; align-items:center; gap:6px; padding:2px 2px 0; }
+.bam-box { position:relative; width:100%; max-width:560px; display:flex; align-items:center; justify-content:center; }
+#bam-canvas { display:block; width:100%; height:auto; border-radius:12px; touch-action:none;
+background:#FCFBFD; border:1px solid rgba(0,0,0,.07); }
+.poke-card.game-fs .bam-box { flex:1; min-height:0; }
+.poke-card.game-fs #bam-canvas { width:auto; max-width:100%; max-height:calc(100dvh - 210px); }
 .msg-gift { align-self: center; width: 100%; display: flex; justify-content: center; margin: 8px 0; }
 .msg-gift-card {
 width: min(260px, 80vw); padding: 22px 18px 14px; border-radius: 20px; box-sizing: border-box;
@@ -14473,7 +14479,7 @@ color: var(--gh-faint);
            （名称+版号 / 部署时间+实时秒 / 版本检测行）收成一行；检测行随 ver-check.js 退役删除。
            data-build-ts / data-version 两属性保留：device.js 诊断、bg-keep 自检、pwa.js 旧包检测
            仍只读属性（诊断版本号走 data-version 兜底，device.js 两处缓存原生支持）。 -->
-      <div class="splash-ver" id="splash-ver" data-build-ts="1795360247063" data-version="v8.3">
+      <div class="splash-ver" id="splash-ver" data-build-ts="1795361005267" data-version="v8.4">
         <span class="sv-app">Mochi 字卡传讯 已完结停更</span>
       </div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
@@ -16117,7 +16123,7 @@ color: var(--gh-faint);
         <div class="set-row" id="row-changelog">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 12c0-5.5 3.5-10 10-10 3.7 0 7 2 8.8 5M22 12c0 5.5-3.5 10-10 10-3.7 0-7-2-8.8-5"/></svg></div>
           <div class="txt">版本与更新<span class="sub">当前版本 · 一键更新到最新（更新摘要见开屏公告）</span></div>
-          <div class="val" id="about-ver-val">v8.3</div>
+          <div class="val" id="about-ver-val">v8.4</div>
           <div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
         </div>
         <!-- #606 开源与致谢：开源/私有部署说明 + 灵感来源与致谢（内容与功能介绍页同源，做成独立入口） -->
@@ -16208,7 +16214,7 @@ color: var(--gh-faint);
         </div>
       </div>
       </div><!-- /them-sec about -->
-      <div class="ver">Mochi 字卡传讯 v8.3</div>
+      <div class="ver">Mochi 字卡传讯 v8.4</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
       <!-- v3.27.x：设置页底部防骗声明 -->
       <div class="set-alert">
@@ -16607,7 +16613,7 @@ color: var(--gh-faint);
             <div class="lic-hero-top">
               <div class="lic-title">Mochi 字卡传讯</div>
               <span class="lic-badge">原版</span>
-              <span class="lic-ver">v8.3</span>
+              <span class="lic-ver">v8.4</span>
             </div>
             <div class="lic-p">原创极简风情侣字卡传讯，不是小手机：黑白灰简约设计，数据全部保存在本地、无需联网；所有内容均为代码触发、按概率运行，联系方可主动发送聊天消息。代码从零编写并完全开源——本作即原版。</div>
             <!-- v3.26.x #648：原版口径澄清——唯一原版使用网站＋其他版本均为开放二传二改产生的二传/二改版 -->
@@ -19810,6 +19816,44 @@ color: var(--gh-faint);
         </div>
       </div>
       <!-- 双人 Pong 小游戏：聊天页底部半框（玩家左挡板 / TA 右挡板 AI） -->
+      <!-- 2026-11-22：双人火柴人羽毛球（聊天页 更多功能 → 小游戏）。复用 pong 的条/比分/覆盖层样式 -->
+      <div class="poke-card" id="chat-badminton-panel" hidden>
+        <div class="poke-card-head">
+          <span>羽毛球 · <b id="bam-partner-name">TA</b></span>
+          <button class="poke-card-close" id="bam-close">✕</button>
+        </div>
+        <div class="poke-card-scroll">
+          <div class="bam-wrap">
+            <div class="pong-bar">
+              <div class="pong-bar-left">
+                <select class="pong-diff" id="bam-diff">
+                  <option value="casual">休闲</option>
+                  <option value="easy" selected>简单</option>
+                  <option value="normal">普通</option>
+                </select>
+                <span id="bam-win-tip">先得 5 分</span>
+              </div>
+              <div class="pong-bar-right">
+                <button class="pong-icon-btn" id="bam-pause" title="暂停/继续">⏸</button>
+                <button class="pong-icon-btn" id="bam-fs" title="全屏">⛶</button>
+                <button class="pong-sound" id="bam-sound" title="音效开关">🔊</button>
+              </div>
+            </div>
+            <div class="pong-score" id="bam-score"><span class="pong-s-ta">0 TA</span><span class="pong-s-sep">:</span><span class="pong-s-you">你 0</span></div>
+            <div class="bam-box">
+              <canvas id="bam-canvas" width="400" height="520"></canvas>
+              <div class="pong-hint" id="bam-hint"></div>
+              <div class="pong-overlay" id="bam-overlay" hidden>
+                <div class="pong-overlay-title" id="bam-overlay-title">双人羽毛球</div>
+                <div class="pong-overlay-body" id="bam-overlay-body"></div>
+                <div class="pong-overlay-btns">
+                  <button class="pong-overlay-btn" id="bam-overlay-btn" type="button">开始</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="poke-card" id="chat-pong-panel" hidden>
         <div class="poke-card-head">
           <span>Pong · <b id="pong-partner-name">TA</b></span>
@@ -21188,6 +21232,10 @@ color: var(--gh-faint);
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="18" rx="2"/><rect x="4" y="8" width="2" height="8" rx="1" fill="currentColor"/><rect x="18" y="8" width="2" height="8" rx="1" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></svg></span>
             <span>Pong</span>
           </button>
+          <button class="more-item" id="more-badminton" data-mcat="game" title="羽毛球（火柴人双人对打）">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4l-7.5 7.5"/><path d="M20 4l-4.2.6L20 8.8z"/><circle cx="9" cy="14" r="4.6"/><path d="M5.4 10.4l-1.1-1.1M12.6 17.6l1.1 1.1M5.4 17.6l-1.1 1.1M12.6 10.4l1.1-1.1"/></svg></span>
+            <span>羽毛球</span>
+          </button>
           <button class="more-item" id="more-snake" data-mcat="game" title="双人贪吃蛇">
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h3v3H7zM14 14h3v3h-3z"/></svg></span>
             <span>贪吃蛇</span>
@@ -21856,7 +21904,7 @@ color: var(--gh-faint);
   // v3.5.123：readonly 起手（防 Chrome 密码弹条破坏表单签名）——这里立即解除，
   // 早于所有功能模块，任何设备都不会出现输入框不可用的情况
   (function () { var _ci = document.getElementById('chat-input'); if (_ci) _ci.readOnly = false; })();
-window.__jsErrors = window.__jsErrors || []; window.__mochiLoaded = window.__mochiLoaded || []; window.__mochiErrLoaded = window.__mochiErrLoaded || []; window.__mochiBootAt = Date.now(); window.__mochiJsFiles = ["device.js","splash-opening.js","paper-skin.js","entry-notice.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","mail-postal.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","garden-herbarium.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-core.js","room-iso.js","room.js","sleeproom.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","pwa.js","cjian.js","feature-hub.js","app-market.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js","records-hub.js","home-wechat.js","app-merge.js"]; window.__mochiExtFiles = ["splash-opening.js","paper-skin.js","entry-notice.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","mail-postal.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","garden-herbarium.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-core.js","room-iso.js","room.js","sleeproom.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","cjian.js","feature-hub.js","app-market.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js","records-hub.js","home-wechat.js","app-merge.js"];
+window.__jsErrors = window.__jsErrors || []; window.__mochiLoaded = window.__mochiLoaded || []; window.__mochiErrLoaded = window.__mochiErrLoaded || []; window.__mochiBootAt = Date.now(); window.__mochiJsFiles = ["device.js","splash-opening.js","paper-skin.js","entry-notice.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","mail-postal.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","garden-herbarium.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-core.js","room-iso.js","room.js","sleeproom.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","pwa.js","cjian.js","feature-hub.js","app-market.js","badminton.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js","records-hub.js","home-wechat.js","app-merge.js"]; window.__mochiExtFiles = ["splash-opening.js","paper-skin.js","entry-notice.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","mail-postal.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","garden-herbarium.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-core.js","room-iso.js","room.js","sleeproom.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","cjian.js","feature-hub.js","app-market.js","badminton.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js","records-hub.js","home-wechat.js","app-merge.js"];
 (function () { try {
 (function () {
 try { window.__jsErrors = window.__jsErrors || []; } catch (e0) {}
@@ -26768,6 +26816,7 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 <script defer src="js/cjian.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('cjian.js')"></script>
 <script defer src="js/feature-hub.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('feature-hub.js')"></script>
 <script defer src="js/app-market.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('app-market.js')"></script>
+<script defer src="js/badminton.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('badminton.js')"></script>
 <script defer src="js/settings-help.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('settings-help.js')"></script>
 <script defer src="js/onboarding.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('onboarding.js')"></script>
 <script defer src="js/page-coach.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('page-coach.js')"></script>
@@ -26799,4 +26848,4 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 </body>
 </html>
 
-<!-- __MOCHI_EOF__ mwrz4wlz -->
+<!-- __MOCHI_EOF__ mwrzl5n7 -->
