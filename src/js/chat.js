@@ -9283,8 +9283,30 @@ const MORE_APP_ENTRIES = {
 'more-app-water': 'water',
 'more-app-eat': 'eat',
 'more-app-pomo': 'pomo',
-'more-app-memo': 'memo'
+'more-app-memo': 'memo',
+// 记录类 + 应用市场（2026-11-22 补齐：把桌面功能全部塞进三个点面板）
+'more-app-home': 'home',
+'more-app-calendar': 'calendar',
+'more-app-memory': 'memory',
+'more-app-stats': 'stats',
+'more-app-interact': 'interact',
+'more-app-period': 'period',
+'more-app-accounting': 'accounting',
+'more-app-arc': 'memo-arc',
+'more-app-appstore': 'appstore'
 };
+// 记录汇总：没有桌面图标，直接开聚合页
+(function () {
+  const b = document.getElementById('more-app-records');
+  if (!b) return;
+  b.addEventListener('click', function (e) {
+    e.stopPropagation();
+    const mp = document.getElementById('chat-more-panel');
+    if (mp) mp.hidden = true;
+    if (window.openRecordsPage) { try { window.openRecordsPage(); } catch (err) {} }
+    else if (window.toast) { try { window.toast('记录页还没加载完'); } catch (e2) {} }
+  });
+})();
 Object.keys(MORE_APP_ENTRIES).forEach(function (id) {
 const btn = document.getElementById(id);
 if (!btn) return;

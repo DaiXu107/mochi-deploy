@@ -5421,3 +5421,25 @@ select.mochi-custom-select-native { display:none; }
 .div-board-edit.on { background:#222; color:#fff; border-color:#222; }
 .div-board-empty { cursor:grab; }
 .div-board-empty:active { cursor:grabbing; }
+
+/* ===== 2026-11-22 记录汇总（只读聚合，聊天更多 → 互动 → 记录） ===== */
+.rec-scroll { flex:1; min-height:0; overflow-y:auto; padding:0 14px 18px; -webkit-overflow-scrolling:touch; }
+.rec-row { display:flex; align-items:center; gap:10px; padding:12px 12px; margin-bottom:8px;
+  background:rgba(255,255,255,.86); border:1px solid rgba(17,17,17,.055); border-radius:16px; cursor:pointer;
+  -webkit-tap-highlight-color:transparent; }
+.rec-row:active { background:rgba(17,17,17,.04); }
+.rec-ic { flex:none; width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+  font-size:15px; background:rgba(17,17,17,.045); }
+.rec-ic.mood { background:rgba(240,190,120,.22); }
+.rec-ic.mem { background:rgba(150,120,220,.18); }
+.rec-ic.money { background:rgba(120,190,150,.20); }
+.rec-ic.period { background:rgba(230,140,150,.20); }
+.rec-ic.arc { background:rgba(120,160,220,.18); }
+.rec-ic.ask { background:rgba(240,170,110,.20); }
+.rec-nm { flex:none; width:42px; font-size:13.5px; font-weight:600; letter-spacing:.2px; color:var(--ink,#111); }
+.rec-v { flex:1; min-width:0; font-size:12.5px; color:var(--muted,#6f6c7a); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.rec-v b { color:var(--ink,#111); font-weight:700; }
+.rec-t { flex:none; font-size:10px; color:var(--hint-ink,#b0adba); }
+.rec-arw { flex:none; width:12px; height:12px; opacity:.24; color:var(--ink,#111); }
+.rec-empty { text-align:center; padding:60px 20px; font-size:13px; color:var(--muted,#9b98a6); line-height:1.8; }
+.rec-empty span { font-size:11px; color:var(--hint-ink,#b0adba); }
