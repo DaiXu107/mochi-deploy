@@ -13,7 +13,11 @@
   var PAIRS = [
     { key: 'money', primary: 'accounting', secondary: 'piggy', primaryName: '账房', primaryLabel: '记账', secondaryLabel: '存钱罐', primaryPage: 'page-accounting', secondaryPage: 'page-piggy' },
     { key: 'arc', primary: 'memo-arc', secondary: 'my-arc', primaryName: '档案', primaryLabel: '梦角档案', secondaryLabel: '我的档案', primaryPage: 'page-memo-arc', secondaryPage: 'page-my-arc' },
-    { key: 'gift', primary: 'market', secondary: 'giftbox', primaryName: '心意', primaryLabel: '心意市集', secondaryLabel: '心意柜', primaryPage: 'page-market', secondaryPage: 'page-giftbox' }
+    { key: 'gift', primary: 'market', secondary: 'giftbox', primaryName: '心意', primaryLabel: '心意市集', secondaryLabel: '心意柜', primaryPage: 'page-market', secondaryPage: 'page-giftbox' },
+    // 2026-11-22：同频 + 伸手合并成一个功能（作者直派「同频伸手合并为一个功能」）。
+    // 同频为主入口（TA 此刻 + 敲三下），伸手作页内胶囊；两页结构都是 .chat-head + .tp/ss-body，
+    // 胶囊插在头部下方，与原三组合并体例一致。
+    { key: 'sense', primary: 'tongpin', secondary: 'shenshou', primaryName: '同频', primaryLabel: '同频', secondaryLabel: '伸手', primaryPage: 'page-tongpin', secondaryPage: 'page-shenshou' }
   ];
 
   var refs = {};
