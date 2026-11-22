@@ -936,7 +936,10 @@
     try { document.dispatchEvent(new Event('contact-switched')); } catch (e) {}
     try {
       document.querySelectorAll('.page').forEach(p => { if (!p.hidden) p.hidden = true; }); // FIX #338 同值写也发 mutation（Blink 实测同值 3 连写=3 条记录），44 页全扫=唤醒全部页面观察器
-      const home = document.getElementById('page-phone'); if (home) home.hidden = false;
+      // 2026-11-22：微信式主页时，切桌面回「会话列表」；否则回图标桌面
+      var wxPg = null;
+      try { wxPg = (window.mochiHomeStyle && window.mochiHomeStyle() === 'wechat') ? document.getElementById('page-wxhome') : null; } catch (eW) {}
+      const home = wxPg || document.getElementById('page-phone'); if (home) home.hidden = false;
     } catch (e) {}
   };
   window.switchContact = window.setActiveContact;

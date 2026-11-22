@@ -10469,6 +10469,13 @@ try { if (chatResumeFromDiscard) setTimeout(chatResumeRoute, 1200); } catch (e) 
 const back = document.getElementById('chat-back');
 if (back) {
 back.addEventListener('click', () => {
+// 2026-11-22：主页样式=微信式时，聊天返回回「会话列表」而不是图标桌面（聊天页本身不变）
+try {
+if (window.mochiHomeStyle && window.mochiHomeStyle() === 'wechat' && window.__wxHome && window.__wxHome.open) {
+window.__wxHome.open();
+return;
+}
+} catch (e) {}
 const phonePage = document.getElementById('page-phone');
 if (phonePage) {
 document.querySelectorAll('.page').forEach(p => { if (!p.hidden) p.hidden = true; }); // FIX #336 同值写也发 mutation，44 页全扫=唤醒全部页面观察器
