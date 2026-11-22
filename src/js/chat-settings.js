@@ -1326,18 +1326,27 @@
   if (csLp) {
     csLp.addEventListener('click', () => {
       if (!window.openModal) return;
+      // 二改：桌面快照——弹窗开着时切了联系人，回调不得写到新桌面
+      const cid0 = (window.__activeCid || 'default');
       const cur = store.get('cs-lbl-partner') || '';
       window.openModal('联系人昵称', cur, (v) => {
         const val = (v || '').trim();
+        const sameDesk = ((window.__activeCid || 'default') === cid0);
+        const st = (sameDesk || !window.storeFor) ? store : window.storeFor(cid0);
         // v3.25.x：有效昵称变化时触发系统消息昵称清扫（chat.js），历史系统消息称呼跟随
         // v3.26.x：与桌面解耦后有效昵称基线只看 cs-lbl-partner（默认 TA），不再掺入桌面键
         // FIX 2026-09-18 #775e：基线改用聊天里实际显示的旧名（chatPartnerName 现含
         // 「联系人名片名」回退环）——只按 cs-lbl-partner 取旧名时，「从未设过聊天昵称、
         // 只在联系人管理里改过名」的用户屏上旧名是名片名，清扫却拿 'TA' 去扫＝旧名扫不掉。
-        const oldEff = window.chatPartnerName ? window.chatPartnerName() : (store.get('cs-lbl-partner') || 'TA');
-        if (val) store.set('cs-lbl-partner', val); else store.remove('cs-lbl-partner');
+        const oldEff = window.chatPartnerName ? window.chatPartnerName() : (st.get('cs-lbl-partner') || 'TA');
+        if (val) st.set('cs-lbl-partner', val); else st.remove('cs-lbl-partner');
+        if (!sameDesk) {
+          // 已切走：只给原桌面记账，不扫当前屏上那份记录
+          try { if (window.chatSysNickChanged) window.chatSysNickChanged(oldEff, undefined, cid0); } catch (e) {}
+          return;
+        }
         if (oldEff !== (window.chatPartnerName ? window.chatPartnerName() : (val || 'TA'))) {
-          try { if (window.chatSysNickChanged) window.chatSysNickChanged(oldEff); } catch (e) {}
+          try { if (window.chatSysNickChanged) window.chatSysNickChanged(oldEff, undefined, cid0); } catch (e) {}
         }
         applyProfile();
         try { if (window.renderChatHeader) window.renderChatHeader(); } catch (e) {}
@@ -1348,16 +1357,23 @@
   if (csLu) {
     csLu.addEventListener('click', () => {
       if (!window.openModal) return;
+      const cid0 = (window.__activeCid || 'default');
       const cur = store.get('cs-lbl-user') || '';
       window.openModal('我的昵称', cur, (v) => {
         const val = (v || '').trim();
+        const sameDesk = ((window.__activeCid || 'default') === cid0);
+        const st = (sameDesk || !window.storeFor) ? store : window.storeFor(cid0);
         // FIX 2026-09-18 #775c：此前这条只写键、不走改名钩子——「我的昵称」在聊天设置里
         // 改了，聊天里已发出的拍一拍仍是旧名（联系人那一行有 chatSysNickChanged，这一行
         // 没有对应的 {me} 侧），与用户报障「给我和联系人都换了昵称，拍一拍没变」同病。
-        const oldEff = store.get('cs-lbl-user') || '我';
-        if (val) store.set('cs-lbl-user', val); else store.remove('cs-lbl-user');
+        const oldEff = st.get('cs-lbl-user') || '我';
+        if (val) st.set('cs-lbl-user', val); else st.remove('cs-lbl-user');
+        if (!sameDesk) {
+          try { if (window.chatSysNickChanged) window.chatSysNickChanged(oldEff, 'me', cid0); } catch (e) {}
+          return;
+        }
         if (oldEff !== (val || '我')) {
-          try { if (window.chatSysNickChanged) window.chatSysNickChanged(oldEff, 'me'); } catch (e) {}
+          try { if (window.chatSysNickChanged) window.chatSysNickChanged(oldEff, 'me', cid0); } catch (e) {}
         }
         applyProfile();
       }, { maxlength: 30 });
@@ -3522,19 +3538,21 @@
     const rVal = document.getElementById('cs-resume-chat-val');
     const refreshResume = () => {
       if (!rVal) return;
-      const mode = rGet('chat-resume-mode') || 'fixed';
+      // 2026-11-22：默认 'off'＝回主页（不自动进聊天）——避免后台回收重载后突然切到某个联系人
+      const mode = rGet('chat-resume-mode') || 'off';
       if (mode === 'random') rVal.textContent = '随机联系人';
-      else {
+      else if (mode === 'fixed') {
         const cid = rGet('chat-resume-cid') || (window.getActiveContact ? window.getActiveContact() : '');
         rVal.textContent = '固定：' + rName(cid || 'default');
-      }
+      } else rVal.textContent = '回主页（不自动进聊天）';
     };
     refreshResume();
     document.addEventListener('contact-switched', refreshResume);
     resumeChatRow.addEventListener('click', () => {
       if (!window.openModal) return;
-      const mode = rGet('chat-resume-mode') || 'fixed';
+      const mode = rGet('chat-resume-mode') || 'off';
       window.openModal('后台回来直接进聊天', '', (v) => {
+        if (v === 'off') { rSet('chat-resume-mode', 'off'); refreshResume(); toast('后台被回收后回主页，不再自动进聊天'); return; }
         if (v === 'fixed') {
           const list = rContacts();
           if (!list.length) { toast('还没有联系人'); return; }
@@ -3555,6 +3573,7 @@
       }, {
         noInput: true, pillSubmit: true, pill: mode,
         pills: [
+          { label: '回主页（不自动进）', value: 'off' },
           { label: '固定联系人', value: 'fixed' },
           { label: '随机联系人', value: 'random' }
         ]

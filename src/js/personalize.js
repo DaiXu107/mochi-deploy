@@ -1009,13 +1009,27 @@ try {
     el.addEventListener('click', (e) => {
       e.stopPropagation();
       if (window.openModal) {
+        // 二改：弹窗是异步的——拍一张桌面快照。弹窗开着时切了联系人，回调绝不能把
+        // B 的昵称写进 A、更不能拿 A 的聊天记录去做 B 的改名清扫。
+        const cid0 = (window.__activeCid || 'default');
         window.openModal('修改昵称', el.textContent, (v) => {
           const val = (v || '').trim();
           if (val) {
+            const sameDesk = ((window.__activeCid || 'default') === cid0);
+            const st = (sameDesk || !window.storeFor) ? store : window.storeFor(cid0);
             // v3.26.x：改前先记有效昵称（聊天独立昵称 cs-lbl-partner 优先）——变化时接入
             // 系统消息昵称清扫，与 chat-settings / contacts 改名路径行为一致
             let oldEff = '';
-            if (key === 'lbl-partner') oldEff = store.get('cs-lbl-partner') || store.get('lbl-partner') || 'TA';
+            if (key === 'lbl-partner') oldEff = st.get('cs-lbl-partner') || st.get('lbl-partner') || 'TA';
+            if (!sameDesk) {
+              // 已切到别的桌面：只写回原来那桌，不动屏上任何东西
+              st.set(key, val);
+              if (key === 'lbl-partner') {
+                const newEff = st.get('cs-lbl-partner') || st.get('lbl-partner') || 'TA';
+                if (newEff !== oldEff) { try { if (window.chatSysNickChanged) window.chatSysNickChanged(oldEff, undefined, cid0); } catch (e) {} }
+              }
+              return;
+            }
             el.textContent = val;
             store.set(key, val);
             // 同步聊天页顶部标题——必须走 renderChatHeader（按 cs-lbl-partner 优先解析）：
@@ -1024,7 +1038,7 @@ try {
               if (window.renderChatHeader) { try { window.renderChatHeader(); } catch (e) {} }
               else { const pname = document.getElementById('chat-partner-name'); if (pname) pname.textContent = val; }
               const newEff = store.get('cs-lbl-partner') || store.get('lbl-partner') || 'TA';
-              if (newEff !== oldEff) { try { if (window.chatSysNickChanged) window.chatSysNickChanged(oldEff); } catch (e) {} }
+              if (newEff !== oldEff) { try { if (window.chatSysNickChanged) window.chatSysNickChanged(oldEff, undefined, cid0); } catch (e) {} }
             }
           }
         }, { maxlength: 12 });
