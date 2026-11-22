@@ -5871,6 +5871,44 @@
         </div>
       </div>
       <!-- 双人 Pong 小游戏：聊天页底部半框（玩家左挡板 / TA 右挡板 AI） -->
+      <!-- 2026-11-22：双人火柴人羽毛球（聊天页 更多功能 → 小游戏）。复用 pong 的条/比分/覆盖层样式 -->
+      <div class="poke-card" id="chat-badminton-panel" hidden>
+        <div class="poke-card-head">
+          <span>羽毛球 · <b id="bam-partner-name">TA</b></span>
+          <button class="poke-card-close" id="bam-close">✕</button>
+        </div>
+        <div class="poke-card-scroll">
+          <div class="bam-wrap">
+            <div class="pong-bar">
+              <div class="pong-bar-left">
+                <select class="pong-diff" id="bam-diff">
+                  <option value="casual">休闲</option>
+                  <option value="easy" selected>简单</option>
+                  <option value="normal">普通</option>
+                </select>
+                <span id="bam-win-tip">先得 5 分</span>
+              </div>
+              <div class="pong-bar-right">
+                <button class="pong-icon-btn" id="bam-pause" title="暂停/继续">⏸</button>
+                <button class="pong-icon-btn" id="bam-fs" title="全屏">⛶</button>
+                <button class="pong-sound" id="bam-sound" title="音效开关">🔊</button>
+              </div>
+            </div>
+            <div class="pong-score" id="bam-score"><span class="pong-s-ta">0 TA</span><span class="pong-s-sep">:</span><span class="pong-s-you">你 0</span></div>
+            <div class="bam-box">
+              <canvas id="bam-canvas" width="400" height="520"></canvas>
+              <div class="pong-hint" id="bam-hint"></div>
+              <div class="pong-overlay" id="bam-overlay" hidden>
+                <div class="pong-overlay-title" id="bam-overlay-title">双人羽毛球</div>
+                <div class="pong-overlay-body" id="bam-overlay-body"></div>
+                <div class="pong-overlay-btns">
+                  <button class="pong-overlay-btn" id="bam-overlay-btn" type="button">开始</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="poke-card" id="chat-pong-panel" hidden>
         <div class="poke-card-head">
           <span>Pong · <b id="pong-partner-name">TA</b></span>
@@ -7248,6 +7286,10 @@
           <button class="more-item" id="more-pong" data-mcat="game" title="双人Pong">
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="18" rx="2"/><rect x="4" y="8" width="2" height="8" rx="1" fill="currentColor"/><rect x="18" y="8" width="2" height="8" rx="1" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></svg></span>
             <span>Pong</span>
+          </button>
+          <button class="more-item" id="more-badminton" data-mcat="game" title="羽毛球（火柴人双人对打）">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4l-7.5 7.5"/><path d="M20 4l-4.2.6L20 8.8z"/><circle cx="9" cy="14" r="4.6"/><path d="M5.4 10.4l-1.1-1.1M12.6 17.6l1.1 1.1M5.4 17.6l-1.1 1.1M12.6 10.4l1.1-1.1"/></svg></span>
+            <span>羽毛球</span>
           </button>
           <button class="more-item" id="more-snake" data-mcat="game" title="双人贪吃蛇">
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h3v3H7zM14 14h3v3h-3z"/></svg></span>
