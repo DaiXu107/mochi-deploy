@@ -146,6 +146,41 @@
       return false;
     } catch (e) { return false; }
   }
+  // 2026-11-22：跨标签页/跨设备读最新记录。xyStore.get 优先读「本页内存缓存」，另一个标签页
+  //（或桌面图标那份）刚写过时，本页内存/内存缓存是旧的 → 仍按旧数据报「已推迟」。
+  // 这里在内存视图之外再读一次裸 localStorage（同源共享、写入方立刻可见），取「最近一次开始日更晚」
+  // 的那份；内存更新（LS 写失败）时也不会被 LS 旧值盖回去。
+  function loadRecsFresh() {
+    var a = loadRecs();
+    var b = null;
+    try { var raw = localStorage.getItem(G + ':' + KEY_REC); if (raw) b = JSON.parse(raw); } catch (e) { b = null; }
+    if (!Array.isArray(b) || !b.length) return a;
+    if (!a.length) return b;
+    var la = normalize(a), lb = normalize(b);
+    var sa = la.length ? la[la.length - 1].start : '';
+    var sb = lb.length ? lb[lb.length - 1].start : '';
+    if (sb > sa) return lb;
+    if (sb === sa) {
+      // 同一次开始：取「结束日更晚 / 记录更多」的那份（用户刚补了结束日）
+      var ea = la.length ? (la[la.length - 1].end || '') : '';
+      var eb = lb.length ? (lb[lb.length - 1].end || '') : '';
+      if (eb > ea) return lb;
+    }
+    return a;
+  }
+  // 今天是否落在任何一条记录里（没写 end 的按 periodLenOf() 推算）——所有提醒的最高优先闸
+  function recCovers(today, c) {
+    var pl = periodLenOf();
+    try {
+      for (var i = 0; i < recs.length; i++) {
+        var r = recs[i];
+        if (!r || !r.start) continue;
+        var end = r.end || addDays(r.start, pl - 1);
+        if (today >= r.start && today <= end) return true;
+      }
+    } catch (e) {}
+    return false;
+  }
   function saveRecs(list) {
     markPeriodOwner();
     try {
@@ -154,10 +189,32 @@
     } catch (e) {}
   }
   // 只读探针（与 window.__room / __bar 同款，供无头验证与诊断回读）：不新增行为
-  try { window.__periodProbe = { owner: periodOwnerDesk, markOwner: markPeriodOwner, deliver: periodDeliverCare, recs: loadRecs }; } catch (eP) {}
+  try { window.__periodProbe = { owner: periodOwnerDesk, markOwner: markPeriodOwner, deliver: periodDeliverCare, recs: loadRecs, recsFresh: loadRecsFresh, status: status, cfg: loadCfg, periodLen: periodLenOf, covers: recCovers, today: todayStr }; } catch (eP) {}
   function loadCfg() {
-    try { var c = JSON.parse(store.get(KEY_CFG) || 'null'); if (c) return c; } catch (e) {}
-    return { cycleLen: 28, periodLen: 5, lutealPhase: 14 };
+    // 2026-11-22：不再「存什么用什以」原样返回。旧版存的 period-cfg 可能没有 periodLen
+    //（老版本字段更少 / 部分写入），而 addDays(start, undefined - 1) 得到 Invalid Date，
+    // 于是「已标记经期来了」的记录永远盖不住任何一天：不显示经期第 N 天，过了周期就直接报推迟。
+    // 这里补全默认值 + 限幅，并把修正后的值写回去（只写一次，之后就是正常键）。
+    var c = null;
+    try { c = JSON.parse(store.get(KEY_CFG) || 'null'); } catch (e) { c = null; }
+    var o = { cycleLen: 28, periodLen: 5, lutealPhase: 14 };
+    var needFix = !(c && typeof c === 'object');
+    if (c && typeof c === 'object') {
+      Object.keys(c).forEach(function (k) { if (!(k in o)) o[k] = c[k]; });
+      var cl = Number(c.cycleLen);
+      o.cycleLen = (isFinite(cl) && cl >= 15 && cl <= 60) ? Math.round(cl) : (needFix = true, 28);
+      var pl = Number(c.periodLen);
+      o.periodLen = (isFinite(pl) && pl >= 1 && pl <= 31) ? Math.round(pl) : (needFix = true, 5);
+      var lp = Number(c.lutealPhase);
+      o.lutealPhase = (isFinite(lp) && lp >= 8 && lp <= 20) ? Math.round(lp) : (needFix = true, 14);
+    }
+    if (needFix) { try { saveCfg(o); } catch (e2) {} }
+    return o;
+  }
+  // 经期天数（所有「没写 end 的记录」都按它推算）——任何地方都不直接读 cfg.periodLen
+  function periodLenOf() {
+    var v = Number(cfg && cfg.periodLen);
+    return (isFinite(v) && v >= 1 && v <= 31) ? Math.round(v) : 5;
   }
   function saveCfg(c) {
     try {
@@ -165,8 +222,7 @@
       try { if (window.idbSet) window.idbSet(G + ':' + KEY_CFG, JSON.stringify(c)); } catch (e2) {}
     } catch (e) {}
   }
-  function loadDaily() { try { return JSON.parse(store.get(KEY_DAILY) || '{}'); } catch (e) { return {}; } }
-  function saveDaily(obj) {
+  function loadDaily() { try { return JSON.parse(store.get(KEY_DAILY) || '{}'); } catch (e) { return {}; } }  function saveDaily(obj) {
     try {
       store.set(KEY_DAILY, JSON.stringify(obj));
       try { if (window.idbSet) window.idbSet(G + ':' + KEY_DAILY, JSON.stringify(obj)); } catch (e2) {}
@@ -372,9 +428,10 @@
     recs = normalize(recs);
     var today = todayStr();
     var cl = effCycleLen();
+    var pl = periodLenOf();
     var inPeriod = false, curRec = null;
     recs.forEach(function (r) {
-      var end = r.end || addDays(r.start, cfg.periodLen - 1);
+      var end = r.end || addDays(r.start, pl - 1);
       if (today >= r.start && today <= end) { inPeriod = true; curRec = r; }
     });
     var last = recs[recs.length - 1];
@@ -395,7 +452,7 @@
     var sigmaTxt = (stats.n >= 3 && stats.std >= 0.5) ? '（±' + Math.round(stats.std) + ' 天）' : '';
     if (inPeriod) {
       var dayOfPeriod = diffDays(curRec.start, today) + 1;
-      var end2 = curRec.end || addDays(curRec.start, cfg.periodLen - 1);
+      var end2 = curRec.end || addDays(curRec.start, periodLenOf() - 1);
       var remain = diffDays(today, end2) + 1;
       return { phase: 'period', inPeriod: true, nextStart: nextStart, dayOfCycle: dayOfPeriod, ovulationDay: ovulationDay, cycleLen: cl, title: '经期第 ' + dayOfPeriod + ' 天', sub: '预计还剩 ' + Math.max(0, remain) + ' 天 · 注意保暖休息', sigma: sigmaTxt };
     }
@@ -422,7 +479,7 @@
     recs = normalize(recs);
     for (var i = 0; i < recs.length; i++) {
       var r = recs[i];
-      var end = r.end || addDays(r.start, cfg.periodLen - 1);
+      var end = r.end || addDays(r.start, periodLenOf() - 1);
       if (ds >= r.start && ds <= end) return 'period';
     }
     var last = recs[recs.length - 1];
@@ -441,7 +498,7 @@
     // 从第 1 项起才是下一次及以后。原实现连第 0 项一起涂虚线＝只记 1 天时，本次经期的剩余天数
     // 被画成「下次经期的预测」（同一件事两种颜色，且日历图例里 predict 明写「预测」）。
     for (var j = 1; j < starts.length; j++) {
-      var pEnd = addDays(starts[j], cfg.periodLen - 1);
+      var pEnd = addDays(starts[j], periodLenOf() - 1);
       if (ds >= starts[j] && ds <= pEnd) return 'predict';
     }
     // 排卵期着色（排卵日前5天到后1天）
@@ -464,7 +521,7 @@
       var lastEndStr = null;
       for (var i = recs2.length - 1; i >= 0; i--) {
         var r = recs2[i];
-        var end = r.end || addDays(r.start, cfg.periodLen - 1);
+        var end = r.end || addDays(r.start, periodLenOf() - 1);
         if (end <= todayStr()) { lastEndStr = end; break; }
       }
       st.lastEnd = lastEndStr;
@@ -610,7 +667,7 @@
     while (addDays(start, cl) <= ds && k < 200) { start = addDays(start, cl); k++; }
     if (start < today) return 1;
     var offset = diffDays(start, ds);
-    if (offset >= cfg.periodLen) return 0;
+    if (offset >= periodLenOf()) return 0;
     return Math.exp(-(offset * offset) / (2 * sigma * sigma));
   }
 
@@ -732,7 +789,7 @@
     if (!st.nextStart || toNext < 0) { nextLine.hidden = true; }
     else {
       nextLine.hidden = false;
-      nextLine.textContent = '下次经期预计 ' + mdLabel(st.nextStart) + ' ~ ' + mdLabel(addDays(st.nextStart, cfg.periodLen - 1)) + (st.sigma || '');
+      nextLine.textContent = '下次经期预计 ' + mdLabel(st.nextStart) + ' ~ ' + mdLabel(addDays(st.nextStart, periodLenOf() - 1)) + (st.sigma || '');
     }
     var startBtn = document.getElementById('period-mark-start');
     var endBtn = document.getElementById('period-mark-end');
@@ -803,7 +860,7 @@
     var arr = recs.slice().reverse();
     var html = '';
     arr.forEach(function (r, i) {
-      var end = r.end || addDays(r.start, cfg.periodLen - 1);
+      var end = r.end || addDays(r.start, periodLenOf() - 1);
       var len = diffDays(r.start, end) + 1;
       var next = arr[i - 1];
       var cycleTxt = next ? ' · 周期 ' + diffDays(r.start, next.start) + ' 天' : '';
@@ -1089,7 +1146,7 @@
     recs = normalize(recs);
     for (var i = 0; i < recs.length; i++) {
       var r = recs[i];
-      lens.push(diffDays(r.start, r.end || addDays(r.start, cfg.periodLen - 1)) + 1);
+      lens.push(diffDays(r.start, r.end || addDays(r.start, periodLenOf() - 1)) + 1);
     }
     if (lens.length) txt += ' · 经期平均 ' + (lens.reduce(function (a, b) { return a + b; }, 0) / lens.length).toFixed(1) + ' 天';
     // 近3次 vs 更早：周期长度变化趋势
@@ -1114,7 +1171,7 @@
     var today = todayStr();
     for (var i = 0; i < recs.length; i++) {
       var r = recs[i];
-      var end = r.end || addDays(r.start, cfg.periodLen - 1);
+      var end = r.end || addDays(r.start, periodLenOf() - 1);
       if (today >= r.start && today <= end) { toast('当前已在经期中'); return; }
     }
     recs.push({ id: newId(), start: today, end: null });
@@ -1148,7 +1205,7 @@
     recs = normalize(recs);
     for (var i = 0; i < recs.length; i++) {
       var r = recs[i];
-      var end = r.end || addDays(r.start, cfg.periodLen - 1);
+      var end = r.end || addDays(r.start, periodLenOf() - 1);
       if (ds >= r.start && ds <= end) {
         if (ds === r.start && ds === end) {
           recs = recs.filter(function (x) { return x !== r; });
@@ -1177,7 +1234,7 @@
   // 经期是几天」＝这一段多长有个现成的设置值，没理由点一下只算一天。normalize 里「间隔≤1 天
   // 并成同一次」的口径不变，所以贴着已有经期点会自动接上、不重复堆记录。
   function markSpanStart(ds) {
-    var len = Math.max(1, cfg.periodLen || 1);
+    var len = Math.max(1, periodLenOf());
     recs = normalize(recs.concat([{ id: newId(), start: ds, end: addDays(ds, len - 1) }]));
     saveRecs(recs);
     render();
@@ -1249,7 +1306,7 @@
     // 标成经期没有出口。开＝从这一天起按周期设置里的「经期天数」记上整段（markSpanStart），
     // 关＝撤掉以这天为起点的那一段（unmarkDay），保存时与实际状态比对后一次性生效。
     var isPeriodNow = dayPhase(ds) === 'period';
-    function perLabel(on) { return on ? '已标记为生理期（点此取消）' : '这天起记为生理期（' + cfg.periodLen + ' 天）'; }
+    function perLabel(on) { return on ? '已标记为生理期（点此取消）' : '这天起记为生理期（' + periodLenOf() + ' 天）'; }
     var symHtml = SYMPTOMS.map(function (s) {
       var on = info.symptoms && info.symptoms.indexOf(s.k) >= 0;
       return '<button class="dp-sym' + (on ? ' on' : '') + '" data-sym="' + s.k + '">' + s.label + '</button>';
@@ -1358,7 +1415,7 @@
     try { notifyCfg = loadNotify(); } catch (e) {}
     // 2026-11-18：记录也要重读——另一个标签页/刚在经期页点了「标记今天开始」时，
     // 本页内存里的 recs 可能还是「已推迟」的旧快照，照样会弹迟到提醒。
-    try { recs = loadRecs(); cfg = loadCfg(); } catch (e) {}
+    try { recs = loadRecsFresh(); cfg = loadCfg(); } catch (e) {}
     if (!notifyCfg.enabled) return;
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
     // FIX #1407②：此前本模块一个 setInterval 都没有（对照 memo-app 4 分钟一掷＋5 分钟到点检查、
@@ -1374,6 +1431,10 @@
     var st = status();
     var today = todayStr();
     var tier = predictTier();
+    // 2026-11-22 优先级：**今天有记录覆盖＝最高优先**。先算这一个事实，任何「经前预警 /
+    // 推迟 / 超期」都必须让路——旧实现只在推迟分支上做了这道闸，经前预警分支仍可在一张
+    // 「今天开始」的记录上再弹一句「今天预计是经期开始日」。判据只取记录本身。
+    var recCoversToday = recCovers(today, cfg);
     notifyCfg.fired = notifyCfg.fired || {};
     var fired = false;
     // FIX #1407⑧：通知与聊天此前各记各的当天名额（`_adv{n}`/`_inperiod`/`_delay` 与 `_care_{ctx}`），
@@ -1389,7 +1450,7 @@
     function markWarn() { notifyCfg.fired[today + '_said_warn'] = 1; }
     // #1407①：`!st.delayed` 这道闸是新边界带来的——连着隔了一整个周期没记时 nextStart 会正好落回
     //   今天（d=0），不加它就会一边屏上写「经期已推迟 28 天」、一边弹出「今天预计是经期开始日」。
-    if (st.nextStart && !st.inPeriod && !st.delayed && advHit(diffDays(today, st.nextStart), tier, true)) {
+    if (!recCoversToday && st.nextStart && !st.inPeriod && !st.delayed && advHit(diffDays(today, st.nextStart), tier, true)) {
       var d = diffDays(today, st.nextStart);
       if (!said('adv' + d) && !warnSaid()) {
         var txt = d === 0 ? '今天预计是经期开始日' : '距下次经期约 ' + d + ' 天';
@@ -1405,18 +1466,6 @@
       markSaid('inPeriod');
       fired = true;
     }
-    // 2026-11-18：迟到的最后一道闸——今天已经有经期记录（start <= 今天 <= end）时，绝不发推迟提醒。
-    // 记录刚写入、某个上下文/缓存还没刷到时，status() 可能仍给出「已推迟」，这里直接以落盘记录为准。
-    var recCoversToday = false;
-    try {
-      var _todayK = today;
-      for (var _ri = 0; _ri < recs.length; _ri++) {
-        var _r = recs[_ri];
-        if (!_r || !_r.start) continue;
-        var _end = _r.end || addDays(_r.start, cfg.periodLen - 1);
-        if (_todayK >= _r.start && _todayK <= _end) { recCoversToday = true; break; }
-      }
-    } catch (eR) {}
     if (!recCoversToday && st.phase === 'safe' && /推迟/.test(st.title)) {
       var m = st.title.match(/推迟 (\d+) 天/);
       var delayDays = m ? parseInt(m[1], 10) : 0;
@@ -1517,7 +1566,7 @@
   }
   function checkCare() {
     try { notifyCfg = loadNotify(); } catch (e) {}
-    try { recs = loadRecs(); cfg = loadCfg(); } catch (e) {}
+    try { recs = loadRecsFresh(); cfg = loadCfg(); } catch (e) {}
     if (!notifyCfg.careEnabled) return;
     if (!window.chatAddIn) return;
     // v3.42.x #559：深夜静默 23:00–06:00（同 memo-app「备忘提醒」/ p2-features「喝水·吃饭提醒」
@@ -1529,6 +1578,7 @@
     var st = status();
     var today = todayStr();
     var tier = predictTier();
+    var recCoversToday = recCovers(today, cfg);
     var shouldCare = false, ctx = '', kind = '';
     // #1474 症状关心：近 3 天（今天往回数）最近一条带症状的每日记录，多症状随机取一。
     // 用户主动记下的症状是当天最新鲜的信号，针对性回应比泛语境的「经期第 N 天」更贴，
@@ -1542,23 +1592,14 @@
       }
     }
     if (!shouldCare && st.inPeriod) { shouldCare = true; ctx = 'inPeriod'; kind = 'in'; }
-    else if (!shouldCare && st.nextStart && !st.delayed) {
+    else if (!shouldCare && !recCoversToday && st.nextStart && !st.delayed) {
       // #1407③：命中判定改走 advHit（与通知同一把尺；withToday=false 的理由见那条注释）。
       //   原实现是这里手抄一份「free 只认最小值」、通知里再抄一份，两份已经开始打架。
       var d = diffDays(today, st.nextStart);
       if (advHit(d, tier, false)) { shouldCare = true; ctx = 'adv' + d; kind = 'adv'; }
     }
     var delayDays = 0;
-    var _recCoversToday = false;
-    try {
-      for (var _ci = 0; _ci < recs.length; _ci++) {
-        var _cr = recs[_ci];
-        if (!_cr || !_cr.start) continue;
-        var _ce = _cr.end || addDays(_cr.start, cfg.periodLen - 1);
-        if (today >= _cr.start && today <= _ce) { _recCoversToday = true; break; }
-      }
-    } catch (eC) {}
-    if (!shouldCare && !_recCoversToday && st.phase === 'safe' && /推迟/.test(st.title)) {
+    if (!shouldCare && !recCoversToday && st.phase === 'safe' && /推迟/.test(st.title)) {
       var m = st.title.match(/推迟 (\d+) 天/);
       delayDays = m ? parseInt(m[1], 10) : 0;
       if (tier === 'rule' && delayDays >= 5) { shouldCare = true; ctx = delayDays >= 10 ? 'delayDeep' : 'delay'; kind = 'delay'; }
@@ -1683,14 +1724,14 @@
     var mEnd = y + '-' + pad2(m + 1) + '-' + pad2(new Date(y, m + 1, 0).getDate());
     recs = normalize(recs);
     var monthRecs = recs.filter(function (r) {
-      var end = r.end || addDays(r.start, cfg.periodLen - 1);
+      var end = r.end || addDays(r.start, periodLenOf() - 1);
       return r.start <= mEnd && end >= mStart;
     });
     var monthDaily = {};
     for (var ds in daily) { if (ds >= mStart && ds <= mEnd) monthDaily[ds] = daily[ds]; }
     var periodDays = 0;
     monthRecs.forEach(function (r) {
-      var end = r.end || addDays(r.start, cfg.periodLen - 1);
+      var end = r.end || addDays(r.start, periodLenOf() - 1);
       var s = r.start < mStart ? mStart : r.start;
       var e = end > mEnd ? mEnd : end;
       periodDays += diffDays(s, e) + 1;
@@ -1804,7 +1845,7 @@
           // 补记落成一条完整区间（按设置的「经期天数」），不再写 end:null——旧写法让这条记录
           // 永远挂在「进行中」（历史行「2026-09-17 ~ 进行中」），除非用户当天亲手点「标记今天结束」，
           // 而补记的人恰恰不在场；end:null 在日历上又按 periodLen 涂色＝读数与「持续 N 天」两处对打。
-          norm2.push({ id: newId(), start: dateVal, end: addDays(dateVal, cfg.periodLen - 1) });
+          norm2.push({ id: newId(), start: dateVal, end: addDays(dateVal, periodLenOf() - 1) });
           norm2 = normalize(norm2);
           saveRecs(norm2); recs = norm2;
         }
@@ -1825,11 +1866,11 @@
   // 补上一条缺失的入口：以前记一次经期只有三种走法，且每种给出的「这次几天」互不相同——
   // 「标记今天开始／结束」要求当天都在场（错过就没法补），点日格补的是「从今天起的那一段」
   // （过去的日子补不到），设置页那个日期字段补出来的是一条永不结束的「进行中」。用户按自己的话说的期待是
-  // 「我设置的时候会直接设置我的经期是几天」＝默认天数取 cfg.periodLen，可改，一次落账。
+  // 「我设置的时候会直接设置我的经期是几天」＝默认天数取 periodLenOf()，可改，一次落账。
   function openRecordPop() {
     var existing = document.getElementById('period-record-pop');
     if (existing) existing.remove();
-    var work = { days: cfg.periodLen };
+    var work = { days: periodLenOf() };
     var pop = document.createElement('div');
     pop.id = 'period-record-pop';
     pop.className = 'period-day-pop';
