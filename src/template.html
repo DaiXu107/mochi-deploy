@@ -7076,6 +7076,28 @@
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
             <span>搜索记录</span>
           </button>
+          <!-- 2026-11-22：桌面 app 入口（工具区）。记录类（主页/日历/纪念/统计/提问记录/经期/记账/档案）暂不接入——
+               作者决定先把它们合并成一个观看界面，工程量较大留在下一批。 -->
+          <button class="more-item" id="more-app-note" data-mcat="tool" title="收藏：我的收藏 / TA 的收藏">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 3.5h11a1 1 0 011 1v16l-6.5-4-6.5 4v-16a1 1 0 011-1z"/></svg></span>
+            <span>收藏</span>
+          </button>
+          <button class="more-item" id="more-app-water" data-mcat="tool" title="喝水：今日进度与 TA 的提醒">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5C8 7 5.5 11 5.5 14.5a6.5 6.5 0 0013 0C18.5 11 16 7 12 2.5z"/></svg></span>
+            <span>喝水</span>
+          </button>
+          <button class="more-item" id="more-app-eat" data-mcat="tool" title="吃什么：随机抽菜 / 转盘">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2.5v7c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2v-7"/><path d="M5.7 2.5v8.3"/><path d="M8.3 2.5v8.3"/><path d="M7 11.5v10"/><path d="M21 15V2.5a5 5 0 00-5 5v5.5c0 1.1.9 2 2 2h3z"/><path d="M21 15v6.5"/></svg></span>
+            <span>吃什么</span>
+          </button>
+          <button class="more-item" id="more-app-pomo" data-mcat="tool" title="番茄钟：专注计时">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.8" r="7.2"/><path d="M12 6.6V4.6"/><path d="M12 6.6C10.6 5.4 9 5.3 7.8 6.1"/><path d="M12 6.6c1.4-1.2 3-1.3 4.2-.5"/></svg></span>
+            <span>番茄钟</span>
+          </button>
+          <button class="more-item" id="more-app-memo" data-mcat="tool" title="备忘录：随手记下想说的">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4.5h8a2 2 0 012 2V19a2 2 0 01-2 2H8a2 2 0 01-2-2V6.5a2 2 0 012-2z"/><path d="M9.5 3h5v3h-5z"/><path d="M9 11h6M9 14.5h6M9 18h3.5"/></svg></span>
+            <span>备忘</span>
+          </button>
           <button class="more-item" id="more-call" data-mcat="chat" title="通话">
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg></span>
             <span>通话</span>
@@ -7111,6 +7133,33 @@
           <button class="more-item" id="more-drift" data-mcat="chat" title="漂流瓶（两个世界之间的海）">
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.5h4v3.2l1.5 2A7.2 7.2 0 0117 11.6V19a2 2 0 01-2 2H9a2 2 0 01-2-2v-7.4c0-1.4.46-2.77 1.5-3.9L10 5.7z"/><path d="M10.4 12.6h3.2"/><path d="M2.5 18.6c1.5 1.1 3 1.1 4.5 0s3-1.1 4.5 0 3 1.1 4.5 0 3-1.1 4.5 0"/></svg></span>
             <span>漂流瓶</span>
+          </button>
+          <!-- 2026-11-22：桌面 app 入口（互动区）。花园/吧台/音乐按作者决定归入「互动」，不另开「娱乐」页签。
+               点击＝收起面板并触发对应桌面图标（复用各模块自己的打开/返回逻辑）。新增项统一 more-app- 前缀，
+               避免与既有 more-memory（记忆翻牌游戏）这类同名 id 冲突。 -->
+          <button class="more-item" id="more-app-mail" data-mcat="chat" title="信箱：写信 / 收信">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5.5" width="18" height="13.5" rx="2.5"/><path d="M3.5 7.5L12 13l8.5-5.5"/><path d="M5 17.5l4.5-4M19 17.5l-4.5-4"/></svg></span>
+            <span>信箱</span>
+          </button>
+          <button class="more-item" id="more-app-feed" data-mcat="chat" title="朋友圈：发动态 / 看 TA 的动态">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></span>
+            <span>朋友圈</span>
+          </button>
+          <button class="more-item" id="more-app-tongpin" data-mcat="chat" title="同频 · 伸手：TA 此刻状态 / 敲三下 / 摸摸身边">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h3l2-6 4 14 3-9 2 5h6"/></svg></span>
+            <span>同频·伸手</span>
+          </button>
+          <button class="more-item" id="more-app-garden" data-mcat="chat" title="花园：种花 / 杂交 / 花束">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 21h10l-1.5-5h-7z"/><path d="M12 16v-7"/><path d="M12 12c-2 0-3.5-1-3.5-3"/><path d="M12 10c2 0 3.5-1 3.5-3"/><circle cx="12" cy="6" r="2"/></svg></span>
+            <span>花园</span>
+          </button>
+          <button class="more-item" id="more-app-bar" data-mcat="chat" title="吧台：调饮料送 TA">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3h16l-8 9z"/><path d="M12 12v8"/><path d="M8 21h8"/><path d="M7 6.2h10"/></svg></span>
+            <span>吧台</span>
+          </button>
+          <button class="more-item" id="more-app-music" data-mcat="chat" title="音乐：听歌 / 一起听歌">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
+            <span>音乐</span>
           </button>
           <button class="more-item" id="more-divine" data-mcat="tool" title="占卜">
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M12 8.5l1.15 2.4 2.4 1.15-2.4 1.15L12 15.6l-1.15-2.4-2.4-1.15 2.4-1.15z"/></svg></span>
