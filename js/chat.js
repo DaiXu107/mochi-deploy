@@ -7829,6 +7829,24 @@ try { enterChat(); } catch (e) {}
 try { if (chatResumeFromDiscard) setTimeout(chatResumeRoute, 1200); } catch (e) {}
 const back = document.getElementById('chat-back');
 if (back) {
+back.addEventListener('click', (e) => {
+try {
+if (window.mochiHomeStyle && window.mochiHomeStyle() === 'wechat') {
+if (e && e.stopImmediatePropagation) e.stopImmediatePropagation();
+if (window.__wxHome && window.__wxHome.open) window.__wxHome.open();
+else {
+var wxPg = document.getElementById('page-wxhome');
+if (wxPg) { document.querySelectorAll('.page').forEach(p => { p.hidden = true; }); wxPg.hidden = false; }
+}
+try { if (window.__wxSyncBar) window.__wxSyncBar(); } catch (e2) {}
+return;
+}
+} catch (err) {}
+const phonePage0 = document.getElementById('page-phone');
+if (phonePage0) { document.querySelectorAll('.page').forEach(p => { if (!p.hidden) p.hidden = true; }); phonePage0.hidden = false; }
+}, true);
+}
+if (back) {
 back.addEventListener('click', () => {
 try {
 if (window.mochiHomeStyle && window.mochiHomeStyle() === 'wechat' && window.__wxHome && window.__wxHome.open) {
