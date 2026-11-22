@@ -763,6 +763,17 @@ return add.length; // FIX 2026-09-13 #407：回放条数上抛（插入/排序=�
 return 0;
 }
 let authLoadedPrefix = null;
+window.mochiDeskNow = function () { try { return window.__activeCid || 'default'; } catch (e) { return 'default'; } };
+window.mochiDeskSame = function (cid) { return String(cid || 'default') === String(window.mochiDeskNow()); };
+window.mochiChatGate = function () {
+try {
+if (document.visibilityState === 'hidden') return false;
+if (!window.__mochiDataReady) return false;
+if (!chatDbReady) return false;
+if (String(authLoadedPrefix || '') !== String(window.activePrefix() || '')) return false;
+return true;
+} catch (e) { return false; }
+};
 let idbRetryTimer = null;
 let idbRetryCount = 0;
 const IDB_RETRY_MAX = 6;
@@ -5719,18 +5730,23 @@ if (!idxs.length) return;
 patchChangedInPlace(idxs, from);
 } catch (e) {}
 }
-window.chatSysNickChanged = function (oldName, slot) {
+window.chatSysNickChanged = function (oldName, slot, cid) {
 try {
 if (typeof oldName !== 'string' || !oldName) return;
+const deskCid = String(cid || window.mochiDeskNow());
+const onDesk = deskCid === window.mochiDeskNow();
+const st = onDesk ? store : (window.storeFor ? window.storeFor(deskCid) : null);
+if (!st) return;
 const S = sysNickSlot(slot);
-const cur = S.cur();
-const hist = sysNickHistGet(store, slot);
+const cur = onDesk ? S.cur() : '';
+const hist = sysNickHistGet(st, slot);
 if (hist.indexOf(oldName) < 0) hist.push(oldName);
-if (hist.indexOf(cur) < 0) hist.push(cur);
-store.set(S.histKey, JSON.stringify(hist));
-if (oldName === cur) { store.set(S.sweptKey, String(hist.length)); return; }
+if (cur && hist.indexOf(cur) < 0) hist.push(cur);
+st.set(S.histKey, JSON.stringify(hist));
+if (!onDesk) return; // 别的桌面：记账到此为止
+if (oldName === cur) { st.set(S.sweptKey, String(hist.length)); return; }
 if (!chatDbReady) return;
-store.set(S.sweptKey, String(hist.length));
+st.set(S.sweptKey, String(hist.length));
 if (sysNickSweepMsgs(msgs, oldName, slot)) saveMsgs();
 try { chatTailSweepNick(oldName, slot); } catch (e) {} // FIX 2026-09-16 #626 尾巴日志同步清扫（防 chatTailMerge 用旧名原文补回一条重复）
 try { if (chatVisible()) renderWindow(true); else refreshNickNodesInPlace(); } catch (e) {}
@@ -7731,13 +7747,17 @@ enterChat();
 let chatResumeTries = 0;
 function chatResumeRoute() {
 if (!chatResumeFromDiscard) return;
+if (!window.__mochiDataReady) {
+if (chatResumeTries++ < 60) { try { setTimeout(chatResumeRoute, 800); } catch (e) {} }
+return;
+}
 let mode = 'off', cid = '';
 try {
 const rs = window.xyStore ? window.xyStore('xy-home-v2') : null;
-mode = (rs && rs.get('chat-resume-mode')) || 'fixed';
+mode = (rs && rs.get('chat-resume-mode')) || 'off';
 cid = (rs && rs.get('chat-resume-cid')) || '';
 } catch (e) {}
-if (mode !== 'random') mode = 'fixed';
+if (mode !== 'random' && mode !== 'fixed') return;
 let list = [];
 try { list = (window.getContacts && window.getContacts()) || []; } catch (e) {}
 if (!list.length) {
@@ -7757,6 +7777,7 @@ list[0] || null;
 } else target = list[Math.floor(Math.random() * list.length)] || null;
 if (!target) return;
 try { if (target.id !== (window.__activeCid || 'default') && window.setActiveContact) window.setActiveContact(target.id); } catch (e) {}
+if (String(window.__activeCid || 'default') !== String(target.id)) return;
 try { enterChat(); } catch (e) {}
 }
 try { if (chatResumeFromDiscard) setTimeout(chatResumeRoute, 1200); } catch (e) {}
