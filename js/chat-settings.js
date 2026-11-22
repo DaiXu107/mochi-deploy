@@ -958,13 +958,20 @@ const csLp = row('cs-lbl-partner');
 if (csLp) {
 csLp.addEventListener('click', () => {
 if (!window.openModal) return;
+const cid0 = (window.__activeCid || 'default');
 const cur = store.get('cs-lbl-partner') || '';
 window.openModal('联系人昵称', cur, (v) => {
 const val = (v || '').trim();
-const oldEff = window.chatPartnerName ? window.chatPartnerName() : (store.get('cs-lbl-partner') || 'TA');
-if (val) store.set('cs-lbl-partner', val); else store.remove('cs-lbl-partner');
+const sameDesk = ((window.__activeCid || 'default') === cid0);
+const st = (sameDesk || !window.storeFor) ? store : window.storeFor(cid0);
+const oldEff = window.chatPartnerName ? window.chatPartnerName() : (st.get('cs-lbl-partner') || 'TA');
+if (val) st.set('cs-lbl-partner', val); else st.remove('cs-lbl-partner');
+if (!sameDesk) {
+try { if (window.chatSysNickChanged) window.chatSysNickChanged(oldEff, undefined, cid0); } catch (e) {}
+return;
+}
 if (oldEff !== (window.chatPartnerName ? window.chatPartnerName() : (val || 'TA'))) {
-try { if (window.chatSysNickChanged) window.chatSysNickChanged(oldEff); } catch (e) {}
+try { if (window.chatSysNickChanged) window.chatSysNickChanged(oldEff, undefined, cid0); } catch (e) {}
 }
 applyProfile();
 try { if (window.renderChatHeader) window.renderChatHeader(); } catch (e) {}
@@ -975,13 +982,20 @@ const csLu = row('cs-lbl-user');
 if (csLu) {
 csLu.addEventListener('click', () => {
 if (!window.openModal) return;
+const cid0 = (window.__activeCid || 'default');
 const cur = store.get('cs-lbl-user') || '';
 window.openModal('我的昵称', cur, (v) => {
 const val = (v || '').trim();
-const oldEff = store.get('cs-lbl-user') || '我';
-if (val) store.set('cs-lbl-user', val); else store.remove('cs-lbl-user');
+const sameDesk = ((window.__activeCid || 'default') === cid0);
+const st = (sameDesk || !window.storeFor) ? store : window.storeFor(cid0);
+const oldEff = st.get('cs-lbl-user') || '我';
+if (val) st.set('cs-lbl-user', val); else st.remove('cs-lbl-user');
+if (!sameDesk) {
+try { if (window.chatSysNickChanged) window.chatSysNickChanged(oldEff, 'me', cid0); } catch (e) {}
+return;
+}
 if (oldEff !== (val || '我')) {
-try { if (window.chatSysNickChanged) window.chatSysNickChanged(oldEff, 'me'); } catch (e) {}
+try { if (window.chatSysNickChanged) window.chatSysNickChanged(oldEff, 'me', cid0); } catch (e) {}
 }
 applyProfile();
 }, { maxlength: 30 });
@@ -2795,19 +2809,20 @@ const rName = (cid) => { const c = rContacts().find(x => x && x.id === cid); ret
 const rVal = document.getElementById('cs-resume-chat-val');
 const refreshResume = () => {
 if (!rVal) return;
-const mode = rGet('chat-resume-mode') || 'fixed';
+const mode = rGet('chat-resume-mode') || 'off';
 if (mode === 'random') rVal.textContent = '随机联系人';
-else {
+else if (mode === 'fixed') {
 const cid = rGet('chat-resume-cid') || (window.getActiveContact ? window.getActiveContact() : '');
 rVal.textContent = '固定：' + rName(cid || 'default');
-}
+} else rVal.textContent = '回主页（不自动进聊天）';
 };
 refreshResume();
 document.addEventListener('contact-switched', refreshResume);
 resumeChatRow.addEventListener('click', () => {
 if (!window.openModal) return;
-const mode = rGet('chat-resume-mode') || 'fixed';
+const mode = rGet('chat-resume-mode') || 'off';
 window.openModal('后台回来直接进聊天', '', (v) => {
+if (v === 'off') { rSet('chat-resume-mode', 'off'); refreshResume(); toast('后台被回收后回主页，不再自动进聊天'); return; }
 if (v === 'fixed') {
 const list = rContacts();
 if (!list.length) { toast('还没有联系人'); return; }
@@ -2828,6 +2843,7 @@ toast('后台被回收后，将随机打开一位联系人的聊天');
 }, {
 noInput: true, pillSubmit: true, pill: mode,
 pills: [
+{ label: '回主页（不自动进）', value: 'off' },
 { label: '固定联系人', value: 'fixed' },
 { label: '随机联系人', value: 'random' }
 ]
