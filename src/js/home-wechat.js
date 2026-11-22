@@ -218,17 +218,33 @@
     document.querySelectorAll('.page').forEach(function (p) { p.hidden = true; });
     pg.hidden = false;
     syncTabs('chat');
+    syncWxBar();
   }
   function syncTabs(which) {
     document.querySelectorAll('#tabbar-wx .wx-tb').forEach(function (t) {
       t.classList.toggle('on', t.getAttribute('data-wx') === which);
     });
   }
+  // 微信式底部导航只在「会话列表」显示：全屏页（聊天 / 字卡 / 设置 / 子页）一律收起
+  function syncWxBar() {
+    var bar = document.getElementById('tabbar-wx');
+    if (!bar) return;
+    var onHome = false;
+    try {
+      var pg = document.getElementById('page-wxhome');
+      onHome = !!(pg && !pg.hidden);
+    } catch (e) {}
+    var show = isWx() && onHome;
+    bar.style.display = show ? 'flex' : 'none';
+  }
+  window.__wxSyncBar = syncWxBar;
+
   function apply() {
     var wx = isWx();
     document.body.classList.toggle('home-wx', wx);
     var bar = document.getElementById('tabbar-wx');
-    if (bar) bar.classList.toggle('on', wx);
+    if (bar) bar.style.display = (wx && !(document.getElementById('page-wxhome') || {}).hidden) ? 'flex' : 'none';
+    syncWxBar();
     var oldBar = document.querySelector('.phone > .tabbar') || document.querySelector('.tabbar');
     if (oldBar) oldBar.style.display = wx ? 'none' : '';
     if (wx) {
@@ -288,6 +304,7 @@
         document.querySelectorAll('.page').forEach(function (p) { p.hidden = true; });
         pg.hidden = false;
         syncTabs(k);
+        syncWxBar();
       });
     });
     // ＋：新建联系人
@@ -314,6 +331,11 @@
     document.addEventListener('mochi-home-style-changed', function () {
       var v = document.getElementById('home-style-val'); if (v) v.textContent = isWx() ? '微信式' : '小手机';
     });
+    // 任何页面切换都会改 .page[hidden]：据此自动收/放微信式导航
+    try {
+      var obs = new MutationObserver(function () { syncWxBar(); });
+      document.querySelectorAll('.page').forEach(function (p) { obs.observe(p, { attributes: true, attributeFilter: ['hidden'] }); });
+    } catch (e) {}
     document.addEventListener('contact-switched', function () {
       if (!isWx()) return;
       var pg = document.getElementById('page-wxhome');
