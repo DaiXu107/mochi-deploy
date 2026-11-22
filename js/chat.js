@@ -6980,8 +6980,28 @@ const MORE_APP_ENTRIES = {
 'more-app-water': 'water',
 'more-app-eat': 'eat',
 'more-app-pomo': 'pomo',
-'more-app-memo': 'memo'
+'more-app-memo': 'memo',
+'more-app-home': 'home',
+'more-app-calendar': 'calendar',
+'more-app-memory': 'memory',
+'more-app-stats': 'stats',
+'more-app-interact': 'interact',
+'more-app-period': 'period',
+'more-app-accounting': 'accounting',
+'more-app-arc': 'memo-arc',
+'more-app-appstore': 'appstore'
 };
+(function () {
+const b = document.getElementById('more-app-records');
+if (!b) return;
+b.addEventListener('click', function (e) {
+e.stopPropagation();
+const mp = document.getElementById('chat-more-panel');
+if (mp) mp.hidden = true;
+if (window.openRecordsPage) { try { window.openRecordsPage(); } catch (err) {} }
+else if (window.toast) { try { window.toast('记录页还没加载完'); } catch (e2) {} }
+});
+})();
 Object.keys(MORE_APP_ENTRIES).forEach(function (id) {
 const btn = document.getElementById(id);
 if (!btn) return;
