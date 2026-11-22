@@ -1805,6 +1805,12 @@
           <div class="txt">界面风格<span class="sub">经典 Mochi / 纸页 · BETWEEN US；更多风格位置已预留</span></div>
           <div class="val" id="ui-style-val">经典</div>
         </div>
+        <!-- 2026-11-22：主页样式（紧挨「界面风格」）——小手机 / 微信式 -->
+        <div class="set-row" id="row-home-style">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 13h6"/></svg></div>
+          <div class="txt">主页样式<span class="sub">小手机：图标桌面（可装修）/ 微信式：会话列表（不用装修）</span></div>
+          <div class="val" id="home-style-val">小手机</div>
+        </div>
         <div class="set-row" id="row-appearance">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 2.5 15 0 18M12 3c-2.5 2.5-2.5 15 0 18"/></svg></div>
           <div class="txt">手机桌面美化</div>
@@ -4931,6 +4937,23 @@
       </div>
     </div>
 
+    <!-- 2026-11-22：主页样式 · 微信式（会话列表）。仅在 设置→外观→主页样式=微信式 时显示；
+         点会话＝进那个人原来的聊天页（聊天页零改动）；长按会话＝置顶/取消置顶/标记已读；
+         记录不进会话（在聊天「更多功能 → 互动 → 记录」）。 -->
+    <div class="page" id="page-wxhome" hidden>
+      <div class="wx-head">
+        <div class="wx-title">聊天</div>
+        <div class="wx-hbtn" id="wx-add" title="新建联系人">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        </div>
+      </div>
+      <div class="wx-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input id="wx-q" type="search" placeholder="搜索联系人" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="wx-list" id="wx-list"></div>
+    </div>
+
     <!-- 2026-11-22：记录汇总（只读聚合）——入口：聊天「更多功能 → 互动 → 记录」
          一行一个来源（经期/纪念/心情/账本/留言/提问/聊天/档案），点一行直接进原页面；
          本页不写任何数据、不新增存储键（见 src/js/records-hub.js）。 -->
@@ -7826,6 +7849,22 @@
     <!-- 二传调整：原「设置」tab → 一键切换联系人（设置已移到桌面第一页图标） -->
     <div class="tab" id="tab-switch-contact" title="切换联系人" role="button" aria-label="切换联系人">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.5" r="3.2"/><path d="M2.8 19.5c0-3.4 2.8-5.6 6.2-5.6s6.2 2.2 6.2 5.6"/><path d="M16 4.2h4.6V8.8"/><path d="M20.6 4.2l-5.2 5.2"/></svg>
+    </div>
+  </div>
+
+  <!-- 2026-11-22：微信式底部导航（聊天 / 字卡 / 设置）——仅主页样式=微信式时显示 -->
+  <div class="tabbar" id="tabbar-wx">
+    <div class="wx-tb on" data-wx="chat" role="button" aria-label="聊天">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 13h6"/></svg>
+      聊天
+    </div>
+    <div class="wx-tb" data-wx="cards" role="button" aria-label="字卡库">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="14" height="15" rx="2.5"/><path d="M7 5V3.5h14V18h-1.5"/></svg>
+      字卡
+    </div>
+    <div class="wx-tb" data-wx="settings" role="button" aria-label="设置">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.5M12 18.5V21M4.2 7.5l2.2 1.3M17.6 15.2l2.2 1.3M4.2 16.5l2.2-1.3M17.6 8.8l2.2-1.3"/></svg>
+      设置
     </div>
   </div>
   <!-- 睡眠小屋 3D 全屏层：必须在 .phone 内、所有 .page 与 tabbar 之外，才能盖住底部导航；
