@@ -712,18 +712,29 @@ paintDeskNames();
 el.addEventListener('click', (e) => {
 e.stopPropagation();
 if (window.openModal) {
+const cid0 = (window.__activeCid || 'default');
 window.openModal('修改昵称', el.textContent, (v) => {
 const val = (v || '').trim();
 if (val) {
+const sameDesk = ((window.__activeCid || 'default') === cid0);
+const st = (sameDesk || !window.storeFor) ? store : window.storeFor(cid0);
 let oldEff = '';
-if (key === 'lbl-partner') oldEff = store.get('cs-lbl-partner') || store.get('lbl-partner') || 'TA';
+if (key === 'lbl-partner') oldEff = st.get('cs-lbl-partner') || st.get('lbl-partner') || 'TA';
+if (!sameDesk) {
+st.set(key, val);
+if (key === 'lbl-partner') {
+const newEff = st.get('cs-lbl-partner') || st.get('lbl-partner') || 'TA';
+if (newEff !== oldEff) { try { if (window.chatSysNickChanged) window.chatSysNickChanged(oldEff, undefined, cid0); } catch (e) {} }
+}
+return;
+}
 el.textContent = val;
 store.set(key, val);
 if (key === 'lbl-partner') {
 if (window.renderChatHeader) { try { window.renderChatHeader(); } catch (e) {} }
 else { const pname = document.getElementById('chat-partner-name'); if (pname) pname.textContent = val; }
 const newEff = store.get('cs-lbl-partner') || store.get('lbl-partner') || 'TA';
-if (newEff !== oldEff) { try { if (window.chatSysNickChanged) window.chatSysNickChanged(oldEff); } catch (e) {} }
+if (newEff !== oldEff) { try { if (window.chatSysNickChanged) window.chatSysNickChanged(oldEff, undefined, cid0); } catch (e) {} }
 }
 }
 }, { maxlength: 12 });
