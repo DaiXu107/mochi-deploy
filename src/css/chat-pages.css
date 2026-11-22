@@ -5443,3 +5443,12 @@ select.mochi-custom-select-native { display:none; }
 .rec-arw { flex:none; width:12px; height:12px; opacity:.24; color:var(--ink,#111); }
 .rec-empty { text-align:center; padding:60px 20px; font-size:13px; color:var(--muted,#9b98a6); line-height:1.8; }
 .rec-empty span { font-size:11px; color:var(--hint-ink,#b0adba); }
+
+/* ===== 2026-11-22 双人火柴人羽毛球 ===== */
+.bam-wrap { display:flex; flex-direction:column; align-items:center; gap:6px; padding:2px 2px 0; }
+.bam-box { position:relative; width:100%; max-width:560px; display:flex; align-items:center; justify-content:center; }
+#bam-canvas { display:block; width:100%; height:auto; border-radius:12px; touch-action:none;
+  background:#FCFBFD; border:1px solid rgba(0,0,0,.07); }
+/* 全屏：画布按剩余高度收缩，不撑破面板 */
+.poke-card.game-fs .bam-box { flex:1; min-height:0; }
+.poke-card.game-fs #bam-canvas { width:auto; max-width:100%; max-height:calc(100dvh - 210px); }
