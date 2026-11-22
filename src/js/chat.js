@@ -10467,6 +10467,26 @@ try { enterChat(); } catch (e) {}
 }
 try { if (chatResumeFromDiscard) setTimeout(chatResumeRoute, 1200); } catch (e) {}
 const back = document.getElementById('chat-back');
+// 2026-11-22：微信式主页下，聊天返回必须回「会话列表」。用 capture 阶段先接住并停掉后续同元素监听，
+// 避免其它「返回主页」逻辑随后把 page-phone 显回来（用户实报「返回后回到原主页、卡住」）。
+if (back) {
+back.addEventListener('click', (e) => {
+try {
+if (window.mochiHomeStyle && window.mochiHomeStyle() === 'wechat') {
+if (e && e.stopImmediatePropagation) e.stopImmediatePropagation();
+if (window.__wxHome && window.__wxHome.open) window.__wxHome.open();
+else {
+var wxPg = document.getElementById('page-wxhome');
+if (wxPg) { document.querySelectorAll('.page').forEach(p => { p.hidden = true; }); wxPg.hidden = false; }
+}
+try { if (window.__wxSyncBar) window.__wxSyncBar(); } catch (e2) {}
+return;
+}
+} catch (err) {}
+const phonePage0 = document.getElementById('page-phone');
+if (phonePage0) { document.querySelectorAll('.page').forEach(p => { if (!p.hidden) p.hidden = true; }); phonePage0.hidden = false; }
+}, true);
+}
 if (back) {
 back.addEventListener('click', () => {
 // 2026-11-22：主页样式=微信式时，聊天返回回「会话列表」而不是图标桌面（聊天页本身不变）
