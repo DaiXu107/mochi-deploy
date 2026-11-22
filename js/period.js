@@ -104,6 +104,35 @@ if (window.chatAddIn) { window.chatAddIn(line, opts); return true; }
 return false;
 } catch (e) { return false; }
 }
+function loadRecsFresh() {
+var a = loadRecs();
+var b = null;
+try { var raw = localStorage.getItem(G + ':' + KEY_REC); if (raw) b = JSON.parse(raw); } catch (e) { b = null; }
+if (!Array.isArray(b) || !b.length) return a;
+if (!a.length) return b;
+var la = normalize(a), lb = normalize(b);
+var sa = la.length ? la[la.length - 1].start : '';
+var sb = lb.length ? lb[lb.length - 1].start : '';
+if (sb > sa) return lb;
+if (sb === sa) {
+var ea = la.length ? (la[la.length - 1].end || '') : '';
+var eb = lb.length ? (lb[lb.length - 1].end || '') : '';
+if (eb > ea) return lb;
+}
+return a;
+}
+function recCovers(today, c) {
+var pl = periodLenOf();
+try {
+for (var i = 0; i < recs.length; i++) {
+var r = recs[i];
+if (!r || !r.start) continue;
+var end = r.end || addDays(r.start, pl - 1);
+if (today >= r.start && today <= end) return true;
+}
+} catch (e) {}
+return false;
+}
 function saveRecs(list) {
 markPeriodOwner();
 try {
@@ -111,10 +140,27 @@ store.set(KEY_REC, JSON.stringify(list));
 try { if (window.idbSet) window.idbSet(G + ':' + KEY_REC, JSON.stringify(list)); } catch (e2) {}
 } catch (e) {}
 }
-try { window.__periodProbe = { owner: periodOwnerDesk, markOwner: markPeriodOwner, deliver: periodDeliverCare, recs: loadRecs }; } catch (eP) {}
+try { window.__periodProbe = { owner: periodOwnerDesk, markOwner: markPeriodOwner, deliver: periodDeliverCare, recs: loadRecs, recsFresh: loadRecsFresh, status: status, cfg: loadCfg, periodLen: periodLenOf, covers: recCovers, today: todayStr }; } catch (eP) {}
 function loadCfg() {
-try { var c = JSON.parse(store.get(KEY_CFG) || 'null'); if (c) return c; } catch (e) {}
-return { cycleLen: 28, periodLen: 5, lutealPhase: 14 };
+var c = null;
+try { c = JSON.parse(store.get(KEY_CFG) || 'null'); } catch (e) { c = null; }
+var o = { cycleLen: 28, periodLen: 5, lutealPhase: 14 };
+var needFix = !(c && typeof c === 'object');
+if (c && typeof c === 'object') {
+Object.keys(c).forEach(function (k) { if (!(k in o)) o[k] = c[k]; });
+var cl = Number(c.cycleLen);
+o.cycleLen = (isFinite(cl) && cl >= 15 && cl <= 60) ? Math.round(cl) : (needFix = true, 28);
+var pl = Number(c.periodLen);
+o.periodLen = (isFinite(pl) && pl >= 1 && pl <= 31) ? Math.round(pl) : (needFix = true, 5);
+var lp = Number(c.lutealPhase);
+o.lutealPhase = (isFinite(lp) && lp >= 8 && lp <= 20) ? Math.round(lp) : (needFix = true, 14);
+}
+if (needFix) { try { saveCfg(o); } catch (e2) {} }
+return o;
+}
+function periodLenOf() {
+var v = Number(cfg && cfg.periodLen);
+return (isFinite(v) && v >= 1 && v <= 31) ? Math.round(v) : 5;
 }
 function saveCfg(c) {
 try {
@@ -122,8 +168,7 @@ store.set(KEY_CFG, JSON.stringify(c));
 try { if (window.idbSet) window.idbSet(G + ':' + KEY_CFG, JSON.stringify(c)); } catch (e2) {}
 } catch (e) {}
 }
-function loadDaily() { try { return JSON.parse(store.get(KEY_DAILY) || '{}'); } catch (e) { return {}; } }
-function saveDaily(obj) {
+function loadDaily() { try { return JSON.parse(store.get(KEY_DAILY) || '{}'); } catch (e) { return {}; } }  function saveDaily(obj) {
 try {
 store.set(KEY_DAILY, JSON.stringify(obj));
 try { if (window.idbSet) window.idbSet(G + ':' + KEY_DAILY, JSON.stringify(obj)); } catch (e2) {}
@@ -304,9 +349,10 @@ function status() {
 recs = normalize(recs);
 var today = todayStr();
 var cl = effCycleLen();
+var pl = periodLenOf();
 var inPeriod = false, curRec = null;
 recs.forEach(function (r) {
-var end = r.end || addDays(r.start, cfg.periodLen - 1);
+var end = r.end || addDays(r.start, pl - 1);
 if (today >= r.start && today <= end) { inPeriod = true; curRec = r; }
 });
 var last = recs[recs.length - 1];
@@ -321,7 +367,7 @@ var stats = cycleStats();
 var sigmaTxt = (stats.n >= 3 && stats.std >= 0.5) ? '（±' + Math.round(stats.std) + ' 天）' : '';
 if (inPeriod) {
 var dayOfPeriod = diffDays(curRec.start, today) + 1;
-var end2 = curRec.end || addDays(curRec.start, cfg.periodLen - 1);
+var end2 = curRec.end || addDays(curRec.start, periodLenOf() - 1);
 var remain = diffDays(today, end2) + 1;
 return { phase: 'period', inPeriod: true, nextStart: nextStart, dayOfCycle: dayOfPeriod, ovulationDay: ovulationDay, cycleLen: cl, title: '经期第 ' + dayOfPeriod + ' 天', sub: '预计还剩 ' + Math.max(0, remain) + ' 天 · 注意保暖休息', sigma: sigmaTxt };
 }
@@ -340,7 +386,7 @@ function dayPhase(ds) {
 recs = normalize(recs);
 for (var i = 0; i < recs.length; i++) {
 var r = recs[i];
-var end = r.end || addDays(r.start, cfg.periodLen - 1);
+var end = r.end || addDays(r.start, periodLenOf() - 1);
 if (ds >= r.start && ds <= end) return 'period';
 }
 var last = recs[recs.length - 1];
@@ -355,7 +401,7 @@ starts.push(s);
 s = addDays(s, cl); guard++;
 }
 for (var j = 1; j < starts.length; j++) {
-var pEnd = addDays(starts[j], cfg.periodLen - 1);
+var pEnd = addDays(starts[j], periodLenOf() - 1);
 if (ds >= starts[j] && ds <= pEnd) return 'predict';
 }
 for (var k = 0; k < starts.length; k++) {
@@ -374,7 +420,7 @@ var recs2 = normalize(loadRecs());
 var lastEndStr = null;
 for (var i = recs2.length - 1; i >= 0; i--) {
 var r = recs2[i];
-var end = r.end || addDays(r.start, cfg.periodLen - 1);
+var end = r.end || addDays(r.start, periodLenOf() - 1);
 if (end <= todayStr()) { lastEndStr = end; break; }
 }
 st.lastEnd = lastEndStr;
@@ -485,7 +531,7 @@ var k = 0, start = last.start;
 while (addDays(start, cl) <= ds && k < 200) { start = addDays(start, cl); k++; }
 if (start < today) return 1;
 var offset = diffDays(start, ds);
-if (offset >= cfg.periodLen) return 0;
+if (offset >= periodLenOf()) return 0;
 return Math.exp(-(offset * offset) / (2 * sigma * sigma));
 }
 var PHASE_ICO = {
@@ -593,7 +639,7 @@ var toNext = st.nextStart ? diffDays(todayStr(), st.nextStart) : 0;
 if (!st.nextStart || toNext < 0) { nextLine.hidden = true; }
 else {
 nextLine.hidden = false;
-nextLine.textContent = '下次经期预计 ' + mdLabel(st.nextStart) + ' ~ ' + mdLabel(addDays(st.nextStart, cfg.periodLen - 1)) + (st.sigma || '');
+nextLine.textContent = '下次经期预计 ' + mdLabel(st.nextStart) + ' ~ ' + mdLabel(addDays(st.nextStart, periodLenOf() - 1)) + (st.sigma || '');
 }
 var startBtn = document.getElementById('period-mark-start');
 var endBtn = document.getElementById('period-mark-end');
@@ -657,7 +703,7 @@ if (!recs.length) { el.innerHTML = ((window.mochiDataPending && window.mochiData
 var arr = recs.slice().reverse();
 var html = '';
 arr.forEach(function (r, i) {
-var end = r.end || addDays(r.start, cfg.periodLen - 1);
+var end = r.end || addDays(r.start, periodLenOf() - 1);
 var len = diffDays(r.start, end) + 1;
 var next = arr[i - 1];
 var cycleTxt = next ? ' · 周期 ' + diffDays(r.start, next.start) + ' 天' : '';
@@ -917,7 +963,7 @@ var lens = [];
 recs = normalize(recs);
 for (var i = 0; i < recs.length; i++) {
 var r = recs[i];
-lens.push(diffDays(r.start, r.end || addDays(r.start, cfg.periodLen - 1)) + 1);
+lens.push(diffDays(r.start, r.end || addDays(r.start, periodLenOf() - 1)) + 1);
 }
 if (lens.length) txt += ' · 经期平均 ' + (lens.reduce(function (a, b) { return a + b; }, 0) / lens.length).toFixed(1) + ' 天';
 var ds = st.diffs;
@@ -939,7 +985,7 @@ recs = normalize(recs);
 var today = todayStr();
 for (var i = 0; i < recs.length; i++) {
 var r = recs[i];
-var end = r.end || addDays(r.start, cfg.periodLen - 1);
+var end = r.end || addDays(r.start, periodLenOf() - 1);
 if (today >= r.start && today <= end) { toast('当前已在经期中'); return; }
 }
 recs.push({ id: newId(), start: today, end: null });
@@ -971,7 +1017,7 @@ function toggleDay(ds) {
 recs = normalize(recs);
 for (var i = 0; i < recs.length; i++) {
 var r = recs[i];
-var end = r.end || addDays(r.start, cfg.periodLen - 1);
+var end = r.end || addDays(r.start, periodLenOf() - 1);
 if (ds >= r.start && ds <= end) {
 if (ds === r.start && ds === end) {
 recs = recs.filter(function (x) { return x !== r; });
@@ -996,7 +1042,7 @@ saveRecs(recs);
 render();
 }
 function markSpanStart(ds) {
-var len = Math.max(1, cfg.periodLen || 1);
+var len = Math.max(1, periodLenOf());
 recs = normalize(recs.concat([{ id: newId(), start: ds, end: addDays(ds, len - 1) }]));
 saveRecs(recs);
 render();
@@ -1048,7 +1094,7 @@ var flowHtml = FLOWS.map(function (f) {
 return '<button class="dp-flow' + (info.flow === f.k ? ' on' : '') + '" data-flow="' + f.k + '">' + f.label + '</button>';
 }).join('');
 var isPeriodNow = dayPhase(ds) === 'period';
-function perLabel(on) { return on ? '已标记为生理期（点此取消）' : '这天起记为生理期（' + cfg.periodLen + ' 天）'; }
+function perLabel(on) { return on ? '已标记为生理期（点此取消）' : '这天起记为生理期（' + periodLenOf() + ' 天）'; }
 var symHtml = SYMPTOMS.map(function (s) {
 var on = info.symptoms && info.symptoms.indexOf(s.k) >= 0;
 return '<button class="dp-sym' + (on ? ' on' : '') + '" data-sym="' + s.k + '">' + s.label + '</button>';
@@ -1145,7 +1191,7 @@ try { new Notification(title, { body: body }); } catch (e) {}
 }
 function checkNotify() {
 try { notifyCfg = loadNotify(); } catch (e) {}
-try { recs = loadRecs(); cfg = loadCfg(); } catch (e) {}
+try { recs = loadRecsFresh(); cfg = loadCfg(); } catch (e) {}
 if (!notifyCfg.enabled) return;
 if (!('Notification' in window) || Notification.permission !== 'granted') return;
 var nowH = new Date().getHours();
@@ -1155,13 +1201,14 @@ if (nowH < dueH) return;
 var st = status();
 var today = todayStr();
 var tier = predictTier();
+var recCoversToday = recCovers(today, cfg);
 notifyCfg.fired = notifyCfg.fired || {};
 var fired = false;
 function said(c) { return !!notifyCfg.fired[today + '_said_' + c]; }
 function markSaid(c) { notifyCfg.fired[today + '_said_' + c] = 1; }
 function warnSaid() { return !!notifyCfg.fired[today + '_said_warn']; }
 function markWarn() { notifyCfg.fired[today + '_said_warn'] = 1; }
-if (st.nextStart && !st.inPeriod && !st.delayed && advHit(diffDays(today, st.nextStart), tier, true)) {
+if (!recCoversToday && st.nextStart && !st.inPeriod && !st.delayed && advHit(diffDays(today, st.nextStart), tier, true)) {
 var d = diffDays(today, st.nextStart);
 if (!said('adv' + d) && !warnSaid()) {
 var txt = d === 0 ? '今天预计是经期开始日' : '距下次经期约 ' + d + ' 天';
@@ -1176,16 +1223,6 @@ notifyAssist('经期提醒', '经期第 ' + st.dayOfCycle + ' 天 · 注意保�
 markSaid('inPeriod');
 fired = true;
 }
-var recCoversToday = false;
-try {
-var _todayK = today;
-for (var _ri = 0; _ri < recs.length; _ri++) {
-var _r = recs[_ri];
-if (!_r || !_r.start) continue;
-var _end = _r.end || addDays(_r.start, cfg.periodLen - 1);
-if (_todayK >= _r.start && _todayK <= _end) { recCoversToday = true; break; }
-}
-} catch (eR) {}
 if (!recCoversToday && st.phase === 'safe' && /推迟/.test(st.title)) {
 var m = st.title.match(/推迟 (\d+) 天/);
 var delayDays = m ? parseInt(m[1], 10) : 0;
@@ -1246,7 +1283,7 @@ return tier === 'free' ? d === advs[0] : true;
 }
 function checkCare() {
 try { notifyCfg = loadNotify(); } catch (e) {}
-try { recs = loadRecs(); cfg = loadCfg(); } catch (e) {}
+try { recs = loadRecsFresh(); cfg = loadCfg(); } catch (e) {}
 if (!notifyCfg.careEnabled) return;
 if (!window.chatAddIn) return;
 var _h = new Date().getHours();
@@ -1255,6 +1292,7 @@ try { if (Math.random() * 100 >= (window.dcfGet ? window.dcfGet('care') : 100)) 
 var st = status();
 var today = todayStr();
 var tier = predictTier();
+var recCoversToday = recCovers(today, cfg);
 var shouldCare = false, ctx = '', kind = '';
 var symKey = '';
 for (var symOff = 0; symOff <= 3 && !shouldCare; symOff++) {
@@ -1265,21 +1303,12 @@ shouldCare = true; ctx = 'sym'; kind = 'sym';
 }
 }
 if (!shouldCare && st.inPeriod) { shouldCare = true; ctx = 'inPeriod'; kind = 'in'; }
-else if (!shouldCare && st.nextStart && !st.delayed) {
+else if (!shouldCare && !recCoversToday && st.nextStart && !st.delayed) {
 var d = diffDays(today, st.nextStart);
 if (advHit(d, tier, false)) { shouldCare = true; ctx = 'adv' + d; kind = 'adv'; }
 }
 var delayDays = 0;
-var _recCoversToday = false;
-try {
-for (var _ci = 0; _ci < recs.length; _ci++) {
-var _cr = recs[_ci];
-if (!_cr || !_cr.start) continue;
-var _ce = _cr.end || addDays(_cr.start, cfg.periodLen - 1);
-if (today >= _cr.start && today <= _ce) { _recCoversToday = true; break; }
-}
-} catch (eC) {}
-if (!shouldCare && !_recCoversToday && st.phase === 'safe' && /推迟/.test(st.title)) {
+if (!shouldCare && !recCoversToday && st.phase === 'safe' && /推迟/.test(st.title)) {
 var m = st.title.match(/推迟 (\d+) 天/);
 delayDays = m ? parseInt(m[1], 10) : 0;
 if (tier === 'rule' && delayDays >= 5) { shouldCare = true; ctx = delayDays >= 10 ? 'delayDeep' : 'delay'; kind = 'delay'; }
@@ -1390,14 +1419,14 @@ var mStart = y + '-' + pad2(m + 1) + '-01';
 var mEnd = y + '-' + pad2(m + 1) + '-' + pad2(new Date(y, m + 1, 0).getDate());
 recs = normalize(recs);
 var monthRecs = recs.filter(function (r) {
-var end = r.end || addDays(r.start, cfg.periodLen - 1);
+var end = r.end || addDays(r.start, periodLenOf() - 1);
 return r.start <= mEnd && end >= mStart;
 });
 var monthDaily = {};
 for (var ds in daily) { if (ds >= mStart && ds <= mEnd) monthDaily[ds] = daily[ds]; }
 var periodDays = 0;
 monthRecs.forEach(function (r) {
-var end = r.end || addDays(r.start, cfg.periodLen - 1);
+var end = r.end || addDays(r.start, periodLenOf() - 1);
 var s = r.start < mStart ? mStart : r.start;
 var e = end > mEnd ? mEnd : end;
 periodDays += diffDays(s, e) + 1;
@@ -1506,7 +1535,7 @@ if (dateVal) {
 var norm2 = normalize(recs);
 var exists = norm2.some(function (r) { return r.start === dateVal; });
 if (!exists) {
-norm2.push({ id: newId(), start: dateVal, end: addDays(dateVal, cfg.periodLen - 1) });
+norm2.push({ id: newId(), start: dateVal, end: addDays(dateVal, periodLenOf() - 1) });
 norm2 = normalize(norm2);
 saveRecs(norm2); recs = norm2;
 }
@@ -1525,7 +1554,7 @@ document.body.classList.remove('scroll-lock');
 function openRecordPop() {
 var existing = document.getElementById('period-record-pop');
 if (existing) existing.remove();
-var work = { days: cfg.periodLen };
+var work = { days: periodLenOf() };
 var pop = document.createElement('div');
 pop.id = 'period-record-pop';
 pop.className = 'period-day-pop';
