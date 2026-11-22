@@ -7830,6 +7830,12 @@ try { if (chatResumeFromDiscard) setTimeout(chatResumeRoute, 1200); } catch (e) 
 const back = document.getElementById('chat-back');
 if (back) {
 back.addEventListener('click', () => {
+try {
+if (window.mochiHomeStyle && window.mochiHomeStyle() === 'wechat' && window.__wxHome && window.__wxHome.open) {
+window.__wxHome.open();
+return;
+}
+} catch (e) {}
 const phonePage = document.getElementById('page-phone');
 if (phonePage) {
 document.querySelectorAll('.page').forEach(p => { if (!p.hidden) p.hidden = true; }); // FIX #336 同值写也发 mutation，44 页全扫=唤醒全部页面观察器
