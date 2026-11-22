@@ -7826,6 +7826,26 @@ border-radius:99px; padding:3px 10px; font-size:10px; font-family:inherit; curso
 .div-board-edit.on { background:#222; color:#fff; border-color:#222; }
 .div-board-empty { cursor:grab; }
 .div-board-empty:active { cursor:grabbing; }
+.rec-scroll { flex:1; min-height:0; overflow-y:auto; padding:0 14px 18px; -webkit-overflow-scrolling:touch; }
+.rec-row { display:flex; align-items:center; gap:10px; padding:12px 12px; margin-bottom:8px;
+background:rgba(255,255,255,.86); border:1px solid rgba(17,17,17,.055); border-radius:16px; cursor:pointer;
+-webkit-tap-highlight-color:transparent; }
+.rec-row:active { background:rgba(17,17,17,.04); }
+.rec-ic { flex:none; width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+font-size:15px; background:rgba(17,17,17,.045); }
+.rec-ic.mood { background:rgba(240,190,120,.22); }
+.rec-ic.mem { background:rgba(150,120,220,.18); }
+.rec-ic.money { background:rgba(120,190,150,.20); }
+.rec-ic.period { background:rgba(230,140,150,.20); }
+.rec-ic.arc { background:rgba(120,160,220,.18); }
+.rec-ic.ask { background:rgba(240,170,110,.20); }
+.rec-nm { flex:none; width:42px; font-size:13.5px; font-weight:600; letter-spacing:.2px; color:var(--ink,#111); }
+.rec-v { flex:1; min-width:0; font-size:12.5px; color:var(--muted,#6f6c7a); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.rec-v b { color:var(--ink,#111); font-weight:700; }
+.rec-t { flex:none; font-size:10px; color:var(--hint-ink,#b0adba); }
+.rec-arw { flex:none; width:12px; height:12px; opacity:.24; color:var(--ink,#111); }
+.rec-empty { text-align:center; padding:60px 20px; font-size:13px; color:var(--muted,#9b98a6); line-height:1.8; }
+.rec-empty span { font-size:11px; color:var(--hint-ink,#b0adba); }
 .msg-gift { align-self: center; width: 100%; display: flex; justify-content: center; margin: 8px 0; }
 .msg-gift-card {
 width: min(260px, 80vw); padding: 22px 18px 14px; border-radius: 20px; box-sizing: border-box;
@@ -14396,7 +14416,7 @@ color: var(--gh-faint);
            （名称+版号 / 部署时间+实时秒 / 版本检测行）收成一行；检测行随 ver-check.js 退役删除。
            data-build-ts / data-version 两属性保留：device.js 诊断、bg-keep 自检、pwa.js 旧包检测
            仍只读属性（诊断版本号走 data-version 兜底，device.js 两处缓存原生支持）。 -->
-      <div class="splash-ver" id="splash-ver" data-build-ts="1795356546329" data-version="v8.1">
+      <div class="splash-ver" id="splash-ver" data-build-ts="1795358484710" data-version="v8.2">
         <span class="sv-app">Mochi 字卡传讯 已完结停更</span>
       </div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
@@ -16034,7 +16054,7 @@ color: var(--gh-faint);
         <div class="set-row" id="row-changelog">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 12c0-5.5 3.5-10 10-10 3.7 0 7 2 8.8 5M22 12c0 5.5-3.5 10-10 10-3.7 0-7-2-8.8-5"/></svg></div>
           <div class="txt">版本与更新<span class="sub">当前版本 · 一键更新到最新（更新摘要见开屏公告）</span></div>
-          <div class="val" id="about-ver-val">v8.1</div>
+          <div class="val" id="about-ver-val">v8.2</div>
           <div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
         </div>
         <!-- #606 开源与致谢：开源/私有部署说明 + 灵感来源与致谢（内容与功能介绍页同源，做成独立入口） -->
@@ -16125,7 +16145,7 @@ color: var(--gh-faint);
         </div>
       </div>
       </div><!-- /them-sec about -->
-      <div class="ver">Mochi 字卡传讯 v8.1</div>
+      <div class="ver">Mochi 字卡传讯 v8.2</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
       <!-- v3.27.x：设置页底部防骗声明 -->
       <div class="set-alert">
@@ -16524,7 +16544,7 @@ color: var(--gh-faint);
             <div class="lic-hero-top">
               <div class="lic-title">Mochi 字卡传讯</div>
               <span class="lic-badge">原版</span>
-              <span class="lic-ver">v8.1</span>
+              <span class="lic-ver">v8.2</span>
             </div>
             <div class="lic-p">原创极简风情侣字卡传讯，不是小手机：黑白灰简约设计，数据全部保存在本地、无需联网；所有内容均为代码触发、按概率运行，联系方可主动发送聊天消息。代码从零编写并完全开源——本作即原版。</div>
             <!-- v3.26.x #648：原版口径澄清——唯一原版使用网站＋其他版本均为开放二传二改产生的二传/二改版 -->
@@ -18793,6 +18813,19 @@ color: var(--gh-faint);
       </div>
     </div>
 
+    <!-- 2026-11-22：记录汇总（只读聚合）——入口：聊天「更多功能 → 互动 → 记录」
+         一行一个来源（经期/纪念/心情/账本/留言/提问/聊天/档案），点一行直接进原页面；
+         本页不写任何数据、不新增存储键（见 src/js/records-hub.js）。 -->
+    <div class="page" id="page-records" hidden>
+      <div class="chat-head">
+        <span class="ch-back" id="records-back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </span>
+        <span class="ch-name">记录</span>
+      </div>
+      <div class="rec-scroll"><div id="records-list"></div></div>
+    </div>
+
     <!-- 小互动页（桌面第二页点「小互动」进入） -->
 <div class="page" id="page-interact" hidden>
   <div class="chat-head">
@@ -20960,6 +20993,43 @@ color: var(--gh-faint);
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4.5h8a2 2 0 012 2V19a2 2 0 01-2 2H8a2 2 0 01-2-2V6.5a2 2 0 012-2z"/><path d="M9.5 3h5v3h-5z"/><path d="M9 11h6M9 14.5h6M9 18h3.5"/></svg></span>
             <span>备忘</span>
           </button>
+          <!-- 2026-11-22：补齐其余桌面 app（记录类 + 应用市场），全部归「工具」区 -->
+          <button class="more-item" id="more-app-home" data-mcat="tool" title="主页：情侣空间与相处统计">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 11.5L12 4l8.5 7.5"/><path d="M5.5 10v10h13V10"/><path d="M9.5 20v-5.5h5V20"/></svg></span>
+            <span>首页</span>
+          </button>
+          <button class="more-item" id="more-app-calendar" data-mcat="tool" title="日历：每日留言 / 备忘 / 心情">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M8 3v4M16 3v4M3.5 9.5h17"/></svg></span>
+            <span>日历</span>
+          </button>
+          <button class="more-item" id="more-app-memory" data-mcat="tool" title="纪念：纪念日 / 倒数日 / 相伴天数">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></span>
+            <span>纪念</span>
+          </button>
+          <button class="more-item" id="more-app-stats" data-mcat="tool" title="聊天统计：消息量与情绪">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>
+            <span>统计</span>
+          </button>
+          <button class="more-item" id="more-app-interact" data-mcat="tool" title="提问记录：TA 的询问 / 好奇 / 邀请">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.2 9a3 3 0 015.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span>
+            <span>提问记录</span>
+          </button>
+          <button class="more-item" id="more-app-period" data-mcat="tool" title="经期：预测 / 症状 / 体温">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c4-4 6.5-7 6.5-10A6.5 6.5 0 0112 4.5 6.5 6.5 0 015.5 11c0 3 2.5 6 6.5 10z"/></svg></span>
+            <span>经期</span>
+          </button>
+          <button class="more-item" id="more-app-accounting" data-mcat="tool" title="账房：收支 / 预算 / 心愿">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3.5" width="16" height="17" rx="2.5"/><path d="M8 8h8M8 12h4M8 16h3"/></svg></span>
+            <span>记账</span>
+          </button>
+          <button class="more-item" id="more-app-arc" data-mcat="tool" title="梦角档案 / 我的档案">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5h6l2 2h8v10a1.5 1.5 0 01-1.5 1.5h-13A1.5 1.5 0 014 18.5z"/></svg></span>
+            <span>档案</span>
+          </button>
+          <button class="more-item" id="more-app-appstore" data-mcat="tool" title="应用市场：把移除的图标加回来">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><path d="M17 14v6M14 17h6"/></svg></span>
+            <span>应用市场</span>
+          </button>
           <button class="more-item" id="more-call" data-mcat="chat" title="通话">
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg></span>
             <span>通话</span>
@@ -21022,6 +21092,11 @@ color: var(--gh-faint);
           <button class="more-item" id="more-app-music" data-mcat="chat" title="音乐：听歌 / 一起听歌">
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
             <span>音乐</span>
+          </button>
+          <!-- 2026-11-22：记录汇总（作者定稿「记录汇总放进互动区」）——一行一个来源，点一行进原页面 -->
+          <button class="more-item" id="more-app-records" data-mcat="chat" title="记录：经期 / 纪念 / 心情 / 账本 / 留言 / 提问 / 聊天 / 档案 汇总">
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span>
+            <span>记录</span>
           </button>
           <button class="more-item" id="more-divine" data-mcat="tool" title="占卜">
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M12 8.5l1.15 2.4 2.4 1.15-2.4 1.15L12 15.6l-1.15-2.4-2.4-1.15 2.4-1.15z"/></svg></span>
@@ -21685,7 +21760,7 @@ color: var(--gh-faint);
   // v3.5.123：readonly 起手（防 Chrome 密码弹条破坏表单签名）——这里立即解除，
   // 早于所有功能模块，任何设备都不会出现输入框不可用的情况
   (function () { var _ci = document.getElementById('chat-input'); if (_ci) _ci.readOnly = false; })();
-window.__jsErrors = window.__jsErrors || []; window.__mochiLoaded = window.__mochiLoaded || []; window.__mochiErrLoaded = window.__mochiErrLoaded || []; window.__mochiBootAt = Date.now(); window.__mochiJsFiles = ["device.js","splash-opening.js","paper-skin.js","entry-notice.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","mail-postal.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","garden-herbarium.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-core.js","room-iso.js","room.js","sleeproom.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","pwa.js","cjian.js","feature-hub.js","app-market.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js","app-merge.js"]; window.__mochiExtFiles = ["splash-opening.js","paper-skin.js","entry-notice.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","mail-postal.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","garden-herbarium.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-core.js","room-iso.js","room.js","sleeproom.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","cjian.js","feature-hub.js","app-market.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js","app-merge.js"];
+window.__jsErrors = window.__jsErrors || []; window.__mochiLoaded = window.__mochiLoaded || []; window.__mochiErrLoaded = window.__mochiErrLoaded || []; window.__mochiBootAt = Date.now(); window.__mochiJsFiles = ["device.js","splash-opening.js","paper-skin.js","entry-notice.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","mail-postal.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","garden-herbarium.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-core.js","room-iso.js","room.js","sleeproom.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","pwa.js","cjian.js","feature-hub.js","app-market.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js","records-hub.js","app-merge.js"]; window.__mochiExtFiles = ["splash-opening.js","paper-skin.js","entry-notice.js","idb.js","contacts.js","applock.js","card-lock.js","dcp-master.js","media-pool.js","storage-slim.js","perf-check.js","energy-check.js","flash-check.js","img-compress.js","img-ingest.js","clock.js","tabs.js","desktop-slider.js","quote-cards.js","personalize.js","chat.js","group-chat.js","chatcard.js","chat-settings.js","reply-settings.js","settings-hub.js","fav-settings.js","default-cards-data.js","dict-ext-data.js","default-cards.js","quote-spell.js","dream-free.js","mood-followup-data.js","mood-reply-cards.js","ta-mood-data.js","ta-mood.js","music-player.js","calendar.js","lunar.js","birthday.js","divination.js","avatar-lib.js","ta-ask.js","ck-question.js","incoming-requests.js","ta-invite.js","bg-keep.js","records.js","call.js","mail.js","mail-postal.js","feed.js","loc-lib.js","p2-features.js","gift-shop.js","memo-app.js","memo-arc.js","my-arc.js","period.js","accounting.js","garden.js","garden-herbarium.js","bar-presets.js","bar-fusions.js","bar-names.js","bar-render.js","bar.js","room-core.js","room-iso.js","room.js","sleeproom.js","drift-bottle.js","decision.js","group-decision.js","pong.js","snake-game.js","breakout.js","connect-four.js","coop-mine.js","fishing.js","memory-game.js","gomoku.js","linkup.js","match3.js","auction.js","flight-chess.js","arcade.js","mood-diary.js","sfx.js","fullscreen.js","data-backup.js","feature-data.js","cjian.js","feature-hub.js","app-market.js","settings-help.js","onboarding.js","page-coach.js","card-audit.js","storage-guide.js","mobile-adapt.js","records-hub.js","app-merge.js"];
 (function () { try {
 (function () {
 try { window.__jsErrors = window.__jsErrors || []; } catch (e0) {}
@@ -26603,6 +26678,7 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 <script defer src="js/card-audit.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('card-audit.js')"></script>
 <script defer src="js/storage-guide.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('storage-guide.js')"></script>
 <script defer src="js/mobile-adapt.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('mobile-adapt.js')"></script>
+<script defer src="js/records-hub.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('records-hub.js')"></script>
 <script defer src="js/app-merge.js" onerror="window.__mochiExtFail=(window.__mochiExtFail||[]).concat('app-merge.js')"></script>
 <!-- PERF-PLAN 阶段 1：上一行是 ext 外置脚本 defer 注入锚，构建时被整体替换为 35 个外置 js 标签；本行说明必须连同注释符号一起整体留在注释内，勿删。#797 教训：说明若写在注释结尾之外＝变正文裸文本（全页面右侧白色乱码条），其中的标签样本会被浏览器当真开标签，吞掉其后全部尾部 DOM -->
 
@@ -26626,4 +26702,4 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 </body>
 </html>
 
-<!-- __MOCHI_EOF__ mwrwxl3t -->
+<!-- __MOCHI_EOF__ mwry34rq -->
