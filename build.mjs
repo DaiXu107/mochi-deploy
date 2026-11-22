@@ -3217,7 +3217,7 @@ const FIX_SENTINELS = [
   { name: '#626b 改名钩子接尾巴清扫（删掉＝当前会话改名后尾巴日志不同步，重复复发；#775c 带 slot＝签名演进）', file: 'js/chat.js', needle: 'try { chatTailSweepNick(oldName, slot); }' },
   { name: '#626c 惰性补扫·最近旧名分支同步清尾巴（删掉＝重启后补扫不清尾巴，重载補回重复；#775c 按槽位补扫＝签名演进）', file: 'js/chat.js', needle: 'chatTailSweepNick(hist[hist.length - 1], slotKey)' },
   { name: '#626d 惰性补扫·历次旧名循环同步清尾巴（删掉＝备份导入等绕过钩子的改名仍留重复；#775c 按槽位补扫＝签名演进）', file: 'js/chat.js', needle: 'chatTailSweepNick(hist[i], slotKey)' },
-  { name: '#775e 聊天设置·联系人昵称改名基线取实际显示名（改回只读 cs-lbl-partner＝旧名片名扫不掉，历史拍一拍停在旧名片名）', file: 'js/chat-settings.js', needle: "const oldEff = window.chatPartnerName ? window.chatPartnerName() : (store.get('cs-lbl-partner') || 'TA');" },
+  { name: '#775e 聊天设置·联系人昵称改名基线取实际显示名（改回只读 cs-lbl-partner＝旧名片名扫不掉，历史拍一拍停在旧名片名；2026-11-22 重锚：读取对象由动态 store 改成桌面快照 st，语义不变）', file: 'js/chat-settings.js', needle: "const oldEff = window.chatPartnerName ? window.chatPartnerName() : (st.get('cs-lbl-partner') || 'TA');" },
   { name: '#775c2 聊天设置·我的昵称接 me 槽改名钩子（删掉这行＝改了「我的昵称」后聊天里的拍一拍仍旧名）', file: 'js/chat-settings.js', needle: "if (oldEff !== (val || '我')) {" },
   { name: '#775c3 昵称池换「我的昵称」同走 me 槽钩子（删掉＝点昵称池改名后历史不跟随，与聊天设置那条路径不一致）', file: 'js/avatar-lib.js', needle: "const newEff = store.get('cs-lbl-user') || '我';" },
   { name: '#775f 名片改名的聊天有效名基线走显示链（含名片名；改回掺桌面 lbl-partner＝只改名片时既不记 hist 也不清扫）', file: 'js/contacts.js', needle: 'const oldEff = csLbl || oldName || taWordId;' },
