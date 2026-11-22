@@ -13585,6 +13585,25 @@ if (morePanel) morePanel.hidden = true;
 openChatCall();
 });
 }
+const moreBadminton = document.getElementById('more-badminton');
+if (moreBadminton) {
+moreBadminton.addEventListener('click', (e) => {
+e.stopPropagation();
+if (morePanel) morePanel.hidden = true;
+const pc0 = document.getElementById('poke-card'); if (pc0) pc0.hidden = true;
+const ep0 = document.getElementById('emoji-panel'); if (ep0) ep0.hidden = true;
+const askP0 = document.getElementById('chat-ask-panel'); if (askP0) closeChatAskPanel();
+const cs0 = document.getElementById('chat-search'); if (cs0) cs0.hidden = true;
+const dv0 = document.getElementById('chat-divine-panel'); if (dv0) dv0.hidden = true;
+const dp0 = document.getElementById('chat-decision-panel'); if (dp0) dp0.hidden = true;
+const rpsP0 = document.getElementById('chat-rps-panel'); if (rpsP0) rpsP0.hidden = true;
+const rpP0 = document.getElementById('chat-rp-panel'); if (rpP0) rpP0.hidden = true;
+const callP0 = document.getElementById('chat-call-panel'); if (callP0) callP0.hidden = true;
+const pongP0 = document.getElementById('chat-pong-panel'); if (pongP0) pongP0.hidden = true;
+if (window.closeAvlib) window.closeAvlib();
+if (window.openBadmintonPanel) window.openBadmintonPanel();
+});
+}
 const morePong = document.getElementById('more-pong');
 if (morePong) {
 morePong.addEventListener('click', (e) => {
