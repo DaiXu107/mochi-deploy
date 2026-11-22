@@ -949,8 +949,12 @@
       if (document.hidden) { _enqueuePop(idx, 'openAskReply'); }
       else {
         const popSchedAt = Date.now();
+        const cid0 = (window.__activeCid || 'default');
         setTimeout(() => {
           if (autoPopupStale(popSchedAt) || document.hidden) return;
+          // 二改：换人了/这一桌聊天还没就绪 → 不弹（否则会在别人的聊天里弹出一张解答不到位的卡）
+          if ((window.__activeCid || 'default') !== cid0) return;
+          if (window.mochiChatGate && !window.mochiChatGate()) return;
           if (chatInputFocused()) return;
           if (idx >= 0 && window.openAskReply && !cardPopupBusy()) window.openAskReply(idx);
         }, 400);
@@ -1015,6 +1019,9 @@
     if (askDeadlinePassed(taAskLoad())) { toast('已过问卷答题结束时间，不能再作答'); return; }
     msgIdx = locateCardIdx(msgIdx, 'ask-card', 'askStatus');
     if (msgIdx < 0) return;
+    // 二改：桌面快照。弹窗是异步的，开着弹窗切了联系人后如果照旧作答，
+    // chatAskReply 会在**新桌面**的 msgs 上重定位到另一张未答卡＝「答案出现在错误的联系人页面」。
+    const cid0 = (window.__activeCid || 'default');
     // 读聊天记录拿问题
     let question = '';
     try {
@@ -1024,6 +1031,8 @@
     window.openModal('回答TA的询问', '', (v) => {
       const answer = (v || '').trim();
       if (!answer) { toast('请输入回答'); return; }
+      // 二改：已切到别的桌面＝这次作答作废（宁可不答，不能落到别人记录里）
+      if ((window.__activeCid || 'default') !== cid0) { toast('已切换到其他联系人，这次回答已取消'); return; }
       // 提交时再校验：索引仍指向本卡片则直接用，错位则重定位（防连点重定位到别的卡片）
       let rec = getCardAt(msgIdx);
       if (!rec || rec.special !== 'ask-card') {
@@ -1947,8 +1956,11 @@ const TC_DEFAULT = [
       if (document.hidden) { _enqueuePop(idx, 'openTC'); }
       else {
         const popSchedAt = Date.now();
+        const cid1 = (window.__activeCid || 'default');
         setTimeout(() => {
           if (autoPopupStale(popSchedAt) || document.hidden) return;
+          if ((window.__activeCid || 'default') !== cid1) return;
+          if (window.mochiChatGate && !window.mochiChatGate()) return;
           if (chatInputFocused()) return;
           if (idx >= 0 && window.openTC && !cardPopupBusy()) window.openTC(idx);
         }, 400);
@@ -2798,8 +2810,11 @@ window.openTCPanel = openTCPanel;
       if (document.hidden) { _enqueuePop(idx, 'openCurious'); }
       else {
         const popSchedAt = Date.now();
+        const cid2 = (window.__activeCid || 'default');
         setTimeout(() => {
           if (autoPopupStale(popSchedAt) || document.hidden) return;
+          if ((window.__activeCid || 'default') !== cid2) return;
+          if (window.mochiChatGate && !window.mochiChatGate()) return;
           if (chatInputFocused()) return;
           if (idx >= 0 && window.openCurious && !cardPopupBusy()) window.openCurious(idx);
         }, 400);

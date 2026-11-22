@@ -120,12 +120,41 @@
   }
 
   function loadRecs() { try { return JSON.parse(store.get(KEY_REC) || '[]'); } catch (e) { return []; } }
+  // ===== 二改（多联系人隔离）：经期数据是「用户本人」一份（根命名空间），
+  // 但关心/预警只能落在「当初记这笔数据的那张桌面」，不能跑到随便哪个联系人的聊天里。
+  // 记下最近一次编辑经期数据时的桌面（period-owner-desk）。
+  function periodOwnerDesk() {
+    try { var v = store.get('period-owner-desk'); return (typeof v === 'string' && v) ? v : 'default'; } catch (e) { return 'default'; }
+  }
+  function markPeriodOwner() {
+    try { store.set('period-owner-desk', window.__activeCid || 'default'); } catch (e) {}
+  }
+  // 关心语进聊天的唯一出口：目标桌面 ≠ 当前桌面 → 投中转箱（进那张桌面才看得到）；
+  // 目标就是当前桌面 → 等这桌聊天数据真就绪再发（不往半加载/空窗口里写）。
+  function periodDeliverCare(line, opts) {
+    try {
+      var owner = periodOwnerDesk();
+      var cur = window.__activeCid || 'default';
+      if (owner !== cur) {
+        // 不属于当前桌面：投到来源桌面的中转箱（进那张桌面才出现），不污染当前聊天
+        if (window.chatAppendToDeskMsg) { window.chatAppendToDeskMsg(owner, line, { special: 'poke', nightAllow: true }); return true; }
+        return false;
+      }
+      // 当前桌面：等这桌聊天真的加载完成再发；未就绪就返回 false，调用方**不**占今天名额，下一轮重试
+      if (window.mochiChatGate && !window.mochiChatGate()) return false;
+      if (window.chatAddIn) { window.chatAddIn(line, opts); return true; }
+      return false;
+    } catch (e) { return false; }
+  }
   function saveRecs(list) {
+    markPeriodOwner();
     try {
       store.set(KEY_REC, JSON.stringify(list));
       try { if (window.idbSet) window.idbSet(G + ':' + KEY_REC, JSON.stringify(list)); } catch (e2) {}
     } catch (e) {}
   }
+  // 只读探针（与 window.__room / __bar 同款，供无头验证与诊断回读）：不新增行为
+  try { window.__periodProbe = { owner: periodOwnerDesk, markOwner: markPeriodOwner, deliver: periodDeliverCare, recs: loadRecs }; } catch (eP) {}
   function loadCfg() {
     try { var c = JSON.parse(store.get(KEY_CFG) || 'null'); if (c) return c; } catch (e) {}
     return { cycleLen: 28, periodLen: 5, lutealPhase: 14 };
@@ -1563,7 +1592,7 @@
     else if (kind === 'delayIrr') line = String(line).replace(/\{d\}/g, String(st.dayOfCycle || 0));
     // 带标签 chip 发进聊天（addIn opts.tag → rec.mood），用户能看出消息来源与语境：
     // 「经期关心」= 经期中，「经期预警」= 经前预警/推迟（#559 起区分），「症状关心」= 记了症状（#1474）
-    try { window.chatAddIn(line, { tag: kind === 'sym' ? '症状关心' : (kind === 'in' ? '经期关心' : '经期预警'), nightAllow: true }); } catch (e) {}
+    try { if (periodDeliverCare(line, { tag: kind === 'sym' ? '症状关心' : (kind === 'in' ? '经期关心' : '经期预警'), nightAllow: true }) === false) return; } catch (e) { return; }
     notifyCfg.fired[careKey] = 1;
     if (isWarnKind) notifyCfg.fired[today + '_said_warn'] = 1;
     var cut = addDays(today, -30);
