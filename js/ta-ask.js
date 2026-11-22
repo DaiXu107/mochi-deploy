@@ -712,8 +712,11 @@ if (popup) {
 if (document.hidden) { _enqueuePop(idx, 'openAskReply'); }
 else {
 const popSchedAt = Date.now();
+const cid0 = (window.__activeCid || 'default');
 setTimeout(() => {
 if (autoPopupStale(popSchedAt) || document.hidden) return;
+if ((window.__activeCid || 'default') !== cid0) return;
+if (window.mochiChatGate && !window.mochiChatGate()) return;
 if (chatInputFocused()) return;
 if (idx >= 0 && window.openAskReply && !cardPopupBusy()) window.openAskReply(idx);
 }, 400);
@@ -764,6 +767,7 @@ if (!window.openModal) return;
 if (askDeadlinePassed(taAskLoad())) { toast('已过问卷答题结束时间，不能再作答'); return; }
 msgIdx = locateCardIdx(msgIdx, 'ask-card', 'askStatus');
 if (msgIdx < 0) return;
+const cid0 = (window.__activeCid || 'default');
 let question = '';
 try {
 const msgs = (window.getChatMsgs ? window.getChatMsgs() : JSON.parse(store.get('chat-msgs') || '[]'));
@@ -772,6 +776,7 @@ if (Array.isArray(msgs) && msgs[msgIdx]) question = msgs[msgIdx].askQuestion || 
 window.openModal('回答TA的询问', '', (v) => {
 const answer = (v || '').trim();
 if (!answer) { toast('请输入回答'); return; }
+if ((window.__activeCid || 'default') !== cid0) { toast('已切换到其他联系人，这次回答已取消'); return; }
 let rec = getCardAt(msgIdx);
 if (!rec || rec.special !== 'ask-card') {
 const fixedIdx = locateCardIdx(msgIdx, 'ask-card', 'askStatus');
@@ -1610,8 +1615,11 @@ if (popup) {
 if (document.hidden) { _enqueuePop(idx, 'openTC'); }
 else {
 const popSchedAt = Date.now();
+const cid1 = (window.__activeCid || 'default');
 setTimeout(() => {
 if (autoPopupStale(popSchedAt) || document.hidden) return;
+if ((window.__activeCid || 'default') !== cid1) return;
+if (window.mochiChatGate && !window.mochiChatGate()) return;
 if (chatInputFocused()) return;
 if (idx >= 0 && window.openTC && !cardPopupBusy()) window.openTC(idx);
 }, 400);
@@ -2376,8 +2384,11 @@ if (popup) {
 if (document.hidden) { _enqueuePop(idx, 'openCurious'); }
 else {
 const popSchedAt = Date.now();
+const cid2 = (window.__activeCid || 'default');
 setTimeout(() => {
 if (autoPopupStale(popSchedAt) || document.hidden) return;
+if ((window.__activeCid || 'default') !== cid2) return;
+if (window.mochiChatGate && !window.mochiChatGate()) return;
 if (chatInputFocused()) return;
 if (idx >= 0 && window.openCurious && !cardPopupBusy()) window.openCurious(idx);
 }, 400);
