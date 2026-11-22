@@ -204,6 +204,11 @@
         H.push(stepRow('桌面字号', '桌面图标文字大小（仅桌面/大屏生效）', 'store', 'desk-font-size', 85, 120, 1, '%', 'p', 'deskfont', 100, '字体 字号 大小 文字'));
         H.push(segRow('深色模式', '切换深色 / 浅色 / 跟随系统', 'theme',
           [['light', '浅色'], ['dark', '深色'], ['auto', '跟随系统']], readTheme(), 'g'));
+        H.push('<div class="sh-row" data-act="home-style" data-q="主页样式 小手机 微信 会话列表 主页">'
+          + '<div class="sh-l"><div class="sh-label">主页样式' + badge('g') + '</div>'
+          + '<span class="sh-note">小手机：图标桌面（可装修）/ 微信式：会话列表（不用装修）</span></div>'
+          + '<span class="sh-badge g" id="sh-home-style-val">' + ((window.mochiHomeStyle && window.mochiHomeStyle() === 'wechat') ? '微信式' : '小手机') + '</span>'
+          + '<i class="sh-chev"></i></div>');
         H.push('<div class="sh-row" data-act="ui-style" data-q="界面风格 皮肤 主题 纸页 经典 风格">'
           + '<div class="sh-l"><div class="sh-label">界面风格' + badge('g') + '</div>'
           + '<span class="sh-note">经典 Mochi / 纸页 · BETWEEN US；更多风格位置已预留</span></div>'
@@ -431,6 +436,7 @@
   } catch (e) {}
   document.addEventListener('contact-switched', function () { if (!page.hidden) render(); });
   document.addEventListener('mochi-ui-style-changed', function () { if (!page.hidden) render(); });
+  document.addEventListener('mochi-home-style-changed', function () { if (!page.hidden) render(); });
 
   // 桌面【设置】图标进入（二传调整：设置从底部 tab 移到桌面第一页，原占卜位）
   var deskIco = document.querySelector('.app[data-app="settings"]');
