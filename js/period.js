@@ -85,12 +85,33 @@ try { if (window.isDefaultCardOff && window.isDefaultCardOff('period', l)) retur
 return false;
 }
 function loadRecs() { try { return JSON.parse(store.get(KEY_REC) || '[]'); } catch (e) { return []; } }
+function periodOwnerDesk() {
+try { var v = store.get('period-owner-desk'); return (typeof v === 'string' && v) ? v : 'default'; } catch (e) { return 'default'; }
+}
+function markPeriodOwner() {
+try { store.set('period-owner-desk', window.__activeCid || 'default'); } catch (e) {}
+}
+function periodDeliverCare(line, opts) {
+try {
+var owner = periodOwnerDesk();
+var cur = window.__activeCid || 'default';
+if (owner !== cur) {
+if (window.chatAppendToDeskMsg) { window.chatAppendToDeskMsg(owner, line, { special: 'poke', nightAllow: true }); return true; }
+return false;
+}
+if (window.mochiChatGate && !window.mochiChatGate()) return false;
+if (window.chatAddIn) { window.chatAddIn(line, opts); return true; }
+return false;
+} catch (e) { return false; }
+}
 function saveRecs(list) {
+markPeriodOwner();
 try {
 store.set(KEY_REC, JSON.stringify(list));
 try { if (window.idbSet) window.idbSet(G + ':' + KEY_REC, JSON.stringify(list)); } catch (e2) {}
 } catch (e) {}
 }
+try { window.__periodProbe = { owner: periodOwnerDesk, markOwner: markPeriodOwner, deliver: periodDeliverCare, recs: loadRecs }; } catch (eP) {}
 function loadCfg() {
 try { var c = JSON.parse(store.get(KEY_CFG) || 'null'); if (c) return c; } catch (e) {}
 return { cycleLen: 28, periodLen: 5, lutealPhase: 14 };
@@ -1284,7 +1305,7 @@ if (!line) return;
 if (kind === 'adv') line = String(line).replace(/\{d\}/g, String(diffDays(today, st.nextStart)));
 else if (kind === 'delay') line = String(line).replace(/\{d\}/g, String(delayDays));
 else if (kind === 'delayIrr') line = String(line).replace(/\{d\}/g, String(st.dayOfCycle || 0));
-try { window.chatAddIn(line, { tag: kind === 'sym' ? '症状关心' : (kind === 'in' ? '经期关心' : '经期预警'), nightAllow: true }); } catch (e) {}
+try { if (periodDeliverCare(line, { tag: kind === 'sym' ? '症状关心' : (kind === 'in' ? '经期关心' : '经期预警'), nightAllow: true }) === false) return; } catch (e) { return; }
 notifyCfg.fired[careKey] = 1;
 if (isWarnKind) notifyCfg.fired[today + '_said_warn'] = 1;
 var cut = addDays(today, -30);
