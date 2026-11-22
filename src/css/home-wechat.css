@@ -35,10 +35,12 @@
   background:var(--chip,rgba(23,22,29,.06)); color:var(--muted,#8b8895); }
 .wx-empty { text-align:center; padding:70px 24px; font-size:12.5px; color:var(--muted,#9b98a6); line-height:1.8; }
 
-/* 微信式底部导航（与主 tabbar 同尺寸，切换显示） */
+/* 微信式底部导航（与主 tabbar 同尺寸）——只在「会话列表」这一页显示；
+   进聊天 / 字卡 / 设置（全屏页）一律收起，避免和聊天输入栏打架。 */
 #tabbar-wx { display:none; }
-#tabbar-wx.on { display:flex; }
-body.home-wx .tabbar { display:none; }
+body.home-wx .phone > .tabbar { display:none; }
+/* 微信式没有「小手机」外壳：状态栏（Mochi / 时间 / 电量）整体不显示 */
+body.home-wx .statusbar { display:none !important; }
 #tabbar-wx { margin:0 12px 12px; height:56px; border-radius:20px; background:rgba(255,255,255,.94);
   border:1px solid rgba(17,17,17,.06); align-items:center; justify-content:space-around;
   box-shadow:0 6px 18px rgba(20,18,35,.06); }
