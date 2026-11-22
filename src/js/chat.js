@@ -9269,6 +9269,35 @@ toast('此间打开出错，请刷新页面重试');
 } else toast('此间加载失败，请刷新页面重试');
 });
 }
+// 2026-11-22：桌面 app → 聊天「更多功能」入口。
+// 点击＝收起面板，再触发对应桌面图标 .click()——各模块自己的打开/返回/异步渲染逻辑全部复用，零重复实现。
+// 新增项统一 more-app- 前缀（避开 more-memory＝记忆翻牌游戏这类同名 id）。
+const MORE_APP_ENTRIES = {
+'more-app-mail': 'mail',
+'more-app-feed': 'feed',
+'more-app-tongpin': 'tongpin',
+'more-app-garden': 'garden',
+'more-app-bar': 'bar',
+'more-app-music': 'music',
+'more-app-note': 'note',
+'more-app-water': 'water',
+'more-app-eat': 'eat',
+'more-app-pomo': 'pomo',
+'more-app-memo': 'memo'
+};
+Object.keys(MORE_APP_ENTRIES).forEach(function (id) {
+const btn = document.getElementById(id);
+if (!btn) return;
+btn.addEventListener('click', function (e) {
+e.stopPropagation();
+const mp = document.getElementById('chat-more-panel');
+if (mp) mp.hidden = true;
+const key = MORE_APP_ENTRIES[id];
+const app = document.querySelector('.app[data-app="' + key + '"]');
+if (!app) { toast('这个功能还没加载完，稍后再试'); return; }
+try { app.click(); } catch (err) { toast('打开失败，请刷新页面重试'); }
+});
+});
 let lastMineText = '';
 let lastMineIdx = -1;
 let lastMineQuote = '';
