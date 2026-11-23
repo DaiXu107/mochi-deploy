@@ -5,6 +5,8 @@
 >
 > 返回 [README.md](README.md)
 
+- **2026-11-23**：**移除经期「推迟 / 超期」提醒**（用户直派「改不掉就删掉，看得心烦」）。`checkNotify` 的推迟通知分支与 `checkCare` 的推迟关心分支整段删除：无论推迟 5 天、10 天，都不再弹系统通知、也不再往聊天发「经期已推迟 N 天 / 距上次经期已经 M 天」；**页面状态卡与日历仍照常显示推迟天数**（只删提醒，不删数据与判定）。经前预警（adv）、经期中提醒、症状关心不受影响；`today_said_warn` 每日一条的名额只剩经前预警在用。同时把 3 条相关回归哨兵改成删除型（`#559b/#559f/#559g`），防止后续同步上游时把推迟提醒带回来。源码：`src/js/period.js`、`build.mjs`。
+
 - **2026-11-23**：**纸页风格 × 微信式主页适配**。微信式是独立的一套主页（`.wx-tabbar` / `#page-wxhome`），纸页皮肤原来只覆盖 `.tabbar` 与图标桌面，导致两种风格混在一起。现在补了：满宽纸带底栏（中文 + 英文小字、当前页手绘蓝圈）、会话列表发丝分隔线、方形细框头像 + 克莱因蓝首字、蓝色细框未读、纸底搜索框、长按弹层纸页化。并修掉两处互相踩：①微信式导航原复用 `.tabbar` 类，纸页的 `display:flex!important` 会把小手机导航也显出来（两条导航）；②`paper-skin.css` 开头是嵌套注释，注释提前结束把 `html.paper-skin{…}` 的变量块整段废掉（`--ink/--paper-blue` 一直为空），现已修好。源码：`src/css/paper-skin.css`、`src/css/home-wechat.css`、`src/template.html`。
 
 - **2026-11-23**：**纸页字体换成「楷体正文 + 书法体标题」**。正文用霞鹜文楷（LXGW WenKai TC），标题 / 中文导航标签用马善政毛笔楷书（Ma Shan Zheng），英文小字保持衬线；两套都按应用实际用到的 3923 个字裁成子集（`MochiKai-Regular.woff2` ≈960KB、`MochiBrush-Regular.woff2` ≈1.4MB，OFL），生僻字回落系统宋体。原「Mochi Serif」不再进入字体栈（文件保留）。构建会把两套字体复制到 `assets/fonts/`。源码：`src/css/paper-skin.css`、`src/assets/fonts/`、`build.mjs`。
