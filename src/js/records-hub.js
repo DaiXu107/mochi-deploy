@@ -150,6 +150,8 @@
   function openTarget(row) {
     var closed = false;
     try {
+      // 来路：从记录页进入的功能页，返回时回记录页
+      if (window.mochiSetOrigin) window.mochiSetOrigin('page-records');
       var pg = document.getElementById('page-records');
       if (pg) pg.hidden = true;
       var app = row.app ? document.querySelector('.app[data-app="' + row.app + '"]') : null;

@@ -34,30 +34,72 @@
   function deskStore(cid) {
     try { return window.storeForCid ? window.storeForCid(cid) : (window.storeFor ? window.storeFor(cid) : null); } catch (e) { return null; }
   }
+  function cleanPreview(t, rec) {
+    var txt = String(t || '');
+    // 通话/系统消息存的是 HTML（内联 <svg> 图标 + 文案），预览里必须先把标记剥掉，
+    // 否则列表上会出现「一串代码」（用户实报：来电未接听预览是一堆 svg path）。
+    txt = txt.replace(/<svg[\s\S]*?<\/svg>/gi, '')
+             .replace(/<[^>]*>/g, '')
+             .replace(/&nbsp;/gi, ' ')
+             .replace(/&amp;/gi, '&')
+             .replace(/&lt;/gi, '<')
+             .replace(/&gt;/gi, '>')
+             .replace(/&quot;/gi, '"')
+             .replace(/@@m:[0-9a-f]{32}/g, '[图片]')
+             .replace(/\|\|\|/g, ' ')
+             .replace(/\{ta\}/gi, '')
+             .replace(/\{me\}/gi, '')
+             .replace(/\s+/g, ' ')
+             .trim();
+    if (!txt) {
+      if (rec && (rec.type === 'image' || rec.img)) return '[图片]';
+      if (rec && rec.type === 'sticker') return '[表情包]';
+      if (rec && rec.type === 'voice') return '[语音]';
+      if (rec && rec.special === 'read') return '[已读]';
+      if (rec && rec.special === 'redpacket') return '[红包]';
+      if (rec && rec.special === 'poke') return '[消息]';
+      return '';
+    }
+    return txt.slice(0, 60);
+  }
   function lastOf(cid) {
     var s = deskStore(cid);
-    if (!s) return { text: '', ts: 0 };
-    var tail = [];
-    try { tail = JSON.parse(s.get('chat-tail') || '[]'); } catch (e) { tail = []; }
-    var unread = 0;
-    try { unread = parseInt(s.get('chat-unread'), 10) || 0; } catch (e) {}
-    var last = null;
-    if (Array.isArray(tail)) {
+    var out = { text: '', ts: 0, unread: 0 };
+    if (!s) return out;
+    try { out.unread = parseInt(s.get('chat-unread'), 10) || 0; } catch (e) {}
+    // 1) 尾巴日志（轻量，最近 60 条）
+    var tail = null;
+    try { tail = JSON.parse(s.get('chat-tail') || '[]'); } catch (e) { tail = null; }
+    if (Array.isArray(tail) && tail.length) {
       for (var i = tail.length - 1; i >= 0; i--) {
         var t = tail[i];
         if (!t) continue;
-        if (!last && (t.text || t.special)) last = t;
-        if (last) break;
+        var txt = cleanPreview(t.text, t);
+        if (txt) { out.text = txt; out.ts = Number(t.ts) || 0; break; }
       }
     }
-    var text = '';
-    if (last) {
-      if (last.special === 'read') text = '[已读]';
-      else if (last.special === 'poke' || last.special === 'ask-msg') text = String(last.text || '').replace(/@@m:[0-9a-f]{32}/g, '[图片]');
-      else text = String(last.text || '').replace(/@@m:[0-9a-f]{32}/g, '[图片]');
-      if (!text && last.special) text = '[' + last.special + ']';
-    }
-    return { text: text.slice(0, 40), ts: Number(last && last.ts) || 0, unread: unread };
+    // 2) 聊天整包快照（只读 LS/内存里的字符串；太大就跳过，避免为了首页整包解析几十 MB）
+    try {
+      var raw = s.get('chat-msgs');
+      if (raw && raw.length && raw.length < 400000) {
+        var arr = JSON.parse(raw);
+        if (Array.isArray(arr) && arr.length) {
+          for (var j = arr.length - 1; j >= 0; j--) {
+            var m = arr[j];
+            if (!m) continue;
+            var tx = cleanPreview(m.text, m);
+            var ts = Number(m.ts) || 0;
+            if (!tx) continue;
+            if (ts >= out.ts) { out.text = tx; out.ts = ts; }
+            break;
+          }
+          if (!out.ts && arr.length) out.ts = Number(arr[arr.length - 1].ts) || 0;
+        }
+      }
+    } catch (e) {}
+    // 3) 两者都没有 → 用联系人名兜底提示
+    if (!out.text) out.text = '';
+    return out;
   }
   function whenText(ts) {
     if (!ts) return '';
@@ -217,34 +259,61 @@
     render();
     document.querySelectorAll('.page').forEach(function (p) { p.hidden = true; });
     pg.hidden = false;
+    var ph = document.getElementById('page-phone');
+    if (ph) ph.hidden = true;
     syncTabs('chat');
     syncWxBar();
   }
   function syncTabs(which) {
     document.querySelectorAll('#tabbar-wx .wx-tb').forEach(function (t) {
-      t.classList.toggle('on', t.getAttribute('data-wx') === which);
+      t.classList.toggle('on', !!which && t.getAttribute('data-wx') === which);
     });
   }
-  // 微信式底部导航只在「会话列表」显示：全屏页（聊天 / 字卡 / 设置 / 子页）一律收起
+  // 微信式底部导航：在三个「一级页」显示（会话列表 / 字卡 / 设置），
+  // 其余全屏页（聊天、字卡子页、设置子页、游戏）一律收起；只切 class，不写内联样式。
+  var WX_TAB_PAGES = { 'page-wxhome': 'chat', 'page-chatcard': 'cards', 'page-setting': 'settings' };
+  function visiblePageId() {
+    try {
+      var pages = document.querySelectorAll('.page');
+      for (var i = 0; i < pages.length; i++) if (!pages[i].hidden) return pages[i].id;
+    } catch (e) {}
+    return '';
+  }
   function syncWxBar() {
     var bar = document.getElementById('tabbar-wx');
     if (!bar) return;
-    var onHome = false;
-    try {
-      var pg = document.getElementById('page-wxhome');
-      onHome = !!(pg && !pg.hidden);
-    } catch (e) {}
-    var show = isWx() && onHome;
-    bar.style.display = show ? 'flex' : 'none';
+    var tab = WX_TAB_PAGES[visiblePageId()] || '';
+    bar.classList.toggle('on', isWx() && !!tab);
+    syncTabs(tab);
   }
   window.__wxSyncBar = syncWxBar;
+
+  // 模式不变量：微信式时 page-phone 永不可见；小手机时 page-wxhome 永不可见。
+  // 这一条把「各功能页自己的返回键写死回 page-phone」全部兜住，不用逐个模块改。
+  function enforceHomeInvariant() {
+    try {
+      var wx = isWx();
+      var phone = document.getElementById('page-phone');
+      var wxp = document.getElementById('page-wxhome');
+      if (!phone || !wxp) return;
+      if (wx && !phone.hidden) {
+        phone.hidden = true;
+        wxp.hidden = false;
+        syncWxBar();
+      } else if (!wx && !wxp.hidden) {
+        wxp.hidden = true;
+        phone.hidden = false;
+        syncWxBar();
+      }
+    } catch (e) {}
+  }
+  window.__wxEnforce = enforceHomeInvariant;
 
   function apply() {
     var wx = isWx();
     document.body.classList.toggle('home-wx', wx);
-    var bar = document.getElementById('tabbar-wx');
-    if (bar) bar.style.display = (wx && !(document.getElementById('page-wxhome') || {}).hidden) ? 'flex' : 'none';
     syncWxBar();
+    enforceHomeInvariant();
     var oldBar = document.querySelector('.phone > .tabbar') || document.querySelector('.tabbar');
     if (oldBar) oldBar.style.display = wx ? 'none' : '';
     if (wx) {
@@ -272,6 +341,7 @@
     rset(KEY, nx);
     apply();
     if (nx === 'wechat') showWxHome();
+    else enforceHomeInvariant();
     toast(nx === 'wechat' ? '主页已切换为「微信式」' : '主页已切换为「小手机」');
   }
   window.mochiSetHomeStyle = setStyle;
@@ -298,7 +368,7 @@
       t.addEventListener('click', function () {
         var k = t.getAttribute('data-wx');
         if (k === 'chat') { showWxHome(); return; }
-        var pageId = k === 'cards' ? 'page-chatcard' : 'page-settings-hub';
+        var pageId = k === 'cards' ? 'page-chatcard' : 'page-setting';
         var pg = document.getElementById(pageId);
         if (!pg) return;
         document.querySelectorAll('.page').forEach(function (p) { p.hidden = true; });
@@ -310,10 +380,10 @@
     // ＋：新建联系人
     var add = document.getElementById('wx-add');
     if (add) add.addEventListener('click', function () {
-      if (window.openContactsPanel) { try { window.openContactsPanel(); return; } catch (e) {} }
+      if (window.openContactManager) { try { window.openContactManager(); return; } catch (e) {} }
       var mgr = document.getElementById('contact-manager');
       if (mgr) { mgr.hidden = false; return; }
-      if (window.setActiveContact) toast('点「切换联系人」可新建桌面');
+      toast('联系人面板还没加载完，稍后再试');
     });
     // 搜索框实时过滤
     var qEl = document.getElementById('wx-q');
@@ -333,7 +403,7 @@
     });
     // 任何页面切换都会改 .page[hidden]：据此自动收/放微信式导航
     try {
-      var obs = new MutationObserver(function () { syncWxBar(); });
+      var obs = new MutationObserver(function () { enforceHomeInvariant(); syncWxBar(); });
       document.querySelectorAll('.page').forEach(function (p) { obs.observe(p, { attributes: true, attributeFilter: ['hidden'] }); });
     } catch (e) {}
     document.addEventListener('contact-switched', function () {

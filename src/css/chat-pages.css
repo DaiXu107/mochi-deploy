@@ -5467,3 +5467,42 @@ select.mochi-custom-select-native { display:none; }
 .bam-act .bam-cd:not(:empty) { min-width:22px; text-align:left; }
 .bam-charm-tag { font-size:10.5px; color:#d5763a; background:rgba(213,118,58,.10);
   padding:3px 8px; border-radius:999px; }
+
+/* ===== 2026-11-23 音乐悬浮窗：关闭键 + 最小化后的顶栏滚动歌词 ===== */
+.sm-f-close {
+  position:absolute; top:6px; right:26px;
+  width:20px; height:20px; border:none; background:transparent; color:#999;
+  display:flex; align-items:center; justify-content:center; padding:0; cursor:pointer;
+  border-radius:50%;
+}
+.sm-f-close:hover { background:rgba(0,0,0,.06); color:#333; }
+.sm-f-close svg { width:11px; height:11px; }
+
+/* 顶栏右侧滚动歌词：只在小框「最小化」时出现；点击把悬浮窗拿回来 */
+.sm-lyric {
+  position:fixed; top:12px; right:70px; z-index:9998;
+  max-width:40vw; height:18px; line-height:18px; padding:0 8px;
+  background:rgba(255,255,255,.62); border-radius:9px;
+  box-shadow:0 1px 4px rgba(0,0,0,.06);
+  overflow:hidden; cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  mask-image:linear-gradient(90deg,transparent 0,#000 12px,#000 calc(100% - 12px),transparent 100%);
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 12px,#000 calc(100% - 12px),transparent 100%);
+}
+.sm-lyric[hidden] { display:none; }
+.sm-lyric-tx {
+  display:inline-block; white-space:nowrap; padding-left:100%;
+  font-size:10.5px; color:rgba(17,17,17,.52); letter-spacing:.4px;
+  animation:smLyricScroll var(--dur,12s) linear infinite;
+}
+@keyframes smLyricScroll {
+  from { transform:translateX(0); }
+  to   { transform:translateX(-100%); }
+}
+html.paper-skin .sm-lyric-tx { font-family:"Mochi Kai","Times New Roman",serif; color:rgba(36,37,34,.55); }
+html.paper-skin .sm-f-close, html.paper-skin .sm-f-collapse { color:#7a7c76; }
+@media (min-width: 901px) {
+  html:not(.force-mobile):not(.tablet):not(.fs-active):not(.fs-css-active) .sm-lyric {
+    right: calc(50% - 120px);
+  }
+}

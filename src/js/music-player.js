@@ -3193,6 +3193,7 @@
       if (fCur) fCur.textContent = fmtDur(audio.currentTime);
       const fDur = document.getElementById('sm-f-dur');
       if (fDur) fDur.textContent = fmtDur(audio.duration);
+      updateLyricBar();
     }, 500);
   }
   function toggle(fromWidget) {
@@ -3633,6 +3634,60 @@
 
   // ================= 悬浮小框 =================
   function isFloatOn() { return settings.floatEn && !floatClosed && currentId && audio; }
+
+  // ---------- 顶栏滚动歌词（小框最小化时显示） ----------
+  // 有歌词就用（支持 track.lyrics / track.lrc 的 LRC 文本，按时间取当前行），
+  // 没有歌词就滚「歌名 - 歌手」——不编造歌词。
+  function parseLrc(raw) {
+    const out = [];
+    String(raw || '').replace(/\r/g, '').split('\n').forEach(function (line) {
+      const m = line.match(/\[(\d{1,2}):(\d{1,2})(?:\.(\d{1,3}))?\]/);
+      if (!m) {
+        const t = line.trim();
+        if (t) out.push({ t: out.length ? out[out.length - 1].t : 0, text: t });
+        return;
+      }
+      const t = (+m[1]) * 60 + (+m[2]) + (m[3] ? (+m[3]) / (m[3].length === 2 ? 100 : 1000) : 0);
+      const text = line.replace(/\[[^\]]*\]/g, '').trim();
+      out.push({ t: t, text: text });
+    });
+    return out;
+  }
+  function lyricLine() {
+    const m = findTrack(currentId);
+    if (!m) return '';
+    const raw = m.lyrics || m.lrc || '';
+    if (raw) {
+      const lines = parseLrc(raw).filter(function (x) { return x.text; });
+      if (lines.length) {
+        const cur = audio ? (audio.currentTime || 0) : 0;
+        let pick = lines[0];
+        for (let i = 0; i < lines.length; i++) { if (lines[i].t <= cur + 0.3) pick = lines[i]; else break; }
+        return pick.text;
+      }
+    }
+    return (m.name || '正在播放') + (m.artist ? ' — ' + m.artist : '');
+  }
+  function updateLyricBar() {
+    const bar = document.getElementById('sm-lyric');
+    const tx = document.getElementById('sm-lyric-tx');
+    if (!bar || !tx) return;
+    const on = !!(settings.floatEn && !floatClosed && floatMin && currentId && audio) && !floatOwnSurfaceShown();
+    bar.hidden = !on;
+    if (!on) return;
+    const line = lyricLine();
+    if (tx.textContent === line) return;
+    tx.textContent = line;
+    // 按文字长度定滚动时长：短句慢一点、长句快一点
+    tx.style.setProperty('--dur', Math.max(8, Math.min(26, line.length * 0.55)) + 's');
+    tx.style.animation = 'none';
+    void tx.offsetWidth;   // 重启动画
+    tx.style.animation = '';
+  }
+  window.__musicLyricRefresh = updateLyricBar;
+  window.__musicFloatDbg = function () {
+    return { currentId: currentId, hasAudio: !!audio, paused: audio ? !!audio.paused : null, src: audio ? String(audio.src || "").slice(0, 24) : "", floatClosed: floatClosed, floatMin: floatMin, floatEn: !!settings.floatEn, own: floatOwnSurfaceShown(), hidden: (document.getElementById("sm-float") || {}).hidden };
+  };
   // 播放入口标记：桌面小组件本身就是播放控制器，凡由小组件触发的播放/暂停/切歌，
   // 一律抑制悬浮小框自动唤出（无论当前小框是否可见），避免「在桌面第二页小组件上点
   // 播放，还叠加弹出一个小浮窗」的重复控制；来自其他任何入口（音乐页/底部播放条/
@@ -3648,6 +3703,8 @@
   function toggleFloatMin() {
     floatMin = !floatMin;
     applyFloatMin();
+    renderFloat();
+    updateLyricBar();
     syncPlayIcons(audio && !audio.paused);
   }
   // FIX 2026-09-16 #587 悬浮小框「点了没反应」的元凶是它自己压住了音乐控件：
@@ -3701,9 +3758,10 @@
     const el = document.getElementById('sm-float');
     if (!el) return;
     const m = findTrack(currentId);
-    el.hidden = !(settings.floatEn && !floatClosed && currentId && audio && m) || floatHideByWidget || floatOwnSurfaceShown();
+    el.hidden = !(settings.floatEn && !floatClosed && currentId && audio && m) || floatMin || floatHideByWidget || floatOwnSurfaceShown();
     if (!el.hidden) clampFloatPos(); // #994：可见这一次确保位置在当前视口内
     applyFloatMin();
+    updateLyricBar();
     if (!m) return;
     document.getElementById('sm-f-name').textContent = m.name || '未知歌曲';
     const miniName = document.getElementById('sm-f-mini-name');
@@ -4946,6 +5004,19 @@
   // 悬浮小框 收起/展开（新版多行 ⇄ 最初版最小单行）
   const fCollapse = document.getElementById('sm-f-collapse');
   if (fCollapse) fCollapse.addEventListener('click', toggleFloatMin);
+  // 2026-11-23：关闭悬浮窗（本会话不再自动弹出；从音乐页 / 桌面小组件重新播放可再唤出）
+  const fClose = document.getElementById('sm-f-close');
+  if (fClose) fClose.addEventListener('click', function (e) {
+    e.stopPropagation();
+    floatClosed = true; floatMin = false;
+    applyFloatMin(); renderFloat(); updateLyricBar();
+  });
+  // 顶栏歌词点一下 → 把悬浮窗拿回来
+  const lyricBar = document.getElementById('sm-lyric');
+  if (lyricBar) lyricBar.addEventListener('click', function () {
+    floatMin = false; floatClosed = false;
+    applyFloatMin(); renderFloat(); updateLyricBar();
+  });
   const fMiniExpand = document.getElementById('sm-f-mini-expand');
   if (fMiniExpand) fMiniExpand.addEventListener('click', toggleFloatMin);
   const fMiniPlay = document.getElementById('sm-f-mini-play');

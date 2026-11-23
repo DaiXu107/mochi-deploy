@@ -35,21 +35,21 @@
   background:var(--chip,rgba(23,22,29,.06)); color:var(--muted,#8b8895); }
 .wx-empty { text-align:center; padding:70px 24px; font-size:12.5px; color:var(--muted,#9b98a6); line-height:1.8; }
 
-/* 微信式底部导航（与主 tabbar 同尺寸）——只在「会话列表」这一页显示；
-   进聊天 / 字卡 / 设置（全屏页）一律收起，避免和聊天输入栏打架。 */
-#tabbar-wx { display:none; }
-body.home-wx .phone > .tabbar { display:none; }
+/* 微信式底部导航（独立类，不再复用 .tabbar，避免与小手机导航互相覆盖）——
+   只在「会话列表」这一页显示；进聊天 / 字卡 / 设置（全屏页）一律收起。 */
+.wx-tabbar { display:none; margin:0 12px 12px; height:56px; border-radius:20px;
+  background:rgba(255,255,255,.94); border:1px solid rgba(17,17,17,.06);
+  align-items:center; justify-content:space-around; box-shadow:0 6px 18px rgba(20,18,35,.06); }
+body.home-wx #tabbar-wx.on { display:flex; }
+body.home-wx .phone > .tabbar { display:none !important; }
 /* 微信式没有「小手机」外壳：状态栏（Mochi / 时间 / 电量）整体不显示 */
 body.home-wx .statusbar { display:none !important; }
-#tabbar-wx { margin:0 12px 12px; height:56px; border-radius:20px; background:rgba(255,255,255,.94);
-  border:1px solid rgba(17,17,17,.06); align-items:center; justify-content:space-around;
-  box-shadow:0 6px 18px rgba(20,18,35,.06); }
-#tabbar-wx .wx-tb { display:flex; flex-direction:column; align-items:center; gap:3px;
+.wx-tabbar .wx-tb { display:flex; flex-direction:column; align-items:center; gap:3px;
   font-size:9.5px; color:#9b98a6; position:relative; cursor:pointer; -webkit-tap-highlight-color:transparent; }
-#tabbar-wx .wx-tb svg { width:18px; height:18px; opacity:.62; }
-#tabbar-wx .wx-tb.on { color:#17161d; font-weight:600; }
-#tabbar-wx .wx-tb.on svg { opacity:1; }
-#tabbar-wx .wx-tb .wx-badge { position:absolute; top:-4px; right:-8px; margin:0; }
+.wx-tabbar .wx-tb svg { width:18px; height:18px; opacity:.62; }
+.wx-tabbar .wx-tb.on { color:#17161d; font-weight:600; }
+.wx-tabbar .wx-tb.on svg { opacity:1; }
+.wx-tabbar .wx-tb .wx-badge { position:absolute; top:-4px; right:-8px; margin:0; }
 
 /* 长按弹层 */
 .wx-mask { position:absolute; inset:0; background:rgba(20,18,35,.3); z-index:60; }
@@ -68,3 +68,7 @@ body.home-wx .statusbar { display:none !important; }
   font-size:11px; background:rgba(17,17,17,.05); }
 .wx-cancel { margin-top:6px; text-align:center; font-size:13px; color:#8b8895; padding:13px 0 6px;
   border-top:1px solid rgba(17,17,17,.06); cursor:pointer; }
+
+/* 微信式下，字卡页 / 设置页底部给导航留位（原来只有 tab 页才有这层关系） */
+body.home-wx #page-chatcard, body.home-wx #page-setting { padding-bottom: 6px; }
+body.home-wx #page-chatcard .card-list { padding-bottom: 10px; }

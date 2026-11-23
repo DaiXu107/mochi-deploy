@@ -13604,6 +13604,61 @@ if (window.closeAvlib) window.closeAvlib();
 if (window.openBadmintonPanel) window.openBadmintonPanel();
 });
 }
+// ===== 2026-11-23：来路返回 =====
+// 从聊天「更多功能」里打开的功能页，返回时回到聊天页；从「记录」里打开的功能页，返回回记录页。
+// 做法：打开前记一个 pending 来源页，新页面显示时写到它的 data-origin 上；
+// 全局 capture 监听各页的返回键（*-back / .ch-back），有 data-origin 时直接回来源页并吃掉模块自己的返回逻辑。
+(function () {
+  let pending = '';
+  let pendingTimer = 0;
+  window.mochiSetOrigin = function (originId) {
+    if (!originId) return;
+    pending = originId;
+    clearTimeout(pendingTimer);
+    pendingTimer = setTimeout(function () { pending = ''; }, 1500); // 只认「紧接着打开的那一页」
+  };
+  const visiblePage = function () {
+    const list = document.querySelectorAll('.page');
+    for (let i = 0; i < list.length; i++) if (!list[i].hidden) return list[i];
+    return null;
+  };
+  const applyPending = function () {
+    if (!pending) return;
+    const vis = visiblePage();
+    if (!vis || vis.id === pending) return;
+    try { vis.dataset.origin = pending; } catch (e) {}
+    pending = ''; clearTimeout(pendingTimer);
+  };
+  try {
+    const obs = new MutationObserver(applyPending);
+    document.querySelectorAll('.page').forEach(function (p) { obs.observe(p, { attributes: true, attributeFilter: ['hidden'] }); });
+  } catch (e) {}
+  // 更多面板里只有「会切页」的项才算来路（通话/搜索等就地弹层的不要污染）
+  const PAGE_OPENERS = /^more-app-|^more-ck$|^more-cjian$|^more-room$|^more-sleep3d$|^more-divine$/;
+  const morePanelEl = document.getElementById('chat-more-panel');
+  if (morePanelEl) {
+    morePanelEl.addEventListener('click', function (e) {
+      const item = e.target && e.target.closest && e.target.closest('.more-item');
+      if (!item || !PAGE_OPENERS.test(item.id || '')) return;
+      window.mochiSetOrigin('page-chat');
+    }, true);
+  }
+  document.addEventListener('click', function (e) {
+    const t = e.target && e.target.closest && e.target.closest('[id$="-back"], .ch-back');
+    if (!t) return;
+    if (t.id === 'chat-back') return;          // 聊天页返回有自己的逻辑（微信式回会话列表）
+    if (t.classList && t.classList.contains('set-back')) return; // 设置页返回另有来路逻辑
+    const vis = visiblePage();
+    if (!vis || !vis.dataset || !vis.dataset.origin) return;
+    const target = document.getElementById(vis.dataset.origin);
+    if (!target) return;
+    e.stopImmediatePropagation(); e.preventDefault();
+    try { delete vis.dataset.origin; } catch (err) {}
+    document.querySelectorAll('.page').forEach(function (p) { p.hidden = true; });
+    target.hidden = false;
+    try { if (window.__wxSyncBar) window.__wxSyncBar(); } catch (err2) {}
+  }, true);
+})();
 const morePong = document.getElementById('more-pong');
 if (morePong) {
 morePong.addEventListener('click', (e) => {

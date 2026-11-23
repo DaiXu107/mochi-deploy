@@ -1,7 +1,23 @@
 /* ===== 纸页皮肤 · BETWEEN US 风格预览（二改）=====
-/* 本地打包的纸页衬线字体（Noto Serif SC 子集，OFL 1.1，见 assets/fonts/OFL-NotoSerifSC.txt）
-   手机上没有宋体/Noto Serif 时也能保持纸页风格；只含常用字 + 应用内文案字，
-   生僻字仍回落到系统字体。 */
+   本地打包的纸页衬线字体（Noto Serif SC 子集，OFL 1.1，见 assets/fonts/OFL-NotoSerifSC.txt）；
+   手机上没有宋体 / Noto Serif 时也能保持纸页风格，只含常用字 + 应用内文案字，生僻字回落到系统字体。
+   只在 html.paper-skin 下生效；?paper=1 或 localStorage:mochi-paper-preview=1 开启。
+   参考 github.com/knacl47/between-us 的视觉语言：骨瓷纸底、墨黑、克莱因蓝、发丝线框、衬线标题、编号与英文小字。
+   只做「换皮」，不改任何功能与数据结构。关闭：点右下角「关闭预览」，或在 URL 去掉 ?paper=1 后刷新。 */
+/* 2026-11-23：纸页风格改用「楷体 + 书法」两套本地子集字体（OFL）
+   · Mochi Kai＝霞鹜文楷（LXGW WenKai TC，楷体，正文用）
+   · Mochi Brush＝马善政毛笔楷书（Ma Shan Zheng，书法感，标题/导航用）
+   都按应用文案裁过子集，生僻字回落到系统宋体。 */
+@font-face {
+  font-family: "Mochi Kai";
+  src: url("assets/fonts/MochiKai-Regular.woff2") format("woff2");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Mochi Brush";
+  src: url("assets/fonts/MochiBrush-Regular.woff2") format("woff2");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
 @font-face {
   font-family: "Mochi Serif";
   src: url("assets/fonts/MochiSerif-Regular.woff2") format("woff2");
@@ -9,12 +25,6 @@
   font-style: normal;
   font-display: swap;
 }
-
-
-   只在 html.paper-skin 下生效；?paper=1 或 localStorage:mochi-paper-preview=1 开启。
-   参考 github.com/knacl47/between-us 的视觉语言：骨瓷纸底、墨黑、克莱因蓝、
-   发丝线框、衬线标题、编号与英文小字。只做「换皮」，不改任何功能与数据结构。
-   关闭：点右下角「关闭预览」，或在 URL 去掉 ?paper=1 后刷新。 */
 
 html.paper-skin {
   --ink: #242522;
@@ -59,7 +69,7 @@ html.paper-skin body,
 html.paper-skin *,
 html.paper-skin *::before,
 html.paper-skin *::after {
-  font-family: "Times New Roman", "Mochi Serif", "Noto Serif SC", "Songti SC", SimSun, serif !important;
+  font-family: "Times New Roman", "Mochi Kai", "Noto Serif SC", "Songti SC", SimSun, serif !important;
 }
 
 /* ---------- 手机壳 / 纸底 ---------- */
@@ -250,7 +260,7 @@ html.paper-skin .paper-tab-label {
   z-index: 1;
 }
 html.paper-skin .paper-tab-label b {
-  font-family: "Times New Roman", "Mochi Serif", "Noto Serif SC", "Songti SC", SimSun, serif !important;
+  font-family: "Times New Roman", "Mochi Kai", "Noto Serif SC", "Songti SC", SimSun, serif !important;
   font-size: 13px;
   font-weight: 400;
   line-height: 1;
@@ -629,3 +639,136 @@ html.paper-skin.paper-white .msg-rps-card,
 html.paper-skin.paper-white .modal { background: #fff !important; }
 html.paper-skin.paper-white .ch-av,
 html.paper-skin.paper-white .msg-av { box-shadow: 0 0 0 4px #fcfcfa, 0 0 0 5px rgba(24, 52, 212, .28); }
+
+/* ===== 2026-11-23 纸页皮肤 × 微信式主页适配 =====
+   微信式是独立的一套主页（.wx-tabbar / #page-wxhome），纸页皮肤原来只覆盖 .tabbar 与图标桌面；
+   这里把它也画成同一张「纸」：满宽纸带底栏（英文小字 + 中文 → 手绘圈中当前页）、
+   会话列表改发丝分隔线、方形头像框、蓝色未读戳。只换皮，不改行为。 */
+
+/* ---- 底部纸带 ---- */
+html.paper-skin .wx-tabbar {
+  margin: 0 !important;
+  padding: 8px 12px !important;
+  border: 0 !important;
+  border-top: 1px solid rgba(36, 37, 34, .72) !important;
+  border-radius: 0 !important;
+  background: #f2f2ef !important;
+  box-shadow: none !important;
+}
+html.paper-skin body.home-wx #tabbar-wx.on { display: flex !important; }
+html.paper-skin .wx-tabbar .wx-tb {
+  flex: 0 1 92px;
+  min-height: 52px;
+  padding: 9px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  position: relative;
+  border-radius: 0;
+}
+html.paper-skin .wx-tabbar .wx-tb > svg { display: none !important; }
+html.paper-skin .wx-tabbar .wx-tb .wx-tb-t {
+  font-family: "Mochi Brush", "Ma Shan Zheng", "Times New Roman", "Mochi Kai", "Noto Serif SC", "Songti SC", SimSun, serif !important;
+  font-size: 13px; font-weight: 400; line-height: 1; letter-spacing: .08em; color: var(--ink);
+  position: relative; z-index: 1;
+}
+html.paper-skin .wx-tabbar .wx-tb::after {
+  content: attr(data-en);
+  font-family: "Times New Roman", "Mochi Serif", "Noto Serif SC", "Songti SC", SimSun, serif;
+  font-size: 9px; line-height: 1.2; letter-spacing: .16em; color: var(--muted);
+  position: relative; z-index: 1;
+}
+html.paper-skin .wx-tabbar .wx-tb.on .wx-tb-t { color: var(--paper-blue); }
+html.paper-skin .wx-tabbar .wx-tb.on::after { color: var(--ink); }
+html.paper-skin .wx-tabbar .wx-tb.on::before {
+  content: "";
+  position: absolute; top: 50%; left: 50%;
+  width: 74px; height: 46px; margin: -23px 0 0 -37px;
+  border: 1px solid var(--paper-blue); border-radius: 50%;
+  transform: rotate(-6deg) scaleX(1.04);
+  opacity: .9; pointer-events: none;
+}
+html.paper-skin .wx-tabbar .wx-tb .wx-badge {
+  top: 6px; right: 10px;
+  background: transparent; color: var(--paper-blue);
+  border: 1px solid var(--paper-blue); border-radius: 0;
+  font-family: Georgia, serif; font-weight: 400;
+}
+
+/* ---- 会话列表 ---- */
+html.paper-skin #page-wxhome { background: transparent; }
+html.paper-skin #page-wxhome .wx-head { padding-top: 10px; }
+html.paper-skin #page-wxhome .wx-title {
+  font-family: "Times New Roman", "Mochi Serif", "Noto Serif SC", "Songti SC", SimSun, serif !important;
+  font-size: 24px; font-weight: 400; letter-spacing: .06em;
+}
+html.paper-skin #page-wxhome .wx-title::after {
+  content: "CHATS";
+  display: block;
+  font-family: "Times New Roman", Georgia, serif;
+  font-size: 9px; letter-spacing: .22em; color: var(--muted);
+  margin-top: 4px;
+}
+html.paper-skin #page-wxhome .wx-hbtn {
+  background: transparent; border: 1px solid rgba(36, 37, 34, .38); border-radius: 0;
+}
+html.paper-skin #page-wxhome .wx-search {
+  background: #f7f5ef; border: 1px solid rgba(36, 37, 34, .18); border-radius: 0;
+  font-family: inherit; color: var(--muted);
+}
+html.paper-skin #page-wxhome .wx-search input { background: transparent; color: var(--ink); }
+html.paper-skin #page-wxhome .wx-list { padding: 0 10px 10px; }
+html.paper-skin #page-wxhome .wx-conv {
+  border-radius: 0;
+  border-bottom: 1px solid rgba(36, 37, 34, .12);
+  padding: 12px 6px;
+}
+html.paper-skin #page-wxhome .wx-conv:active { background: rgba(36, 37, 34, .04); }
+html.paper-skin #page-wxhome .wx-av {
+  background: transparent !important;
+  border: 1px solid rgba(36, 37, 34, .38);
+  border-radius: 0;
+  color: var(--paper-blue);
+  font-family: "Times New Roman", "Mochi Serif", serif;
+  font-weight: 400;
+}
+html.paper-skin #page-wxhome .wx-nm { font-weight: 400; letter-spacing: .04em; }
+html.paper-skin #page-wxhome .wx-pv { color: var(--muted); }
+html.paper-skin #page-wxhome .wx-tm {
+  font-family: Georgia, "Times New Roman", serif; letter-spacing: .06em; color: var(--muted);
+}
+html.paper-skin #page-wxhome .wx-badge {
+  background: transparent; color: var(--paper-blue);
+  border: 1px solid var(--paper-blue); border-radius: 0;
+  font-family: Georgia, serif; font-weight: 400;
+}
+html.paper-skin #page-wxhome .wx-pin {
+  background: transparent; border: 1px solid rgba(36, 37, 34, .3); border-radius: 0;
+  color: var(--paper-blue); letter-spacing: .04em;
+}
+html.paper-skin #page-wxhome .wx-empty { color: var(--muted); }
+
+/* ---- 长按弹层 ---- */
+html.paper-skin .wx-sheet {
+  background: #f7f5ef; border: 1px solid rgba(36, 37, 34, .24); border-radius: 2px;
+  box-shadow: 0 10px 30px rgba(36, 37, 34, .16);
+}
+html.paper-skin .wx-sheet-ttl { color: var(--muted); letter-spacing: .12em; }
+html.paper-skin .wx-sheet-hd { border-bottom: 1px solid rgba(36, 37, 34, .16); }
+html.paper-skin .wx-act { border-bottom: 1px solid rgba(36, 37, 34, .10); }
+html.paper-skin .wx-cancel { border-top: 1px solid rgba(36, 37, 34, .16); color: var(--muted); }
+
+/* 2026-11-23：纸页风格的大标题改用书法体（正文仍用楷体，保证小字可读） */
+html.paper-skin .wx-title,
+html.paper-skin .chat-title,
+html.paper-skin .set-title,
+html.paper-skin .gs-title,
+html.paper-skin .cal-card-title,
+html.paper-skin .sh-title,
+html.paper-skin #page-wxhome .wx-title {
+  font-family: "Mochi Brush", "Ma Shan Zheng", "Times New Roman", "Mochi Kai", "Noto Serif SC", "Songti SC", SimSun, serif !important;
+  font-weight: 400 !important;
+  letter-spacing: .06em;
+}

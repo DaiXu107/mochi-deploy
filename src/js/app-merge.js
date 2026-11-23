@@ -17,7 +17,7 @@
     // 2026-11-22：同频 + 伸手合并成一个功能（作者直派「同频伸手合并为一个功能」）。
     // 同频为主入口（TA 此刻 + 敲三下），伸手作页内胶囊；两页结构都是 .chat-head + .tp/ss-body，
     // 胶囊插在头部下方，与原三组合并体例一致。
-    { key: 'sense', primary: 'tongpin', secondary: 'shenshou', primaryName: '同频', primaryLabel: '同频', secondaryLabel: '伸手', primaryPage: 'page-tongpin', secondaryPage: 'page-shenshou' }
+    { key: 'sense', primary: 'tongpin', secondary: 'shenshou', primaryName: '在你身边', primaryLabel: '同频', secondaryLabel: '伸手', primaryPage: 'page-tongpin', secondaryPage: 'page-shenshou' }
   ];
 
   var refs = {};
