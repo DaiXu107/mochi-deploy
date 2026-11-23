@@ -24,16 +24,29 @@ var pauseBtn = document.getElementById('bam-pause');
 var fsBtn = document.getElementById('bam-fs');
 var winTip = document.getElementById('bam-win-tip');
 var nameEl = document.getElementById('bam-partner-name');
+var btnCharm = document.getElementById('bam-charm');
+var btnMagic = document.getElementById('bam-magic');
+var cdCharmEl = document.getElementById('bam-charm-cd');
+var cdMagicEl = document.getElementById('bam-magic-cd');
+var charmTag = document.getElementById('bam-charm-stack');
 var W = 400, H = 520;
 var GROUND = 476, NET_X = 200, NET_TOP = GROUND - 122;
 var P_HOME = 74, T_HOME = 326;
 var P_LIMIT = [26, NET_X - 26], T_LIMIT = [NET_X + 26, W - 26];
 var G = 0.20, DRAG = 0.996, HIT_R = 44;
 var DIFF = {
-casual: { aiSpeed: 1.5, aiReact: 16, aiErr: 34, win: 3, label: '休闲' },
-easy:   { aiSpeed: 2.2, aiReact: 10, aiErr: 20, win: 5, label: '简单' },
-normal: { aiSpeed: 3.0, aiReact: 5,  aiErr: 10, win: 5, label: '普通' }
+casual: { aiSpeed: 1.5, aiReact: 16, aiErr: 34, win: 3, label: '休闲', missRate: 0.26, confuse: 0.75 },
+easy:   { aiSpeed: 2.2, aiReact: 10, aiErr: 20, win: 5, label: '简单', missRate: 0.16, confuse: 0.68 },
+normal: { aiSpeed: 3.0, aiReact: 5,  aiErr: 10, win: 5, label: '普通', missRate: 0.08, confuse: 0.60 }
 };
+var CHARM_CD = 180, MAGIC_CD = 180, CHARM_MIN = 0.45; // 3s（60fps）/ 移速下限
+var CHARM_LINES = [
+'就让我一球嘛，好不好～',
+'哼，你都不让着我。',
+'我不管，这球你要接不到才行。',
+'拜托拜托，让我赢一次嘛。',
+'你今天好厉害…可我有点累了。'
+];
 var diffKey = 'easy';
 var muted = false;
 function store() { try { return window.activeStore ? window.activeStore() : null; } catch (e) { return null; } }
@@ -47,6 +60,8 @@ you: 0, ta: 0, server: 'you', pause: 0, over: false,
 P: { x: P_HOME, vx: 0, swing: 0, swingCd: 0 },
 T: { x: T_HOME, vx: 0, swing: 0, swingCd: 0, err: 0, planFor: -1, hold: 0 },
 sh: { x: P_HOME + 12, y: GROUND - 130, vx: 0, vy: 0, last: null, trail: [] },
+decoys: [], magicArmed: false, charm: 0,
+cdCharm: 0, cdMagic: 0, taMiss: 0,
 rally: 0, maxRally: 0, t0: Date.now()
 };
 }
@@ -128,11 +143,13 @@ S.sh.last = null;
 S.sh.vx = dir * (3.1 + Math.random() * 0.3);
 S.sh.vy = -5.9 - Math.random() * 0.3;
 S.rally = 0;
+S.decoys = [];
 S.msg = first ? '' : (who === 'you' ? '你发球' : (window.taFit ? window.taFit('TA 发球') : 'TA 发球'));
 if (!first) flash(S.msg);
 }
 function score(who) {
 if (!S || S.over) return;
+S.decoys = []; S.magicArmed = false;
 if (who === 'you') S.you++; else S.ta++;
 updateHUD();
 var d = DIFF[diffKey];
@@ -154,6 +171,21 @@ sh.vx = dir * (3.5 + Math.random() * 0.35);
 sh.vy = -(5.8 + Math.random() * 0.4) + off * 0.5;
 }
 sh.last = { x: sh.x, y: sh.y };
+if (who === 'you' && S.magicArmed) {
+S.magicArmed = false;
+S.decoys = [];
+for (var di = 0; di < 6; di++) {
+var ang = (di / 6) * Math.PI * 2;
+S.decoys.push({
+x: sh.x, y: sh.y,
+vx: sh.vx + Math.cos(ang) * 1.15,
+vy: sh.vy + Math.sin(ang) * 0.9,
+trail: []
+});
+}
+flash('分身！');
+beep(880, 0.08);
+}
 S.rally++;
 if (S.rally > S.maxRally) S.maxRally = S.rally;
 if (who === 'you') { beep(660, 0.05); S.P.swing = 0.35; } else { S.T.swing = 0.35; }
@@ -171,24 +203,51 @@ function ai() {
 var d = DIFF[diffKey], ta = S.T, sh = S.sh;
 var incoming = sh.vx > 0.2 && sh.x > 90;
 var target;
+var speedMul = Math.max(CHARM_MIN, Math.pow(0.9, S.charm || 0));
 if (incoming) {
-if (ta.planFor !== S.rally) { ta.planFor = S.rally; ta.err = (Math.random() - 0.5) * d.aiErr; }
+if (ta.planFor !== S.rally) {
+ta.planFor = S.rally;
+ta.err = (Math.random() - 0.5) * d.aiErr;
+ta.willMiss = Math.random() < d.missRate;
+ta.goDecoy = false;
+ta._missedShot = false;
+if (S.decoys && S.decoys.length && Math.random() < d.confuse) {
+var dd = S.decoys[Math.floor(Math.random() * S.decoys.length)];
+ta.goDecoy = { x: dd.x, y: dd.y };
+ta.willMiss = true;
+} else {
+ta.willMiss = ta.willMiss || false;
+}
+}
+if (ta.goDecoy) {
+target = ta.goDecoy.x;
+} else {
 var t = (GROUND - 30 - sh.y) / Math.max(0.4, sh.vy + 3);
-target = sh.x + sh.vx * Math.min(26, t) + ta.err;
+target = sh.x + sh.vx * Math.min(26, t) + ta.err + (ta.willMiss ? 54 : 0); // 接不到＝明显跑偏
+}
 } else {
 target = T_HOME + Math.sin(Date.now() / 700) * 6;
 }
 target = Math.max(T_LIMIT[0], Math.min(T_LIMIT[1], target));
-var dx = target - ta.x, maxv = d.aiSpeed;
+var dx = target - ta.x, maxv = d.aiSpeed * speedMul;
 ta.x += Math.max(-maxv, Math.min(maxv, dx));
 var rt = racketPos('ta');
 var dist = Math.hypot(sh.x - rt.x, sh.y - rt.y);
-if (incoming && dist < HIT_R - 6 && sh.y < GROUND - 10) {
+if (incoming && !ta.willMiss && dist < HIT_R - 6 && sh.y < GROUND - 10) {
 if (ta.hold <= 0) { swingTA(); ta.hold = d.aiReact; } else ta.hold--;
+} else if (ta.goDecoy) {
+var dd2 = ta.goDecoy;
+if (S.decoys && S.decoys.length && Math.hypot(dd2.x - rt.x, dd2.y - rt.y) < HIT_R && ta.swingCd <= 0) {
+swingTA();
+if (!ta._missedShot) { ta._missedShot = true; S.taMiss = (S.taMiss || 0) + 1; flash(window.taFit ? window.taFit('TA 扑空了') : 'TA 扑空了'); }
+}
 } else if (ta.hold > 0) ta.hold--;
 }
 function step() {
 if (!S || S.over) return;
+if (S.cdCharm > 0) S.cdCharm--;
+if (S.cdMagic > 0) S.cdMagic--;
+if (S.cdCharm % 6 === 0 || S.cdMagic % 6 === 0) syncActionUI();
 if (S.pause > 0) { S.pause--; if (S.pause === 0) reset(S.server); }
 var sh = S.sh, p = S.P, ta = S.T;
 if (keys.ArrowLeft || keys.a) { p.x -= 3.2; p.vx = -3.2; }
@@ -224,6 +283,13 @@ score(side === 'you' ? 'ta' : 'you');
 }
 if (sh.x < -20 || sh.x > W + 20) score(sh.x < 0 ? 'ta' : 'you');
 sh.last = { x: sh.x, y: sh.y };
+for (var dk = 0; dk < S.decoys.length; dk++) {
+var dc = S.decoys[dk];
+dc.vy += G; dc.vx *= DRAG; dc.vy *= DRAG;
+dc.x += dc.vx; dc.y += dc.vy;
+dc.trail.push({ x: dc.x, y: dc.y });
+if (dc.trail.length > 6) dc.trail.shift();
+}
 }
 ai();
 draw();
@@ -259,6 +325,14 @@ for (var i = 0; i < S.sh.trail.length; i++) {
 var t = S.sh.trail[i], a = (i + 1) / S.sh.trail.length;
 ctx.beginPath(); ctx.arc(t.x, t.y, 2.6 * a, 0, 7);
 ctx.fillStyle = 'rgba(23,22,29,' + (0.06 + a * 0.1) + ')'; ctx.fill();
+}
+if (S.decoys && S.decoys.length) {
+for (var q = 0; q < S.decoys.length; q++) {
+ctx.save();
+ctx.globalAlpha = 0.38;
+drawShuttleAt(S.decoys[q].x, S.decoys[q].y, S.decoys[q].vx, S.decoys[q].vy);
+ctx.restore();
+}
 }
 drawStick('you', S.P, '#3a7fd5');
 drawStick('ta', S.T, '#d5763a');
@@ -304,8 +378,11 @@ ctx.lineWidth = 3; ctx.stroke();
 }
 function drawShuttle() {
 var sh = S.sh;
-ctx.save(); ctx.translate(sh.x, sh.y);
-ctx.rotate(Math.atan2(sh.vy, sh.vx) + Math.PI / 2);
+drawShuttleAt(sh.x, sh.y, sh.vx, sh.vy);
+}
+function drawShuttleAt(x, y, vx, vy) {
+ctx.save(); ctx.translate(x, y);
+ctx.rotate(Math.atan2(vy, vx) + Math.PI / 2);
 ctx.beginPath(); ctx.arc(0, 0, 3.6, 0, 7);
 ctx.fillStyle = '#f6f4fa'; ctx.strokeStyle = 'rgba(23,22,29,.75)'; ctx.lineWidth = 1.2;
 ctx.fill(); ctx.stroke();
@@ -353,6 +430,7 @@ if (winTip) winTip.textContent = '先得 ' + d.win + ' 分';
 updateHUD();
 hideOverlay();
 reset('you', true);
+syncActionUI();
 startLoop();
 }
 function endGame() {
@@ -420,6 +498,8 @@ if (e.key === ' ' && running && !paused) { e.preventDefault(); swingPlayer(); }
 });
 window.addEventListener('keyup', function (e) { keys[e.key] = false; });
 if (ovBtn) ovBtn.addEventListener('click', startGame);
+if (btnCharm) btnCharm.addEventListener('click', doCharm);
+if (btnMagic) btnMagic.addEventListener('click', doMagic);
 if (closeBtn) closeBtn.addEventListener('click', function () {
 stopLoop(); panel.hidden = true;
 });
@@ -453,6 +533,42 @@ fsBtn.textContent = isFs ? '⤢' : '⛶';
 setTimeout(fitCanvas, 60);
 });
 window.addEventListener('resize', function () { if (!panel.hidden) fitCanvas(); });
+function syncActionUI() {
+if (!S) return;
+var cLock = S.cdCharm > 0, mLock = S.cdMagic > 0;
+if (btnCharm) btnCharm.classList.toggle('is-cd', cLock);
+if (btnMagic) btnMagic.classList.toggle('is-cd', mLock || S.magicArmed);
+if (cdCharmEl) cdCharmEl.textContent = cLock ? (S.cdCharm / 60).toFixed(1) : '';
+if (cdMagicEl) cdMagicEl.textContent = mLock ? (S.cdMagic / 60).toFixed(1) : (S.magicArmed ? '待发' : '');
+if (charmTag) {
+charmTag.hidden = !(S.charm > 0);
+charmTag.textContent = S.charm > 0 ? ('TA 移速 -' + Math.min(55, S.charm * 10) + '%') : '';
+}
+}
+function doCharm() {
+if (!S || S.over || !running || paused || S.cdCharm > 0) {
+if (S && S.cdCharm > 0) flash('撒娇冷却中');
+return;
+}
+S.cdCharm = CHARM_CD;
+S.charm = (S.charm || 0) + 1;
+var line = CHARM_LINES[Math.floor(Math.random() * CHARM_LINES.length)];
+beep(700, 0.06);
+flash('撒娇 · ' + (window.taFit ? window.taFit('TA') : 'TA') + ' 移速 -' + Math.min(55, S.charm * 10) + '%');
+try { if (window.chatAddIn) window.chatAddIn(line, { silent: true }); } catch (e) {}
+syncActionUI();
+}
+function doMagic() {
+if (!S || S.over || !running || paused || S.cdMagic > 0 || S.magicArmed) {
+if (S && S.cdMagic > 0) flash('魔法冷却中');
+return;
+}
+S.cdMagic = MAGIC_CD;
+S.magicArmed = true;
+beep(920, 0.09);
+flash('魔法待发 · 下一拍带 6 个分身');
+syncActionUI();
+}
 window.__bam = { state: function () { return S; }, start: startGame, end: endGame, diff: function () { return diffKey; } };
 window.openBadmintonPanel = function () {
 if (nameEl) {
