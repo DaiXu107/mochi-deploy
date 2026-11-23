@@ -5455,6 +5455,8 @@ select.mochi-custom-select-native { display:none; }
 
 /* 羽毛球：撒娇 / 魔法 两个功能键 */
 .bam-acts { display:flex; align-items:center; gap:8px; margin:2px 0 2px; }
+.bam-act.bam-act-emoji { padding:6px 14px; gap:5px; }
+.bam-act .bam-emoji { font-size:16px; line-height:1; }
 .bam-act { position:relative; display:flex; align-items:center; gap:6px; padding:7px 16px;
   border-radius:999px; border:1px solid rgba(17,17,17,.12); background:#fff; color:#17161d;
   font-size:12.5px; font-weight:600; letter-spacing:.5px; cursor:pointer;
