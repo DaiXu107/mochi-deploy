@@ -7910,6 +7910,8 @@ background:#FCFBFD; border:1px solid rgba(0,0,0,.07); }
 .poke-card.game-fs .bam-box { flex:1; min-height:0; }
 .poke-card.game-fs #bam-canvas { width:auto; max-width:100%; max-height:calc(100dvh - 210px); }
 .bam-acts { display:flex; align-items:center; gap:8px; margin:2px 0 2px; }
+.bam-act.bam-act-emoji { padding:6px 14px; gap:5px; }
+.bam-act .bam-emoji { font-size:16px; line-height:1; }
 .bam-act { position:relative; display:flex; align-items:center; gap:6px; padding:7px 16px;
 border-radius:999px; border:1px solid rgba(17,17,17,.12); background:#fff; color:#17161d;
 font-size:12.5px; font-weight:600; letter-spacing:.5px; cursor:pointer;
@@ -14490,7 +14492,7 @@ color: var(--gh-faint);
            （名称+版号 / 部署时间+实时秒 / 版本检测行）收成一行；检测行随 ver-check.js 退役删除。
            data-build-ts / data-version 两属性保留：device.js 诊断、bg-keep 自检、pwa.js 旧包检测
            仍只读属性（诊断版本号走 data-version 兜底，device.js 两处缓存原生支持）。 -->
-      <div class="splash-ver" id="splash-ver" data-build-ts="1795412840150" data-version="v8.5">
+      <div class="splash-ver" id="splash-ver" data-build-ts="1795413054601" data-version="v8.5">
         <span class="sv-app">Mochi 字卡传讯 已完结停更</span>
       </div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
@@ -19852,11 +19854,11 @@ color: var(--gh-faint);
             </div>
             <div class="pong-score" id="bam-score"><span class="pong-s-ta">0 TA</span><span class="pong-s-sep">:</span><span class="pong-s-you">你 0</span></div>
             <div class="bam-acts">
-              <button class="bam-act" id="bam-charm" type="button" title="撒娇：发一句撒娇，TA 移速 −10%（可叠加，冷却 3 秒）">
-                <span class="bam-act-n">撒娇</span><span class="bam-cd" id="bam-charm-cd"></span>
+              <button class="bam-act bam-act-emoji" id="bam-charm" type="button" aria-label="撒娇" title="撒娇：发一句撒娇，TA 移速 −10%（可叠加，冷却 3 秒）">
+                <span class="bam-emoji">❤️</span><span class="bam-cd" id="bam-charm-cd"></span>
               </button>
-              <button class="bam-act" id="bam-magic" type="button" title="魔法：下一拍带 6 个分身，只有本体能被打回（冷却 3 秒）">
-                <span class="bam-act-n">魔法</span><span class="bam-cd" id="bam-magic-cd"></span>
+              <button class="bam-act bam-act-emoji" id="bam-magic" type="button" aria-label="魔法" title="魔法：下一拍带 6 个分身，只有本体能被打回（冷却 3 秒）">
+                <span class="bam-emoji">🔮</span><span class="bam-cd" id="bam-magic-cd"></span>
               </button>
               <span class="bam-charm-tag" id="bam-charm-stack" hidden></span>
             </div>
@@ -26869,4 +26871,4 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 </body>
 </html>
 
-<!-- __MOCHI_EOF__ mwsug5p2 -->
+<!-- __MOCHI_EOF__ mwsukr61 -->
