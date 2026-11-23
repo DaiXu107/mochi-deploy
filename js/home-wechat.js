@@ -30,30 +30,67 @@ function setPins(a) { try { rset(PIN_KEY, JSON.stringify(a.slice(0, 50))); } cat
 function deskStore(cid) {
 try { return window.storeForCid ? window.storeForCid(cid) : (window.storeFor ? window.storeFor(cid) : null); } catch (e) { return null; }
 }
+function cleanPreview(t, rec) {
+var txt = String(t || '');
+txt = txt.replace(/<svg[\s\S]*?<\/svg>/gi, '')
+.replace(/<[^>]*>/g, '')
+.replace(/&nbsp;/gi, ' ')
+.replace(/&amp;/gi, '&')
+.replace(/&lt;/gi, '<')
+.replace(/&gt;/gi, '>')
+.replace(/&quot;/gi, '"')
+.replace(/@@m:[0-9a-f]{32}/g, '[图片]')
+.replace(/\|\|\|/g, ' ')
+.replace(/\{ta\}/gi, '')
+.replace(/\{me\}/gi, '')
+.replace(/\s+/g, ' ')
+.trim();
+if (!txt) {
+if (rec && (rec.type === 'image' || rec.img)) return '[图片]';
+if (rec && rec.type === 'sticker') return '[表情包]';
+if (rec && rec.type === 'voice') return '[语音]';
+if (rec && rec.special === 'read') return '[已读]';
+if (rec && rec.special === 'redpacket') return '[红包]';
+if (rec && rec.special === 'poke') return '[消息]';
+return '';
+}
+return txt.slice(0, 60);
+}
 function lastOf(cid) {
 var s = deskStore(cid);
-if (!s) return { text: '', ts: 0 };
-var tail = [];
-try { tail = JSON.parse(s.get('chat-tail') || '[]'); } catch (e) { tail = []; }
-var unread = 0;
-try { unread = parseInt(s.get('chat-unread'), 10) || 0; } catch (e) {}
-var last = null;
-if (Array.isArray(tail)) {
+var out = { text: '', ts: 0, unread: 0 };
+if (!s) return out;
+try { out.unread = parseInt(s.get('chat-unread'), 10) || 0; } catch (e) {}
+var tail = null;
+try { tail = JSON.parse(s.get('chat-tail') || '[]'); } catch (e) { tail = null; }
+if (Array.isArray(tail) && tail.length) {
 for (var i = tail.length - 1; i >= 0; i--) {
 var t = tail[i];
 if (!t) continue;
-if (!last && (t.text || t.special)) last = t;
-if (last) break;
+var txt = cleanPreview(t.text, t);
+if (txt) { out.text = txt; out.ts = Number(t.ts) || 0; break; }
 }
 }
-var text = '';
-if (last) {
-if (last.special === 'read') text = '[已读]';
-else if (last.special === 'poke' || last.special === 'ask-msg') text = String(last.text || '').replace(/@@m:[0-9a-f]{32}/g, '[图片]');
-else text = String(last.text || '').replace(/@@m:[0-9a-f]{32}/g, '[图片]');
-if (!text && last.special) text = '[' + last.special + ']';
+try {
+var raw = s.get('chat-msgs');
+if (raw && raw.length && raw.length < 400000) {
+var arr = JSON.parse(raw);
+if (Array.isArray(arr) && arr.length) {
+for (var j = arr.length - 1; j >= 0; j--) {
+var m = arr[j];
+if (!m) continue;
+var tx = cleanPreview(m.text, m);
+var ts = Number(m.ts) || 0;
+if (!tx) continue;
+if (ts >= out.ts) { out.text = tx; out.ts = ts; }
+break;
 }
-return { text: text.slice(0, 40), ts: Number(last && last.ts) || 0, unread: unread };
+if (!out.ts && arr.length) out.ts = Number(arr[arr.length - 1].ts) || 0;
+}
+}
+} catch (e) {}
+if (!out.text) out.text = '';
+return out;
 }
 function whenText(ts) {
 if (!ts) return '';
@@ -206,32 +243,55 @@ if (!pg) return;
 render();
 document.querySelectorAll('.page').forEach(function (p) { p.hidden = true; });
 pg.hidden = false;
+var ph = document.getElementById('page-phone');
+if (ph) ph.hidden = true;
 syncTabs('chat');
 syncWxBar();
 }
 function syncTabs(which) {
 document.querySelectorAll('#tabbar-wx .wx-tb').forEach(function (t) {
-t.classList.toggle('on', t.getAttribute('data-wx') === which);
+t.classList.toggle('on', !!which && t.getAttribute('data-wx') === which);
 });
+}
+var WX_TAB_PAGES = { 'page-wxhome': 'chat', 'page-chatcard': 'cards', 'page-setting': 'settings' };
+function visiblePageId() {
+try {
+var pages = document.querySelectorAll('.page');
+for (var i = 0; i < pages.length; i++) if (!pages[i].hidden) return pages[i].id;
+} catch (e) {}
+return '';
 }
 function syncWxBar() {
 var bar = document.getElementById('tabbar-wx');
 if (!bar) return;
-var onHome = false;
-try {
-var pg = document.getElementById('page-wxhome');
-onHome = !!(pg && !pg.hidden);
-} catch (e) {}
-var show = isWx() && onHome;
-bar.style.display = show ? 'flex' : 'none';
+var tab = WX_TAB_PAGES[visiblePageId()] || '';
+bar.classList.toggle('on', isWx() && !!tab);
+syncTabs(tab);
 }
 window.__wxSyncBar = syncWxBar;
+function enforceHomeInvariant() {
+try {
+var wx = isWx();
+var phone = document.getElementById('page-phone');
+var wxp = document.getElementById('page-wxhome');
+if (!phone || !wxp) return;
+if (wx && !phone.hidden) {
+phone.hidden = true;
+wxp.hidden = false;
+syncWxBar();
+} else if (!wx && !wxp.hidden) {
+wxp.hidden = true;
+phone.hidden = false;
+syncWxBar();
+}
+} catch (e) {}
+}
+window.__wxEnforce = enforceHomeInvariant;
 function apply() {
 var wx = isWx();
 document.body.classList.toggle('home-wx', wx);
-var bar = document.getElementById('tabbar-wx');
-if (bar) bar.style.display = (wx && !(document.getElementById('page-wxhome') || {}).hidden) ? 'flex' : 'none';
 syncWxBar();
+enforceHomeInvariant();
 var oldBar = document.querySelector('.phone > .tabbar') || document.querySelector('.tabbar');
 if (oldBar) oldBar.style.display = wx ? 'none' : '';
 if (wx) {
@@ -258,6 +318,7 @@ var nx = s === 'wechat' ? 'wechat' : 'phone';
 rset(KEY, nx);
 apply();
 if (nx === 'wechat') showWxHome();
+else enforceHomeInvariant();
 toast(nx === 'wechat' ? '主页已切换为「微信式」' : '主页已切换为「小手机」');
 }
 window.mochiSetHomeStyle = setStyle;
@@ -281,7 +342,7 @@ document.querySelectorAll('#tabbar-wx .wx-tb').forEach(function (t) {
 t.addEventListener('click', function () {
 var k = t.getAttribute('data-wx');
 if (k === 'chat') { showWxHome(); return; }
-var pageId = k === 'cards' ? 'page-chatcard' : 'page-settings-hub';
+var pageId = k === 'cards' ? 'page-chatcard' : 'page-setting';
 var pg = document.getElementById(pageId);
 if (!pg) return;
 document.querySelectorAll('.page').forEach(function (p) { p.hidden = true; });
@@ -292,10 +353,10 @@ syncWxBar();
 });
 var add = document.getElementById('wx-add');
 if (add) add.addEventListener('click', function () {
-if (window.openContactsPanel) { try { window.openContactsPanel(); return; } catch (e) {} }
+if (window.openContactManager) { try { window.openContactManager(); return; } catch (e) {} }
 var mgr = document.getElementById('contact-manager');
 if (mgr) { mgr.hidden = false; return; }
-if (window.setActiveContact) toast('点「切换联系人」可新建桌面');
+toast('联系人面板还没加载完，稍后再试');
 });
 var qEl = document.getElementById('wx-q');
 if (qEl) qEl.addEventListener('input', function () { render(qEl.value); });
@@ -310,7 +371,7 @@ document.addEventListener('mochi-home-style-changed', function () {
 var v = document.getElementById('home-style-val'); if (v) v.textContent = isWx() ? '微信式' : '小手机';
 });
 try {
-var obs = new MutationObserver(function () { syncWxBar(); });
+var obs = new MutationObserver(function () { enforceHomeInvariant(); syncWxBar(); });
 document.querySelectorAll('.page').forEach(function (p) { obs.observe(p, { attributes: true, attributeFilter: ['hidden'] }); });
 } catch (e) {}
 document.addEventListener('contact-switched', function () {

@@ -2515,6 +2515,7 @@ const fCur = document.getElementById('sm-f-cur');
 if (fCur) fCur.textContent = fmtDur(audio.currentTime);
 const fDur = document.getElementById('sm-f-dur');
 if (fDur) fDur.textContent = fmtDur(audio.duration);
+updateLyricBar();
 }, 500);
 }
 function toggle(fromWidget) {
@@ -2908,6 +2909,55 @@ if (m && m.neteaseId && !m.cover) ensureSongCover(m);
 else if (m && m.cover && COVER_PROXY_RE.test(m.cover)) enqueueCovMig(m);
 }
 function isFloatOn() { return settings.floatEn && !floatClosed && currentId && audio; }
+function parseLrc(raw) {
+const out = [];
+String(raw || '').replace(/\r/g, '').split('\n').forEach(function (line) {
+const m = line.match(/\[(\d{1,2}):(\d{1,2})(?:\.(\d{1,3}))?\]/);
+if (!m) {
+const t = line.trim();
+if (t) out.push({ t: out.length ? out[out.length - 1].t : 0, text: t });
+return;
+}
+const t = (+m[1]) * 60 + (+m[2]) + (m[3] ? (+m[3]) / (m[3].length === 2 ? 100 : 1000) : 0);
+const text = line.replace(/\[[^\]]*\]/g, '').trim();
+out.push({ t: t, text: text });
+});
+return out;
+}
+function lyricLine() {
+const m = findTrack(currentId);
+if (!m) return '';
+const raw = m.lyrics || m.lrc || '';
+if (raw) {
+const lines = parseLrc(raw).filter(function (x) { return x.text; });
+if (lines.length) {
+const cur = audio ? (audio.currentTime || 0) : 0;
+let pick = lines[0];
+for (let i = 0; i < lines.length; i++) { if (lines[i].t <= cur + 0.3) pick = lines[i]; else break; }
+return pick.text;
+}
+}
+return (m.name || '正在播放') + (m.artist ? ' — ' + m.artist : '');
+}
+function updateLyricBar() {
+const bar = document.getElementById('sm-lyric');
+const tx = document.getElementById('sm-lyric-tx');
+if (!bar || !tx) return;
+const on = !!(settings.floatEn && !floatClosed && floatMin && currentId && audio) && !floatOwnSurfaceShown();
+bar.hidden = !on;
+if (!on) return;
+const line = lyricLine();
+if (tx.textContent === line) return;
+tx.textContent = line;
+tx.style.setProperty('--dur', Math.max(8, Math.min(26, line.length * 0.55)) + 's');
+tx.style.animation = 'none';
+void tx.offsetWidth;   // 重启动画
+tx.style.animation = '';
+}
+window.__musicLyricRefresh = updateLyricBar;
+window.__musicFloatDbg = function () {
+return { currentId: currentId, hasAudio: !!audio, paused: audio ? !!audio.paused : null, src: audio ? String(audio.src || "").slice(0, 24) : "", floatClosed: floatClosed, floatMin: floatMin, floatEn: !!settings.floatEn, own: floatOwnSurfaceShown(), hidden: (document.getElementById("sm-float") || {}).hidden };
+};
 function markFloatSource(fromWidget) {
 floatHideByWidget = !!fromWidget;
 }
@@ -2918,6 +2968,8 @@ if (el) el.classList.toggle('min', floatMin);
 function toggleFloatMin() {
 floatMin = !floatMin;
 applyFloatMin();
+renderFloat();
+updateLyricBar();
 syncPlayIcons(audio && !audio.paused);
 }
 function floatOwnSurfaceShown() {
@@ -2956,9 +3008,10 @@ function renderFloat() {
 const el = document.getElementById('sm-float');
 if (!el) return;
 const m = findTrack(currentId);
-el.hidden = !(settings.floatEn && !floatClosed && currentId && audio && m) || floatHideByWidget || floatOwnSurfaceShown();
+el.hidden = !(settings.floatEn && !floatClosed && currentId && audio && m) || floatMin || floatHideByWidget || floatOwnSurfaceShown();
 if (!el.hidden) clampFloatPos(); // #994：可见这一次确保位置在当前视口内
 applyFloatMin();
+updateLyricBar();
 if (!m) return;
 document.getElementById('sm-f-name').textContent = m.name || '未知歌曲';
 const miniName = document.getElementById('sm-f-mini-name');
@@ -4008,6 +4061,17 @@ const fQueue = document.getElementById('sm-f-queue');
 if (fQueue) fQueue.addEventListener('click', openQueuePanel);
 const fCollapse = document.getElementById('sm-f-collapse');
 if (fCollapse) fCollapse.addEventListener('click', toggleFloatMin);
+const fClose = document.getElementById('sm-f-close');
+if (fClose) fClose.addEventListener('click', function (e) {
+e.stopPropagation();
+floatClosed = true; floatMin = false;
+applyFloatMin(); renderFloat(); updateLyricBar();
+});
+const lyricBar = document.getElementById('sm-lyric');
+if (lyricBar) lyricBar.addEventListener('click', function () {
+floatMin = false; floatClosed = false;
+applyFloatMin(); renderFloat(); updateLyricBar();
+});
 const fMiniExpand = document.getElementById('sm-f-mini-expand');
 if (fMiniExpand) fMiniExpand.addEventListener('click', toggleFloatMin);
 const fMiniPlay = document.getElementById('sm-f-mini-play');

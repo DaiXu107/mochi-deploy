@@ -145,6 +145,7 @@ chat: readChat, arc: readArc
 function openTarget(row) {
 var closed = false;
 try {
+if (window.mochiSetOrigin) window.mochiSetOrigin('page-records');
 var pg = document.getElementById('page-records');
 if (pg) pg.hidden = true;
 var app = row.app ? document.querySelector('.app[data-app="' + row.app + '"]') : null;

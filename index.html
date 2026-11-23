@@ -3201,18 +3201,18 @@ color:#fff; font-size:10.5px; font-weight:700; display:flex; align-items:center;
 .wx-pin { flex:none; font-size:9px; padding:1px 5px; border-radius:5px; margin-left:6px;
 background:var(--chip,rgba(23,22,29,.06)); color:var(--muted,#8b8895); }
 .wx-empty { text-align:center; padding:70px 24px; font-size:12.5px; color:var(--muted,#9b98a6); line-height:1.8; }
-#tabbar-wx { display:none; }
-body.home-wx .phone > .tabbar { display:none; }
+.wx-tabbar { display:none; margin:0 12px 12px; height:56px; border-radius:20px;
+background:rgba(255,255,255,.94); border:1px solid rgba(17,17,17,.06);
+align-items:center; justify-content:space-around; box-shadow:0 6px 18px rgba(20,18,35,.06); }
+body.home-wx #tabbar-wx.on { display:flex; }
+body.home-wx .phone > .tabbar { display:none !important; }
 body.home-wx .statusbar { display:none !important; }
-#tabbar-wx { margin:0 12px 12px; height:56px; border-radius:20px; background:rgba(255,255,255,.94);
-border:1px solid rgba(17,17,17,.06); align-items:center; justify-content:space-around;
-box-shadow:0 6px 18px rgba(20,18,35,.06); }
-#tabbar-wx .wx-tb { display:flex; flex-direction:column; align-items:center; gap:3px;
+.wx-tabbar .wx-tb { display:flex; flex-direction:column; align-items:center; gap:3px;
 font-size:9.5px; color:#9b98a6; position:relative; cursor:pointer; -webkit-tap-highlight-color:transparent; }
-#tabbar-wx .wx-tb svg { width:18px; height:18px; opacity:.62; }
-#tabbar-wx .wx-tb.on { color:#17161d; font-weight:600; }
-#tabbar-wx .wx-tb.on svg { opacity:1; }
-#tabbar-wx .wx-tb .wx-badge { position:absolute; top:-4px; right:-8px; margin:0; }
+.wx-tabbar .wx-tb svg { width:18px; height:18px; opacity:.62; }
+.wx-tabbar .wx-tb.on { color:#17161d; font-weight:600; }
+.wx-tabbar .wx-tb.on svg { opacity:1; }
+.wx-tabbar .wx-tb .wx-badge { position:absolute; top:-4px; right:-8px; margin:0; }
 .wx-mask { position:absolute; inset:0; background:rgba(20,18,35,.3); z-index:60; }
 .wx-sheet { position:absolute; left:8px; right:8px; bottom:8px; z-index:61; background:#fff; border-radius:18px;
 padding:8px 10px 10px; box-shadow:0 10px 30px rgba(20,18,35,.18); }
@@ -3229,6 +3229,8 @@ border-bottom:1px solid rgba(17,17,17,.05); cursor:pointer; }
 font-size:11px; background:rgba(17,17,17,.05); }
 .wx-cancel { margin-top:6px; text-align:center; font-size:13px; color:#8b8895; padding:13px 0 6px;
 border-top:1px solid rgba(17,17,17,.06); cursor:pointer; }
+body.home-wx #page-chatcard, body.home-wx #page-setting { padding-bottom: 6px; }
+body.home-wx #page-chatcard .card-list { padding-bottom: 10px; }
 #page-chatcard { scrollbar-width:none; -ms-overflow-style:none; }
 #page-chatcard::-webkit-scrollbar { display:none; }
 .chat-title { font-size:22px; font-weight:700; padding:4px 2px 8px; letter-spacing:1px; }
@@ -7922,6 +7924,41 @@ font-size:12.5px; font-weight:600; letter-spacing:.5px; cursor:pointer;
 .bam-act .bam-cd:not(:empty) { min-width:22px; text-align:left; }
 .bam-charm-tag { font-size:10.5px; color:#d5763a; background:rgba(213,118,58,.10);
 padding:3px 8px; border-radius:999px; }
+.sm-f-close {
+position:absolute; top:6px; right:26px;
+width:20px; height:20px; border:none; background:transparent; color:#999;
+display:flex; align-items:center; justify-content:center; padding:0; cursor:pointer;
+border-radius:50%;
+}
+.sm-f-close:hover { background:rgba(0,0,0,.06); color:#333; }
+.sm-f-close svg { width:11px; height:11px; }
+.sm-lyric {
+position:fixed; top:12px; right:70px; z-index:9998;
+max-width:40vw; height:18px; line-height:18px; padding:0 8px;
+background:rgba(255,255,255,.62); border-radius:9px;
+box-shadow:0 1px 4px rgba(0,0,0,.06);
+overflow:hidden; cursor:pointer;
+-webkit-tap-highlight-color:transparent;
+mask-image:linear-gradient(90deg,transparent 0,#000 12px,#000 calc(100% - 12px),transparent 100%);
+-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 12px,#000 calc(100% - 12px),transparent 100%);
+}
+.sm-lyric[hidden] { display:none; }
+.sm-lyric-tx {
+display:inline-block; white-space:nowrap; padding-left:100%;
+font-size:10.5px; color:rgba(17,17,17,.52); letter-spacing:.4px;
+animation:smLyricScroll var(--dur,12s) linear infinite;
+}
+@keyframes smLyricScroll {
+from { transform:translateX(0); }
+to   { transform:translateX(-100%); }
+}
+html.paper-skin .sm-lyric-tx { font-family:"Mochi Kai","Times New Roman",serif; color:rgba(36,37,34,.55); }
+html.paper-skin .sm-f-close, html.paper-skin .sm-f-collapse { color:#7a7c76; }
+@media (min-width: 901px) {
+html:not(.force-mobile):not(.tablet):not(.fs-active):not(.fs-css-active) .sm-lyric {
+right: calc(50% - 120px);
+}
+}
 .msg-gift { align-self: center; width: 100%; display: flex; justify-content: center; margin: 8px 0; }
 .msg-gift-card {
 width: min(260px, 80vw); padding: 22px 18px 14px; border-radius: 20px; box-sizing: border-box;
@@ -12103,16 +12140,22 @@ filter:drop-shadow(0 2px 2px rgba(0,0,0,.18));
 #chat-flight-panel.game-fs .fc-canvas { width:auto; height:auto; max-width:min(94vw,620px); max-height:70vh; }
 #chat-flight-panel.game-fs .fc-controls { flex-shrink:0; }
 @font-face {
+font-family: "Mochi Kai";
+src: url("assets/fonts/MochiKai-Regular.woff2") format("woff2");
+font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+font-family: "Mochi Brush";
+src: url("assets/fonts/MochiBrush-Regular.woff2") format("woff2");
+font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
 font-family: "Mochi Serif";
 src: url("assets/fonts/MochiSerif-Regular.woff2") format("woff2");
 font-weight: 400;
 font-style: normal;
 font-display: swap;
 }
-只在 html.paper-skin 下生效；?paper=1 或 localStorage:mochi-paper-preview=1 开启。
-参考 github.com/knacl47/between-us 的视觉语言：骨瓷纸底、墨黑、克莱因蓝、
-发丝线框、衬线标题、编号与英文小字。只做「换皮」，不改任何功能与数据结构。
-关闭：点右下角「关闭预览」，或在 URL 去掉 ?paper=1 后刷新。 */
 html.paper-skin {
 --ink: #242522;
 --muted: #6f716c;
@@ -12154,7 +12197,7 @@ html.paper-skin body,
 html.paper-skin *,
 html.paper-skin *::before,
 html.paper-skin *::after {
-font-family: "Times New Roman", "Mochi Serif", "Noto Serif SC", "Songti SC", SimSun, serif !important;
+font-family: "Times New Roman", "Mochi Kai", "Noto Serif SC", "Songti SC", SimSun, serif !important;
 }
 html.paper-skin .phone {
 background:
@@ -12336,7 +12379,7 @@ position: relative;
 z-index: 1;
 }
 html.paper-skin .paper-tab-label b {
-font-family: "Times New Roman", "Mochi Serif", "Noto Serif SC", "Songti SC", SimSun, serif !important;
+font-family: "Times New Roman", "Mochi Kai", "Noto Serif SC", "Songti SC", SimSun, serif !important;
 font-size: 13px;
 font-weight: 400;
 line-height: 1;
@@ -12697,6 +12740,126 @@ html.paper-skin.paper-white .msg-rps-card,
 html.paper-skin.paper-white .modal { background: #fff !important; }
 html.paper-skin.paper-white .ch-av,
 html.paper-skin.paper-white .msg-av { box-shadow: 0 0 0 4px #fcfcfa, 0 0 0 5px rgba(24, 52, 212, .28); }
+html.paper-skin .wx-tabbar {
+margin: 0 !important;
+padding: 8px 12px !important;
+border: 0 !important;
+border-top: 1px solid rgba(36, 37, 34, .72) !important;
+border-radius: 0 !important;
+background: #f2f2ef !important;
+box-shadow: none !important;
+}
+html.paper-skin body.home-wx #tabbar-wx.on { display: flex !important; }
+html.paper-skin .wx-tabbar .wx-tb {
+flex: 0 1 92px;
+min-height: 52px;
+padding: 9px 4px;
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+gap: 3px;
+position: relative;
+border-radius: 0;
+}
+html.paper-skin .wx-tabbar .wx-tb > svg { display: none !important; }
+html.paper-skin .wx-tabbar .wx-tb .wx-tb-t {
+font-family: "Mochi Brush", "Ma Shan Zheng", "Times New Roman", "Mochi Kai", "Noto Serif SC", "Songti SC", SimSun, serif !important;
+font-size: 13px; font-weight: 400; line-height: 1; letter-spacing: .08em; color: var(--ink);
+position: relative; z-index: 1;
+}
+html.paper-skin .wx-tabbar .wx-tb::after {
+content: attr(data-en);
+font-family: "Times New Roman", "Mochi Serif", "Noto Serif SC", "Songti SC", SimSun, serif;
+font-size: 9px; line-height: 1.2; letter-spacing: .16em; color: var(--muted);
+position: relative; z-index: 1;
+}
+html.paper-skin .wx-tabbar .wx-tb.on .wx-tb-t { color: var(--paper-blue); }
+html.paper-skin .wx-tabbar .wx-tb.on::after { color: var(--ink); }
+html.paper-skin .wx-tabbar .wx-tb.on::before {
+content: "";
+position: absolute; top: 50%; left: 50%;
+width: 74px; height: 46px; margin: -23px 0 0 -37px;
+border: 1px solid var(--paper-blue); border-radius: 50%;
+transform: rotate(-6deg) scaleX(1.04);
+opacity: .9; pointer-events: none;
+}
+html.paper-skin .wx-tabbar .wx-tb .wx-badge {
+top: 6px; right: 10px;
+background: transparent; color: var(--paper-blue);
+border: 1px solid var(--paper-blue); border-radius: 0;
+font-family: Georgia, serif; font-weight: 400;
+}
+html.paper-skin #page-wxhome { background: transparent; }
+html.paper-skin #page-wxhome .wx-head { padding-top: 10px; }
+html.paper-skin #page-wxhome .wx-title {
+font-family: "Times New Roman", "Mochi Serif", "Noto Serif SC", "Songti SC", SimSun, serif !important;
+font-size: 24px; font-weight: 400; letter-spacing: .06em;
+}
+html.paper-skin #page-wxhome .wx-title::after {
+content: "CHATS";
+display: block;
+font-family: "Times New Roman", Georgia, serif;
+font-size: 9px; letter-spacing: .22em; color: var(--muted);
+margin-top: 4px;
+}
+html.paper-skin #page-wxhome .wx-hbtn {
+background: transparent; border: 1px solid rgba(36, 37, 34, .38); border-radius: 0;
+}
+html.paper-skin #page-wxhome .wx-search {
+background: #f7f5ef; border: 1px solid rgba(36, 37, 34, .18); border-radius: 0;
+font-family: inherit; color: var(--muted);
+}
+html.paper-skin #page-wxhome .wx-search input { background: transparent; color: var(--ink); }
+html.paper-skin #page-wxhome .wx-list { padding: 0 10px 10px; }
+html.paper-skin #page-wxhome .wx-conv {
+border-radius: 0;
+border-bottom: 1px solid rgba(36, 37, 34, .12);
+padding: 12px 6px;
+}
+html.paper-skin #page-wxhome .wx-conv:active { background: rgba(36, 37, 34, .04); }
+html.paper-skin #page-wxhome .wx-av {
+background: transparent !important;
+border: 1px solid rgba(36, 37, 34, .38);
+border-radius: 0;
+color: var(--paper-blue);
+font-family: "Times New Roman", "Mochi Serif", serif;
+font-weight: 400;
+}
+html.paper-skin #page-wxhome .wx-nm { font-weight: 400; letter-spacing: .04em; }
+html.paper-skin #page-wxhome .wx-pv { color: var(--muted); }
+html.paper-skin #page-wxhome .wx-tm {
+font-family: Georgia, "Times New Roman", serif; letter-spacing: .06em; color: var(--muted);
+}
+html.paper-skin #page-wxhome .wx-badge {
+background: transparent; color: var(--paper-blue);
+border: 1px solid var(--paper-blue); border-radius: 0;
+font-family: Georgia, serif; font-weight: 400;
+}
+html.paper-skin #page-wxhome .wx-pin {
+background: transparent; border: 1px solid rgba(36, 37, 34, .3); border-radius: 0;
+color: var(--paper-blue); letter-spacing: .04em;
+}
+html.paper-skin #page-wxhome .wx-empty { color: var(--muted); }
+html.paper-skin .wx-sheet {
+background: #f7f5ef; border: 1px solid rgba(36, 37, 34, .24); border-radius: 2px;
+box-shadow: 0 10px 30px rgba(36, 37, 34, .16);
+}
+html.paper-skin .wx-sheet-ttl { color: var(--muted); letter-spacing: .12em; }
+html.paper-skin .wx-sheet-hd { border-bottom: 1px solid rgba(36, 37, 34, .16); }
+html.paper-skin .wx-act { border-bottom: 1px solid rgba(36, 37, 34, .10); }
+html.paper-skin .wx-cancel { border-top: 1px solid rgba(36, 37, 34, .16); color: var(--muted); }
+html.paper-skin .wx-title,
+html.paper-skin .chat-title,
+html.paper-skin .set-title,
+html.paper-skin .gs-title,
+html.paper-skin .cal-card-title,
+html.paper-skin .sh-title,
+html.paper-skin #page-wxhome .wx-title {
+font-family: "Mochi Brush", "Ma Shan Zheng", "Times New Roman", "Mochi Kai", "Noto Serif SC", "Songti SC", SimSun, serif !important;
+font-weight: 400 !important;
+letter-spacing: .06em;
+}
 #page-garden.gh {
 --gh-paper: #F1EDE3;
 --gh-paper-2: #F8F5EC;
@@ -14492,7 +14655,7 @@ color: var(--gh-faint);
            （名称+版号 / 部署时间+实时秒 / 版本检测行）收成一行；检测行随 ver-check.js 退役删除。
            data-build-ts / data-version 两属性保留：device.js 诊断、bg-keep 自检、pwa.js 旧包检测
            仍只读属性（诊断版本号走 data-version 兜底，device.js 两处缓存原生支持）。 -->
-      <div class="splash-ver" id="splash-ver" data-build-ts="1795413054601" data-version="v8.5">
+      <div class="splash-ver" id="splash-ver" data-build-ts="1795419638650" data-version="v8.6">
         <span class="sv-app">Mochi 字卡传讯 已完结停更</span>
       </div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
@@ -16136,7 +16299,7 @@ color: var(--gh-faint);
         <div class="set-row" id="row-changelog">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 12c0-5.5 3.5-10 10-10 3.7 0 7 2 8.8 5M22 12c0 5.5-3.5 10-10 10-3.7 0-7-2-8.8-5"/></svg></div>
           <div class="txt">版本与更新<span class="sub">当前版本 · 一键更新到最新（更新摘要见开屏公告）</span></div>
-          <div class="val" id="about-ver-val">v8.5</div>
+          <div class="val" id="about-ver-val">v8.6</div>
           <div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
         </div>
         <!-- #606 开源与致谢：开源/私有部署说明 + 灵感来源与致谢（内容与功能介绍页同源，做成独立入口） -->
@@ -16227,7 +16390,7 @@ color: var(--gh-faint);
         </div>
       </div>
       </div><!-- /them-sec about -->
-      <div class="ver">Mochi 字卡传讯 v8.5</div>
+      <div class="ver">Mochi 字卡传讯 v8.6</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
       <!-- v3.27.x：设置页底部防骗声明 -->
       <div class="set-alert">
@@ -16626,7 +16789,7 @@ color: var(--gh-faint);
             <div class="lic-hero-top">
               <div class="lic-title">Mochi 字卡传讯</div>
               <span class="lic-badge">原版</span>
-              <span class="lic-ver">v8.5</span>
+              <span class="lic-ver">v8.6</span>
             </div>
             <div class="lic-p">原创极简风情侣字卡传讯，不是小手机：黑白灰简约设计，数据全部保存在本地、无需联网；所有内容均为代码触发、按概率运行，联系方可主动发送聊天消息。代码从零编写并完全开源——本作即原版。</div>
             <!-- v3.26.x #648：原版口径澄清——唯一原版使用网站＋其他版本均为开放二传二改产生的二传/二改版 -->
@@ -21224,9 +21387,9 @@ color: var(--gh-faint);
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></span>
             <span>朋友圈</span>
           </button>
-          <button class="more-item" id="more-app-tongpin" data-mcat="chat" title="同频 · 伸手：TA 此刻状态 / 敲三下 / 摸摸身边">
+          <button class="more-item" id="more-app-tongpin" data-mcat="chat" title="在你身边：TA 此刻状态 / 敲三下 / 摸摸身边">
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h3l2-6 4 14 3-9 2 5h6"/></svg></span>
-            <span>同频·伸手</span>
+            <span>在你身边</span>
           </button>
           <button class="more-item" id="more-app-garden" data-mcat="chat" title="花园：种花 / 杂交 / 花束">
             <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 21h10l-1.5-5h-7z"/><path d="M12 16v-7"/><path d="M12 12c-2 0-3.5-1-3.5-3"/><path d="M12 10c2 0 3.5-1 3.5-3"/><circle cx="12" cy="6" r="2"/></svg></span>
@@ -21814,6 +21977,9 @@ color: var(--gh-faint);
 
 <!-- 悬浮音乐播放小框（播放时显示，可拖动；两行布局：上行歌名/歌手，下行控制按钮；右上角可收起为最初版最小单行小框） -->
 <div class="sm-float" id="sm-float" hidden>
+  <button class="sm-f-close" id="sm-f-close" title="关闭悬浮窗">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+  </button>
   <button class="sm-f-collapse" id="sm-f-collapse" title="收起为最小小框">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/><path d="M6 19h12"/></svg>
   </button>
@@ -21842,6 +22008,9 @@ color: var(--gh-faint);
     </button>
   </div>
 </div>
+<!-- 2026-11-23：悬浮窗最小化后，在顶栏右侧显示滚动歌词；点它把悬浮窗拿回来 -->
+<div class="sm-lyric" id="sm-lyric" hidden title="点一下展开悬浮窗"><span class="sm-lyric-tx" id="sm-lyric-tx"></span></div>
+
   <!-- 底部 tab（必须在 .phone 内、所有 .page 之外；嵌在 page-chat 内时 hidden 联动消失） -->
   <!-- FIX 2026-09-14 #477：位置不变量——本块必须整体保持在下方 .phone 闭合（2 空格缩进的 </div>）之前。
        810ab22 补 #474 第 3 个闭合后本块被留在 .phone 闭合之外＝body 直子；body 是 flex 横排居中
@@ -21863,18 +22032,18 @@ color: var(--gh-faint);
   </div>
 
   <!-- 2026-11-22：微信式底部导航（聊天 / 字卡 / 设置）——仅主页样式=微信式时显示 -->
-  <div class="tabbar" id="tabbar-wx">
-    <div class="wx-tb on" data-wx="chat" role="button" aria-label="聊天">
+  <div class="wx-tabbar" id="tabbar-wx">
+    <div class="wx-tb on" data-wx="chat" data-en="CHATS" role="button" aria-label="聊天">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h10M7 13h6"/></svg>
-      聊天
+      <span class="wx-tb-t">聊天</span>
     </div>
-    <div class="wx-tb" data-wx="cards" role="button" aria-label="字卡库">
+    <div class="wx-tb" data-wx="cards" data-en="CARDS" role="button" aria-label="字卡库">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="14" height="15" rx="2.5"/><path d="M7 5V3.5h14V18h-1.5"/></svg>
-      字卡
+      <span class="wx-tb-t">字卡</span>
     </div>
-    <div class="wx-tb" data-wx="settings" role="button" aria-label="设置">
+    <div class="wx-tb" data-wx="settings" data-en="SETTINGS" role="button" aria-label="设置">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.5M12 18.5V21M4.2 7.5l2.2 1.3M17.6 15.2l2.2 1.3M4.2 16.5l2.2-1.3M17.6 8.8l2.2-1.3"/></svg>
-      设置
+      <span class="wx-tb-t">设置</span>
     </div>
   </div>
   <!-- 睡眠小屋 3D 全屏层：必须在 .phone 内、所有 .page 与 tabbar 之外，才能盖住底部导航；
@@ -26871,4 +27040,4 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 </body>
 </html>
 
-<!-- __MOCHI_EOF__ mwsukr61 -->
+<!-- __MOCHI_EOF__ mwsyhvga -->
