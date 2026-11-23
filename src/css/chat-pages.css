@@ -5452,3 +5452,16 @@ select.mochi-custom-select-native { display:none; }
 /* 全屏：画布按剩余高度收缩，不撑破面板 */
 .poke-card.game-fs .bam-box { flex:1; min-height:0; }
 .poke-card.game-fs #bam-canvas { width:auto; max-width:100%; max-height:calc(100dvh - 210px); }
+
+/* 羽毛球：撒娇 / 魔法 两个功能键 */
+.bam-acts { display:flex; align-items:center; gap:8px; margin:2px 0 2px; }
+.bam-act { position:relative; display:flex; align-items:center; gap:6px; padding:7px 16px;
+  border-radius:999px; border:1px solid rgba(17,17,17,.12); background:#fff; color:#17161d;
+  font-size:12.5px; font-weight:600; letter-spacing:.5px; cursor:pointer;
+  -webkit-tap-highlight-color:transparent; transition:transform .1s, opacity .2s; }
+.bam-act:active { transform:scale(.96); }
+.bam-act.is-cd { opacity:.42; pointer-events:none; }
+.bam-act .bam-cd { font-size:10px; font-weight:600; color:#8b8895; min-width:0; }
+.bam-act .bam-cd:not(:empty) { min-width:22px; text-align:left; }
+.bam-charm-tag { font-size:10.5px; color:#d5763a; background:rgba(213,118,58,.10);
+  padding:3px 8px; border-radius:999px; }

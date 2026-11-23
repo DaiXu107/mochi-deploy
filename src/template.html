@@ -5895,6 +5895,16 @@
               </div>
             </div>
             <div class="pong-score" id="bam-score"><span class="pong-s-ta">0 TA</span><span class="pong-s-sep">:</span><span class="pong-s-you">你 0</span></div>
+            <div class="bam-acts">
+              <button class="bam-act" id="bam-charm" type="button" title="撒娇：发一句撒娇，TA 移速 −10%（可叠加，冷却 3 秒）">
+                <span class="bam-act-n">撒娇</span><span class="bam-cd" id="bam-charm-cd"></span>
+              </button>
+              <button class="bam-act" id="bam-magic" type="button" title="魔法：下一拍带 6 个分身，只有本体能被打回（冷却 3 秒）">
+                <span class="bam-act-n">魔法</span><span class="bam-cd" id="bam-magic-cd"></span>
+              </button>
+              <span class="bam-charm-tag" id="bam-charm-stack" hidden></span>
+            </div>
+
             <div class="bam-box">
               <canvas id="bam-canvas" width="400" height="520"></canvas>
               <div class="pong-hint" id="bam-hint"></div>
