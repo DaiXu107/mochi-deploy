@@ -72,3 +72,86 @@ body.home-wx .statusbar { display:none !important; }
 /* 微信式下，字卡页 / 设置页底部给导航留位（原来只有 tab 页才有这层关系） */
 body.home-wx #page-chatcard, body.home-wx #page-setting { padding-bottom: 6px; }
 body.home-wx #page-chatcard .card-list { padding-bottom: 10px; }
+
+/* ===== 2026-11-23 微信式会话列表：长宽比 / 拉伸适配 =====
+   之前所有尺寸都是按 393×851 写死的 px：窄屏（360×640）列表只剩 460px，
+   平板（768 宽）每行被拉成超宽横条（62px 高的超长条）——看着「太长、不适配」。
+   这里统一改成随视口缩放（clamp），并给宽屏加内容上限（居中），
+   再按「屏幕高度」压紧头部/行高，短屏与横屏都不再挤出滚动条。 */
+#page-wxhome .wx-head,
+#page-wxhome .wx-search,
+#page-wxhome .wx-list {
+  width: 100%;
+  max-width: 680px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.wx-head { padding: clamp(6px, 1.3vh, 12px) clamp(12px, 4vw, 20px) clamp(4px, 0.8vh, 8px); }
+.wx-title { font-size: clamp(19px, 5.2vw, 24px); }
+.wx-hbtn { width: clamp(28px, 8vw, 34px); height: clamp(28px, 8vw, 34px); }
+.wx-search {
+  height: clamp(32px, 4.6vh, 38px);
+  margin: 0 auto clamp(6px, 1vh, 12px);
+  width: calc(100% - 2 * clamp(12px, 4vw, 20px));
+  max-width: 660px;
+  font-size: clamp(11.5px, 3.1vw, 12.5px);
+}
+.wx-search input { font-size: clamp(11.5px, 3.1vw, 12.5px); }
+.wx-list {
+  padding: 0 clamp(4px, 1.6vw, 10px) calc(10px + env(safe-area-inset-bottom, 0px));
+  overscroll-behavior: contain;
+}
+.wx-conv {
+  padding: clamp(9px, 1.15vh, 13px) clamp(6px, 2vw, 12px);
+  gap: clamp(9px, 2.4vw, 12px);
+}
+.wx-av {
+  width: clamp(36px, 10vw, 46px);
+  height: clamp(36px, 10vw, 46px);
+  font-size: clamp(13px, 3.6vw, 16px);
+}
+.wx-nm { font-size: clamp(13.5px, 3.7vw, 15px); }
+.wx-pv { font-size: clamp(11px, 3vw, 12.5px); }
+.wx-tm { font-size: clamp(9.5px, 2.6vw, 10.5px); }
+.wx-badge {
+  min-width: clamp(17px, 4.6vw, 19px);
+  height: clamp(17px, 4.6vw, 19px);
+  font-size: clamp(10px, 2.7vw, 11px);
+}
+.wx-tabbar { height: clamp(52px, 7.2vh, 62px); width: calc(100% - 24px); max-width: 680px; margin: 0 auto 12px; }
+.wx-tabbar .wx-tb { font-size: clamp(9px, 2.5vw, 10px); }
+
+/* 短屏（小手机 640 高 / 横屏）：把头部压紧，保证列表本身有足够可视行数 */
+@media (max-height: 700px) {
+  .wx-head { padding-top: 4px; padding-bottom: 2px; }
+  .wx-title { font-size: clamp(17px, 5vw, 20px); }
+  #page-wxhome .wx-title::after { margin-top: 2px; font-size: 8px; }
+  .wx-search { height: 30px; margin-bottom: 6px; }
+  .wx-conv { padding-top: 8px; padding-bottom: 8px; }
+  .wx-av { width: clamp(32px, 9vw, 38px); height: clamp(32px, 9vw, 38px); }
+  .wx-tabbar { margin-bottom: 8px; }
+}
+/* 横屏（高度很矮）：再收一档，避免列表只剩一两行 */
+@media (max-height: 520px) {
+  .wx-head { padding-top: 2px; padding-bottom: 0; }
+  .wx-search { display: none; }
+  #page-wxhome .wx-title::after { display: none; }
+  .wx-conv { padding-top: 7px; padding-bottom: 7px; }
+  .wx-tabbar { margin-bottom: 6px; height: 46px; }
+}
+
+/* ===== 2026-11-23 背景铺满：去掉 .phone 的 18px 内边距「相框」 =====
+   小手机形态靠 .phone{padding:0 18px 18px} 做出四周留白，微信式要求底色铺满、
+   边缘到边（状态栏也已隐藏）。这里只在 body.home-wx 下去掉左右/底部内边距，
+   页面内各块自己的 padding 不受影响；底部再补 safe-area，避免刘海屏贴边。 */
+body.home-wx .phone {
+  padding-left: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+}
+body.home-wx #page-wxhome,
+body.home-wx #page-chat,
+body.home-wx #page-card,
+body.home-wx #page-setting {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
