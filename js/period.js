@@ -1223,24 +1223,6 @@ notifyAssist('经期提醒', '经期第 ' + st.dayOfCycle + ' 天 · 注意保�
 markSaid('inPeriod');
 fired = true;
 }
-if (!recCoversToday && st.phase === 'safe' && /推迟/.test(st.title)) {
-var m = st.title.match(/推迟 (\d+) 天/);
-var delayDays = m ? parseInt(m[1], 10) : 0;
-var dTitle = '经期延迟提醒', dTxt = '', dCtx = '';
-if (tier === 'free') {
-if (delayDays >= 10) { dTitle = '经期提醒'; dCtx = 'delayIrregular'; dTxt = '距上次经期已经 ' + st.dayOfCycle + ' 天，周期一向随性，长时间没来建议关注一下身体'; }
-} else if (delayDays >= 10) {
-dCtx = 'delayDeep'; dTxt = '经期已推迟 ' + delayDays + ' 天，你一向规律，这种情况别拖着，建议去看看医生';
-} else if (delayDays >= 5) {
-dCtx = 'delay'; dTxt = '经期已推迟 ' + delayDays + ' 天，如持续异常建议关注';
-}
-if (dTxt && !said(dCtx) && !warnSaid()) {
-notifyAssist(dTitle, dTxt);
-markSaid(dCtx);
-markWarn();
-fired = true;
-}
-}
 var cut = addDays(today, -30);
 Object.keys(notifyCfg.fired).forEach(function (k) { if (k < cut) delete notifyCfg.fired[k]; });
 if (fired) saveNotify(notifyCfg);
@@ -1307,16 +1289,9 @@ else if (!shouldCare && !recCoversToday && st.nextStart && !st.delayed) {
 var d = diffDays(today, st.nextStart);
 if (advHit(d, tier, false)) { shouldCare = true; ctx = 'adv' + d; kind = 'adv'; }
 }
-var delayDays = 0;
-if (!shouldCare && !recCoversToday && st.phase === 'safe' && /推迟/.test(st.title)) {
-var m = st.title.match(/推迟 (\d+) 天/);
-delayDays = m ? parseInt(m[1], 10) : 0;
-if (tier === 'rule' && delayDays >= 5) { shouldCare = true; ctx = delayDays >= 10 ? 'delayDeep' : 'delay'; kind = 'delay'; }
-else if (tier === 'free' && delayDays >= 10) { shouldCare = true; ctx = 'delayIrregular'; kind = 'delayIrr'; }
-}
 if (!shouldCare) return;
 notifyCfg.fired = notifyCfg.fired || {};
-var isWarnKind = kind === 'adv' || kind === 'delay' || kind === 'delayIrr';
+var isWarnKind = kind === 'adv';
 if (isWarnKind && notifyCfg.fired[today + '_said_warn']) return;
 var careKey = today + '_said_' + ctx;
 if (notifyCfg.fired[careKey]) return;
@@ -1332,8 +1307,6 @@ if (Math.random() * 100 > baseProb) return;
 var line = kind === 'sym' ? pickSymCareLine(symKey) : (kind === 'in' ? pickCareLine() : pickWarnLine(ctx, tier));
 if (!line) return;
 if (kind === 'adv') line = String(line).replace(/\{d\}/g, String(diffDays(today, st.nextStart)));
-else if (kind === 'delay') line = String(line).replace(/\{d\}/g, String(delayDays));
-else if (kind === 'delayIrr') line = String(line).replace(/\{d\}/g, String(st.dayOfCycle || 0));
 try { if (periodDeliverCare(line, { tag: kind === 'sym' ? '症状关心' : (kind === 'in' ? '经期关心' : '经期预警'), nightAllow: true }) === false) return; } catch (e) { return; }
 notifyCfg.fired[careKey] = 1;
 if (isWarnKind) notifyCfg.fired[today + '_said_warn'] = 1;
@@ -1342,6 +1315,7 @@ Object.keys(notifyCfg.fired).forEach(function (k) { if (k < cut) delete notifyCf
 saveNotify(notifyCfg);
 }
 window.periodCheckCare = checkCare;
+window.periodCheckNotify = checkNotify;
 function openCarePop() {
 var existing = document.getElementById('period-care-pop');
 if (existing) existing.remove();
