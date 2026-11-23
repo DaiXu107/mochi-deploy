@@ -1466,28 +1466,8 @@
       markSaid('inPeriod');
       fired = true;
     }
-    if (!recCoversToday && st.phase === 'safe' && /推迟/.test(st.title)) {
-      var m = st.title.match(/推迟 (\d+) 天/);
-      var delayDays = m ? parseInt(m[1], 10) : 0;
-      // #1407③：推迟这一发按规律档分口径（此前通知侧完全不看 predictTier，把 #559 判过的「太扯淡」
-      //   那句话照旧发给只记过 1 次的人）。与聊天侧同源：不规律档不说「推迟 N 天」，改「距上次经期
-      //   已经 M 天」的间隔口吻、门槛 ≥10，标题也不再挂「延迟」二字（标题同样是屏上的话）；
-      //   规律档 ≥5 发、满 10 升「去看看医生」（同聊天侧关注档那道坎）。
-      var dTitle = '经期延迟提醒', dTxt = '', dCtx = '';
-      if (tier === 'free') {
-        if (delayDays >= 10) { dTitle = '经期提醒'; dCtx = 'delayIrregular'; dTxt = '距上次经期已经 ' + st.dayOfCycle + ' 天，周期一向随性，长时间没来建议关注一下身体'; }
-      } else if (delayDays >= 10) {
-        dCtx = 'delayDeep'; dTxt = '经期已推迟 ' + delayDays + ' 天，你一向规律，这种情况别拖着，建议去看看医生';
-      } else if (delayDays >= 5) {
-        dCtx = 'delay'; dTxt = '经期已推迟 ' + delayDays + ' 天，如持续异常建议关注';
-      }
-      if (dTxt && !said(dCtx) && !warnSaid()) {
-        notifyAssist(dTitle, dTxt);
-        markSaid(dCtx);
-        markWarn();
-        fired = true;
-      }
-    }
+    // 2026-11-23：按用户要求移除「经期推迟/超期」提醒（含系统通知）。
+    // 判定仍保留在 status()（页面状态卡会照常显示），但不再弹通知、也不再发聊天关心语。
     var cut = addDays(today, -30);
     Object.keys(notifyCfg.fired).forEach(function (k) { if (k < cut) delete notifyCfg.fired[k]; });
     if (fired) saveNotify(notifyCfg);
@@ -1598,19 +1578,12 @@
       var d = diffDays(today, st.nextStart);
       if (advHit(d, tier, false)) { shouldCare = true; ctx = 'adv' + d; kind = 'adv'; }
     }
-    var delayDays = 0;
-    if (!shouldCare && !recCoversToday && st.phase === 'safe' && /推迟/.test(st.title)) {
-      var m = st.title.match(/推迟 (\d+) 天/);
-      delayDays = m ? parseInt(m[1], 10) : 0;
-      if (tier === 'rule' && delayDays >= 5) { shouldCare = true; ctx = delayDays >= 10 ? 'delayDeep' : 'delay'; kind = 'delay'; }
-      else if (tier === 'free' && delayDays >= 10) { shouldCare = true; ctx = 'delayIrregular'; kind = 'delayIrr'; }
-    }
     if (!shouldCare) return;
     notifyCfg.fired = notifyCfg.fired || {};
     // #1407⑧：当天同语境的名额与通知共用一枚键（原来是 `_care_{ctx}`，通知另有 `_adv/_inperiod/_delay`
     //   三枚，两条路各记各的＝推迟那天既弹通知又发一条同义的关心语）。谁先落地谁占，后来者不发。
     // 2026-11-17：预警类一天只发一条（与通知共用 today_said_warn 名额）。
-    var isWarnKind = kind === 'adv' || kind === 'delay' || kind === 'delayIrr';
+    var isWarnKind = kind === 'adv';
     if (isWarnKind && notifyCfg.fired[today + '_said_warn']) return;
     var careKey = today + '_said_' + ctx;
     if (notifyCfg.fired[careKey]) return;
@@ -1629,8 +1602,6 @@
     var line = kind === 'sym' ? pickSymCareLine(symKey) : (kind === 'in' ? pickCareLine() : pickWarnLine(ctx, tier));
     if (!line) return;
     if (kind === 'adv') line = String(line).replace(/\{d\}/g, String(diffDays(today, st.nextStart)));
-    else if (kind === 'delay') line = String(line).replace(/\{d\}/g, String(delayDays));
-    else if (kind === 'delayIrr') line = String(line).replace(/\{d\}/g, String(st.dayOfCycle || 0));
     // 带标签 chip 发进聊天（addIn opts.tag → rec.mood），用户能看出消息来源与语境：
     // 「经期关心」= 经期中，「经期预警」= 经前预警/推迟（#559 起区分），「症状关心」= 记了症状（#1474）
     try { if (periodDeliverCare(line, { tag: kind === 'sym' ? '症状关心' : (kind === 'in' ? '经期关心' : '经期预警'), nightAllow: true }) === false) return; } catch (e) { return; }
@@ -1641,6 +1612,7 @@
     saveNotify(notifyCfg);
   }
   window.periodCheckCare = checkCare;
+  window.periodCheckNotify = checkNotify;
 
   // ---- 关心语管理浮层（增删/单卡开关）----
   function openCarePop() {

@@ -2734,12 +2734,12 @@ const FIX_SENTINELS = [
   { name: '#552a 诊断「不一致」带落后量化（删则只说旧版不说差多少，开发者拿两个 ts 手算回流）', file: 'js/device.js', needle: "落后最新版' + devStr(r.ts - localTs)" },
   // ==== 2026-09-16 #559 经期预警按「语境 × 经期规律」分级：经前/推迟不再发经期中口吻；不规律者不说「推迟」改间隔口吻 ====
   { name: '#559a 经前预警 {d} 替换为距预测经期天数（删则经前预警不带日期参数）', file: 'js/period.js', needle: "String(line).replace(/\\{d\\}/g, String(diffDays(today, st.nextStart)));" },
-  { name: '#559b 推迟预警 {d} 替换为已推迟天数（删则推迟预警不带日期参数）', file: 'js/period.js', needle: "String(line).replace(/\\{d\\}/g, String(delayDays));" },
+  { name: '#559b 删除型：推迟预警 {d} 替换已移除（2026-11-23 按用户要求删掉「推迟/超期」提醒，不得回流）', file: 'js/period.js', needle: 'delayDays', absent: true },
   { name: '#559c 标签按语境区分（删则经前预警日又以「经期关心」标签发经期中口吻语料＝症状回流；#1474 扩成三词三元后 2026-09-30 同名重锚到 in/预警两词的判定片段）', file: 'js/period.js', needle: "kind === 'in' ? '经期关心' : '经期预警'" },
   { name: '#559d 经前预警语料分组（删则经前预警日无专属预警语、字卡库缺该组）', file: 'js/default-cards-data.js', needle: '["经前预警", [' },
   { name: '#559e 规律分级判据（删则不规律用户也被当「预测可信」按推迟口径轰炸＝「太扯淡」回流）', file: 'js/period.js', needle: "if (s.n >= 3 && s.cv < 0.2) return 'rule';" },
-  { name: '#559f 规律型推迟门 ≥5 天（删则规律用户推迟无预警）', file: 'js/period.js', needle: "if (tier === 'rule' && delayDays >= 5)" },
-  { name: '#559g 不规律型改间隔口吻且 ≥10 天才提（删则对不规律用户说「推迟 N 天」＝预测误差比推迟还大）', file: 'js/period.js', needle: "else if (tier === 'free' && delayDays >= 10)" },
+  { name: '#559f 删除型：规律型推迟门已移除（2026-11-23 按用户要求删掉推迟提醒）', file: 'js/period.js', needle: "delayDays >= 5", absent: true },
+  { name: '#559g 删除型：不规律型推迟预警已移除（2026-11-23 按用户要求删掉推迟提醒）', file: 'js/period.js', needle: "delayDays >= 10", absent: true },
   { name: '#559h 经期推迟·不规律语料组（删则不规律推迟回落确定性口吻语料）', file: 'js/default-cards-data.js', needle: '["经期推迟·不规律", [' },
   { name: '#559i 深夜静默 23:00–06:00（删则半夜聊天 TA 会发经期预警把人叫醒；静默期不写 fired 故不吞当天名额）', file: 'js/period.js', needle: 'if (_h >= 23 || _h < 6) return; // #559 深夜静默（23:00–06:00 不发、不写 fired）' },
   // ==== 2026-09-16 #554（TASKS #128）字卡媒体令牌化持久化：库键内联图 → 池令牌（同图全库只存一份）====
