@@ -382,7 +382,7 @@ cpSync(join(root, 'src', 'sleeproom'), join(root, 'sleeproom'), { recursive: tru
 cpSync(join(root, 'src', 'assets', 'divination'), join(root, 'assets', 'divination'), { recursive: true });
 // 纸页风格本地字体（Noto Serif SC 子集，OFL）→ 根 assets/fonts
 mkdirSync(join(root, 'assets', 'fonts'), { recursive: true });
-['MochiSerif-Regular.woff2', 'OFL-NotoSerifSC.txt'].forEach(f => copyFileSync(join(root, 'src', 'assets', 'fonts', f), join(root, 'assets', 'fonts', f)));
+['MochiSerif-Regular.woff2', 'MochiKai-Regular.woff2', 'MochiBrush-Regular.woff2', 'OFL-NotoSerifSC.txt'].forEach(f => copyFileSync(join(root, 'src', 'assets', 'fonts', f), join(root, 'assets', 'fonts', f)));
 const swPath = join(root, 'sw.js');
 let sw = readFileSync(swPath, 'utf8');
 sw = sw.replace(/const CACHE = 'mochi-[^']*';/, "const CACHE = 'mochi-" + buildStamp + "';");
