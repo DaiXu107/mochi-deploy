@@ -3231,6 +3231,75 @@ font-size:11px; background:rgba(17,17,17,.05); }
 border-top:1px solid rgba(17,17,17,.06); cursor:pointer; }
 body.home-wx #page-chatcard, body.home-wx #page-setting { padding-bottom: 6px; }
 body.home-wx #page-chatcard .card-list { padding-bottom: 10px; }
+#page-wxhome .wx-head,
+#page-wxhome .wx-search,
+#page-wxhome .wx-list {
+width: 100%;
+max-width: 680px;
+margin-left: auto;
+margin-right: auto;
+}
+.wx-head { padding: clamp(6px, 1.3vh, 12px) clamp(12px, 4vw, 20px) clamp(4px, 0.8vh, 8px); }
+.wx-title { font-size: clamp(19px, 5.2vw, 24px); }
+.wx-hbtn { width: clamp(28px, 8vw, 34px); height: clamp(28px, 8vw, 34px); }
+.wx-search {
+height: clamp(32px, 4.6vh, 38px);
+margin: 0 auto clamp(6px, 1vh, 12px);
+width: calc(100% - 2 * clamp(12px, 4vw, 20px));
+max-width: 660px;
+font-size: clamp(11.5px, 3.1vw, 12.5px);
+}
+.wx-search input { font-size: clamp(11.5px, 3.1vw, 12.5px); }
+.wx-list {
+padding: 0 clamp(4px, 1.6vw, 10px) calc(10px + env(safe-area-inset-bottom, 0px));
+overscroll-behavior: contain;
+}
+.wx-conv {
+padding: clamp(9px, 1.15vh, 13px) clamp(6px, 2vw, 12px);
+gap: clamp(9px, 2.4vw, 12px);
+}
+.wx-av {
+width: clamp(36px, 10vw, 46px);
+height: clamp(36px, 10vw, 46px);
+font-size: clamp(13px, 3.6vw, 16px);
+}
+.wx-nm { font-size: clamp(13.5px, 3.7vw, 15px); }
+.wx-pv { font-size: clamp(11px, 3vw, 12.5px); }
+.wx-tm { font-size: clamp(9.5px, 2.6vw, 10.5px); }
+.wx-badge {
+min-width: clamp(17px, 4.6vw, 19px);
+height: clamp(17px, 4.6vw, 19px);
+font-size: clamp(10px, 2.7vw, 11px);
+}
+.wx-tabbar { height: clamp(52px, 7.2vh, 62px); width: calc(100% - 24px); max-width: 680px; margin: 0 auto 12px; }
+.wx-tabbar .wx-tb { font-size: clamp(9px, 2.5vw, 10px); }
+@media (max-height: 700px) {
+.wx-head { padding-top: 4px; padding-bottom: 2px; }
+.wx-title { font-size: clamp(17px, 5vw, 20px); }
+#page-wxhome .wx-title::after { margin-top: 2px; font-size: 8px; }
+.wx-search { height: 30px; margin-bottom: 6px; }
+.wx-conv { padding-top: 8px; padding-bottom: 8px; }
+.wx-av { width: clamp(32px, 9vw, 38px); height: clamp(32px, 9vw, 38px); }
+.wx-tabbar { margin-bottom: 8px; }
+}
+@media (max-height: 520px) {
+.wx-head { padding-top: 2px; padding-bottom: 0; }
+.wx-search { display: none; }
+#page-wxhome .wx-title::after { display: none; }
+.wx-conv { padding-top: 7px; padding-bottom: 7px; }
+.wx-tabbar { margin-bottom: 6px; height: 46px; }
+}
+body.home-wx .phone {
+padding-left: 0;
+padding-right: 0;
+padding-bottom: 0;
+}
+body.home-wx #page-wxhome,
+body.home-wx #page-chat,
+body.home-wx #page-card,
+body.home-wx #page-setting {
+padding-bottom: env(safe-area-inset-bottom, 0px);
+}
 #page-chatcard { scrollbar-width:none; -ms-overflow-style:none; }
 #page-chatcard::-webkit-scrollbar { display:none; }
 .chat-title { font-size:22px; font-weight:700; padding:4px 2px 8px; letter-spacing:1px; }
@@ -14655,7 +14724,7 @@ color: var(--gh-faint);
            （名称+版号 / 部署时间+实时秒 / 版本检测行）收成一行；检测行随 ver-check.js 退役删除。
            data-build-ts / data-version 两属性保留：device.js 诊断、bg-keep 自检、pwa.js 旧包检测
            仍只读属性（诊断版本号走 data-version 兜底，device.js 两处缓存原生支持）。 -->
-      <div class="splash-ver" id="splash-ver" data-build-ts="1795421822579" data-version="v8.6">
+      <div class="splash-ver" id="splash-ver" data-build-ts="1795422860246" data-version="v8.6">
         <span class="sv-app">Mochi 字卡传讯 已完结停更</span>
       </div>
       <!-- v3.5.120：数据（IndexedDB 回填）加载完成前不显示「点击进入」按钮，
@@ -27040,4 +27109,4 @@ window.__mochiBootRetry = function () { try { location.reload(); } catch (e) {} 
 </body>
 </html>
 
-<!-- __MOCHI_EOF__ mwszsokz -->
+<!-- __MOCHI_EOF__ mwt0ex92 -->
