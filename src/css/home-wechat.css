@@ -155,3 +155,10 @@ body.home-wx #page-card,
 body.home-wx #page-setting {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+/* 2026-11-23：微信式下经典底部导航（.tabbar）必须彻底消失——
+   它第三格是「切换联系人」，微信式靠会话列表切换，重复且误导（用户报「最右变成切换联系人」）。
+   纸页皮肤的 `html.paper-skin .tabbar{display:flex!important}` 会盖掉 JS 写的 inline display:none，
+   所以这里用 !important 兜住，并让 body.home-wx 下无论有没有 hidden 都不显示。 */
+body.home-wx .phone > .tabbar,
+body.home-wx .tabbar { display: none !important; }

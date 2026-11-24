@@ -315,7 +315,12 @@
     syncWxBar();
     enforceHomeInvariant();
     var oldBar = document.querySelector('.phone > .tabbar') || document.querySelector('.tabbar');
-    if (oldBar) oldBar.style.display = wx ? 'none' : '';
+    if (oldBar) {
+      // 2026-11-23：同时写 hidden 属性——纸页皮肤的 `.tabbar{display:flex!important}` 会盖掉
+      //   inline style，只写 display:none 时微信式下会露出经典导航第三格「切换联系人」。
+      oldBar.style.display = wx ? 'none' : '';
+      if (wx) oldBar.setAttribute('hidden', ''); else oldBar.removeAttribute('hidden');
+    }
     if (wx) {
       var phone = document.getElementById('page-phone');
       if (phone && !phone.hidden) showWxHome();
