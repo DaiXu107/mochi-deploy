@@ -5,6 +5,8 @@
 >
 > 返回 [README.md](README.md)
 
+- **2026-11-23**：**修纸页皮肤 × 微信式底栏第三格变成「切换联系人」**（用户报「这个位置我要的是总设置」）。纸页皮肤给经典 `.tabbar` 写了 `display:flex !important`，会盖掉 `home-wechat.js` 里用 inline `style.display='none'` 做的隐藏——于是微信式下同时出现两条底栏，经典那条第三格正是「切换联系人」（这是二改把小手机设置 tab 改成换人键的历史设计），点下去弹出联系人面板而不是设置。修法：① `body.home-wx .tabbar{display:none !important}` 兜底（选择器含 `.phone > .tabbar`）；② `apply()` 里同时写 `hidden` 属性，纸页的 `.tabbar[hidden]{display:none!important}` 也随之生效，切回小手机时 `removeAttribute('hidden')` 恢复原状。验证：纸页 + 微信式下经典导航 `display:none`、只剩一条纸带（聊天/字卡/设置），点「设置」进总设置页；切回小手机导航正常恢复。源码：`src/css/home-wechat.css`、`src/js/home-wechat.js`。
+
 - **2026-11-23**：**微信式主页长宽比 / 拉伸适配 + 背景铺满**（用户反馈「多联系人界面太长、适配度不够」「有色背景没铺满全屏」）。① 原来所有尺寸按 393×851 写死：窄屏（360×640）列表只剩 460px、平板（768 宽）每行被拉成超宽横条。现改为随视口缩放——行内边距 `clamp(9px,1.15vh,13px)`、头像 `clamp(36px,10vw,46px)`、标题/搜索/导航同步 clamp，实测行高 51（640 高）→ 59（851）→ 70（1024）；② 头部 / 搜索 / 列表 / 导航统一 `max-width:680px` 居中，平板不再拉横条（导航条另加 `width:calc(100% - 24px)`，修掉 `margin:auto` 在 flex 列里把导航收缩成小胶囊的 bug）；③ 短屏两档（`max-height:700px` 压紧头部、行高、头像，一屏 7→9 行；`max-height:520px` 横屏隐藏搜索与副标题）；④ **背景铺满**：`.phone` 的 `padding:0 18px 18px` 是「小手机」形态的四周留白，微信式下底色被缩进 18px、左右与底部露出白边——`body.home-wx .phone` 去掉左右/底部内边距，四个一级页补 `env(safe-area-inset-bottom)` 兜底；小手机形态不受影响。源码：`src/css/home-wechat.css`。
 
 - **2026-11-23**：**移除经期「推迟 / 超期」提醒**（用户直派「改不掉就删掉，看得心烦」）。`checkNotify` 的推迟通知分支与 `checkCare` 的推迟关心分支整段删除：无论推迟 5 天、10 天，都不再弹系统通知、也不再往聊天发「经期已推迟 N 天 / 距上次经期已经 M 天」；**页面状态卡与日历仍照常显示推迟天数**（只删提醒，不删数据与判定）。经前预警（adv）、经期中提醒、症状关心不受影响；`today_said_warn` 每日一条的名额只剩经前预警在用。同时把 3 条相关回归哨兵改成删除型（`#559b/#559f/#559g`），防止后续同步上游时把推迟提醒带回来。源码：`src/js/period.js`、`build.mjs`。
